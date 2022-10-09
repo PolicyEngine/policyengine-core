@@ -1,0 +1,577 @@
+<!doctype html>
+<html class="no-js">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Periods" href="periods.html" /><link rel="prev" title="Holders" href="holders.html" />
+
+    <meta name="generator" content="sphinx-4.5.0, furo 2022.09.29"/>
+        <title>Parameters - PolicyEngine Core documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=d81277517bee4d6b0349d71bb2661d4890b5617c" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/design-style.b7bb847fb20b106c3d81b95245e65545.min.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #eeffcc;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../intro.html"><div class="brand">PolicyEngine Core documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../intro.html">
+  
+  
+  <span class="sidebar-brand-text">PolicyEngine Core documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder=Search name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Contributing</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/intro.html">How to contribute</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="commons.html">Commons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="country_template.html">Country template</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_storage.html">Data storage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="entities.html">Entities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="enums.html">Enums</a></li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="experimental.html">Experimental features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="extension_template.html">Extension template</a></li>
+<li class="toctree-l1"><a class="reference internal" href="holders.html">Holders</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="periods.html">Periods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="populations.html">Populations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="projectors.html">Projectors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reforms.html">Reforms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scripts.html">Scripts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulations.html">Simulations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="taxbenefitsystems.html">Tax-benefit systems</a></li>
+<li class="toctree-l1"><a class="reference internal" href="taxscales.html">Tax scales</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tracers.html">Tracers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="types.html">Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="variables.html">Variables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warnings.html">Warnings</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <section class="tex2jax_ignore mathjax_ignore" id="parameters">
+<h1>Parameters<a class="headerlink" href="#parameters" title="Permalink to this headline">#</a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">policyengine_core.parameters</span></code> module contains the classes that define how parameters function. This mainly revolves around the ‘at-instant’ pattern: parameters are defined as a function of time, and are evaluated at a given instant.</p>
+<section id="parameter">
+<h2>Parameter<a class="headerlink" href="#parameter" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="policyengine_core.parameters.parameter.Parameter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.parameters.parameter.</span></span><span class="sig-name descname"><span class="pre">Parameter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.parameters.parameter.Parameter" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#policyengine_core.parameters.at_instant_like.AtInstantLike" title="policyengine_core.parameters.at_instant_like.AtInstantLike"><code class="xref py py-class docutils literal notranslate"><span class="pre">policyengine_core.parameters.at_instant_like.AtInstantLike</span></code></a></p>
+<p>A parameter of the legislation.</p>
+<p>Parameters can change over time.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>values_list: List of the values, in reverse chronological order.</p>
+</dd>
+<dt>Args:</dt><dd><p>name: Name of the parameter, e.g. “taxes.some_tax.some_param”.
+data: Data loaded from a YAML file.
+file_path: File the parameter was loaded from.</p>
+</dd>
+</dl>
+<p>Instantiate a parameter without metadata:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span> <span class="n">Parameter</span><span class="p">(</span><span class="s1">&#39;rate&#39;</span><span class="p">,</span> <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+<span class="go">        &quot;2015-01-01&quot;: 550,</span>
+<span class="go">        &quot;2016-01-01&quot;: 600</span>
+<span class="go">        })</span>
+</pre></div>
+</div>
+<p>Instantiate a parameter with metadata:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span> <span class="n">Parameter</span><span class="p">(</span><span class="s1">&#39;rate&#39;</span><span class="p">,</span> <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+<span class="go">        &#39;description&#39;: &#39;Income tax rate applied on salaries&#39;,</span>
+<span class="go">        &#39;values&#39;: {</span>
+<span class="go">            &quot;2015-01-01&quot;: {&#39;value&#39;: 550, &#39;metadata&#39;: {&#39;reference&#39;: &#39;http://taxes.gov/income_tax/2015&#39;}},</span>
+<span class="go">            &quot;2016-01-01&quot;: {&#39;value&#39;: 600, &#39;metadata&#39;: {&#39;reference&#39;: &#39;http://taxes.gov/income_tax/2016&#39;}}</span>
+<span class="go">            }</span>
+<span class="go">        })</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.parameters.parameter.Parameter.clone">
+<span class="sig-name descname"><span class="pre">clone</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.parameters.parameter.Parameter.clone" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.parameters.parameter.Parameter.get_descendants">
+<span class="sig-name descname"><span class="pre">get_descendants</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.parameters.parameter.Parameter.get_descendants" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.parameters.parameter.Parameter.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.parameters.parameter.Parameter.update" title="Permalink to this definition">#</a></dt>
+<dd><p>Change the value for a given period.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>period</strong> – Period where the value is modified. If set, <cite>start</cite> and <cite>stop</cite> should be <cite>None</cite>.</p></li>
+<li><p><strong>start</strong> – Start of the period. Instance of <cite>policyengine_core.periods.Instant</cite>. If set, <cite>period</cite> should be <cite>None</cite>.</p></li>
+<li><p><strong>stop</strong> – Stop of the period. Instance of <cite>policyengine_core.periods.Instant</cite>. If set, <cite>period</cite> should be <cite>None</cite>.</p></li>
+<li><p><strong>value</strong> – New value. If <cite>None</cite>, the parameter is removed from the legislation parameters for the given period.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="parameternode">
+<h2>ParameterNode<a class="headerlink" href="#parameternode" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="policyengine_core.parameters.parameter_node.ParameterNode">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.parameters.parameter_node.</span></span><span class="sig-name descname"><span class="pre">ParameterNode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">directory_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.parameters.parameter_node.ParameterNode" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#policyengine_core.parameters.at_instant_like.AtInstantLike" title="policyengine_core.parameters.at_instant_like.AtInstantLike"><code class="xref py py-class docutils literal notranslate"><span class="pre">policyengine_core.parameters.at_instant_like.AtInstantLike</span></code></a></p>
+<p>A node in the legislation <a class="reference external" href="https://openfisca.org/doc/coding-the-legislation/legislation_parameters.html">parameter tree</a>.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.parameters.parameter_node.ParameterNode.add_child">
+<span class="sig-name descname"><span class="pre">add_child</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">policyengine_core.parameters.parameter_node.ParameterNode</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.parameters.parameter.Parameter" title="policyengine_core.parameters.parameter.Parameter"><span class="pre">policyengine_core.parameters.parameter.Parameter</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.parameters.parameter_node.ParameterNode.add_child" title="Permalink to this definition">#</a></dt>
+<dd><p>Add a new child to the node.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> – Name of the child that must be used to access that child. Should not contain anything that could interfere with the operator <cite>.</cite> (dot).</p></li>
+<li><p><strong>child</strong> – The new child, an instance of <a class="reference internal" href="#policyengine_core.parameters.parameter_scale.ParameterScale" title="policyengine_core.parameters.parameter_scale.ParameterScale"><code class="xref py py-class docutils literal notranslate"><span class="pre">ParameterScale</span></code></a> or <a class="reference internal" href="#policyengine_core.parameters.parameter.Parameter" title="policyengine_core.parameters.parameter.Parameter"><code class="xref py py-class docutils literal notranslate"><span class="pre">Parameter</span></code></a> or <a class="reference internal" href="#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><code class="xref py py-class docutils literal notranslate"><span class="pre">ParameterNode</span></code></a>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.parameters.parameter_node.ParameterNode.clone">
+<span class="sig-name descname"><span class="pre">clone</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">policyengine_core.parameters.parameter_node.ParameterNode</span></a></span></span><a class="headerlink" href="#policyengine_core.parameters.parameter_node.ParameterNode.clone" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.parameters.parameter_node.ParameterNode.get_descendants">
+<span class="sig-name descname"><span class="pre">get_descendants</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">policyengine_core.parameters.parameter_node.ParameterNode</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.parameters.parameter.Parameter" title="policyengine_core.parameters.parameter.Parameter"><span class="pre">policyengine_core.parameters.parameter.Parameter</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#policyengine_core.parameters.parameter_node.ParameterNode.get_descendants" title="Permalink to this definition">#</a></dt>
+<dd><p>Return a generator containing all the parameters and nodes recursively contained in this <cite>ParameterNode</cite></p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.parameters.parameter_node.ParameterNode.merge">
+<span class="sig-name descname"><span class="pre">merge</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">policyengine_core.parameters.parameter_node.ParameterNode</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#policyengine_core.parameters.parameter_node.ParameterNode.merge" title="Permalink to this definition">#</a></dt>
+<dd><p>Merges another ParameterNode into the current node.</p>
+<p>In case of child name conflict, the other node child will replace the current node child.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="parameteratinstant">
+<h2>ParameterAtInstant<a class="headerlink" href="#parameteratinstant" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="policyengine_core.parameters.parameter_at_instant.ParameterAtInstant">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.parameters.parameter_at_instant.</span></span><span class="sig-name descname"><span class="pre">ParameterAtInstant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">instant_str</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.parameters.parameter_at_instant.ParameterAtInstant" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A value of a parameter at a given instant.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.parameters.parameter_at_instant.ParameterAtInstant.clone">
+<span class="sig-name descname"><span class="pre">clone</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.parameters.parameter_at_instant.ParameterAtInstant" title="policyengine_core.parameters.parameter_at_instant.ParameterAtInstant"><span class="pre">policyengine_core.parameters.parameter_at_instant.ParameterAtInstant</span></a></span></span><a class="headerlink" href="#policyengine_core.parameters.parameter_at_instant.ParameterAtInstant.clone" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.parameters.parameter_at_instant.ParameterAtInstant.validate">
+<span class="sig-name descname"><span class="pre">validate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#policyengine_core.parameters.parameter_at_instant.ParameterAtInstant.validate" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="parameternodeatinstant">
+<h2>ParameterNodeAtInstant<a class="headerlink" href="#parameternodeatinstant" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="policyengine_core.parameters.parameter_node_at_instant.ParameterNodeAtInstant">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.parameters.parameter_node_at_instant.</span></span><span class="sig-name descname"><span class="pre">ParameterNodeAtInstant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">ParameterNode</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">instant_str</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.parameters.parameter_node_at_instant.ParameterNodeAtInstant" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Parameter node of the legislation, at a given instant.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.parameters.parameter_node_at_instant.ParameterNodeAtInstant.add_child">
+<span class="sig-name descname"><span class="pre">add_child</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">child_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child_at_instant</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.parameters.parameter_node_at_instant.ParameterNodeAtInstant" title="policyengine_core.parameters.parameter_node_at_instant.ParameterNodeAtInstant"><span class="pre">policyengine_core.parameters.parameter_node_at_instant.ParameterNodeAtInstant</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.parameters.parameter_node_at_instant.ParameterNodeAtInstant.add_child" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="parameterscale">
+<h2>ParameterScale<a class="headerlink" href="#parameterscale" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="policyengine_core.parameters.parameter_scale.ParameterScale">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.parameters.parameter_scale.</span></span><span class="sig-name descname"><span class="pre">ParameterScale</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.parameters.parameter_scale.ParameterScale" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#policyengine_core.parameters.at_instant_like.AtInstantLike" title="policyengine_core.parameters.at_instant_like.AtInstantLike"><code class="xref py py-class docutils literal notranslate"><span class="pre">policyengine_core.parameters.at_instant_like.AtInstantLike</span></code></a></p>
+<p>A parameter scale (for instance a  marginal scale).</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.parameters.parameter_scale.ParameterScale.clone">
+<span class="sig-name descname"><span class="pre">clone</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.parameters.parameter_scale.ParameterScale" title="policyengine_core.parameters.parameter_scale.ParameterScale"><span class="pre">policyengine_core.parameters.parameter_scale.ParameterScale</span></a></span></span><a class="headerlink" href="#policyengine_core.parameters.parameter_scale.ParameterScale.clone" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.parameters.parameter_scale.ParameterScale.get_descendants">
+<span class="sig-name descname"><span class="pre">get_descendants</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterable</span></span></span><a class="headerlink" href="#policyengine_core.parameters.parameter_scale.ParameterScale.get_descendants" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="parameterscalebracket">
+<h2>ParameterScaleBracket<a class="headerlink" href="#parameterscalebracket" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="policyengine_core.parameters.parameter_scale_bracket.ParameterScaleBracket">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.parameters.parameter_scale_bracket.</span></span><span class="sig-name descname"><span class="pre">ParameterScaleBracket</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">directory_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.parameters.parameter_scale_bracket.ParameterScaleBracket" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><code class="xref py py-class docutils literal notranslate"><span class="pre">policyengine_core.parameters.parameter_node.ParameterNode</span></code></a></p>
+<p>A parameter scale bracket.</p>
+</dd></dl>
+
+</section>
+<section id="atinstantlike">
+<h2>AtInstantLike<a class="headerlink" href="#atinstantlike" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="policyengine_core.parameters.at_instant_like.AtInstantLike">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.parameters.at_instant_like.</span></span><span class="sig-name descname"><span class="pre">AtInstantLike</span></span><a class="headerlink" href="#policyengine_core.parameters.at_instant_like.AtInstantLike" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">abc.ABC</span></code></p>
+<p>Base class for various types of parameters implementing the at instant protocol.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.parameters.at_instant_like.AtInstantLike.get_at_instant">
+<span class="sig-name descname"><span class="pre">get_at_instant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instant</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="periods.html#policyengine_core.periods.instant_.Instant" title="policyengine_core.periods.instant_.Instant"><span class="pre">policyengine_core.periods.instant_.Instant</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#policyengine_core.parameters.at_instant_like.AtInstantLike.get_at_instant" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="vectorialparameternodeatinstant">
+<h2>VectorialParameterNodeAtInstant<a class="headerlink" href="#vectorialparameternodeatinstant" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="policyengine_core.parameters.vectorial_parameter_node_at_instant.VectorialParameterNodeAtInstant">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.parameters.vectorial_parameter_node_at_instant.</span></span><span class="sig-name descname"><span class="pre">VectorialParameterNodeAtInstant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">complex</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">bytes</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">numpy.generic</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">complex</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">bytes</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">numpy.generic</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">numpy.typing._array_like._SupportsArray</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">instant_str</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.parameters.vectorial_parameter_node_at_instant.VectorialParameterNodeAtInstant" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Parameter node of the legislation at a given instant which has been vectorized.
+Vectorized parameters allow requests such as parameters.housing_benefit[zipcode], where zipcode is a vector</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.parameters.vectorial_parameter_node_at_instant.VectorialParameterNodeAtInstant.build_from_node">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">build_from_node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">ParameterNode</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.parameters.vectorial_parameter_node_at_instant.VectorialParameterNodeAtInstant" title="policyengine_core.parameters.vectorial_parameter_node_at_instant.VectorialParameterNodeAtInstant"><span class="pre">VectorialParameterNodeAtInstant</span></a></span></span><a class="headerlink" href="#policyengine_core.parameters.vectorial_parameter_node_at_instant.VectorialParameterNodeAtInstant.build_from_node" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.parameters.vectorial_parameter_node_at_instant.VectorialParameterNodeAtInstant.check_node_vectorisable">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">check_node_vectorisable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">ParameterNode</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#policyengine_core.parameters.vectorial_parameter_node_at_instant.VectorialParameterNodeAtInstant.check_node_vectorisable" title="Permalink to this definition">#</a></dt>
+<dd><p>Check that a node can be casted to a vectorial node, in order to be able to use fancy indexing.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="contains-nan">
+<h2>contains_nan<a class="headerlink" href="#contains-nan" title="Permalink to this headline">#</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="policyengine_core.parameters.helpers.contains_nan">
+<span class="sig-prename descclassname"><span class="pre">policyengine_core.parameters.helpers.</span></span><span class="sig-name descname"><span class="pre">contains_nan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vector</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.parameters.helpers.contains_nan" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="load-parameter-file">
+<h2>load_parameter_file<a class="headerlink" href="#load-parameter-file" title="Permalink to this headline">#</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="policyengine_core.parameters.helpers.load_parameter_file">
+<span class="sig-prename descclassname"><span class="pre">policyengine_core.parameters.helpers.</span></span><span class="sig-name descname"><span class="pre">load_parameter_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.parameters.helpers.load_parameter_file" title="Permalink to this definition">#</a></dt>
+<dd><p>Load parameters from a YAML file (or a directory containing YAML files).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>An instance of <a class="reference internal" href="#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><code class="xref py py-class docutils literal notranslate"><span class="pre">ParameterNode</span></code></a> or <a class="reference internal" href="#policyengine_core.parameters.parameter_scale.ParameterScale" title="policyengine_core.parameters.parameter_scale.ParameterScale"><code class="xref py py-class docutils literal notranslate"><span class="pre">ParameterScale</span></code></a> or <a class="reference internal" href="#policyengine_core.parameters.parameter.Parameter" title="policyengine_core.parameters.parameter.Parameter"><code class="xref py py-class docutils literal notranslate"><span class="pre">Parameter</span></code></a>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "binder-examples/jupyter-stacks-datascience",
+            ref: "master",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            kernelName: "python3",
+            path: "./python_api"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="periods.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Periods</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="holders.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Holders</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2022
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Parameters</a><ul>
+<li><a class="reference internal" href="#parameter">Parameter</a></li>
+<li><a class="reference internal" href="#parameternode">ParameterNode</a></li>
+<li><a class="reference internal" href="#parameteratinstant">ParameterAtInstant</a></li>
+<li><a class="reference internal" href="#parameternodeatinstant">ParameterNodeAtInstant</a></li>
+<li><a class="reference internal" href="#parameterscale">ParameterScale</a></li>
+<li><a class="reference internal" href="#parameterscalebracket">ParameterScaleBracket</a></li>
+<li><a class="reference internal" href="#atinstantlike">AtInstantLike</a></li>
+<li><a class="reference internal" href="#vectorialparameternodeatinstant">VectorialParameterNodeAtInstant</a></li>
+<li><a class="reference internal" href="#contains-nan">contains_nan</a></li>
+<li><a class="reference internal" href="#load-parameter-file">load_parameter_file</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/clipboard.min.js"></script>
+    <script src="../_static/copybutton.js"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?digest=9c920249402e914e316237a7dbc6769907cce411"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../_static/togglebutton.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../_static/design-tabs.js"></script>
+    <script src="../_static/scripts/furo.js"></script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"
+const thebe_selector = ".thebe,.cell"
+const thebe_selector_input = "pre"
+const thebe_selector_output = ".output, .cell_output"
+</script>
+    <script async="async" src="../_static/sphinx-thebe.js"></script>
+    </body>
+</html>

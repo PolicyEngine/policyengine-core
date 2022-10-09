@@ -1,0 +1,804 @@
+<!doctype html>
+<html class="no-js">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Tools" href="tools.html" /><link rel="prev" title="Tax-benefit systems" href="taxbenefitsystems.html" />
+
+    <meta name="generator" content="sphinx-4.5.0, furo 2022.09.29"/>
+        <title>Tax scales - PolicyEngine Core documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=d81277517bee4d6b0349d71bb2661d4890b5617c" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/design-style.b7bb847fb20b106c3d81b95245e65545.min.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #eeffcc;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../intro.html"><div class="brand">PolicyEngine Core documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../intro.html">
+  
+  
+  <span class="sidebar-brand-text">PolicyEngine Core documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder=Search name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Contributing</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/intro.html">How to contribute</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="commons.html">Commons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="country_template.html">Country template</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_storage.html">Data storage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="entities.html">Entities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="enums.html">Enums</a></li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="experimental.html">Experimental features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="extension_template.html">Extension template</a></li>
+<li class="toctree-l1"><a class="reference internal" href="holders.html">Holders</a></li>
+<li class="toctree-l1"><a class="reference internal" href="parameters.html">Parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="periods.html">Periods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="populations.html">Populations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="projectors.html">Projectors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reforms.html">Reforms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scripts.html">Scripts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulations.html">Simulations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="taxbenefitsystems.html">Tax-benefit systems</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Tax scales</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tracers.html">Tracers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="types.html">Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="variables.html">Variables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warnings.html">Warnings</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <section class="tex2jax_ignore mathjax_ignore" id="tax-scales">
+<h1>Tax scales<a class="headerlink" href="#tax-scales" title="Permalink to this headline">#</a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">policyengine_core.taxscales</span></code> module contains classes used to represent tax scales (parameters that are numeric functions of a variable).</p>
+<section id="taxscalelike">
+<h2>TaxScaleLike<a class="headerlink" href="#taxscalelike" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.tax_scale_like.TaxScaleLike">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.taxscales.tax_scale_like.</span></span><span class="sig-name descname"><span class="pre">TaxScaleLike</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">option</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.taxscales.tax_scale_like.TaxScaleLike" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">abc.ABC</span></code></p>
+<p>Base class for various types of tax scales: amount-based tax scales,
+rate-based tax scales…</p>
+</dd></dl>
+
+</section>
+<section id="ratetaxscalelike">
+<h2>RateTaxScaleLike<a class="headerlink" href="#ratetaxscalelike" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.rate_tax_scale_like.RateTaxScaleLike">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.taxscales.rate_tax_scale_like.</span></span><span class="sig-name descname"><span class="pre">RateTaxScaleLike</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">option</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.taxscales.rate_tax_scale_like.RateTaxScaleLike" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#policyengine_core.taxscales.tax_scale_like.TaxScaleLike" title="policyengine_core.taxscales.tax_scale_like.TaxScaleLike"><code class="xref py py-class docutils literal notranslate"><span class="pre">policyengine_core.taxscales.tax_scale_like.TaxScaleLike</span></code></a>, <code class="xref py py-class docutils literal notranslate"><span class="pre">abc.ABC</span></code></p>
+<p>Base class for various types of rate-based tax scales: marginal rate,
+linear average rate…</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.rate_tax_scale_like.RateTaxScaleLike.bracket_indices">
+<span class="sig-name descname"><span class="pre">bracket_indices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tax_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">NumericalArray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">factor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">round_decimals</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.int_</span></span></span><a class="headerlink" href="#policyengine_core.taxscales.rate_tax_scale_like.RateTaxScaleLike.bracket_indices" title="Permalink to this definition">#</a></dt>
+<dd><p>Compute the relevant bracket indices for the given tax bases.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tax_base</strong> (<em>ndarray</em>) – Array of the tax bases.</p></li>
+<li><p><strong>factor</strong> (<em>float</em>) – Factor to apply to the thresholds.</p></li>
+<li><p><strong>round_decimals</strong> (<em>int</em>) – Decimals to keep when rounding thresholds.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Integer array with relevant bracket indices for the given tax
+bases.</p>
+</dd>
+</dl>
+<p>For instance:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span> <span class="o">=</span> <span class="n">LinearAverageRateTaxScale</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_base</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">150</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">bracket_indices</span><span class="p">(</span><span class="n">tax_base</span><span class="p">)</span>
+<span class="go">[0, 1]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.rate_tax_scale_like.RateTaxScaleLike.threshold_from_tax_base">
+<span class="sig-name descname"><span class="pre">threshold_from_tax_base</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tax_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">NumericalArray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">NumericalArray</span></span></span><a class="headerlink" href="#policyengine_core.taxscales.rate_tax_scale_like.RateTaxScaleLike.threshold_from_tax_base" title="Permalink to this definition">#</a></dt>
+<dd><p>Compute the relevant thresholds for the given tax bases.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Param</dt>
+<dd class="field-odd"><p>ndarray tax_base: Array of the tax bases.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Floating array with relevant thresholds
+for the given tax bases.</p>
+</dd>
+</dl>
+<p>For instance:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">policyengine_core</span> <span class="kn">import</span> <span class="n">taxscales</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span> <span class="o">=</span> <span class="n">taxscales</span><span class="o">.</span><span class="n">MarginalRateTaxScale</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_base</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">450</span><span class="p">,</span> <span class="mi">1_150</span><span class="p">,</span> <span class="mi">10</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">threshold_from_tax_base</span><span class="p">(</span><span class="n">tax_base</span><span class="p">)</span>
+<span class="go">array([200, 500,   0])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="abstracttaxscale">
+<h2>AbstractTaxScale<a class="headerlink" href="#abstracttaxscale" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.abstract_tax_scale.AbstractTaxScale">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.taxscales.abstract_tax_scale.</span></span><span class="sig-name descname"><span class="pre">AbstractTaxScale</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">option</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.int_</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.taxscales.abstract_tax_scale.AbstractTaxScale" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#policyengine_core.taxscales.tax_scale_like.TaxScaleLike" title="policyengine_core.taxscales.tax_scale_like.TaxScaleLike"><code class="xref py py-class docutils literal notranslate"><span class="pre">policyengine_core.taxscales.tax_scale_like.TaxScaleLike</span></code></a></p>
+<p>Base class for various types of tax scales: amount-based tax scales,
+rate-based tax scales…</p>
+</dd></dl>
+
+</section>
+<section id="abstractratetaxscale">
+<h2>AbstractRateTaxScale<a class="headerlink" href="#abstractratetaxscale" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.abstract_rate_tax_scale.AbstractRateTaxScale">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.taxscales.abstract_rate_tax_scale.</span></span><span class="sig-name descname"><span class="pre">AbstractRateTaxScale</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">option</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.taxscales.abstract_rate_tax_scale.AbstractRateTaxScale" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#policyengine_core.taxscales.rate_tax_scale_like.RateTaxScaleLike" title="policyengine_core.taxscales.rate_tax_scale_like.RateTaxScaleLike"><code class="xref py py-class docutils literal notranslate"><span class="pre">policyengine_core.taxscales.rate_tax_scale_like.RateTaxScaleLike</span></code></a></p>
+<p>Base class for various types of rate-based tax scales: marginal rate,
+linear average rate…</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.abstract_rate_tax_scale.AbstractRateTaxScale.bracket_indices">
+<span class="sig-name descname"><span class="pre">bracket_indices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tax_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">NumericalArray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">factor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">round_decimals</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.int_</span></span></span><a class="headerlink" href="#policyengine_core.taxscales.abstract_rate_tax_scale.AbstractRateTaxScale.bracket_indices" title="Permalink to this definition">#</a></dt>
+<dd><p>Compute the relevant bracket indices for the given tax bases.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tax_base</strong> (<em>ndarray</em>) – Array of the tax bases.</p></li>
+<li><p><strong>factor</strong> (<em>float</em>) – Factor to apply to the thresholds.</p></li>
+<li><p><strong>round_decimals</strong> (<em>int</em>) – Decimals to keep when rounding thresholds.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Integer array with relevant bracket indices for the given tax
+bases.</p>
+</dd>
+</dl>
+<p>For instance:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span> <span class="o">=</span> <span class="n">LinearAverageRateTaxScale</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_base</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">150</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">bracket_indices</span><span class="p">(</span><span class="n">tax_base</span><span class="p">)</span>
+<span class="go">[0, 1]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.abstract_rate_tax_scale.AbstractRateTaxScale.threshold_from_tax_base">
+<span class="sig-name descname"><span class="pre">threshold_from_tax_base</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tax_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">NumericalArray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">NumericalArray</span></span></span><a class="headerlink" href="#policyengine_core.taxscales.abstract_rate_tax_scale.AbstractRateTaxScale.threshold_from_tax_base" title="Permalink to this definition">#</a></dt>
+<dd><p>Compute the relevant thresholds for the given tax bases.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Param</dt>
+<dd class="field-odd"><p>ndarray tax_base: Array of the tax bases.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Floating array with relevant thresholds
+for the given tax bases.</p>
+</dd>
+</dl>
+<p>For instance:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">policyengine_core</span> <span class="kn">import</span> <span class="n">taxscales</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span> <span class="o">=</span> <span class="n">taxscales</span><span class="o">.</span><span class="n">MarginalRateTaxScale</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_base</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">450</span><span class="p">,</span> <span class="mi">1_150</span><span class="p">,</span> <span class="mi">10</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">threshold_from_tax_base</span><span class="p">(</span><span class="n">tax_base</span><span class="p">)</span>
+<span class="go">array([200, 500,   0])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="amounttaxscalelike">
+<h2>AmountTaxScaleLike<a class="headerlink" href="#amounttaxscalelike" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.amount_tax_scale_like.AmountTaxScaleLike">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.taxscales.amount_tax_scale_like.</span></span><span class="sig-name descname"><span class="pre">AmountTaxScaleLike</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">option</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.taxscales.amount_tax_scale_like.AmountTaxScaleLike" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#policyengine_core.taxscales.tax_scale_like.TaxScaleLike" title="policyengine_core.taxscales.tax_scale_like.TaxScaleLike"><code class="xref py py-class docutils literal notranslate"><span class="pre">policyengine_core.taxscales.tax_scale_like.TaxScaleLike</span></code></a>, <code class="xref py py-class docutils literal notranslate"><span class="pre">abc.ABC</span></code></p>
+<p>Base class for various types of amount-based tax scales: single amount,
+marginal amount…</p>
+</dd></dl>
+
+</section>
+<section id="singleamounttaxscale">
+<h2>SingleAmountTaxScale<a class="headerlink" href="#singleamounttaxscale" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.single_amount_tax_scale.SingleAmountTaxScale">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.taxscales.single_amount_tax_scale.</span></span><span class="sig-name descname"><span class="pre">SingleAmountTaxScale</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">option</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.taxscales.single_amount_tax_scale.SingleAmountTaxScale" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#policyengine_core.taxscales.amount_tax_scale_like.AmountTaxScaleLike" title="policyengine_core.taxscales.amount_tax_scale_like.AmountTaxScaleLike"><code class="xref py py-class docutils literal notranslate"><span class="pre">policyengine_core.taxscales.amount_tax_scale_like.AmountTaxScaleLike</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.single_amount_tax_scale.SingleAmountTaxScale.calc">
+<span class="sig-name descname"><span class="pre">calc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tax_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">NumericalArray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">right</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.float_</span></span></span><a class="headerlink" href="#policyengine_core.taxscales.single_amount_tax_scale.SingleAmountTaxScale.calc" title="Permalink to this definition">#</a></dt>
+<dd><p>Matches the input amount to a set of brackets and returns the single
+cell value that fits within that bracket.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="marginalratetaxscale">
+<h2>MarginalRateTaxScale<a class="headerlink" href="#marginalratetaxscale" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.taxscales.marginal_rate_tax_scale.</span></span><span class="sig-name descname"><span class="pre">MarginalRateTaxScale</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">option</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#policyengine_core.taxscales.rate_tax_scale_like.RateTaxScaleLike" title="policyengine_core.taxscales.rate_tax_scale_like.RateTaxScaleLike"><code class="xref py py-class docutils literal notranslate"><span class="pre">policyengine_core.taxscales.rate_tax_scale_like.RateTaxScaleLike</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.bracket_indices">
+<span class="sig-name descname"><span class="pre">bracket_indices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tax_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">NumericalArray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">factor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">round_decimals</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.int_</span></span></span><a class="headerlink" href="#policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.bracket_indices" title="Permalink to this definition">#</a></dt>
+<dd><p>Compute the relevant bracket indices for the given tax bases.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tax_base</strong> (<em>ndarray</em>) – Array of the tax bases.</p></li>
+<li><p><strong>factor</strong> (<em>float</em>) – Factor to apply to the thresholds.</p></li>
+<li><p><strong>round_decimals</strong> (<em>int</em>) – Decimals to keep when rounding thresholds.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Integer array with relevant bracket indices for the given tax
+bases.</p>
+</dd>
+</dl>
+<p>For instance:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span> <span class="o">=</span> <span class="n">LinearAverageRateTaxScale</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_base</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">150</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">bracket_indices</span><span class="p">(</span><span class="n">tax_base</span><span class="p">)</span>
+<span class="go">[0, 1]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.calc">
+<span class="sig-name descname"><span class="pre">calc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tax_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">NumericalArray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">factor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">round_base_decimals</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.float_</span></span></span><a class="headerlink" href="#policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.calc" title="Permalink to this definition">#</a></dt>
+<dd><p>Compute the tax amount for the given tax bases by applying a taxscale.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tax_base</strong> (<em>ndarray</em>) – Array of the tax bases.</p></li>
+<li><p><strong>factor</strong> (<em>float</em>) – Factor to apply to the thresholds of the taxscale.</p></li>
+<li><p><strong>round_base_decimals</strong> (<em>int</em>) – Decimals to keep when rounding
+thresholds.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Float array with tax amount for the given tax bases.</p>
+</dd>
+</dl>
+<p>For instance:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span> <span class="o">=</span> <span class="n">MarginalRateTaxScale</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_base</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">150</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">calc</span><span class="p">(</span><span class="n">tax_base</span><span class="p">)</span>
+<span class="go">[0.0, 5.0]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.inverse">
+<span class="sig-name descname"><span class="pre">inverse</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale" title="policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale"><span class="pre">policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale</span></a></span></span><a class="headerlink" href="#policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.inverse" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns a new instance of MarginalRateTaxScale.</p>
+<p>Invert a taxscale:</p>
+<blockquote>
+<div><p>Assume tax_scale composed of bracket whose thresholds are expressed
+in terms of gross revenue.</p>
+<p>The inverse is another MarginalRateTaxScale whose thresholds are
+expressed in terms of net revenue.</p>
+<p>If net = gross_revenue - tax_scale.calc(gross_revenue)
+Then gross = tax_scale.inverse().calc(net)</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.marginal_rates">
+<span class="sig-name descname"><span class="pre">marginal_rates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tax_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">NumericalArray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">factor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">round_base_decimals</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.float_</span></span></span><a class="headerlink" href="#policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.marginal_rates" title="Permalink to this definition">#</a></dt>
+<dd><p>Compute the marginal tax rates relevant for the given tax bases.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tax_base</strong> (<em>ndarray</em>) – Array of the tax bases.</p></li>
+<li><p><strong>factor</strong> (<em>float</em>) – Factor to apply to the thresholds of a tax scale.</p></li>
+<li><p><strong>round_base_decimals</strong> (<em>int</em>) – Decimals to keep when rounding
+thresholds.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Float array with relevant marginal tax rate for the given tax
+bases.</p>
+</dd>
+</dl>
+<p>For instance:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span> <span class="o">=</span> <span class="n">MarginalRateTaxScale</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_base</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">150</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">marginal_rates</span><span class="p">(</span><span class="n">tax_base</span><span class="p">)</span>
+<span class="go">[0.0, 0.1]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.rate_from_bracket_indice">
+<span class="sig-name descname"><span class="pre">rate_from_bracket_indice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bracket_indice</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.int64</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.float64</span></span></span><a class="headerlink" href="#policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.rate_from_bracket_indice" title="Permalink to this definition">#</a></dt>
+<dd><p>Compute the relevant tax rates for the given bracket indices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Param</dt>
+<dd class="field-odd"><p>ndarray bracket_indice: Array of the bracket indices.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Floating array with relevant tax rates
+for the given bracket indices.</p>
+</dd>
+</dl>
+<p>For instance:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span> <span class="o">=</span> <span class="n">MarginalRateTaxScale</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_base</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">50</span><span class="p">,</span> <span class="mi">1_000</span><span class="p">,</span> <span class="mi">250</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bracket_indice</span> <span class="o">=</span> <span class="n">tax_scale</span><span class="o">.</span><span class="n">bracket_indices</span><span class="p">(</span><span class="n">tax_base</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">rate_from_bracket_indice</span><span class="p">(</span><span class="n">bracket_indice</span><span class="p">)</span>
+<span class="go">array([0.  , 0.25, 0.1 ])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.rate_from_tax_base">
+<span class="sig-name descname"><span class="pre">rate_from_tax_base</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tax_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">NumericalArray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.float_</span></span></span><a class="headerlink" href="#policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.rate_from_tax_base" title="Permalink to this definition">#</a></dt>
+<dd><p>Compute the relevant tax rates for the given tax bases.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Param</dt>
+<dd class="field-odd"><p>ndarray tax_base: Array of the tax bases.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Floating array with relevant tax rates
+for the given tax bases.</p>
+</dd>
+</dl>
+<p>For instance:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span> <span class="o">=</span> <span class="n">MarginalRateTaxScale</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_base</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1_000</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">450</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">rate_from_tax_base</span><span class="p">(</span><span class="n">tax_base</span><span class="p">)</span>
+<span class="go">array([0.25, 0.  , 0.1 ])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.scale_tax_scales">
+<span class="sig-name descname"><span class="pre">scale_tax_scales</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">factor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale" title="policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale"><span class="pre">policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale</span></a></span></span><a class="headerlink" href="#policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.scale_tax_scales" title="Permalink to this definition">#</a></dt>
+<dd><p>Scale all the MarginalRateTaxScales in the node.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.threshold_from_tax_base">
+<span class="sig-name descname"><span class="pre">threshold_from_tax_base</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tax_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">NumericalArray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">NumericalArray</span></span></span><a class="headerlink" href="#policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.threshold_from_tax_base" title="Permalink to this definition">#</a></dt>
+<dd><p>Compute the relevant thresholds for the given tax bases.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Param</dt>
+<dd class="field-odd"><p>ndarray tax_base: Array of the tax bases.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Floating array with relevant thresholds
+for the given tax bases.</p>
+</dd>
+</dl>
+<p>For instance:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">policyengine_core</span> <span class="kn">import</span> <span class="n">taxscales</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span> <span class="o">=</span> <span class="n">taxscales</span><span class="o">.</span><span class="n">MarginalRateTaxScale</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_base</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">450</span><span class="p">,</span> <span class="mi">1_150</span><span class="p">,</span> <span class="mi">10</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">threshold_from_tax_base</span><span class="p">(</span><span class="n">tax_base</span><span class="p">)</span>
+<span class="go">array([200, 500,   0])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="marginalamounttaxscale">
+<h2>MarginalAmountTaxScale<a class="headerlink" href="#marginalamounttaxscale" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.marginal_amount_tax_scale.MarginalAmountTaxScale">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.taxscales.marginal_amount_tax_scale.</span></span><span class="sig-name descname"><span class="pre">MarginalAmountTaxScale</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">option</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.taxscales.marginal_amount_tax_scale.MarginalAmountTaxScale" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#policyengine_core.taxscales.amount_tax_scale_like.AmountTaxScaleLike" title="policyengine_core.taxscales.amount_tax_scale_like.AmountTaxScaleLike"><code class="xref py py-class docutils literal notranslate"><span class="pre">policyengine_core.taxscales.amount_tax_scale_like.AmountTaxScaleLike</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.marginal_amount_tax_scale.MarginalAmountTaxScale.calc">
+<span class="sig-name descname"><span class="pre">calc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tax_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">NumericalArray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">right</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.float_</span></span></span><a class="headerlink" href="#policyengine_core.taxscales.marginal_amount_tax_scale.MarginalAmountTaxScale.calc" title="Permalink to this definition">#</a></dt>
+<dd><p>Matches the input amount to a set of brackets and returns the sum of
+cell values from the lowest bracket to the one containing the input.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="linearaverageratetaxscale">
+<h2>LinearAverageRateTaxScale<a class="headerlink" href="#linearaverageratetaxscale" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.linear_average_rate_tax_scale.LinearAverageRateTaxScale">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.taxscales.linear_average_rate_tax_scale.</span></span><span class="sig-name descname"><span class="pre">LinearAverageRateTaxScale</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">option</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.taxscales.linear_average_rate_tax_scale.LinearAverageRateTaxScale" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#policyengine_core.taxscales.rate_tax_scale_like.RateTaxScaleLike" title="policyengine_core.taxscales.rate_tax_scale_like.RateTaxScaleLike"><code class="xref py py-class docutils literal notranslate"><span class="pre">policyengine_core.taxscales.rate_tax_scale_like.RateTaxScaleLike</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.linear_average_rate_tax_scale.LinearAverageRateTaxScale.bracket_indices">
+<span class="sig-name descname"><span class="pre">bracket_indices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tax_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">NumericalArray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">factor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">round_decimals</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.int_</span></span></span><a class="headerlink" href="#policyengine_core.taxscales.linear_average_rate_tax_scale.LinearAverageRateTaxScale.bracket_indices" title="Permalink to this definition">#</a></dt>
+<dd><p>Compute the relevant bracket indices for the given tax bases.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tax_base</strong> (<em>ndarray</em>) – Array of the tax bases.</p></li>
+<li><p><strong>factor</strong> (<em>float</em>) – Factor to apply to the thresholds.</p></li>
+<li><p><strong>round_decimals</strong> (<em>int</em>) – Decimals to keep when rounding thresholds.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Integer array with relevant bracket indices for the given tax
+bases.</p>
+</dd>
+</dl>
+<p>For instance:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span> <span class="o">=</span> <span class="n">LinearAverageRateTaxScale</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_base</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">150</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">bracket_indices</span><span class="p">(</span><span class="n">tax_base</span><span class="p">)</span>
+<span class="go">[0, 1]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.linear_average_rate_tax_scale.LinearAverageRateTaxScale.threshold_from_tax_base">
+<span class="sig-name descname"><span class="pre">threshold_from_tax_base</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tax_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">NumericalArray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">NumericalArray</span></span></span><a class="headerlink" href="#policyengine_core.taxscales.linear_average_rate_tax_scale.LinearAverageRateTaxScale.threshold_from_tax_base" title="Permalink to this definition">#</a></dt>
+<dd><p>Compute the relevant thresholds for the given tax bases.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Param</dt>
+<dd class="field-odd"><p>ndarray tax_base: Array of the tax bases.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Floating array with relevant thresholds
+for the given tax bases.</p>
+</dd>
+</dl>
+<p>For instance:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">policyengine_core</span> <span class="kn">import</span> <span class="n">taxscales</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span> <span class="o">=</span> <span class="n">taxscales</span><span class="o">.</span><span class="n">MarginalRateTaxScale</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_base</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">450</span><span class="p">,</span> <span class="mi">1_150</span><span class="p">,</span> <span class="mi">10</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">threshold_from_tax_base</span><span class="p">(</span><span class="n">tax_base</span><span class="p">)</span>
+<span class="go">array([200, 500,   0])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "binder-examples/jupyter-stacks-datascience",
+            ref: "master",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            kernelName: "python3",
+            path: "./python_api"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="tools.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Tools</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="taxbenefitsystems.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Tax-benefit systems</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2022
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Tax scales</a><ul>
+<li><a class="reference internal" href="#taxscalelike">TaxScaleLike</a></li>
+<li><a class="reference internal" href="#ratetaxscalelike">RateTaxScaleLike</a></li>
+<li><a class="reference internal" href="#abstracttaxscale">AbstractTaxScale</a></li>
+<li><a class="reference internal" href="#abstractratetaxscale">AbstractRateTaxScale</a></li>
+<li><a class="reference internal" href="#amounttaxscalelike">AmountTaxScaleLike</a></li>
+<li><a class="reference internal" href="#singleamounttaxscale">SingleAmountTaxScale</a></li>
+<li><a class="reference internal" href="#marginalratetaxscale">MarginalRateTaxScale</a></li>
+<li><a class="reference internal" href="#marginalamounttaxscale">MarginalAmountTaxScale</a></li>
+<li><a class="reference internal" href="#linearaverageratetaxscale">LinearAverageRateTaxScale</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/clipboard.min.js"></script>
+    <script src="../_static/copybutton.js"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?digest=9c920249402e914e316237a7dbc6769907cce411"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../_static/togglebutton.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../_static/design-tabs.js"></script>
+    <script src="../_static/scripts/furo.js"></script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"
+const thebe_selector = ".thebe,.cell"
+const thebe_selector_input = "pre"
+const thebe_selector_output = ".output, .cell_output"
+</script>
+    <script async="async" src="../_static/sphinx-thebe.js"></script>
+    </body>
+</html>

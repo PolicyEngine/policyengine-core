@@ -10,7 +10,10 @@ format:
 install:
 	pip install -e .[dev]
 
-test:
+test-country-template:
+	policyengine-core test policyengine_core/country_template/tests -c policyengine_core.country_template
+
+test: test-country-template
 	coverage run -a --branch -m pytest tests
 	coverage xml -i
 

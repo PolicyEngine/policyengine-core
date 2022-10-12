@@ -75,10 +75,11 @@ class Microsimulation(CoreWeightedSimulation):
         if dataset is None:
             dataset = CountryTemplateDataset
 
-        if not dataset.exists(dataset_options):
+        dataset_instance = dataset()
+        if not dataset_instance.exists(dataset_options):
             # Build the dataset if it doesn't exist. A country package might not want to do this: for example,
             # you might want to throw an exception instead.
-            dataset().build(dataset_options)
+            dataset_instance.build(dataset_options)
 
         super().__init__(
             *args,

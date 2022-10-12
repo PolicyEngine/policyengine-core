@@ -1,8 +1,14 @@
 title: PolicyEngine Core documentation
 author: PolicyEngine
+copyright: "2022"
 
 execute:
-  execute_notebooks: force
+  execute_notebooks: "force"
+
+repository:
+  url: https://github.com/policyengine/policyengine-core
+  branch: master
+  path_to_book: docs
 
 sphinx:
   config:
@@ -10,3 +16,5 @@ sphinx:
   extra_extensions:
     - "sphinx.ext.autodoc"
     - "sphinxarg.ext"
+    - "sphinx.ext.viewcode"
+    - "sphinx.ext.napoleon"

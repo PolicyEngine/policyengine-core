@@ -161,10 +161,17 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="contributing/intro.html">How to contribute</a></li>
 </ul>
+<p class="caption" role="heading"><span class="caption-text">Using PolicyEngine Core</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="usage/simulation.html">Simulating policy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage/country.html">Country packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage/cli.html">Command-line interface</a></li>
+</ul>
 <p class="caption" role="heading"><span class="caption-text">Python API</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="python_api/commons.html">Commons</a></li>
 <li class="toctree-l1"><a class="reference internal" href="python_api/country_template.html">Country template</a></li>
+<li class="toctree-l1"><a class="reference internal" href="python_api/data.html">Data</a></li>
 <li class="toctree-l1"><a class="reference internal" href="python_api/data_storage.html">Data storage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="python_api/entities.html">Entities</a></li>
 <li class="toctree-l1"><a class="reference internal" href="python_api/enums.html">Enums</a></li>
@@ -238,16 +245,24 @@
           <li><a href="python_api/parameters.html#policyengine_core.parameters.parameter_node_at_instant.ParameterNodeAtInstant.add_child">(policyengine_core.parameters.parameter_node_at_instant.ParameterNodeAtInstant method)</a>
 </li>
         </ul></li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.add_default_group_entity">add_default_group_entity() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
+</li>
         <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.add_group_entity">add_group_entity() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
+</li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.add_parallel_axis">add_parallel_axis() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
+</li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.add_perpendicular_axis">add_perpendicular_axis() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
 </li>
         <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.add_person_entity">add_person_entity() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
 </li>
         <li><a href="python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.add_variable">add_variable() (policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem method)</a>
 </li>
-        <li><a href="python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.add_variables">add_variables() (policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem method)</a>
-</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.add_variable_value">add_variable_value() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
+</li>
+        <li><a href="python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.add_variables">add_variables() (policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem method)</a>
+</li>
         <li><a href="python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.add_variables_from_directory">add_variables_from_directory() (policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem method)</a>
 </li>
         <li><a href="python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.add_variables_from_file">add_variables_from_file() (policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem method)</a>
@@ -284,18 +299,38 @@
           <li><a href="python_api/taxscales.html#policyengine_core.taxscales.rate_tax_scale_like.RateTaxScaleLike.bracket_indices">(policyengine_core.taxscales.rate_tax_scale_like.RateTaxScaleLike method)</a>
 </li>
         </ul></li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python_api/data.html#policyengine_core.data.PrivateDataset.bucket_name">bucket_name (policyengine_core.data.PrivateDataset attribute)</a>
+</li>
+        <li><a href="python_api/data.html#policyengine_core.data.Dataset.build">build() (policyengine_core.data.Dataset method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.build">(policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
+</li>
+        </ul></li>
         <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.build_default_simulation">build_default_simulation() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/entities.html#policyengine_core.entities.helpers.build_entity">build_entity() (in module policyengine_core.entities.helpers)</a>
 </li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.build_from_dataset">build_from_dataset() (policyengine_core.simulations.simulation.Simulation method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.build_from_dataset">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
+        </ul></li>
         <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.build_from_dict">build_from_dict() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
 </li>
         <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.build_from_entities">build_from_entities() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
 </li>
         <li><a href="python_api/parameters.html#policyengine_core.parameters.vectorial_parameter_node_at_instant.VectorialParameterNodeAtInstant.build_from_node">build_from_node() (policyengine_core.parameters.vectorial_parameter_node_at_instant.VectorialParameterNodeAtInstant static method)</a>
 </li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.build_from_populations">build_from_populations() (policyengine_core.simulations.simulation.Simulation method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.build_from_populations">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
+        </ul></li>
         <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.build_from_variables">build_from_variables() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
 </li>
     </ul></td>
@@ -315,19 +350,49 @@
 </li>
         </ul></li>
         <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.calculate">calculate() (policyengine_core.simulations.simulation.Simulation method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.calculate">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
 </li>
+        </ul></li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.calculate_add">calculate_add() (policyengine_core.simulations.simulation.Simulation method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.calculate_add">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
+        </ul></li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.calculate_dataframe">calculate_dataframe() (policyengine_core.simulations.simulation.Simulation method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.calculate_dataframe">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
+        </ul></li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.calculate_divide">calculate_divide() (policyengine_core.simulations.simulation.Simulation method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.calculate_divide">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
+        </ul></li>
         <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.calculate_output">calculate_output() (policyengine_core.simulations.simulation.Simulation method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.calculate_output">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
 </li>
+        </ul></li>
         <li><a href="python_api/populations.html#policyengine_core.populations.population.Population.check_array_compatible_with_entity">check_array_compatible_with_entity() (policyengine_core.populations.population.Population method)</a>
 </li>
         <li><a href="python_api/parameters.html#policyengine_core.parameters.vectorial_parameter_node_at_instant.VectorialParameterNodeAtInstant.check_node_vectorisable">check_node_vectorisable() (policyengine_core.parameters.vectorial_parameter_node_at_instant.VectorialParameterNodeAtInstant static method)</a>
 </li>
         <li><a href="python_api/populations.html#policyengine_core.populations.population.Population.check_period_validity">check_period_validity() (policyengine_core.populations.population.Population method)</a>
 </li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.check_persons_to_allocate">check_persons_to_allocate() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
+</li>
         <li><a href="python_api/entities.html#policyengine_core.entities.entity.Entity.check_role_validity">check_role_validity() (policyengine_core.entities.entity.Entity method)</a>
 </li>
         <li><a href="python_api/entities.html#policyengine_core.entities.entity.Entity.check_variable_defined_for_entity">check_variable_defined_for_entity() (policyengine_core.entities.entity.Entity method)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/holders.html#policyengine_core.holders.holder.Holder.clone">clone() (policyengine_core.holders.holder.Holder method)</a>
 
         <ul>
@@ -345,9 +410,9 @@
 </li>
           <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.clone">(policyengine_core.simulations.simulation.Simulation method)</a>
 </li>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.clone">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
         </ul></li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/tracers.html#policyengine_core.tracers.computation_log.ComputationLog">ComputationLog (class in policyengine_core.tracers.computation_log)</a>
 </li>
         <li><a href="python_api/commons.html#policyengine_core.commons.formulas.concat">concat() (in module policyengine_core.commons.formulas)</a>
@@ -356,10 +421,20 @@
 </li>
         <li><a href="python_api/parameters.html#policyengine_core.parameters.helpers.contains_nan">contains_nan() (in module policyengine_core.parameters.helpers)</a>
 </li>
+        <li><a href="python_api/data.html#policyengine_core.data.Dataset.country_package_name">country_package_name (policyengine_core.data.Dataset attribute)</a>
+</li>
         <li><a href="python_api/country_template.html#policyengine_core.country_template.CountryTaxBenefitSystem">CountryTaxBenefitSystem (class in policyengine_core.country_template)</a>
 </li>
         <li><a href="python_api/holders.html#policyengine_core.holders.holder.Holder.create_disk_storage">create_disk_storage() (policyengine_core.holders.holder.Holder method)</a>
 </li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.create_entities">create_entities() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
+</li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.create_shortcuts">create_shortcuts() (policyengine_core.simulations.simulation.Simulation method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.create_shortcuts">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
+        </ul></li>
     </ul></td>
   </tr></table>
 </section>
@@ -369,6 +444,12 @@
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.data_storage_dir">data_storage_dir (policyengine_core.simulations.simulation.Simulation property)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.data_storage_dir">(policyengine_core.simulations.weighted_simulation.WeightedSimulation property)</a>
+</li>
+        </ul></li>
+        <li><a href="python_api/data.html#policyengine_core.data.Dataset">Dataset (class in policyengine_core.data)</a>
 </li>
         <li><a href="python_api/periods.html#policyengine_core.periods.instant_.Instant.date">date (policyengine_core.periods.instant_.Instant property)</a>
 
@@ -380,14 +461,38 @@
 </li>
         <li><a href="python_api/periods.html#policyengine_core.periods.period_.Period.days">days (policyengine_core.periods.period_.Period property)</a>
 </li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.debug">debug (policyengine_core.simulations.weighted_simulation.WeightedSimulation attribute)</a>
+</li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.declare_entity">declare_entity() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
+</li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.declare_person_entity">declare_person_entity() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
+</li>
         <li><a href="python_api/enums.html#policyengine_core.enums.enum_array.EnumArray.decode">decode() (policyengine_core.enums.enum_array.EnumArray method)</a>
 </li>
         <li><a href="python_api/enums.html#policyengine_core.enums.enum_array.EnumArray.decode_to_str">decode_to_str() (policyengine_core.enums.enum_array.EnumArray method)</a>
 </li>
         <li><a href="python_api/holders.html#policyengine_core.holders.holder.Holder.default_array">default_array() (policyengine_core.holders.holder.Holder method)</a>
 </li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.default_dataset">default_dataset (policyengine_core.simulations.simulation.Simulation attribute)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.default_dataset">(policyengine_core.simulations.weighted_simulation.WeightedSimulation attribute)</a>
+</li>
+        </ul></li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.default_dataset_options">default_dataset_options (policyengine_core.simulations.simulation.Simulation attribute)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.default_dataset_options">(policyengine_core.simulations.weighted_simulation.WeightedSimulation attribute)</a>
+</li>
+        </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.default_tax_benefit_system">default_tax_benefit_system (policyengine_core.simulations.simulation.Simulation attribute)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.default_tax_benefit_system">(policyengine_core.simulations.weighted_simulation.WeightedSimulation attribute)</a>
+</li>
+        </ul></li>
         <li><a href="python_api/variables.html#policyengine_core.variables.variable.Variable.default_value">default_value (policyengine_core.variables.variable.Variable attribute)</a>
 </li>
         <li><a href="python_api/variables.html#policyengine_core.variables.variable.Variable.definition_period">definition_period (policyengine_core.variables.variable.Variable attribute)</a>
@@ -403,9 +508,23 @@
         <ul>
           <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.delete_arrays">(policyengine_core.simulations.simulation.Simulation method)</a>
 </li>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.delete_arrays">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
+        </ul></li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.describe_entities">describe_entities() (policyengine_core.simulations.simulation.Simulation method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.describe_entities">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
         </ul></li>
         <li><a href="python_api/variables.html#policyengine_core.variables.variable.Variable.documentation">documentation (policyengine_core.variables.variable.Variable attribute)</a>
 </li>
+        <li><a href="python_api/data.html#policyengine_core.data.PrivateDataset.download">download() (policyengine_core.data.PrivateDataset method)</a>
+
+        <ul>
+          <li><a href="python_api/data.html#policyengine_core.data.PublicDataset.download">(policyengine_core.data.PublicDataset method)</a>
+</li>
+        </ul></li>
         <li><a href="python_api/variables.html#policyengine_core.variables.variable.Variable.dtype">dtype (policyengine_core.variables.variable.Variable attribute)</a>
 </li>
         <li><a href="python_api/tools.html#policyengine_core.tools.simulation_dumper.dump_simulation">dump_simulation() (in module policyengine_core.tools.simulation_dumper)</a>
@@ -426,15 +545,17 @@
 </li>
         <li><a href="python_api/entities.html#policyengine_core.entities.entity.Entity">Entity (class in policyengine_core.entities.entity)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/variables.html#policyengine_core.variables.variable.Variable.entity">entity (policyengine_core.variables.variable.Variable attribute)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/projectors.html#policyengine_core.projectors.EntityToPersonProjector">EntityToPersonProjector (class in policyengine_core.projectors)</a>
 </li>
         <li><a href="python_api/enums.html#policyengine_core.enums.enum.Enum">Enum (class in policyengine_core.enums.enum)</a>
 </li>
         <li><a href="python_api/enums.html#policyengine_core.enums.enum_array.EnumArray">EnumArray (class in policyengine_core.enums.enum_array)</a>
+</li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.expand_axes">expand_axes() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
 </li>
         <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.explicit_singular_entities">explicit_singular_entities() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
 </li>
@@ -446,14 +567,18 @@
   <h2>F</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python_api/data.html#policyengine_core.data.PrivateDataset.filename_by_year">filename_by_year (policyengine_core.data.PrivateDataset attribute)</a>
+</li>
         <li><a href="python_api/populations.html#policyengine_core.populations.population.Population.filled_array">filled_array() (policyengine_core.populations.population.Population method)</a>
+</li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.finalize_variables_init">finalize_variables_init() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
 </li>
         <li><a href="python_api/periods.html#policyengine_core.periods.period_.Period.first_day">first_day (policyengine_core.periods.period_.Period property)</a>
 </li>
-        <li><a href="python_api/periods.html#policyengine_core.periods.period_.Period.first_month">first_month (policyengine_core.periods.period_.Period property)</a>
-</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python_api/periods.html#policyengine_core.periods.period_.Period.first_month">first_month (policyengine_core.periods.period_.Period property)</a>
+</li>
         <li><a href="python_api/projectors.html#policyengine_core.projectors.FirstPersonToEntityProjector">FirstPersonToEntityProjector (class in policyengine_core.projectors)</a>
 </li>
         <li><a href="python_api/tracers.html#policyengine_core.tracers.flat_trace.FlatTrace">FlatTrace (class in policyengine_core.tracers.flat_trace)</a>
@@ -481,8 +606,12 @@
         <ul>
           <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_array">(policyengine_core.simulations.simulation.Simulation method)</a>
 </li>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.get_array">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
         </ul></li>
         <li><a href="python_api/parameters.html#policyengine_core.parameters.at_instant_like.AtInstantLike.get_at_instant">get_at_instant() (policyengine_core.parameters.at_instant_like.AtInstantLike method)</a>
+</li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.get_count">get_count() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
 </li>
         <li><a href="python_api/parameters.html#policyengine_core.parameters.parameter.Parameter.get_descendants">get_descendants() (policyengine_core.parameters.parameter.Parameter method)</a>
 
@@ -492,6 +621,14 @@
           <li><a href="python_api/parameters.html#policyengine_core.parameters.parameter_scale.ParameterScale.get_descendants">(policyengine_core.parameters.parameter_scale.ParameterScale method)</a>
 </li>
         </ul></li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_entity">get_entity() (policyengine_core.simulations.simulation.Simulation method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.get_entity">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
+        </ul></li>
+        <li><a href="python_api/data.html#policyengine_core.data.Dataset.get_file_path">get_file_path() (policyengine_core.data.Dataset method)</a>
+</li>
         <li><a href="python_api/variables.html#policyengine_core.variables.variable.Variable.get_formula">get_formula() (policyengine_core.variables.variable.Variable method)</a>
 </li>
         <li><a href="python_api/populations.html#policyengine_core.populations.population.Population.get_holder">get_holder() (policyengine_core.populations.population.Population method)</a>
@@ -499,8 +636,14 @@
         <ul>
           <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_holder">(policyengine_core.simulations.simulation.Simulation method)</a>
 </li>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.get_holder">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
         </ul></li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.get_ids">get_ids() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
+</li>
         <li><a href="python_api/populations.html#policyengine_core.populations.population.Population.get_index">get_index() (policyengine_core.populations.population.Population method)</a>
+</li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.get_input">get_input() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
 </li>
         <li><a href="python_api/variables.html#policyengine_core.variables.variable.Variable.get_introspection_data">get_introspection_data() (policyengine_core.variables.variable.Variable class method)</a>
 </li>
@@ -513,9 +656,13 @@
 </li>
           <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_known_periods">(policyengine_core.simulations.simulation.Simulation method)</a>
 </li>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.get_known_periods">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
         </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.get_memberships">get_memberships() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
+</li>
         <li><a href="python_api/data_storage.html#policyengine_core.data_storage.in_memory_storage.InMemoryStorage.get_memory_usage">get_memory_usage() (policyengine_core.data_storage.in_memory_storage.InMemoryStorage method)</a>
 
         <ul>
@@ -525,14 +672,26 @@
 </li>
           <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_memory_usage">(policyengine_core.simulations.simulation.Simulation method)</a>
 </li>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.get_memory_usage">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
         </ul></li>
         <li><a href="python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.get_package_metadata">get_package_metadata() (policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem method)</a>
 </li>
         <li><a href="python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.get_parameters_at_instant">get_parameters_at_instant() (policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem method)</a>
 </li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_population">get_population() (policyengine_core.simulations.simulation.Simulation method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.get_population">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
+        </ul></li>
         <li><a href="python_api/populations.html#policyengine_core.populations.population.Population.get_rank">get_rank() (policyengine_core.populations.population.Population method)</a>
 </li>
         <li><a href="python_api/populations.html#policyengine_core.populations.group_population.GroupPopulation.get_role">get_role() (policyengine_core.populations.group_population.GroupPopulation method)</a>
+</li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.get_roles">get_roles() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
+</li>
+        <li><a href="python_api/data.html#policyengine_core.data.Dataset.get_saved_datasets">get_saved_datasets() (policyengine_core.data.Dataset method)</a>
 </li>
         <li><a href="python_api/periods.html#policyengine_core.periods.period_.Period.get_subperiods">get_subperiods() (policyengine_core.periods.period_.Period method)</a>
 </li>
@@ -542,7 +701,17 @@
           <li><a href="python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.get_variable">(policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem method)</a>
 </li>
         </ul></li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.get_variable_entity">get_variable_entity() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
+</li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_variable_population">get_variable_population() (policyengine_core.simulations.simulation.Simulation method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.get_variable_population">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
+        </ul></li>
         <li><a href="python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.get_variables">get_variables() (policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem method)</a>
+</li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.get_weights">get_weights() (policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
 </li>
         <li><a href="python_api/entities.html#policyengine_core.entities.group_entity.GroupEntity">GroupEntity (class in policyengine_core.entities.group_entity)</a>
 </li>
@@ -570,6 +739,8 @@
   <h2>I</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.init_variable_values">init_variable_values() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
+</li>
         <li><a href="python_api/data_storage.html#policyengine_core.data_storage.in_memory_storage.InMemoryStorage">InMemoryStorage (class in policyengine_core.data_storage.in_memory_storage)</a>
 </li>
         <li><a href="python_api/periods.html#policyengine_core.periods.instant_.Instant">Instant (class in policyengine_core.periods.instant_)</a>
@@ -578,8 +749,20 @@
 </li>
         <li><a href="python_api/periods.html#policyengine_core.periods.period_.Period.intersection">intersection() (policyengine_core.periods.period_.Period method)</a>
 </li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.invalidate_cache_entry">invalidate_cache_entry() (policyengine_core.simulations.simulation.Simulation method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.invalidate_cache_entry">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
+        </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.invalidate_spiral_variables">invalidate_spiral_variables() (policyengine_core.simulations.simulation.Simulation method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.invalidate_spiral_variables">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
+        </ul></li>
         <li><a href="python_api/taxscales.html#policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.inverse">inverse() (policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale method)</a>
 </li>
         <li><a href="python_api/data_storage.html#policyengine_core.data_storage.in_memory_storage.InMemoryStorage.is_eternal">is_eternal (policyengine_core.data_storage.in_memory_storage.InMemoryStorage attribute)</a>
@@ -596,6 +779,10 @@
   <h2>J</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.join_with_persons">join_with_persons() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/variables.html#policyengine_core.variables.variable.Variable.json_type">json_type (policyengine_core.variables.variable.Variable attribute)</a>
 </li>
     </ul></td>
@@ -606,19 +793,31 @@
   <h2>L</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="python_api/variables.html#policyengine_core.variables.variable.Variable.label">label (policyengine_core.variables.variable.Variable attribute)</a>
+        <li><a href="python_api/data.html#policyengine_core.data.Dataset.label">label (policyengine_core.data.Dataset attribute)</a>
+
+        <ul>
+          <li><a href="python_api/variables.html#policyengine_core.variables.variable.Variable.label">(policyengine_core.variables.variable.Variable attribute)</a>
 </li>
+        </ul></li>
         <li><a href="python_api/periods.html#policyengine_core.periods.period_.Period.last_3_months">last_3_months (policyengine_core.periods.period_.Period property)</a>
 </li>
         <li><a href="python_api/periods.html#policyengine_core.periods.period_.Period.last_month">last_month (policyengine_core.periods.period_.Period property)</a>
 </li>
         <li><a href="python_api/periods.html#policyengine_core.periods.period_.Period.last_year">last_year (policyengine_core.periods.period_.Period property)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/warnings.html#policyengine_core.warnings.LibYAMLWarning">LibYAMLWarning (class in policyengine_core.warnings)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/taxscales.html#policyengine_core.taxscales.linear_average_rate_tax_scale.LinearAverageRateTaxScale">LinearAverageRateTaxScale (class in policyengine_core.taxscales.linear_average_rate_tax_scale)</a>
+</li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.link_to_entities_instances">link_to_entities_instances() (policyengine_core.simulations.simulation.Simulation method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.link_to_entities_instances">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
+        </ul></li>
+        <li><a href="python_api/data.html#policyengine_core.data.Dataset.load">load() (policyengine_core.data.Dataset method)</a>
 </li>
         <li><a href="python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.load_extension">load_extension() (policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem method)</a>
 </li>
@@ -634,6 +833,12 @@
   <h2>M</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.map_result">map_result() (policyengine_core.simulations.simulation.Simulation method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.map_result">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
+        </ul></li>
         <li><a href="python_api/taxscales.html#policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.marginal_rates">marginal_rates() (policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale method)</a>
 </li>
         <li><a href="python_api/taxscales.html#policyengine_core.taxscales.marginal_amount_tax_scale.MarginalAmountTaxScale">MarginalAmountTaxScale (class in policyengine_core.taxscales.marginal_amount_tax_scale)</a>
@@ -644,13 +849,17 @@
 </li>
         <li><a href="python_api/variables.html#policyengine_core.variables.variable.Variable.max_length">max_length (policyengine_core.variables.variable.Variable attribute)</a>
 </li>
-        <li><a href="python_api/populations.html#policyengine_core.populations.group_population.GroupPopulation.members_entity_id">members_entity_id (policyengine_core.populations.group_population.GroupPopulation property)</a>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.max_spiral_loops">max_spiral_loops (policyengine_core.simulations.weighted_simulation.WeightedSimulation attribute)</a>
 </li>
-        <li><a href="python_api/populations.html#policyengine_core.populations.group_population.GroupPopulation.members_position">members_position (policyengine_core.populations.group_population.GroupPopulation property)</a>
+        <li><a href="python_api/populations.html#policyengine_core.populations.group_population.GroupPopulation.members_entity_id">members_entity_id (policyengine_core.populations.group_population.GroupPopulation property)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python_api/populations.html#policyengine_core.populations.group_population.GroupPopulation.members_position">members_position (policyengine_core.populations.group_population.GroupPopulation property)</a>
+</li>
         <li><a href="python_api/populations.html#policyengine_core.populations.group_population.GroupPopulation.members_role">members_role (policyengine_core.populations.group_population.GroupPopulation property)</a>
+</li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.memory_config">memory_config (policyengine_core.simulations.weighted_simulation.WeightedSimulation attribute)</a>
 </li>
         <li><a href="python_api/experimental.html#policyengine_core.experimental.memory_config.MemoryConfig">MemoryConfig (class in policyengine_core.experimental.memory_config)</a>
 </li>
@@ -674,14 +883,22 @@
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/periods.html#policyengine_core.periods.period_.Period.n_2">n_2 (policyengine_core.periods.period_.Period property)</a>
 </li>
-        <li><a href="python_api/variables.html#policyengine_core.variables.variable.Variable.name">name (policyengine_core.variables.variable.Variable attribute)</a>
+        <li><a href="python_api/data.html#policyengine_core.data.Dataset.name">name (policyengine_core.data.Dataset attribute)</a>
+
+        <ul>
+          <li><a href="python_api/variables.html#policyengine_core.variables.variable.Variable.name">(policyengine_core.variables.variable.Variable attribute)</a>
 </li>
+        </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/errors.html#policyengine_core.errors.nan_creation_error.NaNCreationError">NaNCreationError (class in policyengine_core.errors.nan_creation_error)</a>
 </li>
         <li><a href="python_api/populations.html#policyengine_core.populations.group_population.GroupPopulation.nb_persons">nb_persons() (policyengine_core.populations.group_population.GroupPopulation method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.nb_persons">(policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
 </li>
+        </ul></li>
         <li><a href="python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.neutralize_variable">neutralize_variable() (policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem method)</a>
 </li>
     </ul></td>
@@ -698,9 +915,13 @@
           <li><a href="python_api/periods.html#policyengine_core.periods.period_.Period.offset">(policyengine_core.periods.period_.Period method)</a>
 </li>
         </ul></li>
+        <li><a href="python_api/data_storage.html#policyengine_core.data_storage.on_disk_storage.OnDiskStorage">OnDiskStorage (class in policyengine_core.data_storage.on_disk_storage)</a>
+</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="python_api/data_storage.html#policyengine_core.data_storage.on_disk_storage.OnDiskStorage">OnDiskStorage (class in policyengine_core.data_storage.on_disk_storage)</a>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.opt_out_cache">opt_out_cache (policyengine_core.simulations.weighted_simulation.WeightedSimulation attribute)</a>
+</li>
+        <li><a href="python_api/data.html#policyengine_core.data.Dataset.options">options (policyengine_core.data.Dataset attribute)</a>
 </li>
         <li><a href="python_api/populations.html#policyengine_core.populations.group_population.GroupPopulation.ordered_members_map">ordered_members_map (policyengine_core.populations.group_population.GroupPopulation property)</a>
 </li>
@@ -734,14 +955,14 @@
 </li>
         <li><a href="python_api/periods.html#policyengine_core.periods.period_.Period">Period (class in policyengine_core.periods.period_)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/periods.html#policyengine_core.periods.helpers.period">period() (in module policyengine_core.periods.helpers)</a>
 
         <ul>
           <li><a href="python_api/periods.html#policyengine_core.periods.instant_.Instant.period">(policyengine_core.periods.instant_.Instant method)</a>
 </li>
         </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/errors.html#policyengine_core.errors.period_mismatch_error.PeriodMismatchError">PeriodMismatchError (class in policyengine_core.errors.period_mismatch_error)</a>
 </li>
         <li><a href="python_api/populations.html#policyengine_core.populations.population.Population">Population (class in policyengine_core.populations.population)</a>
@@ -750,10 +971,20 @@
 </li>
         <li><a href="python_api/tracers.html#policyengine_core.tracers.computation_log.ComputationLog.print_log">print_log() (policyengine_core.tracers.computation_log.ComputationLog method)</a>
 </li>
+        <li><a href="python_api/data.html#policyengine_core.data.PrivateDataset">PrivateDataset (class in policyengine_core.data)</a>
+</li>
         <li><a href="python_api/populations.html#policyengine_core.populations.group_population.GroupPopulation.project">project() (policyengine_core.populations.group_population.GroupPopulation method)</a>
 </li>
         <li><a href="python_api/projectors.html#policyengine_core.projectors.Projector">Projector (class in policyengine_core.projectors)</a>
 </li>
+        <li><a href="python_api/data.html#policyengine_core.data.PublicDataset">PublicDataset (class in policyengine_core.data)</a>
+</li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.purge_cache_of_invalid_values">purge_cache_of_invalid_values() (policyengine_core.simulations.simulation.Simulation method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.purge_cache_of_invalid_values">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
+        </ul></li>
         <li><a href="python_api/data_storage.html#policyengine_core.data_storage.in_memory_storage.InMemoryStorage.put">put() (policyengine_core.data_storage.in_memory_storage.InMemoryStorage method)</a>
 
         <ul>
@@ -780,6 +1011,8 @@
   <h2>R</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.raise_period_mismatch">raise_period_mismatch() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
+</li>
         <li><a href="python_api/taxscales.html#policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.rate_from_bracket_indice">rate_from_bracket_indice() (policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale method)</a>
 </li>
         <li><a href="python_api/taxscales.html#policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.rate_from_tax_base">rate_from_tax_base() (policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale method)</a>
@@ -790,9 +1023,15 @@
 </li>
         <li><a href="python_api/variables.html#policyengine_core.variables.variable.Variable.reference">reference (policyengine_core.variables.variable.Variable attribute)</a>
 </li>
+        <li><a href="python_api/reforms.html#policyengine_core.reforms.Reform">Reform (class in policyengine_core.reforms)</a>
+</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="python_api/reforms.html#policyengine_core.reforms.Reform">Reform (class in policyengine_core.reforms)</a>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.register_variable">register_variable() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
+</li>
+        <li><a href="python_api/data.html#policyengine_core.data.Dataset.remove">remove() (policyengine_core.data.Dataset method)</a>
+</li>
+        <li><a href="python_api/data.html#policyengine_core.data.Dataset.remove_all">remove_all() (policyengine_core.data.Dataset method)</a>
 </li>
         <li><a href="python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.replace_variable">replace_variable() (policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem method)</a>
 </li>
@@ -814,12 +1053,16 @@
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/taxscales.html#policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.scale_tax_scales">scale_tax_scales() (policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale method)</a>
 </li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.set_default_period">set_default_period() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
+</li>
         <li><a href="python_api/variables.html#policyengine_core.variables.variable.Variable.set_input">set_input (policyengine_core.variables.variable.Variable attribute)</a>
 </li>
         <li><a href="python_api/holders.html#policyengine_core.holders.holder.Holder.set_input">set_input() (policyengine_core.holders.holder.Holder method)</a>
 
         <ul>
           <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.set_input">(policyengine_core.simulations.simulation.Simulation method)</a>
+</li>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.set_input">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
 </li>
         </ul></li>
         <li><a href="python_api/holders.html#policyengine_core.holders.helpers.set_input_dispatch_by_period">set_input_dispatch_by_period() (in module policyengine_core.holders.helpers)</a>
@@ -832,10 +1075,10 @@
 </li>
         <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation">Simulation (class in policyengine_core.simulations.simulation)</a>
 </li>
-        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder">SimulationBuilder (class in policyengine_core.simulations.simulation_builder)</a>
-</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder">SimulationBuilder (class in policyengine_core.simulations.simulation_builder)</a>
+</li>
         <li><a href="python_api/taxscales.html#policyengine_core.taxscales.single_amount_tax_scale.SingleAmountTaxScale">SingleAmountTaxScale (class in policyengine_core.taxscales.single_amount_tax_scale)</a>
 </li>
         <li><a href="python_api/errors.html#policyengine_core.errors.situation_parsing_error.SituationParsingError">SituationParsingError (class in policyengine_core.errors.situation_parsing_error)</a>
@@ -884,7 +1127,21 @@
         </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.trace">trace (policyengine_core.simulations.simulation.Simulation property)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.trace">(policyengine_core.simulations.weighted_simulation.WeightedSimulation property)</a>
+</li>
+        </ul></li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.trace_parameters_at_instant">trace_parameters_at_instant() (policyengine_core.simulations.simulation.Simulation method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.trace_parameters_at_instant">(policyengine_core.simulations.weighted_simulation.WeightedSimulation method)</a>
+</li>
+        </ul></li>
         <li><a href="python_api/tracers.html#policyengine_core.tracers.trace_node.TraceNode">TraceNode (class in policyengine_core.tracers.trace_node)</a>
+</li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation.tracer">tracer (policyengine_core.simulations.weighted_simulation.WeightedSimulation attribute)</a>
 </li>
         <li><a href="python_api/tracers.html#policyengine_core.tracers.tracing_parameter_node_at_instant.TracingParameterNodeAtInstant">TracingParameterNodeAtInstant (class in policyengine_core.tracers.tracing_parameter_node_at_instant)</a>
 </li>
@@ -904,11 +1161,19 @@
           <li><a href="python_api/variables.html#policyengine_core.variables.variable.Variable.unit">(policyengine_core.variables.variable.Variable attribute)</a>
 </li>
         </ul></li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/parameters.html#policyengine_core.parameters.parameter.Parameter.update">update() (policyengine_core.parameters.parameter.Parameter method)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.update_variable">update_variable() (policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem method)</a>
+</li>
+        <li><a href="python_api/data.html#policyengine_core.data.PrivateDataset.upload">upload() (policyengine_core.data.PrivateDataset method)</a>
+
+        <ul>
+          <li><a href="python_api/data.html#policyengine_core.data.PublicDataset.upload">(policyengine_core.data.PublicDataset method)</a>
+</li>
+        </ul></li>
+        <li><a href="python_api/data.html#policyengine_core.data.PublicDataset.url_by_year">url_by_year (policyengine_core.data.PublicDataset attribute)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -948,6 +1213,8 @@
   <h2>W</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.weighted_simulation.WeightedSimulation">WeightedSimulation (class in policyengine_core.simulations.weighted_simulation)</a>
+</li>
         <li><a href="python_api/warnings.html#policyengine_core.warnings.LibYAMLWarning.with_traceback">with_traceback() (policyengine_core.warnings.LibYAMLWarning method)</a>
 
         <ul>
@@ -956,6 +1223,10 @@
           <li><a href="python_api/warnings.html#policyengine_core.warnings.TempfileWarning.with_traceback">(policyengine_core.warnings.TempfileWarning method)</a>
 </li>
         </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python_api/data.html#policyengine_core.data.Dataset.write">write() (policyengine_core.data.Dataset method)</a>
+</li>
     </ul></td>
   </tr></table>
 </section>

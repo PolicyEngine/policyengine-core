@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    fixed:
-    - Bug in the country template microsimulation class failing to load data.

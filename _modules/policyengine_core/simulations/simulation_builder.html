@@ -1,0 +1,1075 @@
+<!doctype html>
+<html class="no-js">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
+
+    <meta name="generator" content="sphinx-4.5.0, furo 2022.09.29"/>
+        <title>policyengine_core.simulations.simulation_builder - PolicyEngine Core documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?digest=d81277517bee4d6b0349d71bb2661d4890b5617c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/design-style.b7bb847fb20b106c3d81b95245e65545.min.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #eeffcc;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../intro.html"><div class="brand">PolicyEngine Core documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../intro.html">
+  
+  
+  <span class="sidebar-brand-text">PolicyEngine Core documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder=Search name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Contributing</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/intro.html">How to contribute</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Using PolicyEngine Core</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/simulation.html">Simulating policy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/country.html">Country packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/cli.html">Command-line interface</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/commons.html">Commons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/country_template.html">Country template</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/data_storage.html">Data storage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/entities.html">Entities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/enums.html">Enums</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/experimental.html">Experimental features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/extension_template.html">Extension template</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/holders.html">Holders</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/parameters.html">Parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/periods.html">Periods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/populations.html">Populations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/projectors.html">Projectors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/reforms.html">Reforms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/scripts.html">Scripts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/simulations.html">Simulations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/taxbenefitsystems.html">Tax-benefit systems</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/taxscales.html">Tax scales</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/tools.html">Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/tracers.html">Tracers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/types.html">Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/variables.html">Variables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/warnings.html">Warnings</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <h1>Source code for policyengine_core.simulations.simulation_builder</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">dpath.util</span>
+<span class="kn">import</span> <span class="nn">typing</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">from</span> <span class="nn">numpy.typing</span> <span class="kn">import</span> <span class="n">ArrayLike</span>
+<span class="kn">from</span> <span class="nn">policyengine_core</span> <span class="kn">import</span> <span class="n">periods</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.periods</span> <span class="kn">import</span> <span class="n">Period</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.entities</span> <span class="kn">import</span> <span class="n">Entity</span><span class="p">,</span> <span class="n">Role</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.errors</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">PeriodMismatchError</span><span class="p">,</span>
+    <span class="n">SituationParsingError</span><span class="p">,</span>
+    <span class="n">VariableNotFoundError</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.populations</span> <span class="kn">import</span> <span class="n">Population</span><span class="p">,</span> <span class="n">GroupPopulation</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.simulations</span> <span class="kn">import</span> <span class="n">helpers</span><span class="p">,</span> <span class="n">Simulation</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">policyengine_core.taxbenefitsystems.tax_benefit_system</span> <span class="kn">import</span> <span class="p">(</span>
+        <span class="n">TaxBenefitSystem</span><span class="p">,</span>
+    <span class="p">)</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.variables</span> <span class="kn">import</span> <span class="n">Variable</span>
+
+
+<div class="viewcode-block" id="SimulationBuilder"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder">[docs]</a><span class="k">class</span> <span class="nc">SimulationBuilder</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">default_period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Simulation period used for variables when no period is defined</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">persons_plural</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Plural name for person entity in current tax and benefits system</span>
+
+        <span class="c1"># JSON input - Memory of known input values. Indexed by variable or axis name.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_buffer</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span>
+            <span class="n">Variable</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">periods</span><span class="o">.</span><span class="n">period</span><span class="p">),</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">]</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="n">Entity</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">Population</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1"># JSON input - Number of items of each entity type. Indexed by entities plural names. Should be consistent with ``entity_ids``, including axes.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity_counts</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="n">Entity</span><span class="o">.</span><span class="n">plural</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1"># JSON input - typing.List of items of each entity type. Indexed by entities plural names. Should be consistent with ``entity_counts``.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity_ids</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="n">Entity</span><span class="o">.</span><span class="n">plural</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># Links entities with persons. For each person index in persons ids list, set entity index in entity ids id. E.g.: self.memberships[entity.plural][person_index] = entity_ids.index(instance_id)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memberships</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="n">Entity</span><span class="o">.</span><span class="n">plural</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">roles</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="n">Entity</span><span class="o">.</span><span class="n">plural</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">variable_entities</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="n">Variable</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">Entity</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">axes</span> <span class="o">=</span> <span class="p">[[]]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axes_entity_counts</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="n">Entity</span><span class="o">.</span><span class="n">plural</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axes_entity_ids</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="n">Entity</span><span class="o">.</span><span class="n">plural</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axes_memberships</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span>
+            <span class="n">Entity</span><span class="o">.</span><span class="n">plural</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axes_roles</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="n">Entity</span><span class="o">.</span><span class="n">plural</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="SimulationBuilder.build_from_dict"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.build_from_dict">[docs]</a>    <span class="k">def</span> <span class="nf">build_from_dict</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">tax_benefit_system</span><span class="p">:</span> <span class="s2">&quot;TaxBenefitSystem&quot;</span><span class="p">,</span>
+        <span class="n">input_dict</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+        <span class="n">simulation</span><span class="p">:</span> <span class="n">Simulation</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Simulation</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Build a simulation from ``input_dict``. Optionally overwrites an existing simulation.</span>
+
+<span class="sd">        This method uses :any:`build_from_entities` if entities are fully specified, or :any:`build_from_variables` if not.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">input_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">explicit_singular_entities</span><span class="p">(</span>
+            <span class="n">tax_benefit_system</span><span class="p">,</span> <span class="n">input_dict</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span>
+            <span class="n">key</span> <span class="ow">in</span> <span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">entities_plural</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">input_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_from_entities</span><span class="p">(</span>
+                <span class="n">tax_benefit_system</span><span class="p">,</span> <span class="n">input_dict</span><span class="p">,</span> <span class="n">simulation</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_from_variables</span><span class="p">(</span>
+                <span class="n">tax_benefit_system</span><span class="p">,</span> <span class="n">input_dict</span><span class="p">,</span> <span class="n">simulation</span>
+            <span class="p">)</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.build_from_entities"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.build_from_entities">[docs]</a>    <span class="k">def</span> <span class="nf">build_from_entities</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">tax_benefit_system</span><span class="p">:</span> <span class="s2">&quot;TaxBenefitSystem&quot;</span><span class="p">,</span>
+        <span class="n">input_dict</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+        <span class="n">simulation</span><span class="p">:</span> <span class="n">Simulation</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Simulation</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Build a simulation from a Python dict ``input_dict`` fully specifying entities.</span>
+
+<span class="sd">        Examples:</span>
+
+<span class="sd">        &gt;&gt;&gt; simulation_builder.build_from_entities({</span>
+<span class="sd">            &#39;persons&#39;: {&#39;Javier&#39;: { &#39;salary&#39;: {&#39;2018-11&#39;: 2000}}},</span>
+<span class="sd">            &#39;households&#39;: {&#39;household&#39;: {&#39;parents&#39;: [&#39;Javier&#39;]}}</span>
+<span class="sd">            })</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">input_dict</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">input_dict</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">simulation</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">simulation</span> <span class="o">=</span> <span class="n">Simulation</span><span class="p">(</span>
+                <span class="n">tax_benefit_system</span><span class="o">=</span><span class="n">tax_benefit_system</span><span class="p">,</span>
+                <span class="n">populations</span><span class="o">=</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">instantiate_entities</span><span class="p">(),</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Register variables so get_variable_entity can find them</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">_variable</span><span class="p">)</span> <span class="ow">in</span> <span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">register_variable</span><span class="p">(</span>
+                <span class="n">variable_name</span><span class="p">,</span>
+                <span class="n">simulation</span><span class="o">.</span><span class="n">get_variable_population</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span><span class="o">.</span><span class="n">entity</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="n">helpers</span><span class="o">.</span><span class="n">check_type</span><span class="p">(</span><span class="n">input_dict</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">])</span>
+        <span class="n">axes</span> <span class="o">=</span> <span class="n">input_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;axes&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="n">unexpected_entities</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">entity</span>
+            <span class="k">for</span> <span class="n">entity</span> <span class="ow">in</span> <span class="n">input_dict</span>
+            <span class="k">if</span> <span class="n">entity</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">entities_plural</span><span class="p">()</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="n">unexpected_entities</span><span class="p">:</span>
+            <span class="n">unexpected_entity</span> <span class="o">=</span> <span class="n">unexpected_entities</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">raise</span> <span class="n">SituationParsingError</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">unexpected_entity</span><span class="p">],</span>
+                <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="s2">&quot;Some entities in the situation are not defined in the loaded tax and benefit system.&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;These entities are not found: </span><span class="si">{0}</span><span class="s2">.&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;The defined entities are: </span><span class="si">{1}</span><span class="s2">.&quot;</span><span class="p">,</span>
+                    <span class="p">]</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">unexpected_entities</span><span class="p">),</span>
+                    <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">entities_plural</span><span class="p">()),</span>
+                <span class="p">),</span>
+            <span class="p">)</span>
+        <span class="n">persons_json</span> <span class="o">=</span> <span class="n">input_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">person_entity</span><span class="o">.</span><span class="n">plural</span><span class="p">,</span> <span class="kc">None</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">persons_json</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">SituationParsingError</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">person_entity</span><span class="o">.</span><span class="n">plural</span><span class="p">],</span>
+                <span class="s2">&quot;No </span><span class="si">{0}</span><span class="s2"> found. At least one </span><span class="si">{0}</span><span class="s2"> must be defined to run a simulation.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">person_entity</span><span class="o">.</span><span class="n">key</span>
+                <span class="p">),</span>
+            <span class="p">)</span>
+
+        <span class="n">persons_ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_person_entity</span><span class="p">(</span>
+            <span class="n">simulation</span><span class="o">.</span><span class="n">persons</span><span class="o">.</span><span class="n">entity</span><span class="p">,</span> <span class="n">persons_json</span>
+        <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">entity_class</span> <span class="ow">in</span> <span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">group_entities</span><span class="p">:</span>
+            <span class="n">instances_json</span> <span class="o">=</span> <span class="n">input_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">entity_class</span><span class="o">.</span><span class="n">plural</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">instances_json</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">add_group_entity</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">persons_plural</span><span class="p">,</span>
+                    <span class="n">persons_ids</span><span class="p">,</span>
+                    <span class="n">entity_class</span><span class="p">,</span>
+                    <span class="n">instances_json</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">add_default_group_entity</span><span class="p">(</span><span class="n">persons_ids</span><span class="p">,</span> <span class="n">entity_class</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">axes</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">axes</span> <span class="o">=</span> <span class="n">axes</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">expand_axes</span><span class="p">()</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">finalize_variables_init</span><span class="p">(</span><span class="n">simulation</span><span class="o">.</span><span class="n">persons</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">PeriodMismatchError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">raise_period_mismatch</span><span class="p">(</span>
+                <span class="n">simulation</span><span class="o">.</span><span class="n">persons</span><span class="o">.</span><span class="n">entity</span><span class="p">,</span> <span class="n">persons_json</span><span class="p">,</span> <span class="n">e</span>
+            <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">entity_class</span> <span class="ow">in</span> <span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">group_entities</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">population</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">entity_class</span><span class="o">.</span><span class="n">key</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">finalize_variables_init</span><span class="p">(</span><span class="n">population</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">PeriodMismatchError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">raise_period_mismatch</span><span class="p">(</span>
+                    <span class="n">population</span><span class="o">.</span><span class="n">entity</span><span class="p">,</span> <span class="n">instances_json</span><span class="p">,</span> <span class="n">e</span>
+                <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">simulation</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.build_from_variables"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.build_from_variables">[docs]</a>    <span class="k">def</span> <span class="nf">build_from_variables</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">tax_benefit_system</span><span class="p">:</span> <span class="s2">&quot;TaxBenefitSystem&quot;</span><span class="p">,</span>
+        <span class="n">input_dict</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+        <span class="n">simulation</span><span class="p">:</span> <span class="n">Simulation</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Simulation</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Build a simulation from a Python dict ``input_dict`` describing variables values without expliciting entities.</span>
+
+<span class="sd">        This method uses :any:`build_default_simulation` to infer an entity structure</span>
+
+<span class="sd">        Example:</span>
+
+<span class="sd">        &gt;&gt;&gt; simulation_builder.build_from_variables(</span>
+<span class="sd">            {&#39;salary&#39;: {&#39;2016-10&#39;: 12000}}</span>
+<span class="sd">            )</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="n">helpers</span><span class="o">.</span><span class="n">_get_person_count</span><span class="p">(</span><span class="n">input_dict</span><span class="p">)</span>
+        <span class="n">simulation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_default_simulation</span><span class="p">(</span>
+            <span class="n">tax_benefit_system</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">simulation</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">variable</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">input_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_period</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">SituationParsingError</span><span class="p">(</span>
+                        <span class="p">[</span><span class="n">variable</span><span class="p">],</span>
+                        <span class="s2">&quot;Can&#39;t deal with type: expected object. Input variables should be set for specific periods. For instance: {&#39;salary&#39;: {&#39;2017-01&#39;: 2000, &#39;2017-02&#39;: 2500}}, or {&#39;birth_date&#39;: {&#39;ETERNITY&#39;: &#39;1980-01-01&#39;}}.&quot;</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="n">simulation</span><span class="o">.</span><span class="n">set_input</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_period</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">period_str</span><span class="p">,</span> <span class="n">dated_value</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="n">simulation</span><span class="o">.</span><span class="n">set_input</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">period_str</span><span class="p">,</span> <span class="n">dated_value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">simulation</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.build_default_simulation"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.build_default_simulation">[docs]</a>    <span class="k">def</span> <span class="nf">build_default_simulation</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">tax_benefit_system</span><span class="p">:</span> <span class="s2">&quot;TaxBenefitSystem&quot;</span><span class="p">,</span>
+        <span class="n">count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="n">simulation</span><span class="p">:</span> <span class="n">Simulation</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Simulation</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Build a simulation where:</span>
+<span class="sd">            - There are ``count`` persons</span>
+<span class="sd">            - There are ``count`` instances of each group entity, containing one person</span>
+<span class="sd">            - Every person has, in each entity, the first role</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">simulation</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">simulation</span> <span class="o">=</span> <span class="n">Simulation</span><span class="p">(</span>
+                <span class="n">tax_benefit_system</span><span class="o">=</span><span class="n">tax_benefit_system</span><span class="p">,</span>
+                <span class="n">populations</span><span class="o">=</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">instantiate_entities</span><span class="p">(),</span>
+            <span class="p">)</span>
+        <span class="k">for</span> <span class="n">population</span> <span class="ow">in</span> <span class="n">simulation</span><span class="o">.</span><span class="n">populations</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">population</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="n">count</span>
+            <span class="n">population</span><span class="o">.</span><span class="n">ids</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">count</span><span class="p">))</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">population</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">is_person</span><span class="p">:</span>
+                <span class="n">population</span><span class="o">.</span><span class="n">members_entity_id</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">population</span><span class="o">.</span><span class="n">ids</span>
+                <span class="p">)</span>  <span class="c1"># Each person is its own group entity</span>
+        <span class="k">return</span> <span class="n">simulation</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.create_entities"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.create_entities">[docs]</a>    <span class="k">def</span> <span class="nf">create_entities</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tax_benefit_system</span><span class="p">:</span> <span class="s2">&quot;TaxBenefitSystem&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">populations</span> <span class="o">=</span> <span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">instantiate_entities</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.declare_person_entity"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.declare_person_entity">[docs]</a>    <span class="k">def</span> <span class="nf">declare_person_entity</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">person_singular</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">persons_ids</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Iterable</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">person_instance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">person_singular</span><span class="p">]</span>
+        <span class="n">person_instance</span><span class="o">.</span><span class="n">ids</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">persons_ids</span><span class="p">))</span>
+        <span class="n">person_instance</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">person_instance</span><span class="o">.</span><span class="n">ids</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">persons_plural</span> <span class="o">=</span> <span class="n">person_instance</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.declare_entity"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.declare_entity">[docs]</a>    <span class="k">def</span> <span class="nf">declare_entity</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">entity_singular</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">entity_ids</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Iterable</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Population</span><span class="p">:</span>
+        <span class="n">entity_instance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">entity_singular</span><span class="p">]</span>
+        <span class="n">entity_instance</span><span class="o">.</span><span class="n">ids</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">entity_ids</span><span class="p">))</span>
+        <span class="n">entity_instance</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">entity_instance</span><span class="o">.</span><span class="n">ids</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">entity_instance</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.nb_persons"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.nb_persons">[docs]</a>    <span class="k">def</span> <span class="nf">nb_persons</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_singular</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">role</span><span class="p">:</span> <span class="n">Role</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">entity_singular</span><span class="p">]</span><span class="o">.</span><span class="n">nb_persons</span><span class="p">(</span><span class="n">role</span><span class="o">=</span><span class="n">role</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.join_with_persons"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.join_with_persons">[docs]</a>    <span class="k">def</span> <span class="nf">join_with_persons</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">group_population</span><span class="p">:</span> <span class="n">GroupPopulation</span><span class="p">,</span>
+        <span class="n">persons_group_assignment</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
+        <span class="n">roles</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Maps group&#39;s identifiers to a 0-based integer range, for indexing into members_roles (see PR#876)</span>
+        <span class="n">group_sorted_indices</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span>
+            <span class="n">persons_group_assignment</span><span class="p">,</span> <span class="n">return_inverse</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">group_population</span><span class="o">.</span><span class="n">members_entity_id</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span>
+            <span class="n">group_population</span><span class="o">.</span><span class="n">ids</span>
+        <span class="p">)[</span><span class="n">group_sorted_indices</span><span class="p">]</span>
+
+        <span class="n">flattened_roles</span> <span class="o">=</span> <span class="n">group_population</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">flattened_roles</span>
+        <span class="n">roles_array</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">roles</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">numpy</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">roles_array</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">integer</span><span class="p">):</span>
+            <span class="n">group_population</span><span class="o">.</span><span class="n">members_role</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">flattened_roles</span><span class="p">)[</span>
+                <span class="n">roles_array</span>
+            <span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">flattened_roles</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">group_population</span><span class="o">.</span><span class="n">members_role</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">int64</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">group_population</span><span class="o">.</span><span class="n">members_role</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">select</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">roles_array</span> <span class="o">==</span> <span class="n">role</span><span class="o">.</span><span class="n">key</span> <span class="k">for</span> <span class="n">role</span> <span class="ow">in</span> <span class="n">flattened_roles</span><span class="p">],</span>
+                    <span class="n">flattened_roles</span><span class="p">,</span>
+                <span class="p">)</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.build"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.build">[docs]</a>    <span class="k">def</span> <span class="nf">build</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tax_benefit_system</span><span class="p">:</span> <span class="s2">&quot;TaxBenefitSystem&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Simulation</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Simulation</span><span class="p">(</span>
+            <span class="n">tax_benefit_system</span><span class="o">=</span><span class="n">tax_benefit_system</span><span class="p">,</span> <span class="n">populations</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">populations</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.explicit_singular_entities"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.explicit_singular_entities">[docs]</a>    <span class="k">def</span> <span class="nf">explicit_singular_entities</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">tax_benefit_system</span><span class="p">:</span> <span class="s2">&quot;TaxBenefitSystem&quot;</span><span class="p">,</span> <span class="n">input_dict</span><span class="p">:</span> <span class="nb">dict</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Preprocess ``input_dict`` to explicit entities defined using the single-entity shortcut</span>
+
+<span class="sd">        Example:</span>
+
+<span class="sd">        &gt;&gt;&gt; simulation_builder.explicit_singular_entities(</span>
+<span class="sd">            {&#39;persons&#39;: {&#39;Javier&#39;: {}, }, &#39;household&#39;: {&#39;parents&#39;: [&#39;Javier&#39;]}}</span>
+<span class="sd">            )</span>
+<span class="sd">        &gt;&gt;&gt; {&#39;persons&#39;: {&#39;Javier&#39;: {}}, &#39;households&#39;: {&#39;household&#39;: {&#39;parents&#39;: [&#39;Javier&#39;]}}</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">singular_keys</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">input_dict</span><span class="p">)</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span>
+            <span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">entities_by_singular</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">singular_keys</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">input_dict</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">entity_id</span><span class="p">:</span> <span class="n">entity_description</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">entity_id</span><span class="p">,</span> <span class="n">entity_description</span><span class="p">)</span> <span class="ow">in</span> <span class="n">input_dict</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">entity_id</span> <span class="ow">in</span> <span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">entities_plural</span><span class="p">()</span>
+        <span class="p">}</span>  <span class="c1"># filter out the singular entities</span>
+
+        <span class="k">for</span> <span class="n">singular</span> <span class="ow">in</span> <span class="n">singular_keys</span><span class="p">:</span>
+            <span class="n">plural</span> <span class="o">=</span> <span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">entities_by_singular</span><span class="p">()[</span><span class="n">singular</span><span class="p">]</span><span class="o">.</span><span class="n">plural</span>
+            <span class="n">result</span><span class="p">[</span><span class="n">plural</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">singular</span><span class="p">:</span> <span class="n">input_dict</span><span class="p">[</span><span class="n">singular</span><span class="p">]}</span>
+
+        <span class="k">return</span> <span class="n">result</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.add_person_entity"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.add_person_entity">[docs]</a>    <span class="k">def</span> <span class="nf">add_person_entity</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">:</span> <span class="n">Entity</span><span class="p">,</span> <span class="n">instances_json</span><span class="p">:</span> <span class="nb">dict</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add the simulation&#39;s instances of the persons entity as described in ``instances_json``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">helpers</span><span class="o">.</span><span class="n">check_type</span><span class="p">(</span><span class="n">instances_json</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">])</span>
+        <span class="n">entity_ids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">instances_json</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">persons_plural</span> <span class="o">=</span> <span class="n">entity</span><span class="o">.</span><span class="n">plural</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity_ids</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">persons_plural</span><span class="p">]</span> <span class="o">=</span> <span class="n">entity_ids</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity_counts</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">persons_plural</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">entity_ids</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">instance_id</span><span class="p">,</span> <span class="n">instance_object</span> <span class="ow">in</span> <span class="n">instances_json</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">helpers</span><span class="o">.</span><span class="n">check_type</span><span class="p">(</span>
+                <span class="n">instance_object</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">,</span> <span class="n">instance_id</span><span class="p">]</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">init_variable_values</span><span class="p">(</span>
+                <span class="n">entity</span><span class="p">,</span> <span class="n">instance_object</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">instance_id</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ids</span><span class="p">(</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.add_default_group_entity"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.add_default_group_entity">[docs]</a>    <span class="k">def</span> <span class="nf">add_default_group_entity</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">persons_ids</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span> <span class="n">entity</span><span class="p">:</span> <span class="n">Entity</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">persons_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">persons_ids</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity_ids</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">]</span> <span class="o">=</span> <span class="n">persons_ids</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity_counts</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">]</span> <span class="o">=</span> <span class="n">persons_count</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memberships</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">]</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+            <span class="mi">0</span><span class="p">,</span> <span class="n">persons_count</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">numpy</span><span class="o">.</span><span class="n">int32</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">roles</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">]</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span>
+            <span class="n">entity</span><span class="o">.</span><span class="n">flattened_roles</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">persons_count</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.add_group_entity"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.add_group_entity">[docs]</a>    <span class="k">def</span> <span class="nf">add_group_entity</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">persons_plural</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">persons_ids</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
+        <span class="n">entity</span><span class="p">:</span> <span class="n">Entity</span><span class="p">,</span>
+        <span class="n">instances_json</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add all instances of one of the model&#39;s entities as described in ``instances_json``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">helpers</span><span class="o">.</span><span class="n">check_type</span><span class="p">(</span><span class="n">instances_json</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">])</span>
+        <span class="n">entity_ids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">instances_json</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity_ids</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">]</span> <span class="o">=</span> <span class="n">entity_ids</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity_counts</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">entity_ids</span><span class="p">)</span>
+
+        <span class="n">persons_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">persons_ids</span><span class="p">)</span>
+        <span class="n">persons_to_allocate</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">persons_ids</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memberships</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">]</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span>
+            <span class="n">persons_count</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">numpy</span><span class="o">.</span><span class="n">int32</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">roles</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">]</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">persons_count</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">object</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity_ids</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">]</span> <span class="o">=</span> <span class="n">entity_ids</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity_counts</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">entity_ids</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">instance_id</span><span class="p">,</span> <span class="n">instance_object</span> <span class="ow">in</span> <span class="n">instances_json</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">helpers</span><span class="o">.</span><span class="n">check_type</span><span class="p">(</span>
+                <span class="n">instance_object</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">,</span> <span class="n">instance_id</span><span class="p">]</span>
+            <span class="p">)</span>
+
+            <span class="n">variables_json</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">instance_object</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="p">)</span>  <span class="c1"># Don&#39;t mutate function input</span>
+
+            <span class="n">roles_json</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">role</span><span class="o">.</span><span class="n">plural</span>
+                <span class="ow">or</span> <span class="n">role</span><span class="o">.</span><span class="n">key</span><span class="p">:</span> <span class="n">helpers</span><span class="o">.</span><span class="n">transform_to_strict_syntax</span><span class="p">(</span>
+                    <span class="n">variables_json</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">role</span><span class="o">.</span><span class="n">plural</span> <span class="ow">or</span> <span class="n">role</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="p">[])</span>
+                <span class="p">)</span>
+                <span class="k">for</span> <span class="n">role</span> <span class="ow">in</span> <span class="n">entity</span><span class="o">.</span><span class="n">roles</span>
+            <span class="p">}</span>
+
+            <span class="k">for</span> <span class="n">role_id</span><span class="p">,</span> <span class="n">role_definition</span> <span class="ow">in</span> <span class="n">roles_json</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">helpers</span><span class="o">.</span><span class="n">check_type</span><span class="p">(</span>
+                    <span class="n">role_definition</span><span class="p">,</span>
+                    <span class="nb">list</span><span class="p">,</span>
+                    <span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">,</span> <span class="n">instance_id</span><span class="p">,</span> <span class="n">role_id</span><span class="p">],</span>
+                <span class="p">)</span>
+                <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">person_id</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">role_definition</span><span class="p">):</span>
+                    <span class="n">entity_plural</span> <span class="o">=</span> <span class="n">entity</span><span class="o">.</span><span class="n">plural</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">check_persons_to_allocate</span><span class="p">(</span>
+                        <span class="n">persons_plural</span><span class="p">,</span>
+                        <span class="n">entity_plural</span><span class="p">,</span>
+                        <span class="n">persons_ids</span><span class="p">,</span>
+                        <span class="n">person_id</span><span class="p">,</span>
+                        <span class="n">instance_id</span><span class="p">,</span>
+                        <span class="n">role_id</span><span class="p">,</span>
+                        <span class="n">persons_to_allocate</span><span class="p">,</span>
+                        <span class="n">index</span><span class="p">,</span>
+                    <span class="p">)</span>
+
+                    <span class="n">persons_to_allocate</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">person_id</span><span class="p">)</span>
+
+            <span class="n">entity_index</span> <span class="o">=</span> <span class="n">entity_ids</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">instance_id</span><span class="p">)</span>
+            <span class="n">role_by_plural</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">role</span><span class="o">.</span><span class="n">plural</span> <span class="ow">or</span> <span class="n">role</span><span class="o">.</span><span class="n">key</span><span class="p">:</span> <span class="n">role</span> <span class="k">for</span> <span class="n">role</span> <span class="ow">in</span> <span class="n">entity</span><span class="o">.</span><span class="n">roles</span>
+            <span class="p">}</span>
+
+            <span class="k">for</span> <span class="n">role_plural</span><span class="p">,</span> <span class="n">persons_with_role</span> <span class="ow">in</span> <span class="n">roles_json</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">role</span> <span class="o">=</span> <span class="n">role_by_plural</span><span class="p">[</span><span class="n">role_plural</span><span class="p">]</span>
+
+                <span class="k">if</span> <span class="n">role</span><span class="o">.</span><span class="n">max</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">persons_with_role</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">role</span><span class="o">.</span><span class="n">max</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">SituationParsingError</span><span class="p">(</span>
+                        <span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">,</span> <span class="n">instance_id</span><span class="p">,</span> <span class="n">role_plural</span><span class="p">],</span>
+                        <span class="sa">f</span><span class="s2">&quot;There can be at most </span><span class="si">{</span><span class="n">role</span><span class="o">.</span><span class="n">max</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">role_plural</span><span class="si">}</span><span class="s2"> in a </span><span class="si">{</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">. </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">persons_with_role</span><span class="p">)</span><span class="si">}</span><span class="s2"> were declared in &#39;</span><span class="si">{</span><span class="n">instance_id</span><span class="si">}</span><span class="s2">&#39;.&quot;</span><span class="p">,</span>
+                    <span class="p">)</span>
+
+                <span class="k">for</span> <span class="n">index_within_role</span><span class="p">,</span> <span class="n">person_id</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span>
+                    <span class="n">persons_with_role</span>
+                <span class="p">):</span>
+                    <span class="n">person_index</span> <span class="o">=</span> <span class="n">persons_ids</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">person_id</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">memberships</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">][</span>
+                        <span class="n">person_index</span>
+                    <span class="p">]</span> <span class="o">=</span> <span class="n">entity_index</span>
+                    <span class="n">person_role</span> <span class="o">=</span> <span class="p">(</span>
+                        <span class="n">role</span><span class="o">.</span><span class="n">subroles</span><span class="p">[</span><span class="n">index_within_role</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">role</span><span class="o">.</span><span class="n">subroles</span>
+                        <span class="k">else</span> <span class="n">role</span>
+                    <span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">roles</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">][</span><span class="n">person_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">person_role</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">init_variable_values</span><span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">variables_json</span><span class="p">,</span> <span class="n">instance_id</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">persons_to_allocate</span><span class="p">:</span>
+            <span class="n">entity_ids</span> <span class="o">=</span> <span class="n">entity_ids</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">persons_to_allocate</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">person_id</span> <span class="ow">in</span> <span class="n">persons_to_allocate</span><span class="p">:</span>
+                <span class="n">person_index</span> <span class="o">=</span> <span class="n">persons_ids</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">person_id</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">memberships</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">][</span>
+                    <span class="n">person_index</span>
+                <span class="p">]</span> <span class="o">=</span> <span class="n">entity_ids</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">person_id</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">roles</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">][</span>
+                    <span class="n">person_index</span>
+                <span class="p">]</span> <span class="o">=</span> <span class="n">entity</span><span class="o">.</span><span class="n">flattened_roles</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="c1"># Adjust previously computed ids and counts</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">entity_ids</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">]</span> <span class="o">=</span> <span class="n">entity_ids</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">entity_counts</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">entity_ids</span><span class="p">)</span>
+
+        <span class="c1"># Convert back to Python array</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">roles</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">roles</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memberships</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memberships</span><span class="p">[</span>
+            <span class="n">entity</span><span class="o">.</span><span class="n">plural</span>
+        <span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.set_default_period"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.set_default_period">[docs]</a>    <span class="k">def</span> <span class="nf">set_default_period</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">period_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">period_str</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">default_period</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">periods</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="n">period_str</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.get_input"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.get_input">[docs]</a>    <span class="k">def</span> <span class="nf">get_input</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">variable</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_buffer</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">input_buffer</span><span class="p">[</span><span class="n">variable</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_buffer</span><span class="p">[</span><span class="n">variable</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">period_str</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.check_persons_to_allocate"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.check_persons_to_allocate">[docs]</a>    <span class="k">def</span> <span class="nf">check_persons_to_allocate</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">persons_plural</span><span class="p">,</span>
+        <span class="n">entity_plural</span><span class="p">,</span>
+        <span class="n">persons_ids</span><span class="p">,</span>
+        <span class="n">person_id</span><span class="p">,</span>
+        <span class="n">entity_id</span><span class="p">,</span>
+        <span class="n">role_id</span><span class="p">,</span>
+        <span class="n">persons_to_allocate</span><span class="p">,</span>
+        <span class="n">index</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="n">helpers</span><span class="o">.</span><span class="n">check_type</span><span class="p">(</span>
+            <span class="n">person_id</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="p">[</span><span class="n">entity_plural</span><span class="p">,</span> <span class="n">entity_id</span><span class="p">,</span> <span class="n">role_id</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">index</span><span class="p">)]</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">person_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">persons_ids</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">SituationParsingError</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">entity_plural</span><span class="p">,</span> <span class="n">entity_id</span><span class="p">,</span> <span class="n">role_id</span><span class="p">],</span>
+                <span class="s2">&quot;Unexpected value: </span><span class="si">{0}</span><span class="s2">. </span><span class="si">{0}</span><span class="s2"> has been declared in </span><span class="si">{1}</span><span class="s2"> </span><span class="si">{2}</span><span class="s2">, but has not been declared in </span><span class="si">{3}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">person_id</span><span class="p">,</span> <span class="n">entity_id</span><span class="p">,</span> <span class="n">role_id</span><span class="p">,</span> <span class="n">persons_plural</span>
+                <span class="p">),</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">person_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">persons_to_allocate</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">SituationParsingError</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">entity_plural</span><span class="p">,</span> <span class="n">entity_id</span><span class="p">,</span> <span class="n">role_id</span><span class="p">],</span>
+                <span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> has been declared more than once in </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">person_id</span><span class="p">,</span> <span class="n">entity_plural</span>
+                <span class="p">),</span>
+            <span class="p">)</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.init_variable_values"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.init_variable_values">[docs]</a>    <span class="k">def</span> <span class="nf">init_variable_values</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">,</span> <span class="n">instance_object</span><span class="p">,</span> <span class="n">instance_id</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">variable_name</span><span class="p">,</span> <span class="n">variable_values</span> <span class="ow">in</span> <span class="n">instance_object</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">path_in_json</span> <span class="o">=</span> <span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">,</span> <span class="n">instance_id</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">]</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">entity</span><span class="o">.</span><span class="n">check_variable_defined_for_entity</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>  <span class="c1"># The variable is defined for another entity</span>
+                <span class="k">raise</span> <span class="n">SituationParsingError</span><span class="p">(</span><span class="n">path_in_json</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">except</span> <span class="n">VariableNotFoundError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>  <span class="c1"># The variable doesn&#39;t exist</span>
+                <span class="k">raise</span> <span class="n">SituationParsingError</span><span class="p">(</span><span class="n">path_in_json</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="n">code</span><span class="o">=</span><span class="mi">404</span><span class="p">)</span>
+
+            <span class="n">instance_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ids</span><span class="p">(</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">)</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">instance_id</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">variable_values</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_period</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">SituationParsingError</span><span class="p">(</span>
+                        <span class="n">path_in_json</span><span class="p">,</span>
+                        <span class="s2">&quot;Can&#39;t deal with type: expected object. Input variables should be set for specific periods. For instance: {&#39;salary&#39;: {&#39;2017-01&#39;: 2000, &#39;2017-02&#39;: 2500}}, or {&#39;birth_date&#39;: {&#39;ETERNITY&#39;: &#39;1980-01-01&#39;}}.&quot;</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="n">variable_values</span> <span class="o">=</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">default_period</span><span class="p">:</span> <span class="n">variable_values</span><span class="p">}</span>
+
+            <span class="k">for</span> <span class="n">period_str</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">variable_values</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">periods</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="n">period_str</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">SituationParsingError</span><span class="p">(</span><span class="n">path_in_json</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">variable</span> <span class="o">=</span> <span class="n">entity</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">add_variable_value</span><span class="p">(</span>
+                    <span class="n">entity</span><span class="p">,</span>
+                    <span class="n">variable</span><span class="p">,</span>
+                    <span class="n">instance_index</span><span class="p">,</span>
+                    <span class="n">instance_id</span><span class="p">,</span>
+                    <span class="n">period_str</span><span class="p">,</span>
+                    <span class="n">value</span><span class="p">,</span>
+                <span class="p">)</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.add_variable_value"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.add_variable_value">[docs]</a>    <span class="k">def</span> <span class="nf">add_variable_value</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">,</span> <span class="n">variable</span><span class="p">,</span> <span class="n">instance_index</span><span class="p">,</span> <span class="n">instance_id</span><span class="p">,</span> <span class="n">period_str</span><span class="p">,</span> <span class="n">value</span>
+    <span class="p">):</span>
+        <span class="n">path_in_json</span> <span class="o">=</span> <span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">,</span> <span class="n">instance_id</span><span class="p">,</span> <span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">period_str</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_input</span><span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">period_str</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">array</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">array_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_count</span><span class="p">(</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">)</span>
+            <span class="n">array</span> <span class="o">=</span> <span class="n">variable</span><span class="o">.</span><span class="n">default_array</span><span class="p">(</span><span class="n">array_size</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">variable</span><span class="o">.</span><span class="n">check_set_value</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">SituationParsingError</span><span class="p">(</span><span class="n">path_in_json</span><span class="p">,</span> <span class="o">*</span><span class="n">error</span><span class="o">.</span><span class="n">args</span><span class="p">)</span>
+
+        <span class="n">array</span><span class="p">[</span><span class="n">instance_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_buffer</span><span class="p">[</span><span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">][</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">periods</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="n">period_str</span><span class="p">))</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="n">array</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.finalize_variables_init"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.finalize_variables_init">[docs]</a>    <span class="k">def</span> <span class="nf">finalize_variables_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">population</span><span class="p">):</span>
+        <span class="c1"># Due to set_input mechanism, we must bufferize all inputs, then actually set them,</span>
+        <span class="c1"># so that the months are set first and the years last.</span>
+        <span class="n">plural_key</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span>
+        <span class="k">if</span> <span class="n">plural_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_counts</span><span class="p">:</span>
+            <span class="n">population</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_count</span><span class="p">(</span><span class="n">plural_key</span><span class="p">)</span>
+            <span class="n">population</span><span class="o">.</span><span class="n">ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ids</span><span class="p">(</span><span class="n">plural_key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">plural_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">memberships</span><span class="p">:</span>
+            <span class="n">population</span><span class="o">.</span><span class="n">members_entity_id</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">get_memberships</span><span class="p">(</span><span class="n">plural_key</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">population</span><span class="o">.</span><span class="n">members_role</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_roles</span><span class="p">(</span><span class="n">plural_key</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">variable_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_buffer</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">holder</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">get_holder</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>  <span class="c1"># Wrong entity, we can just ignore that</span>
+                <span class="k">continue</span>
+            <span class="n">buffer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_buffer</span><span class="p">[</span><span class="n">variable_name</span><span class="p">]</span>
+            <span class="n">unsorted_periods</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">periods</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="n">period_str</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">period_str</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_buffer</span><span class="p">[</span><span class="n">variable_name</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+            <span class="p">]</span>
+            <span class="c1"># We need to handle small periods first for set_input to work</span>
+            <span class="n">sorted_periods</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
+                <span class="n">unsorted_periods</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">periods</span><span class="o">.</span><span class="n">key_period_size</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">period_value</span> <span class="ow">in</span> <span class="n">sorted_periods</span><span class="p">:</span>
+                <span class="n">values</span> <span class="o">=</span> <span class="n">buffer</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">period_value</span><span class="p">)]</span>
+                <span class="c1"># Hack to replicate the values in the persons entity</span>
+                <span class="c1"># when we have an axis along a group entity but not persons</span>
+                <span class="n">array</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">population</span><span class="o">.</span><span class="n">count</span> <span class="o">//</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">))</span>
+                <span class="n">variable</span> <span class="o">=</span> <span class="n">holder</span><span class="o">.</span><span class="n">variable</span>
+                <span class="c1"># TODO - this duplicates the check in Simulation.set_input, but</span>
+                <span class="c1"># fixing that requires improving Simulation&#39;s handling of entities</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">end</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span>
+                    <span class="n">period_value</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">date</span> <span class="o">&lt;=</span> <span class="n">variable</span><span class="o">.</span><span class="n">end</span>
+                <span class="p">):</span>
+                    <span class="n">holder</span><span class="o">.</span><span class="n">set_input</span><span class="p">(</span><span class="n">period_value</span><span class="p">,</span> <span class="n">array</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.raise_period_mismatch"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.raise_period_mismatch">[docs]</a>    <span class="k">def</span> <span class="nf">raise_period_mismatch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">,</span> <span class="n">json</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="c1"># This error happens when we try to set a variable value for a period that doesn&#39;t match its definition period</span>
+        <span class="c1"># It is only raised when we consume the buffer. We thus don&#39;t know which exact key caused the error.</span>
+        <span class="c1"># We do a basic research to find the culprit path</span>
+        <span class="n">culprit_path</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+            <span class="n">dpath</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">search</span><span class="p">(</span>
+                <span class="n">json</span><span class="p">,</span>
+                <span class="s2">&quot;*/</span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">variable_name</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">period</span><span class="p">)),</span>
+                <span class="n">yielded</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">culprit_path</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">]</span> <span class="o">+</span> <span class="n">culprit_path</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">entity</span><span class="o">.</span><span class="n">plural</span>
+            <span class="p">]</span>  <span class="c1"># Fallback: if we can&#39;t find the culprit, just set the error at the entities level</span>
+
+        <span class="k">raise</span> <span class="n">SituationParsingError</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">message</span><span class="p">)</span></div>
+
+    <span class="c1"># Returns the total number of instances of this entity, including when there is replication along axes</span>
+<div class="viewcode-block" id="SimulationBuilder.get_count"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.get_count">[docs]</a>    <span class="k">def</span> <span class="nf">get_count</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_entity_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">entity_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_counts</span><span class="p">[</span><span class="n">entity_name</span><span class="p">]</span>
+        <span class="p">)</span></div>
+
+    <span class="c1"># Returns the ids of instances of this entity, including when there is replication along axes</span>
+<div class="viewcode-block" id="SimulationBuilder.get_ids"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.get_ids">[docs]</a>    <span class="k">def</span> <span class="nf">get_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_entity_ids</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">entity_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_ids</span><span class="p">[</span><span class="n">entity_name</span><span class="p">]</span>
+        <span class="p">)</span></div>
+
+    <span class="c1"># Returns the memberships of individuals in this entity, including when there is replication along axes</span>
+<div class="viewcode-block" id="SimulationBuilder.get_memberships"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.get_memberships">[docs]</a>    <span class="k">def</span> <span class="nf">get_memberships</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_name</span><span class="p">):</span>
+        <span class="c1"># Return empty array for the &quot;persons&quot; entity</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_memberships</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">entity_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">memberships</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">entity_name</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="p">)</span></div>
+
+    <span class="c1"># Returns the roles of individuals in this entity, including when there is replication along axes</span>
+<div class="viewcode-block" id="SimulationBuilder.get_roles"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.get_roles">[docs]</a>    <span class="k">def</span> <span class="nf">get_roles</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_name</span><span class="p">):</span>
+        <span class="c1"># Return empty array for the &quot;persons&quot; entity</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes_roles</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">entity_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">roles</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">entity_name</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.add_parallel_axis"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.add_parallel_axis">[docs]</a>    <span class="k">def</span> <span class="nf">add_parallel_axis</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">axis</span><span class="p">):</span>
+        <span class="c1"># All parallel axes have the same count and entity.</span>
+        <span class="c1"># Search for a compatible axis, if none exists, error out</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">axis</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.add_perpendicular_axis"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.add_perpendicular_axis">[docs]</a>    <span class="k">def</span> <span class="nf">add_perpendicular_axis</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">axis</span><span class="p">):</span>
+        <span class="c1"># This adds an axis perpendicular to all previous dimensions</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axes</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">axis</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.expand_axes"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.expand_axes">[docs]</a>    <span class="k">def</span> <span class="nf">expand_axes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># This method should be idempotent &amp; allow change in axes</span>
+        <span class="n">perpendicular_dimensions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes</span>
+
+        <span class="n">cell_count</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">for</span> <span class="n">parallel_axes</span> <span class="ow">in</span> <span class="n">perpendicular_dimensions</span><span class="p">:</span>
+            <span class="n">first_axis</span> <span class="o">=</span> <span class="n">parallel_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">axis_count</span> <span class="o">=</span> <span class="n">first_axis</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span>
+            <span class="n">cell_count</span> <span class="o">*=</span> <span class="n">axis_count</span>
+
+        <span class="c1"># Scale the &quot;prototype&quot; situation, repeating it cell_count times</span>
+        <span class="k">for</span> <span class="n">entity_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_counts</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="c1"># Adjust counts</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">axes_entity_counts</span><span class="p">[</span><span class="n">entity_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">get_count</span><span class="p">(</span><span class="n">entity_name</span><span class="p">)</span> <span class="o">*</span> <span class="n">cell_count</span>
+            <span class="p">)</span>
+            <span class="c1"># Adjust ids</span>
+            <span class="n">original_ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ids</span><span class="p">(</span><span class="n">entity_name</span><span class="p">)</span> <span class="o">*</span> <span class="n">cell_count</span>
+            <span class="n">indices</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+                <span class="mi">0</span><span class="p">,</span> <span class="n">cell_count</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_counts</span><span class="p">[</span><span class="n">entity_name</span><span class="p">]</span>
+            <span class="p">)</span>
+            <span class="n">adjusted_ids</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="nb">id</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">ix</span><span class="p">)</span> <span class="k">for</span> <span class="nb">id</span><span class="p">,</span> <span class="n">ix</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">original_ids</span><span class="p">,</span> <span class="n">indices</span><span class="p">)</span>
+            <span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">axes_entity_ids</span><span class="p">[</span><span class="n">entity_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">adjusted_ids</span>
+            <span class="c1"># Adjust roles</span>
+            <span class="n">original_roles</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_roles</span><span class="p">(</span><span class="n">entity_name</span><span class="p">)</span>
+            <span class="n">adjusted_roles</span> <span class="o">=</span> <span class="n">original_roles</span> <span class="o">*</span> <span class="n">cell_count</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">axes_roles</span><span class="p">[</span><span class="n">entity_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">adjusted_roles</span>
+            <span class="c1"># Adjust memberships, for group entities only</span>
+            <span class="k">if</span> <span class="n">entity_name</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">persons_plural</span><span class="p">:</span>
+                <span class="n">original_memberships</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_memberships</span><span class="p">(</span><span class="n">entity_name</span><span class="p">)</span>
+                <span class="n">repeated_memberships</span> <span class="o">=</span> <span class="n">original_memberships</span> <span class="o">*</span> <span class="n">cell_count</span>
+                <span class="n">indices</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">numpy</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span>
+                        <span class="n">numpy</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">cell_count</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">original_memberships</span><span class="p">)</span>
+                    <span class="p">)</span>
+                    <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_counts</span><span class="p">[</span><span class="n">entity_name</span><span class="p">]</span>
+                <span class="p">)</span>
+                <span class="n">adjusted_memberships</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">repeated_memberships</span><span class="p">)</span> <span class="o">+</span> <span class="n">indices</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">axes_memberships</span><span class="p">[</span><span class="n">entity_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">adjusted_memberships</span>
+
+        <span class="c1"># Now generate input values along the specified axes</span>
+        <span class="c1"># TODO - factor out the common logic here</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">axes</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">parallel_axes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">first_axis</span> <span class="o">=</span> <span class="n">parallel_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">axis_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">first_axis</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span>
+            <span class="n">axis_entity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_variable_entity</span><span class="p">(</span><span class="n">first_axis</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">])</span>
+            <span class="n">axis_entity_step_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_counts</span><span class="p">[</span><span class="n">axis_entity</span><span class="o">.</span><span class="n">plural</span><span class="p">]</span>
+            <span class="c1"># Distribute values along axes</span>
+            <span class="k">for</span> <span class="n">axis</span> <span class="ow">in</span> <span class="n">parallel_axes</span><span class="p">:</span>
+                <span class="n">axis_index</span> <span class="o">=</span> <span class="n">axis</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;index&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">axis_period</span> <span class="o">=</span> <span class="n">axis</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;period&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_period</span><span class="p">)</span>
+                <span class="n">axis_name</span> <span class="o">=</span> <span class="n">axis</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+                <span class="n">variable</span> <span class="o">=</span> <span class="n">axis_entity</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">axis_name</span><span class="p">)</span>
+                <span class="n">array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_input</span><span class="p">(</span><span class="n">axis_name</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">axis_period</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">array</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">array</span> <span class="o">=</span> <span class="n">variable</span><span class="o">.</span><span class="n">default_array</span><span class="p">(</span>
+                        <span class="n">axis_count</span> <span class="o">*</span> <span class="n">axis_entity_step_size</span>
+                    <span class="p">)</span>
+                <span class="k">elif</span> <span class="n">array</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="n">axis_entity_step_size</span><span class="p">:</span>
+                    <span class="n">array</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">axis_count</span><span class="p">)</span>
+                <span class="n">array</span><span class="p">[</span><span class="n">axis_index</span><span class="p">::</span><span class="n">axis_entity_step_size</span><span class="p">]</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span>
+                    <span class="n">axis</span><span class="p">[</span><span class="s2">&quot;min&quot;</span><span class="p">],</span>
+                    <span class="n">axis</span><span class="p">[</span><span class="s2">&quot;max&quot;</span><span class="p">],</span>
+                    <span class="n">num</span><span class="o">=</span><span class="n">axis_count</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="c1"># Set input</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">input_buffer</span><span class="p">[</span><span class="n">axis_name</span><span class="p">][</span><span class="nb">str</span><span class="p">(</span><span class="n">axis_period</span><span class="p">)]</span> <span class="o">=</span> <span class="n">array</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">first_axes_count</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">parallel_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">parallel_axes</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">axes</span>
+            <span class="p">)</span>
+            <span class="n">axes_linspaces</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">numpy</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">axis_count</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="n">axis_count</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">axis_count</span> <span class="ow">in</span> <span class="n">first_axes_count</span>
+            <span class="p">]</span>
+            <span class="n">axes_meshes</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="o">*</span><span class="n">axes_linspaces</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">parallel_axes</span><span class="p">,</span> <span class="n">mesh</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">axes</span><span class="p">,</span> <span class="n">axes_meshes</span><span class="p">):</span>
+                <span class="n">first_axis</span> <span class="o">=</span> <span class="n">parallel_axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">axis_count</span> <span class="o">=</span> <span class="n">first_axis</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span>
+                <span class="n">axis_entity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_variable_entity</span><span class="p">(</span><span class="n">first_axis</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">])</span>
+                <span class="n">axis_entity_step_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_counts</span><span class="p">[</span><span class="n">axis_entity</span><span class="o">.</span><span class="n">plural</span><span class="p">]</span>
+                <span class="c1"># Distribute values along the grid</span>
+                <span class="k">for</span> <span class="n">axis</span> <span class="ow">in</span> <span class="n">parallel_axes</span><span class="p">:</span>
+                    <span class="n">axis_index</span> <span class="o">=</span> <span class="n">axis</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;index&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="n">axis_period</span> <span class="o">=</span> <span class="n">axis</span><span class="p">[</span><span class="s2">&quot;period&quot;</span><span class="p">]</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_period</span>
+                    <span class="n">axis_name</span> <span class="o">=</span> <span class="n">axis</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+                    <span class="n">variable</span> <span class="o">=</span> <span class="n">axis_entity</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">axis_name</span><span class="p">)</span>
+                    <span class="n">array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_input</span><span class="p">(</span><span class="n">axis_name</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">axis_period</span><span class="p">))</span>
+                    <span class="k">if</span> <span class="n">array</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">array</span> <span class="o">=</span> <span class="n">variable</span><span class="o">.</span><span class="n">default_array</span><span class="p">(</span>
+                            <span class="n">cell_count</span> <span class="o">*</span> <span class="n">axis_entity_step_size</span>
+                        <span class="p">)</span>
+                    <span class="k">elif</span> <span class="n">array</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="n">axis_entity_step_size</span><span class="p">:</span>
+                        <span class="n">array</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">cell_count</span><span class="p">)</span>
+                    <span class="n">array</span><span class="p">[</span><span class="n">axis_index</span><span class="p">::</span><span class="n">axis_entity_step_size</span><span class="p">]</span> <span class="o">=</span> <span class="n">axis</span><span class="p">[</span>
+                        <span class="s2">&quot;min&quot;</span>
+                    <span class="p">]</span> <span class="o">+</span> <span class="n">mesh</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">cell_count</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span>
+                        <span class="n">axis</span><span class="p">[</span><span class="s2">&quot;max&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">axis</span><span class="p">[</span><span class="s2">&quot;min&quot;</span><span class="p">]</span>
+                    <span class="p">)</span> <span class="o">/</span> <span class="p">(</span>
+                        <span class="n">axis_count</span> <span class="o">-</span> <span class="mi">1</span>
+                    <span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">input_buffer</span><span class="p">[</span><span class="n">axis_name</span><span class="p">][</span><span class="nb">str</span><span class="p">(</span><span class="n">axis_period</span><span class="p">)]</span> <span class="o">=</span> <span class="n">array</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.get_variable_entity"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.get_variable_entity">[docs]</a>    <span class="k">def</span> <span class="nf">get_variable_entity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">variable_entities</span><span class="p">[</span><span class="n">variable_name</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="SimulationBuilder.register_variable"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.register_variable">[docs]</a>    <span class="k">def</span> <span class="nf">register_variable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">,</span> <span class="n">entity</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">variable_entities</span><span class="p">[</span><span class="n">variable_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">entity</span></div></div>
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2022
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/clipboard.min.js"></script>
+    <script src="../../../_static/copybutton.js"></script>
+    <script src="../../../_static/scripts/sphinx-book-theme.js?digest=9c920249402e914e316237a7dbc6769907cce411"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../../_static/design-tabs.js"></script>
+    <script src="../../../_static/scripts/furo.js"></script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"
+const thebe_selector = ".thebe,.cell"
+const thebe_selector_input = "pre"
+const thebe_selector_output = ".output, .cell_output"
+</script>
+    <script async="async" src="../../../_static/sphinx-thebe.js"></script>
+    </body>
+</html>

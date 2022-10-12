@@ -1,0 +1,821 @@
+<!doctype html>
+<html class="no-js">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
+
+    <meta name="generator" content="sphinx-4.5.0, furo 2022.09.29"/>
+        <title>policyengine_core.periods.period_ - PolicyEngine Core documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?digest=d81277517bee4d6b0349d71bb2661d4890b5617c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/design-style.b7bb847fb20b106c3d81b95245e65545.min.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #eeffcc;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../intro.html"><div class="brand">PolicyEngine Core documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../intro.html">
+  
+  
+  <span class="sidebar-brand-text">PolicyEngine Core documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder=Search name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Contributing</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/intro.html">How to contribute</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Using PolicyEngine Core</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/simulation.html">Simulating policy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/country.html">Country packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/cli.html">Command-line interface</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/commons.html">Commons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/country_template.html">Country template</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/data_storage.html">Data storage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/entities.html">Entities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/enums.html">Enums</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/experimental.html">Experimental features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/extension_template.html">Extension template</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/holders.html">Holders</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/parameters.html">Parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/periods.html">Periods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/populations.html">Populations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/projectors.html">Projectors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/reforms.html">Reforms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/scripts.html">Scripts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/simulations.html">Simulations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/taxbenefitsystems.html">Tax-benefit systems</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/taxscales.html">Tax scales</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/tools.html">Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/tracers.html">Tracers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/types.html">Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/variables.html">Variables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/warnings.html">Warnings</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <h1>Source code for policyengine_core.periods.period_</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span> <span class="nn">calendar</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span>
+
+<span class="kn">from</span> <span class="nn">policyengine_core</span> <span class="kn">import</span> <span class="n">periods</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.periods</span> <span class="kn">import</span> <span class="n">config</span><span class="p">,</span> <span class="n">helpers</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.periods.instant_</span> <span class="kn">import</span> <span class="n">Instant</span>
+
+
+<div class="viewcode-block" id="Period"><a class="viewcode-back" href="../../../python_api/periods.html#policyengine_core.periods.period_.Period">[docs]</a><span class="k">class</span> <span class="nc">Period</span><span class="p">(</span><span class="nb">tuple</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Toolbox to handle date intervals.</span>
+
+<span class="sd">    A period is a triple (unit, start, size), where unit is either &quot;month&quot; or &quot;year&quot;, where start format is a</span>
+<span class="sd">    (year, month, day) triple, and where size is an integer &gt; 1.</span>
+
+<span class="sd">    Since a period is a triple it can be used as a dictionary key.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Transform period to to its Python representation as a string.</span>
+
+<span class="sd">        &gt;&gt;&gt; repr(period(&#39;year&#39;, 2014))</span>
+<span class="sd">        &quot;Period((&#39;year&#39;, Instant((2014, 1, 1)), 1))&quot;</span>
+<span class="sd">        &gt;&gt;&gt; repr(period(&#39;month&#39;, &#39;2014-2&#39;))</span>
+<span class="sd">        &quot;Period((&#39;month&#39;, Instant((2014, 2, 1)), 1))&quot;</span>
+<span class="sd">        &gt;&gt;&gt; repr(period(&#39;day&#39;, &#39;2014-2-3&#39;))</span>
+<span class="sd">        &quot;Period((&#39;day&#39;, Instant((2014, 2, 3)), 1))&quot;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">(</span><span class="si">{}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="nb">super</span><span class="p">(</span><span class="n">Period</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__repr__</span><span class="p">()</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Transform period to a string.</span>
+
+<span class="sd">        &gt;&gt;&gt; str(period(YEAR, 2014))</span>
+<span class="sd">        &#39;2014&#39;</span>
+
+<span class="sd">        &gt;&gt;&gt; str(period(YEAR, &#39;2014-2&#39;))</span>
+<span class="sd">        &#39;year:2014-02&#39;</span>
+<span class="sd">        &gt;&gt;&gt; str(period(MONTH, &#39;2014-2&#39;))</span>
+<span class="sd">        &#39;2014-02&#39;</span>
+
+<span class="sd">        &gt;&gt;&gt; str(period(YEAR, 2012, size = 2))</span>
+<span class="sd">        &#39;year:2012:2&#39;</span>
+<span class="sd">        &gt;&gt;&gt; str(period(MONTH, 2012, size = 2))</span>
+<span class="sd">        &#39;month:2012-01:2&#39;</span>
+<span class="sd">        &gt;&gt;&gt; str(period(MONTH, 2012, size = 12))</span>
+<span class="sd">        &#39;2012&#39;</span>
+
+<span class="sd">        &gt;&gt;&gt; str(period(YEAR, &#39;2012-3&#39;, size = 2))</span>
+<span class="sd">        &#39;year:2012-03:2&#39;</span>
+<span class="sd">        &gt;&gt;&gt; str(period(MONTH, &#39;2012-3&#39;, size = 2))</span>
+<span class="sd">        &#39;month:2012-03:2&#39;</span>
+<span class="sd">        &gt;&gt;&gt; str(period(MONTH, &#39;2012-3&#39;, size = 12))</span>
+<span class="sd">        &#39;year:2012-03&#39;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">unit</span><span class="p">,</span> <span class="n">start_instant</span><span class="p">,</span> <span class="n">size</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="k">if</span> <span class="n">unit</span> <span class="o">==</span> <span class="n">config</span><span class="o">.</span><span class="n">ETERNITY</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;ETERNITY&quot;</span>
+        <span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="p">,</span> <span class="n">day</span> <span class="o">=</span> <span class="n">start_instant</span>
+
+        <span class="c1"># 1 year long period</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">unit</span> <span class="o">==</span> <span class="n">config</span><span class="o">.</span><span class="n">MONTH</span>
+            <span class="ow">and</span> <span class="n">size</span> <span class="o">==</span> <span class="mi">12</span>
+            <span class="ow">or</span> <span class="n">unit</span> <span class="o">==</span> <span class="n">config</span><span class="o">.</span><span class="n">YEAR</span>
+            <span class="ow">and</span> <span class="n">size</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="p">):</span>
+            <span class="k">if</span> <span class="n">month</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="c1"># civil year starting from january</span>
+                <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">year</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># rolling year</span>
+                <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">:</span><span class="si">{}</span><span class="s2">-</span><span class="si">{:02d}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">YEAR</span><span class="p">,</span> <span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="p">)</span>
+        <span class="c1"># simple month</span>
+        <span class="k">if</span> <span class="n">unit</span> <span class="o">==</span> <span class="n">config</span><span class="o">.</span><span class="n">MONTH</span> <span class="ow">and</span> <span class="n">size</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">-</span><span class="si">{:02d}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="p">)</span>
+        <span class="c1"># several civil years</span>
+        <span class="k">if</span> <span class="n">unit</span> <span class="o">==</span> <span class="n">config</span><span class="o">.</span><span class="n">YEAR</span> <span class="ow">and</span> <span class="n">month</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">:</span><span class="si">{}</span><span class="s2">:</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">unit</span><span class="p">,</span> <span class="n">year</span><span class="p">,</span> <span class="n">size</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">unit</span> <span class="o">==</span> <span class="n">config</span><span class="o">.</span><span class="n">DAY</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">size</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">-</span><span class="si">{:02d}</span><span class="s2">-</span><span class="si">{:02d}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="p">,</span> <span class="n">day</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">:</span><span class="si">{}</span><span class="s2">-</span><span class="si">{:02d}</span><span class="s2">-</span><span class="si">{:02d}</span><span class="s2">:</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">unit</span><span class="p">,</span> <span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="p">,</span> <span class="n">day</span><span class="p">,</span> <span class="n">size</span>
+                <span class="p">)</span>
+
+        <span class="c1"># complex period</span>
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">:</span><span class="si">{}</span><span class="s2">-</span><span class="si">{:02d}</span><span class="s2">:</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">unit</span><span class="p">,</span> <span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="p">,</span> <span class="n">size</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">date</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="p">),</span> <span class="s1">&#39;&quot;date&quot; is undefined for a period of size &gt; 1: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">date</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">days</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Count the number of days in period.</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, 2014).days</span>
+<span class="sd">        365</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, 2014).days</span>
+<span class="sd">        365</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, 2014).days</span>
+<span class="sd">        365</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, &#39;2014-2&#39;).days</span>
+<span class="sd">        28</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2014-2&#39;).days</span>
+<span class="sd">        28</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, &#39;2014-2&#39;).days</span>
+<span class="sd">        365</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, &#39;2014-2-3&#39;).days</span>
+<span class="sd">        1</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2014-2-3&#39;).days</span>
+<span class="sd">        28</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, &#39;2014-2-3&#39;).days</span>
+<span class="sd">        365</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="o">.</span><span class="n">date</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">date</span><span class="p">)</span><span class="o">.</span><span class="n">days</span> <span class="o">+</span> <span class="mi">1</span>
+
+<div class="viewcode-block" id="Period.intersection"><a class="viewcode-back" href="../../../python_api/periods.html#policyengine_core.periods.period_.Period.intersection">[docs]</a>    <span class="k">def</span> <span class="nf">intersection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="n">Instant</span><span class="p">,</span> <span class="n">stop</span><span class="p">:</span> <span class="n">Instant</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">start</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">stop</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span>
+        <span class="n">period_start</span> <span class="o">=</span> <span class="bp">self</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">period_stop</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stop</span>
+        <span class="k">if</span> <span class="n">start</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="n">period_start</span>
+        <span class="k">if</span> <span class="n">stop</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">stop</span> <span class="o">=</span> <span class="n">period_stop</span>
+        <span class="k">if</span> <span class="n">stop</span> <span class="o">&lt;</span> <span class="n">period_start</span> <span class="ow">or</span> <span class="n">period_stop</span> <span class="o">&lt;</span> <span class="n">start</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">intersection_start</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">period_start</span><span class="p">,</span> <span class="n">start</span><span class="p">)</span>
+        <span class="n">intersection_stop</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">period_stop</span><span class="p">,</span> <span class="n">stop</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">intersection_start</span> <span class="o">==</span> <span class="n">period_start</span>
+            <span class="ow">and</span> <span class="n">intersection_stop</span> <span class="o">==</span> <span class="n">period_stop</span>
+        <span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">intersection_start</span><span class="o">.</span><span class="n">day</span> <span class="o">==</span> <span class="mi">1</span>
+            <span class="ow">and</span> <span class="n">intersection_start</span><span class="o">.</span><span class="n">month</span> <span class="o">==</span> <span class="mi">1</span>
+            <span class="ow">and</span> <span class="n">intersection_stop</span><span class="o">.</span><span class="n">day</span> <span class="o">==</span> <span class="mi">31</span>
+            <span class="ow">and</span> <span class="n">intersection_stop</span><span class="o">.</span><span class="n">month</span> <span class="o">==</span> <span class="mi">12</span>
+        <span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span>
+                <span class="p">(</span>
+                    <span class="s2">&quot;year&quot;</span><span class="p">,</span>
+                    <span class="n">intersection_start</span><span class="p">,</span>
+                    <span class="n">intersection_stop</span><span class="o">.</span><span class="n">year</span> <span class="o">-</span> <span class="n">intersection_start</span><span class="o">.</span><span class="n">year</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">intersection_start</span><span class="o">.</span><span class="n">day</span> <span class="o">==</span> <span class="mi">1</span>
+            <span class="ow">and</span> <span class="n">intersection_stop</span><span class="o">.</span><span class="n">day</span>
+            <span class="o">==</span> <span class="n">calendar</span><span class="o">.</span><span class="n">monthrange</span><span class="p">(</span>
+                <span class="n">intersection_stop</span><span class="o">.</span><span class="n">year</span><span class="p">,</span> <span class="n">intersection_stop</span><span class="o">.</span><span class="n">month</span>
+            <span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span>
+                <span class="p">(</span>
+                    <span class="s2">&quot;month&quot;</span><span class="p">,</span>
+                    <span class="n">intersection_start</span><span class="p">,</span>
+                    <span class="p">(</span>
+                        <span class="p">(</span><span class="n">intersection_stop</span><span class="o">.</span><span class="n">year</span> <span class="o">-</span> <span class="n">intersection_start</span><span class="o">.</span><span class="n">year</span><span class="p">)</span> <span class="o">*</span> <span class="mi">12</span>
+                        <span class="o">+</span> <span class="n">intersection_stop</span><span class="o">.</span><span class="n">month</span>
+                        <span class="o">-</span> <span class="n">intersection_start</span><span class="o">.</span><span class="n">month</span>
+                        <span class="o">+</span> <span class="mi">1</span>
+                    <span class="p">),</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span>
+            <span class="p">(</span>
+                <span class="s2">&quot;day&quot;</span><span class="p">,</span>
+                <span class="n">intersection_start</span><span class="p">,</span>
+                <span class="p">(</span><span class="n">intersection_stop</span><span class="o">.</span><span class="n">date</span> <span class="o">-</span> <span class="n">intersection_start</span><span class="o">.</span><span class="n">date</span><span class="p">)</span><span class="o">.</span><span class="n">days</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Period.get_subperiods"><a class="viewcode-back" href="../../../python_api/periods.html#policyengine_core.periods.period_.Period.get_subperiods">[docs]</a>    <span class="k">def</span> <span class="nf">get_subperiods</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unit</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="s2">&quot;Period&quot;</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the list of all the periods of unit ``unit`` contained in self.</span>
+
+<span class="sd">        Examples:</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;2017&#39;).get_subperiods(MONTH)</span>
+<span class="sd">        &gt;&gt;&gt; [period(&#39;2017-01&#39;), period(&#39;2017-02&#39;), ... period(&#39;2017-12&#39;)]</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;year:2014:2&#39;).get_subperiods(YEAR)</span>
+<span class="sd">        &gt;&gt;&gt; [period(&#39;2014&#39;), period(&#39;2015&#39;)]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">helpers</span><span class="o">.</span><span class="n">unit_weight</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unit</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">helpers</span><span class="o">.</span><span class="n">unit_weight</span><span class="p">(</span><span class="n">unit</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Cannot subdivide </span><span class="si">{0}</span><span class="s2"> into </span><span class="si">{1}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unit</span><span class="p">,</span> <span class="n">unit</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">unit</span> <span class="o">==</span> <span class="n">config</span><span class="o">.</span><span class="n">YEAR</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">this_year</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">YEAR</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+            <span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">unit</span> <span class="o">==</span> <span class="n">config</span><span class="o">.</span><span class="n">MONTH</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">first_month</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">MONTH</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size_in_months</span><span class="p">)</span>
+            <span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">unit</span> <span class="o">==</span> <span class="n">config</span><span class="o">.</span><span class="n">DAY</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">first_day</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">DAY</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size_in_days</span><span class="p">)</span>
+            <span class="p">]</span></div>
+
+<div class="viewcode-block" id="Period.offset"><a class="viewcode-back" href="../../../python_api/periods.html#policyengine_core.periods.period_.Period.offset">[docs]</a>    <span class="k">def</span> <span class="nf">offset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">unit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Period&quot;</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Increment (or decrement) the given period with offset units.</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, 2014).offset(1)</span>
+<span class="sd">        Period((&#39;day&#39;, Instant((2014, 1, 2)), 365))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, 2014).offset(1, &#39;day&#39;)</span>
+<span class="sd">        Period((&#39;day&#39;, Instant((2014, 1, 2)), 365))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, 2014).offset(1, &#39;month&#39;)</span>
+<span class="sd">        Period((&#39;day&#39;, Instant((2014, 2, 1)), 365))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, 2014).offset(1, &#39;year&#39;)</span>
+<span class="sd">        Period((&#39;day&#39;, Instant((2015, 1, 1)), 365))</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, 2014).offset(1)</span>
+<span class="sd">        Period((&#39;month&#39;, Instant((2014, 2, 1)), 12))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, 2014).offset(1, &#39;day&#39;)</span>
+<span class="sd">        Period((&#39;month&#39;, Instant((2014, 1, 2)), 12))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, 2014).offset(1, &#39;month&#39;)</span>
+<span class="sd">        Period((&#39;month&#39;, Instant((2014, 2, 1)), 12))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, 2014).offset(1, &#39;year&#39;)</span>
+<span class="sd">        Period((&#39;month&#39;, Instant((2015, 1, 1)), 12))</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, 2014).offset(1)</span>
+<span class="sd">        Period((&#39;year&#39;, Instant((2015, 1, 1)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, 2014).offset(1, &#39;day&#39;)</span>
+<span class="sd">        Period((&#39;year&#39;, Instant((2014, 1, 2)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, 2014).offset(1, &#39;month&#39;)</span>
+<span class="sd">        Period((&#39;year&#39;, Instant((2014, 2, 1)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, 2014).offset(1, &#39;year&#39;)</span>
+<span class="sd">        Period((&#39;year&#39;, Instant((2015, 1, 1)), 1))</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, &#39;2011-2-28&#39;).offset(1)</span>
+<span class="sd">        Period((&#39;day&#39;, Instant((2011, 3, 1)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2011-2-28&#39;).offset(1)</span>
+<span class="sd">        Period((&#39;month&#39;, Instant((2011, 3, 28)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, &#39;2011-2-28&#39;).offset(1)</span>
+<span class="sd">        Period((&#39;year&#39;, Instant((2012, 2, 28)), 1))</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, &#39;2011-3-1&#39;).offset(-1)</span>
+<span class="sd">        Period((&#39;day&#39;, Instant((2011, 2, 28)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2011-3-1&#39;).offset(-1)</span>
+<span class="sd">        Period((&#39;month&#39;, Instant((2011, 2, 1)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, &#39;2011-3-1&#39;).offset(-1)</span>
+<span class="sd">        Period((&#39;year&#39;, Instant((2010, 3, 1)), 1))</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, &#39;2014-1-30&#39;).offset(3)</span>
+<span class="sd">        Period((&#39;day&#39;, Instant((2014, 2, 2)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2014-1-30&#39;).offset(3)</span>
+<span class="sd">        Period((&#39;month&#39;, Instant((2014, 4, 30)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, &#39;2014-1-30&#39;).offset(3)</span>
+<span class="sd">        Period((&#39;year&#39;, Instant((2017, 1, 30)), 1))</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, 2014).offset(-3)</span>
+<span class="sd">        Period((&#39;day&#39;, Instant((2013, 12, 29)), 365))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, 2014).offset(-3)</span>
+<span class="sd">        Period((&#39;month&#39;, Instant((2013, 10, 1)), 12))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, 2014).offset(-3)</span>
+<span class="sd">        Period((&#39;year&#39;, Instant((2011, 1, 1)), 1))</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, &#39;2014-2-3&#39;).offset(&#39;first-of&#39;, &#39;month&#39;)</span>
+<span class="sd">        Period((&#39;day&#39;, Instant((2014, 2, 1)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, &#39;2014-2-3&#39;).offset(&#39;first-of&#39;, &#39;year&#39;)</span>
+<span class="sd">        Period((&#39;day&#39;, Instant((2014, 1, 1)), 1))</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, &#39;2014-2-3&#39;, 4).offset(&#39;first-of&#39;, &#39;month&#39;)</span>
+<span class="sd">        Period((&#39;day&#39;, Instant((2014, 2, 1)), 4))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, &#39;2014-2-3&#39;, 4).offset(&#39;first-of&#39;, &#39;year&#39;)</span>
+<span class="sd">        Period((&#39;day&#39;, Instant((2014, 1, 1)), 4))</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2014-2-3&#39;).offset(&#39;first-of&#39;)</span>
+<span class="sd">        Period((&#39;month&#39;, Instant((2014, 2, 1)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2014-2-3&#39;).offset(&#39;first-of&#39;, &#39;month&#39;)</span>
+<span class="sd">        Period((&#39;month&#39;, Instant((2014, 2, 1)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2014-2-3&#39;).offset(&#39;first-of&#39;, &#39;year&#39;)</span>
+<span class="sd">        Period((&#39;month&#39;, Instant((2014, 1, 1)), 1))</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2014-2-3&#39;, 4).offset(&#39;first-of&#39;)</span>
+<span class="sd">        Period((&#39;month&#39;, Instant((2014, 2, 1)), 4))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2014-2-3&#39;, 4).offset(&#39;first-of&#39;, &#39;month&#39;)</span>
+<span class="sd">        Period((&#39;month&#39;, Instant((2014, 2, 1)), 4))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2014-2-3&#39;, 4).offset(&#39;first-of&#39;, &#39;year&#39;)</span>
+<span class="sd">        Period((&#39;month&#39;, Instant((2014, 1, 1)), 4))</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, 2014).offset(&#39;first-of&#39;)</span>
+<span class="sd">        Period((&#39;year&#39;, Instant((2014, 1, 1)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, 2014).offset(&#39;first-of&#39;, &#39;month&#39;)</span>
+<span class="sd">        Period((&#39;year&#39;, Instant((2014, 1, 1)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, 2014).offset(&#39;first-of&#39;, &#39;year&#39;)</span>
+<span class="sd">        Period((&#39;year&#39;, Instant((2014, 1, 1)), 1))</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, &#39;2014-2-3&#39;).offset(&#39;first-of&#39;)</span>
+<span class="sd">        Period((&#39;year&#39;, Instant((2014, 1, 1)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, &#39;2014-2-3&#39;).offset(&#39;first-of&#39;, &#39;month&#39;)</span>
+<span class="sd">        Period((&#39;year&#39;, Instant((2014, 2, 1)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, &#39;2014-2-3&#39;).offset(&#39;first-of&#39;, &#39;year&#39;)</span>
+<span class="sd">        Period((&#39;year&#39;, Instant((2014, 1, 1)), 1))</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, &#39;2014-2-3&#39;).offset(&#39;last-of&#39;, &#39;month&#39;)</span>
+<span class="sd">        Period((&#39;day&#39;, Instant((2014, 2, 28)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, &#39;2014-2-3&#39;).offset(&#39;last-of&#39;, &#39;year&#39;)</span>
+<span class="sd">        Period((&#39;day&#39;, Instant((2014, 12, 31)), 1))</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, &#39;2014-2-3&#39;, 4).offset(&#39;last-of&#39;, &#39;month&#39;)</span>
+<span class="sd">        Period((&#39;day&#39;, Instant((2014, 2, 28)), 4))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, &#39;2014-2-3&#39;, 4).offset(&#39;last-of&#39;, &#39;year&#39;)</span>
+<span class="sd">        Period((&#39;day&#39;, Instant((2014, 12, 31)), 4))</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2014-2-3&#39;).offset(&#39;last-of&#39;)</span>
+<span class="sd">        Period((&#39;month&#39;, Instant((2014, 2, 28)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2014-2-3&#39;).offset(&#39;last-of&#39;, &#39;month&#39;)</span>
+<span class="sd">        Period((&#39;month&#39;, Instant((2014, 2, 28)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2014-2-3&#39;).offset(&#39;last-of&#39;, &#39;year&#39;)</span>
+<span class="sd">        Period((&#39;month&#39;, Instant((2014, 12, 31)), 1))</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2014-2-3&#39;, 4).offset(&#39;last-of&#39;)</span>
+<span class="sd">        Period((&#39;month&#39;, Instant((2014, 2, 28)), 4))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2014-2-3&#39;, 4).offset(&#39;last-of&#39;, &#39;month&#39;)</span>
+<span class="sd">        Period((&#39;month&#39;, Instant((2014, 2, 28)), 4))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2014-2-3&#39;, 4).offset(&#39;last-of&#39;, &#39;year&#39;)</span>
+<span class="sd">        Period((&#39;month&#39;, Instant((2014, 12, 31)), 4))</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, 2014).offset(&#39;last-of&#39;)</span>
+<span class="sd">        Period((&#39;year&#39;, Instant((2014, 12, 31)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, 2014).offset(&#39;last-of&#39;, &#39;month&#39;)</span>
+<span class="sd">        Period((&#39;year&#39;, Instant((2014, 1, 31)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, 2014).offset(&#39;last-of&#39;, &#39;year&#39;)</span>
+<span class="sd">        Period((&#39;year&#39;, Instant((2014, 12, 31)), 1))</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, &#39;2014-2-3&#39;).offset(&#39;last-of&#39;)</span>
+<span class="sd">        Period((&#39;year&#39;, Instant((2014, 12, 31)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, &#39;2014-2-3&#39;).offset(&#39;last-of&#39;, &#39;month&#39;)</span>
+<span class="sd">        Period((&#39;year&#39;, Instant((2014, 2, 28)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, &#39;2014-2-3&#39;).offset(&#39;last-of&#39;, &#39;year&#39;)</span>
+<span class="sd">        Period((&#39;year&#39;, Instant((2014, 12, 31)), 1))</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span>
+            <span class="p">(</span>
+                <span class="bp">self</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="bp">self</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="n">offset</span><span class="p">,</span> <span class="bp">self</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">unit</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">unit</span><span class="p">),</span>
+                <span class="bp">self</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+            <span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Period.contains"><a class="viewcode-back" href="../../../python_api/periods.html#policyengine_core.periods.period_.Period.contains">[docs]</a>    <span class="k">def</span> <span class="nf">contains</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">Period</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns ``True`` if the period contains ``other``. For instance, ``period(2015)`` contains ``period(2015-01)``</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="o">&lt;=</span> <span class="n">other</span><span class="o">.</span><span class="n">start</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">stop</span> <span class="o">&gt;=</span> <span class="n">other</span><span class="o">.</span><span class="n">stop</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">size</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the size of the period.</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2012-2-29&#39;, 4).size</span>
+<span class="sd">        4</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">size_in_months</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the size of the period in months.</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2012-2-29&#39;, 4).size_in_months</span>
+<span class="sd">        4</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, &#39;2012&#39;, 1).size_in_months</span>
+<span class="sd">        12</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">config</span><span class="o">.</span><span class="n">MONTH</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">config</span><span class="o">.</span><span class="n">YEAR</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="mi">12</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Cannot calculate number of months in </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">size_in_days</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the size of the period in days.</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2012-2-29&#39;, 4).size_in_days</span>
+<span class="sd">        28</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, &#39;2012&#39;, 1).size_in_days</span>
+<span class="sd">        366</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">unit</span><span class="p">,</span> <span class="n">instant</span><span class="p">,</span> <span class="n">length</span> <span class="o">=</span> <span class="bp">self</span>
+
+        <span class="k">if</span> <span class="n">unit</span> <span class="o">==</span> <span class="n">config</span><span class="o">.</span><span class="n">DAY</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">length</span>
+        <span class="k">if</span> <span class="n">unit</span> <span class="ow">in</span> <span class="p">[</span><span class="n">config</span><span class="o">.</span><span class="n">MONTH</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">YEAR</span><span class="p">]:</span>
+            <span class="n">last_day</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="n">length</span><span class="p">,</span> <span class="n">unit</span><span class="p">)</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">DAY</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">last_day</span><span class="o">.</span><span class="n">date</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">date</span><span class="p">)</span><span class="o">.</span><span class="n">days</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Cannot calculate number of days in </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">unit</span><span class="p">))</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">periods</span><span class="o">.</span><span class="n">Instant</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the first day of the period as an Instant instance.</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2012-2-29&#39;, 4).start</span>
+<span class="sd">        Instant((2012, 2, 29))</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">periods</span><span class="o">.</span><span class="n">Instant</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the last day of the period as an Instant instance.</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, 2014).stop</span>
+<span class="sd">        Instant((2014, 12, 31))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, 2014).stop</span>
+<span class="sd">        Instant((2014, 12, 31))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, 2014).stop</span>
+<span class="sd">        Instant((2014, 12, 31))</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, &#39;2012-2-29&#39;).stop</span>
+<span class="sd">        Instant((2013, 2, 28))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2012-2-29&#39;).stop</span>
+<span class="sd">        Instant((2012, 3, 28))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, &#39;2012-2-29&#39;).stop</span>
+<span class="sd">        Instant((2012, 2, 29))</span>
+
+<span class="sd">        &gt;&gt;&gt; period(&#39;year&#39;, &#39;2012-2-29&#39;, 2).stop</span>
+<span class="sd">        Instant((2014, 2, 28))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;month&#39;, &#39;2012-2-29&#39;, 2).stop</span>
+<span class="sd">        Instant((2012, 4, 28))</span>
+<span class="sd">        &gt;&gt;&gt; period(&#39;day&#39;, &#39;2012-2-29&#39;, 2).stop</span>
+<span class="sd">        Instant((2012, 3, 1))</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">unit</span><span class="p">,</span> <span class="n">start_instant</span><span class="p">,</span> <span class="n">size</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="p">,</span> <span class="n">day</span> <span class="o">=</span> <span class="n">start_instant</span>
+        <span class="k">if</span> <span class="n">unit</span> <span class="o">==</span> <span class="n">config</span><span class="o">.</span><span class="n">ETERNITY</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">periods</span><span class="o">.</span><span class="n">Instant</span><span class="p">((</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="n">unit</span> <span class="o">==</span> <span class="s2">&quot;day&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">size</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">day</span> <span class="o">+=</span> <span class="n">size</span> <span class="o">-</span> <span class="mi">1</span>
+                <span class="n">month_last_day</span> <span class="o">=</span> <span class="n">calendar</span><span class="o">.</span><span class="n">monthrange</span><span class="p">(</span><span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">while</span> <span class="n">day</span> <span class="o">&gt;</span> <span class="n">month_last_day</span><span class="p">:</span>
+                    <span class="n">month</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">if</span> <span class="n">month</span> <span class="o">==</span> <span class="mi">13</span><span class="p">:</span>
+                        <span class="n">year</span> <span class="o">+=</span> <span class="mi">1</span>
+                        <span class="n">month</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="n">day</span> <span class="o">-=</span> <span class="n">month_last_day</span>
+                    <span class="n">month_last_day</span> <span class="o">=</span> <span class="n">calendar</span><span class="o">.</span><span class="n">monthrange</span><span class="p">(</span><span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">unit</span> <span class="o">==</span> <span class="s2">&quot;month&quot;</span><span class="p">:</span>
+                <span class="n">month</span> <span class="o">+=</span> <span class="n">size</span>
+                <span class="k">while</span> <span class="n">month</span> <span class="o">&gt;</span> <span class="mi">12</span><span class="p">:</span>
+                    <span class="n">year</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="n">month</span> <span class="o">-=</span> <span class="mi">12</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="n">unit</span> <span class="o">==</span> <span class="s2">&quot;year&quot;</span><span class="p">,</span> <span class="s2">&quot;Invalid unit: </span><span class="si">{}</span><span class="s2"> of type </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">unit</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">unit</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="n">year</span> <span class="o">+=</span> <span class="n">size</span>
+            <span class="n">day</span> <span class="o">-=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">day</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">month</span> <span class="o">-=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">month</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">year</span> <span class="o">-=</span> <span class="mi">1</span>
+                    <span class="n">month</span> <span class="o">=</span> <span class="mi">12</span>
+                <span class="n">day</span> <span class="o">+=</span> <span class="n">calendar</span><span class="o">.</span><span class="n">monthrange</span><span class="p">(</span><span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">month_last_day</span> <span class="o">=</span> <span class="n">calendar</span><span class="o">.</span><span class="n">monthrange</span><span class="p">(</span><span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">day</span> <span class="o">&gt;</span> <span class="n">month_last_day</span><span class="p">:</span>
+                    <span class="n">month</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">if</span> <span class="n">month</span> <span class="o">==</span> <span class="mi">13</span><span class="p">:</span>
+                        <span class="n">year</span> <span class="o">+=</span> <span class="mi">1</span>
+                        <span class="n">month</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="n">day</span> <span class="o">-=</span> <span class="n">month_last_day</span>
+        <span class="k">return</span> <span class="n">periods</span><span class="o">.</span><span class="n">Instant</span><span class="p">((</span><span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="p">,</span> <span class="n">day</span><span class="p">))</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">unit</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="c1"># Reference periods</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">last_3_months</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Period&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">first_month</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="s2">&quot;month&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="o">-</span><span class="mi">3</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">last_month</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Period&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">first_month</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">last_year</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Period&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="s2">&quot;first-of&quot;</span><span class="p">,</span> <span class="s2">&quot;year&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="s2">&quot;year&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">n_2</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Period&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="s2">&quot;first-of&quot;</span><span class="p">,</span> <span class="s2">&quot;year&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="s2">&quot;year&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">this_year</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Period&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="s2">&quot;first-of&quot;</span><span class="p">,</span> <span class="s2">&quot;year&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="s2">&quot;year&quot;</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">first_month</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Period&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="s2">&quot;first-of&quot;</span><span class="p">,</span> <span class="s2">&quot;month&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="s2">&quot;month&quot;</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">first_day</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Period&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="s2">&quot;day&quot;</span><span class="p">)</span></div>
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2022
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/clipboard.min.js"></script>
+    <script src="../../../_static/copybutton.js"></script>
+    <script src="../../../_static/scripts/sphinx-book-theme.js?digest=9c920249402e914e316237a7dbc6769907cce411"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../../_static/design-tabs.js"></script>
+    <script src="../../../_static/scripts/furo.js"></script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"
+const thebe_selector = ".thebe,.cell"
+const thebe_selector_input = "pre"
+const thebe_selector_output = ".output, .cell_output"
+</script>
+    <script async="async" src="../../../_static/sphinx-thebe.js"></script>
+    </body>
+</html>

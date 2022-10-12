@@ -1,0 +1,1024 @@
+<!doctype html>
+<html class="no-js">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
+
+    <meta name="generator" content="sphinx-4.5.0, furo 2022.09.29"/>
+        <title>policyengine_core.simulations.simulation - PolicyEngine Core documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?digest=d81277517bee4d6b0349d71bb2661d4890b5617c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/design-style.b7bb847fb20b106c3d81b95245e65545.min.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #eeffcc;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../intro.html"><div class="brand">PolicyEngine Core documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../intro.html">
+  
+  
+  <span class="sidebar-brand-text">PolicyEngine Core documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder=Search name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Contributing</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/intro.html">How to contribute</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Using PolicyEngine Core</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/simulation.html">Simulating policy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/country.html">Country packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/cli.html">Command-line interface</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/commons.html">Commons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/country_template.html">Country template</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/data_storage.html">Data storage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/entities.html">Entities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/enums.html">Enums</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/experimental.html">Experimental features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/extension_template.html">Extension template</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/holders.html">Holders</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/parameters.html">Parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/periods.html">Periods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/populations.html">Populations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/projectors.html">Projectors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/reforms.html">Reforms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/scripts.html">Scripts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/simulations.html">Simulations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/taxbenefitsystems.html">Tax-benefit systems</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/taxscales.html">Tax scales</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/tools.html">Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/tracers.html">Tracers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/types.html">Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/variables.html">Variables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../python_api/warnings.html">Warnings</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <h1>Source code for policyengine_core.simulations.simulation</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Type</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">numpy.typing</span> <span class="kn">import</span> <span class="n">ArrayLike</span>
+<span class="kn">from</span> <span class="nn">policyengine_core</span> <span class="kn">import</span> <span class="n">commons</span><span class="p">,</span> <span class="n">periods</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.data.dataset</span> <span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.entities.entity</span> <span class="kn">import</span> <span class="n">Entity</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.errors</span> <span class="kn">import</span> <span class="n">CycleError</span><span class="p">,</span> <span class="n">SpiralError</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.enums</span> <span class="kn">import</span> <span class="n">Enum</span><span class="p">,</span> <span class="n">EnumArray</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.holders.holder</span> <span class="kn">import</span> <span class="n">Holder</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.periods</span> <span class="kn">import</span> <span class="n">Period</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.periods.config</span> <span class="kn">import</span> <span class="n">ETERNITY</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.periods.helpers</span> <span class="kn">import</span> <span class="n">period</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.tracers</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">FullTracer</span><span class="p">,</span>
+    <span class="n">SimpleTracer</span><span class="p">,</span>
+    <span class="n">TracingParameterNodeAtInstant</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">policyengine_core.taxbenefitsystems</span> <span class="kn">import</span> <span class="n">TaxBenefitSystem</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.populations</span> <span class="kn">import</span> <span class="n">Population</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.tracers</span> <span class="kn">import</span> <span class="n">SimpleTracer</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.experimental</span> <span class="kn">import</span> <span class="n">MemoryConfig</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.variables</span> <span class="kn">import</span> <span class="n">Variable</span>
+
+
+<div class="viewcode-block" id="Simulation"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation">[docs]</a><span class="k">class</span> <span class="nc">Simulation</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Represents a simulation, and handles the calculation logic</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">tax_benefit_system</span><span class="p">:</span> <span class="s2">&quot;TaxBenefitSystem&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">populations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Population</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">situation</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">dataset_options</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This constructor is reserved for internal use; see :any:`SimulationBuilder`,</span>
+<span class="sd">        which is the preferred way to obtain a Simulation initialized with a consistent</span>
+<span class="sd">        set of Entities.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">tax_benefit_system</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_tax_benefit_system</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="n">tax_benefit_system</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">invalidated_caches</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="p">:</span> <span class="n">SimpleTracer</span> <span class="o">=</span> <span class="n">SimpleTracer</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opt_out_cache</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="c1"># controls the spirals detection; check for performance impact if &gt; 1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_spiral_loops</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_config</span><span class="p">:</span> <span class="n">MemoryConfig</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_data_storage_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">situation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">build_from_populations</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">instantiate_entities</span><span class="p">()</span>
+            <span class="p">)</span>
+            <span class="kn">from</span> <span class="nn">policyengine_core.simulations.simulation_builder</span> <span class="kn">import</span> <span class="p">(</span>
+                <span class="n">SimulationBuilder</span><span class="p">,</span>
+            <span class="p">)</span>  <span class="c1"># Import here to avoid circular dependency</span>
+
+            <span class="n">SimulationBuilder</span><span class="p">()</span><span class="o">.</span><span class="n">build_from_dict</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="p">,</span> <span class="n">situation</span><span class="p">,</span> <span class="bp">self</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">populations</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">build_from_populations</span><span class="p">(</span><span class="n">populations</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dataset_options</span> <span class="o">=</span> <span class="n">dataset_options</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">build_from_dataset</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Simulation.build_from_populations"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.build_from_populations">[docs]</a>    <span class="k">def</span> <span class="nf">build_from_populations</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">populations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Population</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;This method of initialisation requires the populations to be pre-initialised.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            populations (Dict[str, Population]): A dictionary of populations, indexed by entity key.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">populations</span> <span class="o">=</span> <span class="n">populations</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">link_to_entities_instances</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">create_shortcuts</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">populations</span> <span class="o">=</span> <span class="n">populations</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">persons</span><span class="p">:</span> <span class="n">Population</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">person_entity</span><span class="o">.</span><span class="n">key</span>
+        <span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">link_to_entities_instances</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">create_shortcuts</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Simulation.build_from_dataset"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.build_from_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">build_from_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Build a simulation from a dataset.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">build_from_populations</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">instantiate_entities</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="kn">from</span> <span class="nn">policyengine_core.simulations.simulation_builder</span> <span class="kn">import</span> <span class="p">(</span>
+            <span class="n">SimulationBuilder</span><span class="p">,</span>
+        <span class="p">)</span>  <span class="c1"># Import here to avoid circular dependency</span>
+
+        <span class="n">builder</span> <span class="o">=</span> <span class="n">SimulationBuilder</span><span class="p">()</span>
+        <span class="n">builder</span><span class="o">.</span><span class="n">populations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset_options</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">FileNotFoundError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;The dataset file </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> (with options </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset_options</span><span class="si">}</span><span class="s2">) could not be found. &quot;</span>
+                <span class="o">+</span> <span class="s2">&quot;Make sure you have downloaded or built it using the `policyengine-core data` command.&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+
+        <span class="n">eternity</span> <span class="o">=</span> <span class="n">ETERNITY</span>
+
+        <span class="n">person_entity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">person_entity</span>
+        <span class="n">entity_id_field</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">person_entity</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">_id&quot;</span>
+        <span class="k">assert</span> <span class="p">(</span>
+            <span class="n">entity_id_field</span> <span class="ow">in</span> <span class="n">data</span>
+        <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Missing </span><span class="si">{</span><span class="n">entity_id_field</span><span class="si">}</span><span class="s2"> column in the dataset. Each person entity must have an ID array defined for ETERNITY.&quot;</span>
+
+        <span class="n">entity_ids</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">entity_id_field</span><span class="p">][</span><span class="n">eternity</span><span class="p">]</span>
+        <span class="n">builder</span><span class="o">.</span><span class="n">declare_person_entity</span><span class="p">(</span><span class="n">person_entity</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">entity_ids</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">group_entity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">group_entities</span><span class="p">:</span>
+            <span class="n">entity_id_field</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">group_entity</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">_id&quot;</span>
+            <span class="k">assert</span> <span class="p">(</span>
+                <span class="n">entity_id_field</span> <span class="ow">in</span> <span class="n">data</span>
+            <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Missing </span><span class="si">{</span><span class="n">entity_id_field</span><span class="si">}</span><span class="s2"> column in the dataset. Each group entity must have an ID array defined for ETERNITY.&quot;</span>
+
+            <span class="n">entity_ids</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">entity_id_field</span><span class="p">][</span><span class="n">eternity</span><span class="p">]</span>
+            <span class="n">builder</span><span class="o">.</span><span class="n">declare_entity</span><span class="p">(</span><span class="n">group_entity</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">entity_ids</span><span class="p">)</span>
+
+            <span class="n">person_membership_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">person_entity</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">group_entity</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">_id&quot;</span>
+            <span class="k">assert</span> <span class="p">(</span>
+                <span class="n">person_membership_id</span> <span class="ow">in</span> <span class="n">data</span>
+            <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Missing </span><span class="si">{</span><span class="n">person_membership_id</span><span class="si">}</span><span class="s2"> column in the dataset. Each group entity must have a person membership array defined for ETERNITY.&quot;</span>
+
+            <span class="n">person_role_field</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">person_entity</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">group_entity</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">_role&quot;</span>
+            <span class="n">person_roles</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">person_role_field</span><span class="p">][</span><span class="n">eternity</span><span class="p">]</span>
+            <span class="n">builder</span><span class="o">.</span><span class="n">join_with_persons</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">group_entity</span><span class="o">.</span><span class="n">key</span><span class="p">],</span>
+                <span class="n">person_membership_id</span><span class="p">,</span>
+                <span class="n">person_roles</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">variable</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">time_period</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="n">variable</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_input</span><span class="p">(</span>
+                    <span class="n">variable</span><span class="p">,</span> <span class="n">time_period</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">variable</span><span class="p">][</span><span class="n">time_period</span><span class="p">]</span>
+                <span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">trace</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trace</span>
+
+    <span class="nd">@trace</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">trace</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trace</span><span class="p">:</span> <span class="n">SimpleTracer</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_trace</span> <span class="o">=</span> <span class="n">trace</span>
+        <span class="k">if</span> <span class="n">trace</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span> <span class="o">=</span> <span class="n">FullTracer</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span> <span class="o">=</span> <span class="n">SimpleTracer</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Simulation.link_to_entities_instances"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.link_to_entities_instances">[docs]</a>    <span class="k">def</span> <span class="nf">link_to_entities_instances</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">_key</span><span class="p">,</span> <span class="n">entity_instance</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">entity_instance</span><span class="o">.</span><span class="n">simulation</span> <span class="o">=</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="Simulation.create_shortcuts"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.create_shortcuts">[docs]</a>    <span class="k">def</span> <span class="nf">create_shortcuts</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">_key</span><span class="p">,</span> <span class="n">population</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="c1"># create shortcut simulation.person and simulation.household (for instance)</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">population</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">population</span><span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">data_storage_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Temporary folder used to store intermediate calculation data in case the memory is saturated</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_storage_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_data_storage_dir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;openfisca_&quot;</span><span class="p">)</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="p">(</span>
+                    <span class="s2">&quot;Intermediate results will be stored on disk in </span><span class="si">{}</span><span class="s2"> in case of memory overflow.&quot;</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data_storage_dir</span><span class="p">),</span>
+                <span class="s2">&quot;You should remove this directory once you&#39;re done with your simulation.&quot;</span><span class="p">,</span>
+            <span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_storage_dir</span>
+
+    <span class="c1"># ----- Calculation methods ----- #</span>
+
+<div class="viewcode-block" id="Simulation.calculate"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.calculate">[docs]</a>    <span class="k">def</span> <span class="nf">calculate</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">,</span> <span class="n">map_to</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Calculate ``variable_name`` for ``period``.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            variable_name (str): The name of the variable to calculate.</span>
+<span class="sd">            period (Period): The period to calculate the variable for.</span>
+<span class="sd">            map_to (str): The name of the variable to map the result to. If None, the result is returned as is.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ArrayLike: The calculated variable.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">period</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">period</span><span class="p">,</span> <span class="n">Period</span><span class="p">):</span>
+            <span class="n">period</span> <span class="o">=</span> <span class="n">periods</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="n">period</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="o">.</span><span class="n">record_calculation_start</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="o">.</span><span class="n">record_calculation_result</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">map_to</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">source_entity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
+                    <span class="n">variable_name</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_result</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">source_entity</span><span class="p">,</span> <span class="n">map_to</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">result</span>
+
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="o">.</span><span class="n">record_calculation_end</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">purge_cache_of_invalid_values</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Simulation.map_result"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.map_result">[docs]</a>    <span class="k">def</span> <span class="nf">map_result</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">values</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
+        <span class="n">source_entity</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">target_entity</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">how</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Maps values from one entity to another.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            arr (np.array): The values in their original position.</span>
+<span class="sd">            source_entity (str): The source entity key.</span>
+<span class="sd">            target_entity (str): The target entity key.</span>
+<span class="sd">            how (str, optional): A function to use when mapping. Defaults to None.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If an invalid (dis)aggregation function is passed.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.array: The mapped values.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">entity_pop</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">source_entity</span><span class="p">]</span>
+        <span class="n">target_pop</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">target_entity</span><span class="p">]</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">source_entity</span> <span class="o">==</span> <span class="s2">&quot;person&quot;</span>
+            <span class="ow">and</span> <span class="n">target_entity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">group_entity_names</span>
+        <span class="p">):</span>
+            <span class="k">if</span> <span class="n">how</span> <span class="ow">and</span> <span class="n">how</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span>
+                <span class="s2">&quot;sum&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;any&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;min&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;max&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;all&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;value_from_first_person&quot;</span><span class="p">,</span>
+            <span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Not a valid function.&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">target_pop</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="n">how</span> <span class="ow">or</span> <span class="s2">&quot;sum&quot;</span><span class="p">)(</span><span class="n">values</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="p">(</span>
+            <span class="n">source_entity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">group_entity_names</span>
+            <span class="ow">and</span> <span class="n">target_entity</span> <span class="o">==</span> <span class="s2">&quot;person&quot;</span>
+        <span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">how</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">entity_pop</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">how</span> <span class="o">==</span> <span class="s2">&quot;mean&quot;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">entity_pop</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">values</span> <span class="o">/</span> <span class="n">entity_pop</span><span class="o">.</span><span class="n">nb_persons</span><span class="p">())</span>
+        <span class="k">elif</span> <span class="n">source_entity</span> <span class="o">==</span> <span class="n">target_entity</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">values</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_to</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">map_to</span><span class="p">(</span>
+                    <span class="n">values</span><span class="p">,</span>
+                    <span class="n">source_entity</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">person_entity</span><span class="o">.</span><span class="n">key</span><span class="p">,</span>
+                    <span class="n">how</span><span class="o">=</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span>
+                <span class="p">),</span>
+                <span class="s2">&quot;person&quot;</span><span class="p">,</span>
+                <span class="n">target_entity</span><span class="p">,</span>
+                <span class="n">how</span><span class="o">=</span><span class="s2">&quot;sum&quot;</span><span class="p">,</span>
+            <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Simulation.calculate_dataframe"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.calculate_dataframe">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_dataframe</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">variable_names</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">,</span> <span class="n">map_to</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Calculate ``variable_names`` for ``period``.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            variable_names (List[str]): A list of variable names to calculate.</span>
+<span class="sd">            period (Period): The period to calculate for.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.DataFrame: A dataframe containing the calculated variables.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+        <span class="n">entities</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span>
+            <span class="k">for</span> <span class="n">variable_name</span> <span class="ow">in</span> <span class="n">variable_names</span>
+        <span class="p">]</span>
+        <span class="c1"># Check that all variables are from the same entity. If not, map values to the entity of the first variable.</span>
+        <span class="n">entity</span> <span class="o">=</span> <span class="n">entities</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">entity</span> <span class="o">==</span> <span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">entities</span><span class="p">):</span>
+            <span class="n">map_to</span> <span class="o">=</span> <span class="n">entity</span>
+        <span class="k">for</span> <span class="n">variable_name</span> <span class="ow">in</span> <span class="n">variable_names</span><span class="p">:</span>
+            <span class="n">df</span><span class="p">[</span><span class="n">variable_name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">map_to</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">df</span></div>
+
+    <span class="k">def</span> <span class="nf">_calculate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the variable ``variable_name`` for the period ``period``, using the variable formula if it exists.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            variable_name (str): The name of the variable to calculate.</span>
+<span class="sd">            period (Period): The period to calculate the variable for.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ArrayLike: The calculated variable.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">population</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_variable_population</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span>
+        <span class="n">holder</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">get_holder</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span>
+        <span class="n">variable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
+            <span class="n">variable_name</span><span class="p">,</span> <span class="n">check_existence</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_period_consistency</span><span class="p">(</span><span class="n">period</span><span class="p">,</span> <span class="n">variable</span><span class="p">)</span>
+
+        <span class="c1"># First look for a value already cached</span>
+        <span class="n">cached_array</span> <span class="o">=</span> <span class="n">holder</span><span class="o">.</span><span class="n">get_array</span><span class="p">(</span><span class="n">period</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cached_array</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">cached_array</span>
+
+        <span class="n">array</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># First, try to run a formula</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_check_for_cycle</span><span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+            <span class="n">array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_formula</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">population</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+
+            <span class="c1"># If no result, use the default value and cache it</span>
+            <span class="k">if</span> <span class="n">array</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">array</span> <span class="o">=</span> <span class="n">holder</span><span class="o">.</span><span class="n">default_array</span><span class="p">()</span>
+
+            <span class="n">array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cast_formula_result</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">variable</span><span class="p">)</span>
+            <span class="n">holder</span><span class="o">.</span><span class="n">put_in_cache</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="n">SpiralError</span><span class="p">:</span>
+            <span class="n">array</span> <span class="o">=</span> <span class="n">holder</span><span class="o">.</span><span class="n">default_array</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">array</span>
+
+<div class="viewcode-block" id="Simulation.purge_cache_of_invalid_values"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.purge_cache_of_invalid_values">[docs]</a>    <span class="k">def</span> <span class="nf">purge_cache_of_invalid_values</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># We wait for the end of calculate(), signalled by an empty stack, before purging the cache</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="o">.</span><span class="n">stack</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">_name</span><span class="p">,</span> <span class="n">_period</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">invalidated_caches</span><span class="p">:</span>
+            <span class="n">holder</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_holder</span><span class="p">(</span><span class="n">_name</span><span class="p">)</span>
+            <span class="n">holder</span><span class="o">.</span><span class="n">delete_arrays</span><span class="p">(</span><span class="n">_period</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">invalidated_caches</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Simulation.calculate_add"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.calculate_add">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
+        <span class="n">variable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
+            <span class="n">variable_name</span><span class="p">,</span> <span class="n">check_existence</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">period</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">period</span><span class="p">,</span> <span class="n">Period</span><span class="p">):</span>
+            <span class="n">period</span> <span class="o">=</span> <span class="n">periods</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="n">period</span><span class="p">)</span>
+
+        <span class="c1"># Check that the requested period matches definition_period</span>
+        <span class="k">if</span> <span class="n">periods</span><span class="o">.</span><span class="n">unit_weight</span><span class="p">(</span>
+            <span class="n">variable</span><span class="o">.</span><span class="n">definition_period</span>
+        <span class="p">)</span> <span class="o">&gt;</span> <span class="n">periods</span><span class="o">.</span><span class="n">unit_weight</span><span class="p">(</span><span class="n">period</span><span class="o">.</span><span class="n">unit</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Unable to compute variable &#39;</span><span class="si">{0}</span><span class="s2">&#39; for period </span><span class="si">{1}</span><span class="s2">: &#39;</span><span class="si">{0}</span><span class="s2">&#39; can only be computed for </span><span class="si">{2}</span><span class="s2">-long periods. You can use the DIVIDE option to get an estimate of </span><span class="si">{0}</span><span class="s2"> by dividing the yearly value by 12, or change the requested period to &#39;period.this_year&#39;.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">variable</span><span class="o">.</span><span class="n">definition_period</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">definition_period</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span>
+            <span class="n">periods</span><span class="o">.</span><span class="n">DAY</span><span class="p">,</span>
+            <span class="n">periods</span><span class="o">.</span><span class="n">MONTH</span><span class="p">,</span>
+            <span class="n">periods</span><span class="o">.</span><span class="n">YEAR</span><span class="p">,</span>
+        <span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Unable to sum constant variable &#39;</span><span class="si">{}</span><span class="s2">&#39; over period </span><span class="si">{}</span><span class="s2">: only variables defined daily, monthly, or yearly can be summed over time.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">period</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">sub_period</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">sub_period</span> <span class="ow">in</span> <span class="n">period</span><span class="o">.</span><span class="n">get_subperiods</span><span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">definition_period</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Simulation.calculate_divide"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.calculate_divide">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_divide</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
+        <span class="n">variable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
+            <span class="n">variable_name</span><span class="p">,</span> <span class="n">check_existence</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">period</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">period</span><span class="p">,</span> <span class="n">Period</span><span class="p">):</span>
+            <span class="n">period</span> <span class="o">=</span> <span class="n">periods</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="n">period</span><span class="p">)</span>
+
+        <span class="c1"># Check that the requested period matches definition_period</span>
+        <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">definition_period</span> <span class="o">!=</span> <span class="n">periods</span><span class="o">.</span><span class="n">YEAR</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Unable to divide the value of &#39;</span><span class="si">{}</span><span class="s2">&#39; over time on period </span><span class="si">{}</span><span class="s2">: only variables defined yearly can be divided over time.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">period</span><span class="o">.</span><span class="n">size</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;DIVIDE option can only be used for a one-year or a one-month requested period&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">period</span><span class="o">.</span><span class="n">unit</span> <span class="o">==</span> <span class="n">periods</span><span class="o">.</span><span class="n">MONTH</span><span class="p">:</span>
+            <span class="n">computation_period</span> <span class="o">=</span> <span class="n">period</span><span class="o">.</span><span class="n">this_year</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="n">computation_period</span><span class="p">)</span> <span class="o">/</span> <span class="mf">12.0</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">period</span><span class="o">.</span><span class="n">unit</span> <span class="o">==</span> <span class="n">periods</span><span class="o">.</span><span class="n">YEAR</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Unable to divide the value of &#39;</span><span class="si">{}</span><span class="s2">&#39; to match period </span><span class="si">{}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span>
+            <span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Simulation.calculate_output"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.calculate_output">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_output</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the value of a variable using the ``calculate_output`` attribute of the variable.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">variable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
+            <span class="n">variable_name</span><span class="p">,</span> <span class="n">check_existence</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">calculate_output</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">variable</span><span class="o">.</span><span class="n">calculate_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Simulation.trace_parameters_at_instant"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.trace_parameters_at_instant">[docs]</a>    <span class="k">def</span> <span class="nf">trace_parameters_at_instant</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">formula_period</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">TracingParameterNodeAtInstant</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_parameters_at_instant</span><span class="p">(</span><span class="n">formula_period</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_run_formula</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">population</span><span class="p">:</span> <span class="n">Population</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Find the ``variable`` formula for the given ``period`` if it exists, and apply it to ``population``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">formula</span> <span class="o">=</span> <span class="n">variable</span><span class="o">.</span><span class="n">get_formula</span><span class="p">(</span><span class="n">period</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">formula</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trace</span><span class="p">:</span>
+            <span class="n">parameters_at</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trace_parameters_at_instant</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">parameters_at</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_parameters_at_instant</span>
+
+        <span class="k">if</span> <span class="n">formula</span><span class="o">.</span><span class="vm">__code__</span><span class="o">.</span><span class="n">co_argcount</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">array</span> <span class="o">=</span> <span class="n">formula</span><span class="p">(</span><span class="n">population</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">array</span> <span class="o">=</span> <span class="n">formula</span><span class="p">(</span><span class="n">population</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">parameters_at</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">array</span>
+
+    <span class="k">def</span> <span class="nf">_check_period_consistency</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="n">Variable</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check that a period matches the variable definition_period</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">definition_period</span> <span class="o">==</span> <span class="n">periods</span><span class="o">.</span><span class="n">ETERNITY</span><span class="p">:</span>
+            <span class="k">return</span>  <span class="c1"># For variables which values are constant in time, all periods are accepted</span>
+
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">variable</span><span class="o">.</span><span class="n">definition_period</span> <span class="o">==</span> <span class="n">periods</span><span class="o">.</span><span class="n">MONTH</span>
+            <span class="ow">and</span> <span class="n">period</span><span class="o">.</span><span class="n">unit</span> <span class="o">!=</span> <span class="n">periods</span><span class="o">.</span><span class="n">MONTH</span>
+        <span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Unable to compute variable &#39;</span><span class="si">{0}</span><span class="s2">&#39; for period </span><span class="si">{1}</span><span class="s2">: &#39;</span><span class="si">{0}</span><span class="s2">&#39; must be computed for a whole month. You can use the ADD option to sum &#39;</span><span class="si">{0}</span><span class="s2">&#39; over the requested period, or change the requested period to &#39;period.first_month&#39;.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">period</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">variable</span><span class="o">.</span><span class="n">definition_period</span> <span class="o">==</span> <span class="n">periods</span><span class="o">.</span><span class="n">YEAR</span>
+            <span class="ow">and</span> <span class="n">period</span><span class="o">.</span><span class="n">unit</span> <span class="o">!=</span> <span class="n">periods</span><span class="o">.</span><span class="n">YEAR</span>
+        <span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Unable to compute variable &#39;</span><span class="si">{0}</span><span class="s2">&#39; for period </span><span class="si">{1}</span><span class="s2">: &#39;</span><span class="si">{0}</span><span class="s2">&#39; must be computed for a whole year. You can use the DIVIDE option to get an estimate of </span><span class="si">{0}</span><span class="s2"> by dividing the yearly value by 12, or change the requested period to &#39;period.this_year&#39;.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">period</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">period</span><span class="o">.</span><span class="n">size</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Unable to compute variable &#39;</span><span class="si">{0}</span><span class="s2">&#39; for period </span><span class="si">{1}</span><span class="s2">: &#39;</span><span class="si">{0}</span><span class="s2">&#39; must be computed for a whole </span><span class="si">{2}</span><span class="s2">. You can use the ADD option to sum &#39;</span><span class="si">{0}</span><span class="s2">&#39; over the requested period.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                    <span class="n">period</span><span class="p">,</span>
+                    <span class="s2">&quot;month&quot;</span>
+                    <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">definition_period</span> <span class="o">==</span> <span class="n">periods</span><span class="o">.</span><span class="n">MONTH</span>
+                    <span class="k">else</span> <span class="s2">&quot;year&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_cast_formula_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">value_type</span> <span class="o">==</span> <span class="n">Enum</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">EnumArray</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">variable</span><span class="o">.</span><span class="n">possible_values</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="n">population</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_variable_population</span><span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">filled_array</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">variable</span><span class="o">.</span><span class="n">dtype</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">value</span>
+
+    <span class="c1"># ----- Handle circular dependencies in a calculation ----- #</span>
+
+    <span class="k">def</span> <span class="nf">_check_for_cycle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Raise an exception in the case of a circular definition, where evaluating a variable for</span>
+<span class="sd">        a given period loops around to evaluating the same variable/period pair. Also guards, as</span>
+<span class="sd">        a heuristic, against &quot;quasicircles&quot;, where the evaluation of a variable at a period involves</span>
+<span class="sd">        the same variable at a different period.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># The last frame is the current calculation, so it should be ignored from cycle detection</span>
+        <span class="n">previous_periods</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">frame</span><span class="p">[</span><span class="s2">&quot;period&quot;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">frame</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="o">.</span><span class="n">stack</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">frame</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">variable</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="n">period</span> <span class="ow">in</span> <span class="n">previous_periods</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">CycleError</span><span class="p">(</span>
+                <span class="s2">&quot;Circular definition detected on formula </span><span class="si">{}</span><span class="s2">@</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">variable</span><span class="p">,</span> <span class="n">period</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="n">spiral</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">previous_periods</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_spiral_loops</span>
+        <span class="k">if</span> <span class="n">spiral</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">invalidate_spiral_variables</span><span class="p">(</span><span class="n">variable</span><span class="p">)</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;Quasicircular definition detected on formula </span><span class="si">{}</span><span class="s2">@</span><span class="si">{}</span><span class="s2"> involving </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">variable</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="o">.</span><span class="n">stack</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="n">SpiralError</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">variable</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Simulation.invalidate_cache_entry"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.invalidate_cache_entry">[docs]</a>    <span class="k">def</span> <span class="nf">invalidate_cache_entry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">invalidated_caches</span><span class="o">.</span><span class="n">add</span><span class="p">((</span><span class="n">variable</span><span class="p">,</span> <span class="n">period</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Simulation.invalidate_spiral_variables"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.invalidate_spiral_variables">[docs]</a>    <span class="k">def</span> <span class="nf">invalidate_spiral_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Visit the stack, from the bottom (most recent) up; we know that we&#39;ll find</span>
+        <span class="c1"># the variable implicated in the spiral (max_spiral_loops+1) times; we keep the</span>
+        <span class="c1"># intermediate values computed (to avoid impacting performance) but we mark them</span>
+        <span class="c1"># for deletion from the cache once the calculation ends.</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">frame</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="o">.</span><span class="n">stack</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">invalidate_cache_entry</span><span class="p">(</span><span class="n">frame</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span> <span class="n">frame</span><span class="p">[</span><span class="s2">&quot;period&quot;</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">frame</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">variable</span><span class="p">:</span>
+                <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">count</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_spiral_loops</span><span class="p">:</span>
+                    <span class="k">break</span></div>
+
+    <span class="c1"># ----- Methods to access stored values ----- #</span>
+
+<div class="viewcode-block" id="Simulation.get_array"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_array">[docs]</a>    <span class="k">def</span> <span class="nf">get_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the value of ``variable_name`` for ``period``, if this value is alreay in the cache (if it has been set as an input or previously calculated).</span>
+
+<span class="sd">        Unlike :meth:`.calculate`, this method *does not* trigger calculations and *does not* use any formula.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">period</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">period</span><span class="p">,</span> <span class="n">Period</span><span class="p">):</span>
+            <span class="n">period</span> <span class="o">=</span> <span class="n">periods</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="n">period</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_holder</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span><span class="o">.</span><span class="n">get_array</span><span class="p">(</span><span class="n">period</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Simulation.get_holder"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_holder">[docs]</a>    <span class="k">def</span> <span class="nf">get_holder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Holder</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the :obj:`.Holder` associated with the variable ``variable_name`` for the simulation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_variable_population</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span><span class="o">.</span><span class="n">get_holder</span><span class="p">(</span>
+            <span class="n">variable_name</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Simulation.get_memory_usage"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_memory_usage">[docs]</a>    <span class="k">def</span> <span class="nf">get_memory_usage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variables</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get data about the virtual memory usage of the simulation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">total_nb_bytes</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">by_variable</span><span class="o">=</span><span class="p">{})</span>
+        <span class="k">for</span> <span class="n">entity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">entity_memory_usage</span> <span class="o">=</span> <span class="n">entity</span><span class="o">.</span><span class="n">get_memory_usage</span><span class="p">(</span><span class="n">variables</span><span class="o">=</span><span class="n">variables</span><span class="p">)</span>
+            <span class="n">result</span><span class="p">[</span><span class="s2">&quot;total_nb_bytes&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">entity_memory_usage</span><span class="p">[</span><span class="s2">&quot;total_nb_bytes&quot;</span><span class="p">]</span>
+            <span class="n">result</span><span class="p">[</span><span class="s2">&quot;by_variable&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">entity_memory_usage</span><span class="p">[</span><span class="s2">&quot;by_variable&quot;</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+    <span class="c1"># ----- Misc ----- #</span>
+
+<div class="viewcode-block" id="Simulation.delete_arrays"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.delete_arrays">[docs]</a>    <span class="k">def</span> <span class="nf">delete_arrays</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Delete a variable&#39;s value for a given period</span>
+
+<span class="sd">        :param variable: the variable to be set</span>
+<span class="sd">        :param period: the period for which the value should be deleted</span>
+
+<span class="sd">        Example:</span>
+
+<span class="sd">        &gt;&gt;&gt; from policyengine_core.country_template import CountryTaxBenefitSystem</span>
+<span class="sd">        &gt;&gt;&gt; simulation = Simulation(CountryTaxBenefitSystem())</span>
+<span class="sd">        &gt;&gt;&gt; simulation.set_input(&#39;age&#39;, &#39;2018-04&#39;, [12, 14])</span>
+<span class="sd">        &gt;&gt;&gt; simulation.set_input(&#39;age&#39;, &#39;2018-05&#39;, [13, 14])</span>
+<span class="sd">        &gt;&gt;&gt; simulation.get_array(&#39;age&#39;, &#39;2018-05&#39;)</span>
+<span class="sd">        array([13, 14], dtype=int32)</span>
+<span class="sd">        &gt;&gt;&gt; simulation.delete_arrays(&#39;age&#39;, &#39;2018-05&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; simulation.get_array(&#39;age&#39;, &#39;2018-04&#39;)</span>
+<span class="sd">        array([12, 14], dtype=int32)</span>
+<span class="sd">        &gt;&gt;&gt; simulation.get_array(&#39;age&#39;, &#39;2018-05&#39;) is None</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; simulation.set_input(&#39;age&#39;, &#39;2018-05&#39;, [13, 14])</span>
+<span class="sd">        &gt;&gt;&gt; simulation.delete_arrays(&#39;age&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; simulation.get_array(&#39;age&#39;, &#39;2018-04&#39;) is None</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; simulation.get_array(&#39;age&#39;, &#39;2018-05&#39;) is None</span>
+<span class="sd">        True</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_holder</span><span class="p">(</span><span class="n">variable</span><span class="p">)</span><span class="o">.</span><span class="n">delete_arrays</span><span class="p">(</span><span class="n">period</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Simulation.get_known_periods"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_known_periods">[docs]</a>    <span class="k">def</span> <span class="nf">get_known_periods</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Period</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get a list variable&#39;s known period, i.e. the periods where a value has been initialized and</span>
+
+<span class="sd">        :param variable: the variable to be set</span>
+
+<span class="sd">        Example:</span>
+
+<span class="sd">        &gt;&gt;&gt; from policyengine_core.country_template import CountryTaxBenefitSystem</span>
+<span class="sd">        &gt;&gt;&gt; simulation = Simulation(CountryTaxBenefitSystem())</span>
+<span class="sd">        &gt;&gt;&gt; simulation.set_input(&#39;age&#39;, &#39;2018-04&#39;, [12, 14])</span>
+<span class="sd">        &gt;&gt;&gt; simulation.set_input(&#39;age&#39;, &#39;2018-05&#39;, [13, 14])</span>
+<span class="sd">        &gt;&gt;&gt; simulation.get_known_periods(&#39;age&#39;)</span>
+<span class="sd">        [Period((u&#39;month&#39;, Instant((2018, 5, 1)), 1)), Period((u&#39;month&#39;, Instant((2018, 4, 1)), 1))]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_holder</span><span class="p">(</span><span class="n">variable</span><span class="p">)</span><span class="o">.</span><span class="n">get_known_periods</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Simulation.set_input"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.set_input">[docs]</a>    <span class="k">def</span> <span class="nf">set_input</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">ArrayLike</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set a variable&#39;s value for a given period</span>
+
+<span class="sd">        :param variable: the variable to be set</span>
+<span class="sd">        :param value: the input value for the variable</span>
+<span class="sd">        :param period: the period for which the value is setted</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">        &gt;&gt;&gt; from policyengine_core.country_template import CountryTaxBenefitSystem</span>
+<span class="sd">        &gt;&gt;&gt; simulation = Simulation(CountryTaxBenefitSystem())</span>
+<span class="sd">        &gt;&gt;&gt; simulation.set_input(&#39;age&#39;, &#39;2018-04&#39;, [12, 14])</span>
+<span class="sd">        &gt;&gt;&gt; simulation.get_array(&#39;age&#39;, &#39;2018-04&#39;)</span>
+<span class="sd">        array([12, 14], dtype=int32)</span>
+
+<span class="sd">        If a ``set_input`` property has been set for the variable, this method may accept inputs for periods not matching the ``definition_period`` of the variable. To read more about this, check the `documentation &lt;https://openfisca.org/doc/coding-the-legislation/35_periods.html#automatically-process-variable-inputs-defined-for-periods-not-matching-the-definitionperiod&gt;`_.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">variable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
+            <span class="n">variable_name</span><span class="p">,</span> <span class="n">check_existence</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+        <span class="n">period</span> <span class="o">=</span> <span class="n">periods</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="n">period</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">end</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">period</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">date</span> <span class="o">&gt;</span> <span class="n">variable</span><span class="o">.</span><span class="n">end</span><span class="p">):</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_holder</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span><span class="o">.</span><span class="n">set_input</span><span class="p">(</span><span class="n">period</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Simulation.get_variable_population"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_variable_population">[docs]</a>    <span class="k">def</span> <span class="nf">get_variable_population</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Population</span><span class="p">:</span>
+        <span class="n">variable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
+            <span class="n">variable_name</span><span class="p">,</span> <span class="n">check_existence</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">variable</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="Simulation.get_population"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_population">[docs]</a>    <span class="k">def</span> <span class="nf">get_population</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plural</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Population</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">next</span><span class="p">(</span>
+            <span class="p">(</span>
+                <span class="n">population</span>
+                <span class="k">for</span> <span class="n">population</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">population</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span> <span class="o">==</span> <span class="n">plural</span>
+            <span class="p">),</span>
+            <span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Simulation.get_entity"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_entity">[docs]</a>    <span class="k">def</span> <span class="nf">get_entity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plural</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Entity</span><span class="p">:</span>
+        <span class="n">population</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_population</span><span class="p">(</span><span class="n">plural</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">population</span> <span class="ow">and</span> <span class="n">population</span><span class="o">.</span><span class="n">entity</span></div>
+
+<div class="viewcode-block" id="Simulation.describe_entities"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.describe_entities">[docs]</a>    <span class="k">def</span> <span class="nf">describe_entities</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="n">population</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">:</span> <span class="n">population</span><span class="o">.</span><span class="n">ids</span>
+            <span class="k">for</span> <span class="n">population</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+        <span class="p">}</span></div>
+
+<div class="viewcode-block" id="Simulation.clone"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.clone">[docs]</a>    <span class="k">def</span> <span class="nf">clone</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">debug</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">trace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Simulation&quot;</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Copy the simulation just enough to be able to run the copy without modifying the original simulation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">new</span> <span class="o">=</span> <span class="n">commons</span><span class="o">.</span><span class="n">empty_clone</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">new_dict</span> <span class="o">=</span> <span class="n">new</span><span class="o">.</span><span class="vm">__dict__</span>
+
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;debug&quot;</span><span class="p">,</span> <span class="s2">&quot;trace&quot;</span><span class="p">,</span> <span class="s2">&quot;tracer&quot;</span><span class="p">):</span>
+                <span class="n">new_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="n">new</span><span class="o">.</span><span class="n">persons</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">persons</span><span class="o">.</span><span class="n">clone</span><span class="p">(</span><span class="n">new</span><span class="p">)</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">new</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">persons</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">persons</span><span class="p">)</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">populations</span> <span class="o">=</span> <span class="p">{</span><span class="n">new</span><span class="o">.</span><span class="n">persons</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">:</span> <span class="n">new</span><span class="o">.</span><span class="n">persons</span><span class="p">}</span>
+
+        <span class="k">for</span> <span class="n">entity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">group_entities</span><span class="p">:</span>
+            <span class="n">population</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">(</span><span class="n">new</span><span class="p">)</span>
+            <span class="n">new</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">population</span>
+            <span class="nb">setattr</span><span class="p">(</span>
+                <span class="n">new</span><span class="p">,</span> <span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">population</span>
+            <span class="p">)</span>  <span class="c1"># create shortcut simulation.household (for instance)</span>
+
+        <span class="n">new</span><span class="o">.</span><span class="n">debug</span> <span class="o">=</span> <span class="n">debug</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">trace</span> <span class="o">=</span> <span class="n">trace</span>
+
+        <span class="k">return</span> <span class="n">new</span></div></div>
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2022
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/clipboard.min.js"></script>
+    <script src="../../../_static/copybutton.js"></script>
+    <script src="../../../_static/scripts/sphinx-book-theme.js?digest=9c920249402e914e316237a7dbc6769907cce411"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../../_static/design-tabs.js"></script>
+    <script src="../../../_static/scripts/furo.js"></script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"
+const thebe_selector = ".thebe,.cell"
+const thebe_selector_input = "pre"
+const thebe_selector_output = ".output, .cell_output"
+</script>
+    <script async="async" src="../../../_static/sphinx-thebe.js"></script>
+    </body>
+</html>

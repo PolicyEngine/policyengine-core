@@ -3,7 +3,7 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Country packages" href="country.html" /><link rel="prev" title="How to contribute" href="../contributing/intro.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Creating a country package" href="country.html" /><link rel="prev" title="How to contribute" href="../contributing/intro.html" />
 
     <meta name="generator" content="sphinx-4.5.0, furo 2022.09.29"/>
         <title>Simulating policy - PolicyEngine Core documentation</title>
@@ -21,7 +21,7 @@
 
 <style>
   body {
-    --color-code-background: #eeffcc;
+    --color-code-background: #f8f8f8;
   --color-code-foreground: black;
   
   }
@@ -166,8 +166,10 @@
 <p class="caption" role="heading"><span class="caption-text">Using PolicyEngine Core</span></p>
 <ul class="current">
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Simulating policy</a></li>
-<li class="toctree-l1"><a class="reference internal" href="country.html">Country packages</a></li>
-<li class="toctree-l1"><a class="reference internal" href="cli.html">Command-line interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="country.html">Creating a country package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">Using the command-line interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="parameters.html">Writing parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">Writing datasets</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python API</span></p>
 <ul>
@@ -269,7 +271,7 @@
 
 <span class="n">sim</span> <span class="o">=</span> <span class="n">Microsimulation</span><span class="p">()</span>
 
-<span class="n">sim</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;income_tax&quot;</span><span class="p">,</span> <span class="s2">&quot;2022-01&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">/</span><span class="mf">1e6</span>
+<span class="n">sim</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;income_tax&quot;</span><span class="p">,</span> <span class="s2">&quot;2022-01&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="mf">1e6</span>
 </pre></div>
 </div>
 </div>
@@ -312,7 +314,7 @@
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Country packages</div>
+                <div class="title">Creating a country package</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>

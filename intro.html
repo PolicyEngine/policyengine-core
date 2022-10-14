@@ -21,7 +21,7 @@
 
 <style>
   body {
-    --color-code-background: #eeffcc;
+    --color-code-background: #f8f8f8;
   --color-code-foreground: black;
   
   }
@@ -166,8 +166,10 @@
 <p class="caption" role="heading"><span class="caption-text">Using PolicyEngine Core</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="usage/simulation.html">Simulating policy</a></li>
-<li class="toctree-l1"><a class="reference internal" href="usage/country.html">Country packages</a></li>
-<li class="toctree-l1"><a class="reference internal" href="usage/cli.html">Command-line interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage/country.html">Creating a country package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage/cli.html">Using the command-line interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage/parameters.html">Writing parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage/datasets.html">Writing datasets</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python API</span></p>
 <ul>
@@ -236,8 +238,8 @@
 <p>The country models each provide:</p>
 <ul class="simple">
 <li><p>A set of <em>entity types</em> (e.g. <code class="docutils literal notranslate"><span class="pre">Person</span></code>).</p></li>
-<li><p>A set of <em>parameters</em> (e.g. <code class="docutils literal notranslate"><span class="pre">Flat</span> <span class="pre">tax</span> <span class="pre">rate</span></code>). Parameters are global data points that have different values for different time periods.</p></li>
-<li><p>A set of <em>variables</em> (e.g. <code class="docutils literal notranslate"><span class="pre">Tax</span> <span class="pre">liability</span></code>). Variables are properties of entities that can be dependent on entities (including other variable values), parameters and the time period.</p></li>
+<li><p>A set of <em>parameters</em> (e.g. <code class="docutils literal notranslate"><span class="pre">parameters.tax.flat_tax.rate</span></code>). Parameters are global data points that have different values for different time periods.</p></li>
+<li><p>A set of <em>variables</em> (e.g. <code class="docutils literal notranslate"><span class="pre">income_tax</span></code>). Variables are properties of entities that can be dependent on entities (including other variable values), parameters and the time period.</p></li>
 </ul>
 <p>PolicyEngine Core then enables users to:</p>
 <ul class="simple">

@@ -20,7 +20,7 @@
 
 <style>
   body {
-    --color-code-background: #eeffcc;
+    --color-code-background: #f8f8f8;
   --color-code-foreground: black;
   
   }
@@ -165,8 +165,10 @@
 <p class="caption" role="heading"><span class="caption-text">Using PolicyEngine Core</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/simulation.html">Simulating policy</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../usage/country.html">Country packages</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../usage/cli.html">Command-line interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/country.html">Creating a country package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/cli.html">Using the command-line interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/parameters.html">Writing parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/datasets.html">Writing datasets</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python API</span></p>
 <ul>
@@ -291,13 +293,11 @@
         <span class="c1"># Normal parameter declaration: the values are declared under the &#39;values&#39; key: parse the description and metadata.</span>
         <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;values&quot;</span><span class="p">):</span>
             <span class="c1"># &#39;unit&#39; and &#39;reference&#39; are only listed here for backward compatibility</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="p">{}))</span>
             <span class="n">helpers</span><span class="o">.</span><span class="n">_validate_parameter</span><span class="p">(</span>
                 <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">allowed_keys</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">COMMON_KEYS</span><span class="o">.</span><span class="n">union</span><span class="p">({</span><span class="s2">&quot;values&quot;</span><span class="p">})</span>
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">)</span>
-
-            <span class="n">helpers</span><span class="o">.</span><span class="n">_set_backward_compatibility_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="p">{}))</span>
 
             <span class="n">helpers</span><span class="o">.</span><span class="n">_validate_parameter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;values&quot;</span><span class="p">],</span> <span class="n">data_type</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
             <span class="n">values</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;values&quot;</span><span class="p">]</span>

@@ -21,7 +21,7 @@
 
 <style>
   body {
-    --color-code-background: #eeffcc;
+    --color-code-background: #f8f8f8;
   --color-code-foreground: black;
   
   }
@@ -166,8 +166,10 @@
 <p class="caption" role="heading"><span class="caption-text">Using PolicyEngine Core</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../usage/simulation.html">Simulating policy</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../usage/country.html">Country packages</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../usage/cli.html">Command-line interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage/country.html">Creating a country package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage/cli.html">Using the command-line interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage/parameters.html">Writing parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage/datasets.html">Writing datasets</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python API</span></p>
 <ul class="current">
@@ -239,126 +241,96 @@
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.variables.variable.</span></span><span class="sig-name descname"><span class="pre">Variable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">baseline_variable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/variables/variable.html#Variable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.variables.variable.Variable" title="Permalink to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>A <a class="reference external" href="https://openfisca.org/doc/key-concepts/variables.html">variable</a> of the legislation.</p>
-<p>Main attributes:</p>
-<blockquote>
-<div><dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.name">
-<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.name" title="Permalink to this definition">#</a></dt>
-<dd><p>Name of the variable</p>
-</dd></dl>
-
 <dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.value_type">
-<span class="sig-name descname"><span class="pre">value_type</span></span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.value_type" title="Permalink to this definition">#</a></dt>
-<dd><p>The value type of the variable. Possible value types in OpenFisca are <code class="docutils literal notranslate"><span class="pre">int</span></code> <code class="docutils literal notranslate"><span class="pre">float</span></code> <code class="docutils literal notranslate"><span class="pre">bool</span></code> <code class="docutils literal notranslate"><span class="pre">str</span></code> <code class="docutils literal notranslate"><span class="pre">date</span></code> and <code class="docutils literal notranslate"><span class="pre">Enum</span></code>.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.entity">
-<span class="sig-name descname"><span class="pre">entity</span></span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.entity" title="Permalink to this definition">#</a></dt>
-<dd><p><a class="reference external" href="https://openfisca.org/doc/key-concepts/person,_entities,_role.html">Entity</a> the variable is defined for. For instance : <code class="docutils literal notranslate"><span class="pre">Person</span></code>, <code class="docutils literal notranslate"><span class="pre">Household</span></code>.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.definition_period">
-<span class="sig-name descname"><span class="pre">definition_period</span></span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.definition_period" title="Permalink to this definition">#</a></dt>
-<dd><p><a class="reference external" href="https://openfisca.org/doc/coding-the-legislation/35_periods.html">Period</a> the variable is defined for. Possible value: <code class="docutils literal notranslate"><span class="pre">MONTH</span></code>, <code class="docutils literal notranslate"><span class="pre">YEAR</span></code>, <code class="docutils literal notranslate"><span class="pre">ETERNITY</span></code>.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.formulas">
-<span class="sig-name descname"><span class="pre">formulas</span></span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.formulas" title="Permalink to this definition">#</a></dt>
-<dd><p>Formulas used to calculate the variable</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.label">
-<span class="sig-name descname"><span class="pre">label</span></span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.label" title="Permalink to this definition">#</a></dt>
-<dd><p>Description of the variable</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.reference">
-<span class="sig-name descname"><span class="pre">reference</span></span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.reference" title="Permalink to this definition">#</a></dt>
-<dd><p>Legislative reference describing the variable.</p>
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.baseline_variable">
+<span class="sig-name descname"><span class="pre">baseline_variable</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.baseline_variable" title="Permalink to this definition">#</a></dt>
+<dd><p>//openfisca.org/doc/key-concepts/reforms.html&gt;`_ to replace another variable, baseline_variable is the replaced variable.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>If the variable has been introduced in a <a href="#id1"><span class="problematic" id="id2">`</span></a>reform &lt;https</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.default_value">
-<span class="sig-name descname"><span class="pre">default_value</span></span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.default_value" title="Permalink to this definition">#</a></dt>
-<dd><p><a class="reference external" href="https://openfisca.org/doc/key-concepts/variables.html#default-values">Default value</a> of the variable.</p>
-</dd></dl>
-
-</div></blockquote>
-<p>Secondary attributes:</p>
-<blockquote>
-<div><dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.baseline_variable">
-<span class="sig-name descname"><span class="pre">baseline_variable</span></span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.baseline_variable" title="Permalink to this definition">#</a></dt>
-<dd><p>If the variable has been introduced in a <a class="reference external" href="https://openfisca.org/doc/key-concepts/reforms.html">reform</a> to replace another variable, baseline_variable is the replaced variable.</p>
+<span class="sig-name descname"><span class="pre">default_value</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">object</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.default_value" title="Permalink to this definition">#</a></dt>
+<dd><p>//openfisca.org/doc/key-concepts/variables.html#default-values&gt;`_ of the variable.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p><a href="#id3"><span class="problematic" id="id4">`</span></a>Default value &lt;https</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.dtype">
-<span class="sig-name descname"><span class="pre">dtype</span></span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.dtype" title="Permalink to this definition">#</a></dt>
-<dd><p>Numpy <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.dtype.html">dtype</a> used under the hood for the variable.</p>
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.defined_for">
+<span class="sig-name descname"><span class="pre">defined_for</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.defined_for" title="Permalink to this definition">#</a></dt>
+<dd><p>The name of another variable, nonzero values of which are used to define the set of entities for which this variable is defined.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.end">
-<span class="sig-name descname"><span class="pre">end</span></span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.end" title="Permalink to this definition">#</a></dt>
-<dd><p><a class="reference external" href="https://openfisca.org/doc/coding-the-legislation/40_legislation_evolutions.html#variable-end">Date</a>  when the variable disappears from the legislation.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.is_neutralized">
-<span class="sig-name descname"><span class="pre">is_neutralized</span></span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.is_neutralized" title="Permalink to this definition">#</a></dt>
-<dd><p>True if the variable is neutralized. Neutralized variables never use their formula, and only return their default values when calculated.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.json_type">
-<span class="sig-name descname"><span class="pre">json_type</span></span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.json_type" title="Permalink to this definition">#</a></dt>
-<dd><p>JSON type corresponding to the variable.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.max_length">
-<span class="sig-name descname"><span class="pre">max_length</span></span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.max_length" title="Permalink to this definition">#</a></dt>
-<dd><p>If the value type of the variable is <code class="docutils literal notranslate"><span class="pre">str</span></code>, max length of the string allowed. <code class="docutils literal notranslate"><span class="pre">None</span></code> if there is no limit.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.possible_values">
-<span class="sig-name descname"><span class="pre">possible_values</span></span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.possible_values" title="Permalink to this definition">#</a></dt>
-<dd><p>If the value type of the variable is <code class="docutils literal notranslate"><span class="pre">Enum</span></code>, contains the values the variable can take.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.set_input">
-<span class="sig-name descname"><span class="pre">set_input</span></span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.set_input" title="Permalink to this definition">#</a></dt>
-<dd><p>Function used to automatically process variable inputs defined for periods not matching the definition_period of the variable. See more on the <a class="reference external" href="https://openfisca.org/doc/coding-the-legislation/35_periods.html#set-input-automatically-process-variable-inputs-defined-for-periods-not-matching-the-definition-period">documentation</a>. Possible values are <code class="docutils literal notranslate"><span class="pre">set_input_dispatch_by_period</span></code>, <code class="docutils literal notranslate"><span class="pre">set_input_divide_by_period</span></code>, or nothing.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.unit">
-<span class="sig-name descname"><span class="pre">unit</span></span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.unit" title="Permalink to this definition">#</a></dt>
-<dd><p>Free text field describing the unit of the variable. Only used as metadata.</p>
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.definition_period">
+<span class="sig-name descname"><span class="pre">definition_period</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="periods.html#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">policyengine_core.periods.period_.Period</span></a></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.definition_period" title="Permalink to this definition">#</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">MONTH</span></code>, <code class="docutils literal notranslate"><span class="pre">YEAR</span></code>, <code class="docutils literal notranslate"><span class="pre">ETERNITY</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p><a href="#id5"><span class="problematic" id="id6">`</span></a>Period &lt;https</p>
+</dd>
+<dt class="field-even">Type</dt>
+<dd class="field-even"><p>//openfisca.org/doc/coding-the-legislation/35_periods.html&gt;`_ the variable is defined for. Possible value</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.documentation">
-<span class="sig-name descname"><span class="pre">documentation</span></span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.documentation" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">documentation</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.documentation" title="Permalink to this definition">#</a></dt>
 <dd><p>Free multilines text field describing the variable context and usage.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.quantity_type">
-<span class="sig-name descname"><span class="pre">quantity_type</span></span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.quantity_type" title="Permalink to this definition">#</a></dt>
-<dd><p>Categorical attribute describing whether the variable is a stock or a flow.</p>
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.dtype">
+<span class="sig-name descname"><span class="pre">dtype</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">numpy.dtype</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.dtype" title="Permalink to this definition">#</a></dt>
+<dd><p>//docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.dtype.html&gt;`_ used under the hood for the variable.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>Numpy <a href="#id7"><span class="problematic" id="id8">`</span></a>dtype &lt;https</p>
+</dd>
+</dl>
 </dd></dl>
 
-</div></blockquote>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.end">
+<span class="sig-name descname"><span class="pre">end</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">datetime.date</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.end" title="Permalink to this definition">#</a></dt>
+<dd><p>//openfisca.org/doc/coding-the-legislation/40_legislation_evolutions.html#variable-end&gt;`_  when the variable disappears from the legislation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p><a href="#id9"><span class="problematic" id="id10">`</span></a>Date &lt;https</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.entity">
+<span class="sig-name descname"><span class="pre">entity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="entities.html#policyengine_core.entities.entity.Entity" title="policyengine_core.entities.entity.Entity"><span class="pre">policyengine_core.entities.entity.Entity</span></a></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.entity" title="Permalink to this definition">#</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">Person</span></code>, <code class="docutils literal notranslate"><span class="pre">Household</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p><a href="#id11"><span class="problematic" id="id12">`</span></a>Entity &lt;https</p>
+</dd>
+<dt class="field-even">Type</dt>
+<dd class="field-even"><p>//openfisca.org/doc/key-concepts/person,_entities,_role.html&gt;`_ the variable is defined for. For instance</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.formulas">
+<span class="sig-name descname"><span class="pre">formulas</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Callable</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.formulas" title="Permalink to this definition">#</a></dt>
+<dd><p>Formulas used to calculate the variable</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.get_formula">
 <span class="sig-name descname"><span class="pre">get_formula</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/variables/variable.html#Variable.get_formula"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.variables.variable.Variable.get_formula" title="Permalink to this definition">#</a></dt>
@@ -367,9 +339,6 @@
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>Formula used to compute the variable</p>
-</dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><code class="xref any docutils literal notranslate"><span class="pre">Formula</span></code></p>
 </dd>
 </dl>
 </dd></dl>
@@ -394,6 +363,36 @@
 <dd><p>Returns True if the variable is an input variable.</p>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.is_neutralized">
+<span class="sig-name descname"><span class="pre">is_neutralized</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.is_neutralized" title="Permalink to this definition">#</a></dt>
+<dd><p>True if the variable is neutralized. Neutralized variables never use their formula, and only return their default values when calculated.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.json_type">
+<span class="sig-name descname"><span class="pre">json_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.json_type" title="Permalink to this definition">#</a></dt>
+<dd><p>JSON type corresponding to the variable.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.label">
+<span class="sig-name descname"><span class="pre">label</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.label" title="Permalink to this definition">#</a></dt>
+<dd><p>Description of the variable</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.max_length">
+<span class="sig-name descname"><span class="pre">max_length</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.max_length" title="Permalink to this definition">#</a></dt>
+<dd><p>If the value type of the variable is <code class="docutils literal notranslate"><span class="pre">str</span></code>, max length of the string allowed. <code class="docutils literal notranslate"><span class="pre">None</span></code> if there is no limit.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.name" title="Permalink to this definition">#</a></dt>
+<dd><p>Name of the variable</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.parse_formula_name">
 <span class="sig-name descname"><span class="pre">parse_formula_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">attribute_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/variables/variable.html#Variable.parse_formula_name"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.variables.variable.Variable.parse_formula_name" title="Permalink to this definition">#</a></dt>
@@ -407,6 +406,47 @@
 </ul>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.possible_values">
+<span class="sig-name descname"><span class="pre">possible_values</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="enums.html#policyengine_core.enums.enum_array.EnumArray" title="policyengine_core.enums.enum_array.EnumArray"><span class="pre">policyengine_core.enums.enum_array.EnumArray</span></a></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.possible_values" title="Permalink to this definition">#</a></dt>
+<dd><p>If the value type of the variable is <code class="docutils literal notranslate"><span class="pre">Enum</span></code>, contains the values the variable can take.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.quantity_type">
+<span class="sig-name descname"><span class="pre">quantity_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.quantity_type" title="Permalink to this definition">#</a></dt>
+<dd><p>Categorical attribute describing whether the variable is a stock or a flow.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.reference">
+<span class="sig-name descname"><span class="pre">reference</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.reference" title="Permalink to this definition">#</a></dt>
+<dd><p>Legislative reference describing the variable.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.set_input">
+<span class="sig-name descname"><span class="pre">set_input</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Callable</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.set_input" title="Permalink to this definition">#</a></dt>
+<dd><p>//openfisca.org/doc/coding-the-legislation/35_periods.html#set-input-automatically-process-variable-inputs-defined-for-periods-not-matching-the-definition-period&gt;`_. Possible values are <code class="docutils literal notranslate"><span class="pre">set_input_dispatch_by_period</span></code>, <code class="docutils literal notranslate"><span class="pre">set_input_divide_by_period</span></code>, or nothing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>Function used to automatically process variable inputs defined for periods not matching the definition_period of the variable. See more on the <a href="#id13"><span class="problematic" id="id14">`</span></a>documentation &lt;https</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.unit">
+<span class="sig-name descname"><span class="pre">unit</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.unit" title="Permalink to this definition">#</a></dt>
+<dd><p>Free text field describing the unit of the variable. Only used as metadata.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.value_type">
+<span class="sig-name descname"><span class="pre">value_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">type</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.value_type" title="Permalink to this definition">#</a></dt>
+<dd><p>The value type of the variable. Possible value types in OpenFisca are <code class="docutils literal notranslate"><span class="pre">int</span></code> <code class="docutils literal notranslate"><span class="pre">float</span></code> <code class="docutils literal notranslate"><span class="pre">bool</span></code> <code class="docutils literal notranslate"><span class="pre">str</span></code> <code class="docutils literal notranslate"><span class="pre">date</span></code> and <code class="docutils literal notranslate"><span class="pre">Enum</span></code>.</p>
 </dd></dl>
 
 </dd></dl>

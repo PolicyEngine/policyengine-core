@@ -20,7 +20,7 @@
 
 <style>
   body {
-    --color-code-background: #eeffcc;
+    --color-code-background: #f8f8f8;
   --color-code-foreground: black;
   
   }
@@ -165,8 +165,10 @@
 <p class="caption" role="heading"><span class="caption-text">Using PolicyEngine Core</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/simulation.html">Simulating policy</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../usage/country.html">Country packages</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../usage/cli.html">Command-line interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/country.html">Creating a country package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/cli.html">Using the command-line interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/parameters.html">Writing parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/datasets.html">Writing datasets</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python API</span></p>
 <ul>
@@ -228,9 +230,23 @@
         </div>
         <article role="main">
           <h1>Source code for policyengine_core.commons.formulas</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">TypeVar</span>
+<span></span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Type</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Union</span>
 <span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">logical_not</span> <span class="k">as</span> <span class="n">not_</span><span class="p">,</span>
+    <span class="n">maximum</span> <span class="k">as</span> <span class="n">max_</span><span class="p">,</span>
+    <span class="n">minimum</span> <span class="k">as</span> <span class="n">min_</span><span class="p">,</span>
+    <span class="nb">round</span> <span class="k">as</span> <span class="n">round_</span><span class="p">,</span>
+    <span class="n">select</span><span class="p">,</span>
+    <span class="n">where</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.types</span> <span class="kn">import</span> <span class="n">ArrayLike</span><span class="p">,</span> <span class="n">ArrayType</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.populations.population</span> <span class="kn">import</span> <span class="n">Population</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.periods.period_</span> <span class="kn">import</span> <span class="n">Period</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.variables.variable</span> <span class="kn">import</span> <span class="n">Variable</span>
 
 <span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;T&quot;</span><span class="p">)</span>
 
@@ -357,6 +373,299 @@
     <span class="p">]</span>
 
     <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">condlist</span><span class="p">,</span> <span class="n">value_by_condition</span><span class="o">.</span><span class="n">values</span><span class="p">())</span></div>
+
+
+<span class="k">def</span> <span class="nf">for_each_variable</span><span class="p">(</span>
+    <span class="n">entity</span><span class="p">:</span> <span class="n">Population</span><span class="p">,</span>
+    <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">,</span>
+    <span class="n">variables</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">agg_func</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;add&quot;</span><span class="p">,</span>
+    <span class="n">group_agg_func</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;add&quot;</span><span class="p">,</span>
+    <span class="n">options</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Applies operations to lists of variables.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        entity (Population): The entity population, as passed in formulas.</span>
+<span class="sd">        period (Period): The period, as pass in formulas.</span>
+<span class="sd">        variables (List[str]): A list of variable names.</span>
+<span class="sd">        agg_func (str, optional): The operation to apply to combine variable results. Defaults to &quot;add&quot;.</span>
+<span class="sd">        group_agg_func (str, optional): The operation to apply to transform values to the target entity level. Defaults to &quot;add&quot;.</span>
+<span class="sd">        options (List[str], optional): Options to pass to the `entity(variable, period)` call. Defaults to None.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If any target variable is not at or below the target entity level.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ArrayLike: The result of the operation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">agg_func</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">add</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">,</span> <span class="n">multiply</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="o">*</span> <span class="n">y</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="n">max_</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="n">min_</span>
+    <span class="p">)[</span><span class="n">agg_func</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">entity</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">is_person</span><span class="p">:</span>
+        <span class="n">group_agg_func</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">add</span><span class="o">=</span><span class="n">entity</span><span class="o">.</span><span class="n">sum</span><span class="p">,</span> <span class="nb">all</span><span class="o">=</span><span class="n">entity</span><span class="o">.</span><span class="n">all</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="n">entity</span><span class="o">.</span><span class="n">max</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="n">entity</span><span class="o">.</span><span class="n">min</span>
+        <span class="p">)[</span><span class="n">group_agg_func</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">variable</span> <span class="ow">in</span> <span class="n">variables</span><span class="p">:</span>
+        <span class="n">variable_entity</span> <span class="o">=</span> <span class="n">entity</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">variable</span><span class="p">)</span><span class="o">.</span><span class="n">entity</span>
+        <span class="k">if</span> <span class="n">variable_entity</span><span class="o">.</span><span class="n">key</span> <span class="o">==</span> <span class="n">entity</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">:</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="n">entity</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="n">options</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">variable_entity</span><span class="o">.</span><span class="n">is_person</span><span class="p">:</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="n">group_agg_func</span><span class="p">(</span>
+                <span class="n">entity</span><span class="o">.</span><span class="n">members</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="n">options</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">entity</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">is_person</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;You requested to aggregate </span><span class="si">{</span><span class="n">variable</span><span class="si">}</span><span class="s2"> (defined for </span><span class="si">{</span><span class="n">variable_entity</span><span class="o">.</span><span class="n">plural</span><span class="si">}</span><span class="s2">) to </span><span class="si">{</span><span class="n">entity</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="si">}</span><span class="s2">, but this is not yet implemented.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># Group-to-group aggregation</span>
+            <span class="n">variable_population</span> <span class="o">=</span> <span class="n">entity</span><span class="o">.</span><span class="n">simulation</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span>
+                <span class="n">variable_entity</span><span class="o">.</span><span class="n">key</span>
+            <span class="p">]</span>
+            <span class="n">person_shares</span> <span class="o">=</span> <span class="n">variable_population</span><span class="o">.</span><span class="n">project</span><span class="p">(</span>
+                <span class="n">variable_population</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+            <span class="p">)</span> <span class="o">/</span> <span class="n">variable_population</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">variable_population</span><span class="o">.</span><span class="n">nb_persons</span><span class="p">())</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="n">entity</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">person_shares</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">values</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">agg_func</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="k">def</span> <span class="nf">add</span><span class="p">(</span>
+    <span class="n">entity</span><span class="p">:</span> <span class="n">Population</span><span class="p">,</span>
+    <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">,</span>
+    <span class="n">variables</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">options</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Sums a list of variables.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        entity (Population): The entity population, as passed in formulas.</span>
+<span class="sd">        period (Period): The period, as pass in formulas.</span>
+<span class="sd">        variables (List[str]): A list of variable names.</span>
+<span class="sd">        options (List[str], optional): Options to pass to the `entity(variable, period)` call. Defaults to None.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If any target variable is not at or below the target entity level.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ArrayLike: The result of the operation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">for_each_variable</span><span class="p">(</span>
+        <span class="n">entity</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">variables</span><span class="p">,</span> <span class="n">agg_func</span><span class="o">=</span><span class="s2">&quot;add&quot;</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="n">options</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">aggr</span><span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">variables</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Sums a list of variables belonging to entity members.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        entity (Population): The entity population, as passed in formulas.</span>
+<span class="sd">        period (Period): The period, as pass in formulas.</span>
+<span class="sd">        variables (List[str]): A list of variable names.</span>
+<span class="sd">        options (List[str], optional): Options to pass to the `entity(variable, period)` call. Defaults to None.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If any target variable is not below the target entity level.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ArrayLike: The result of the operation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">for_each_variable</span><span class="p">(</span>
+        <span class="n">entity</span><span class="p">,</span>
+        <span class="n">period</span><span class="p">,</span>
+        <span class="n">variables</span><span class="p">,</span>
+        <span class="n">agg_func</span><span class="o">=</span><span class="s2">&quot;add&quot;</span><span class="p">,</span>
+        <span class="n">group_agg_func</span><span class="o">=</span><span class="s2">&quot;add&quot;</span><span class="p">,</span>
+        <span class="n">options</span><span class="o">=</span><span class="n">options</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">and_</span><span class="p">(</span>
+    <span class="n">entity</span><span class="p">:</span> <span class="n">Population</span><span class="p">,</span>
+    <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">,</span>
+    <span class="n">variables</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">options</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Performs a logical and operation on a list of variables.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        entity (Population): The entity population, as passed in formulas.</span>
+<span class="sd">        period (Period): The period, as pass in formulas.</span>
+<span class="sd">        variables (List[str]): A list of variable names.</span>
+<span class="sd">        options (List[str], optional): Options to pass to the `entity(variable, period)` call. Defaults to None.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If any target variable is not at the target entity level.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ArrayLike: The result of the operation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">for_each_variable</span><span class="p">(</span>
+        <span class="n">entity</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">variables</span><span class="p">,</span> <span class="n">agg_func</span><span class="o">=</span><span class="s2">&quot;multiply&quot;</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="n">options</span>
+    <span class="p">)</span>
+
+
+<span class="n">or_</span> <span class="o">=</span> <span class="n">add</span>
+<span class="n">any_</span> <span class="o">=</span> <span class="n">or_</span>
+<span class="n">multiply</span> <span class="o">=</span> <span class="n">and_</span>
+
+<span class="n">select</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">select</span>
+
+
+<span class="n">clip</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span>
+<span class="n">inf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+
+<span class="n">WEEKS_IN_YEAR</span> <span class="o">=</span> <span class="mi">52</span>
+<span class="n">MONTHS_IN_YEAR</span> <span class="o">=</span> <span class="mi">12</span>
+
+
+<span class="k">def</span> <span class="nf">amount_over</span><span class="p">(</span><span class="n">amount</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span> <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Calculates the amounts over a threshold.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        amount (ArrayLike): The amount to calculate for.</span>
+<span class="sd">        threshold_1 (float): The threshold.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ArrayLike: The amounts over the threshold.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+        <span class="s2">&quot;amount_over(x, y) is deprecated, use max_(x - y, 0) instead.&quot;</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">max_</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">amount</span> <span class="o">-</span> <span class="n">threshold</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">amount_between</span><span class="p">(</span>
+    <span class="n">amount</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span> <span class="n">threshold_1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">threshold_2</span><span class="p">:</span> <span class="nb">float</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Calculates the amounts between two thresholds.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        amount (ArrayLike): The amount to calculate for.</span>
+<span class="sd">        threshold_1 (float): The lower threshold.</span>
+<span class="sd">        threshold_2 (float): The upper threshold.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ArrayLike: The amounts between the thresholds.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">clip</span><span class="p">(</span><span class="n">amount</span><span class="p">,</span> <span class="n">threshold_1</span><span class="p">,</span> <span class="n">threshold_2</span><span class="p">)</span> <span class="o">-</span> <span class="n">threshold_1</span>
+
+
+<span class="k">def</span> <span class="nf">random</span><span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">reset</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">reset</span><span class="p">:</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">entity</span><span class="o">.</span><span class="n">count</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">x</span>
+
+
+<span class="k">def</span> <span class="nf">is_in</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span> <span class="o">*</span><span class="n">targets</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Returns true if the value is in the list of targets.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        values (ArrayLike): The values to test.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ArrayLike: True if the value is in the list of targets.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">targets</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="n">targets</span> <span class="o">=</span> <span class="n">targets</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">([</span><span class="n">values</span> <span class="o">==</span> <span class="n">target</span> <span class="k">for</span> <span class="n">target</span> <span class="ow">in</span> <span class="n">targets</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">between</span><span class="p">(</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span> <span class="n">lower</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">upper</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">inclusive</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;both&quot;</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Returns true if values are between lower and upper.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        values (ArrayLike): The input array.</span>
+<span class="sd">        lower (float): The lower bound.</span>
+<span class="sd">        upper (float): The upper bound.</span>
+<span class="sd">        inclusive (bool, optional): Whether to include or exclude the bounds. Defaults to True.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ArrayLike: The resulting array.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">values</span><span class="p">)</span><span class="o">.</span><span class="n">between</span><span class="p">(</span><span class="n">lower</span><span class="p">,</span> <span class="n">upper</span><span class="p">,</span> <span class="n">inclusive</span><span class="o">=</span><span class="n">inclusive</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">uprated</span><span class="p">(</span><span class="n">by</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">start_year</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2015</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Attaches a formula applying an uprating factor to input variables (going back as far as 2015).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        by (str, optional): The name of the parameter (under parameters.uprating). Defaults to None (no uprating applied).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Callable: A class decorator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">uprater</span><span class="p">(</span><span class="n">variable</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="n">Variable</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;formula_</span><span class="si">{</span><span class="n">start_year</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">variable</span>
+
+        <span class="n">formula</span> <span class="o">=</span> <span class="n">variable</span><span class="o">.</span><span class="n">formula</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="s2">&quot;formula&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+
+        <span class="n">variable</span><span class="o">.</span><span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;uprating&quot;</span><span class="p">:</span> <span class="n">by</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="k">def</span> <span class="nf">formula_start_year</span><span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">by</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">entity</span><span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">period</span><span class="o">.</span><span class="n">last_year</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">current_parameter</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">(</span><span class="n">period</span><span class="p">)</span>
+                <span class="n">last_year_parameter</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">(</span><span class="n">period</span><span class="o">.</span><span class="n">last_year</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">by</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">):</span>
+                    <span class="n">current_parameter</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">current_parameter</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+                    <span class="n">last_year_parameter</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">last_year_parameter</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+                <span class="n">uprating</span> <span class="o">=</span> <span class="n">current_parameter</span> <span class="o">/</span> <span class="n">last_year_parameter</span>
+                <span class="n">old</span> <span class="o">=</span> <span class="n">entity</span><span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">period</span><span class="o">.</span><span class="n">last_year</span><span class="p">)</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">formula</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">all</span><span class="p">(</span><span class="n">old</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span>
+                    <span class="c1"># If no values have been inputted, don&#39;t uprate and</span>
+                    <span class="c1"># instead use the previous formula on the current period.</span>
+                    <span class="k">return</span> <span class="n">formula</span><span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">uprating</span> <span class="o">*</span> <span class="n">old</span>
+
+        <span class="n">formula_start_year</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;formula_</span><span class="si">{</span><span class="n">start_year</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">formula_start_year</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">formula_start_year</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">variable</span>
+
+    <span class="k">return</span> <span class="n">uprater</span>
+
+
+<span class="k">def</span> <span class="nf">carried_over</span><span class="p">(</span><span class="n">variable</span><span class="p">:</span> <span class="nb">type</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">uprated</span><span class="p">()(</span><span class="n">variable</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">sum_of_variables</span><span class="p">(</span><span class="n">variables</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Returns a function that sums the values of a list of variables.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        variables (Union[List[str], str]): A list of variable names.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Callable: A function that sums the values of the variables.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">sum_of_variables</span><span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">variables</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="c1"># A string parameter name is passed</span>
+            <span class="n">node</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">(</span><span class="n">period</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">variables</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">):</span>
+                <span class="n">node</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+            <span class="n">variable_names</span> <span class="o">=</span> <span class="n">node</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">variable_names</span> <span class="o">=</span> <span class="n">variables</span>
+        <span class="k">return</span> <span class="n">add</span><span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">variable_names</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">sum_of_variables</span>
+
+
+<span class="n">any_of_variables</span> <span class="o">=</span> <span class="n">sum_of_variables</span>
 </pre></div>
         </article>
       </div>

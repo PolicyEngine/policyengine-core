@@ -20,7 +20,7 @@
 
 <style>
   body {
-    --color-code-background: #eeffcc;
+    --color-code-background: #f8f8f8;
   --color-code-foreground: black;
   
   }
@@ -165,8 +165,10 @@
 <p class="caption" role="heading"><span class="caption-text">Using PolicyEngine Core</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../usage/simulation.html">Simulating policy</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../usage/country.html">Country packages</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../usage/cli.html">Command-line interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage/country.html">Creating a country package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage/cli.html">Using the command-line interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage/parameters.html">Writing parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage/datasets.html">Writing datasets</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python API</span></p>
 <ul>
@@ -237,86 +239,38 @@
 <span class="kn">from</span> <span class="nn">policyengine_core.country_template.situation_examples</span> <span class="kn">import</span> <span class="n">couple</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.simulations</span> <span class="kn">import</span> <span class="n">Simulation</span> <span class="k">as</span> <span class="n">CoreSimulation</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.simulations</span> <span class="kn">import</span> <span class="p">(</span>
-    <span class="n">WeightedSimulation</span> <span class="k">as</span> <span class="n">CoreWeightedSimulation</span><span class="p">,</span>
+    <span class="n">Microsimulation</span> <span class="k">as</span> <span class="n">CoreMicrosimulation</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.country_template.data.datasets.country_template_dataset</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">CountryTemplateDataset</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">.constants</span> <span class="kn">import</span> <span class="n">COUNTRY_DIR</span>
+
+<span class="n">DATASETS</span> <span class="o">=</span> <span class="p">[</span><span class="n">CountryTemplateDataset</span><span class="p">]</span>  <span class="c1"># Important: must be instantiated</span>
 
 
-<span class="n">COUNTRY_DIR</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span>
-
-<span class="n">DATASETS</span> <span class="o">=</span> <span class="p">[</span><span class="n">CountryTemplateDataset</span><span class="p">]</span>
-
-<span class="c1"># Our country tax and benefit class inherits from the general TaxBenefitSystem class.</span>
-<span class="c1"># The name CountryTaxBenefitSystem must not be changed, as all tools of the OpenFisca ecosystem expect a CountryTaxBenefitSystem class to be exposed in the __init__ module of a country package.</span>
 <div class="viewcode-block" id="CountryTaxBenefitSystem"><a class="viewcode-back" href="../../python_api/country_template.html#policyengine_core.country_template.CountryTaxBenefitSystem">[docs]</a><span class="k">class</span> <span class="nc">CountryTaxBenefitSystem</span><span class="p">(</span><span class="n">TaxBenefitSystem</span><span class="p">):</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c1"># We initialize our tax and benefit system with the general constructor</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">entities</span><span class="o">.</span><span class="n">entities</span><span class="p">)</span>
-
-        <span class="c1"># We add to our tax and benefit system all the variables</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">add_variables_from_directory</span><span class="p">(</span>
-            <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">COUNTRY_DIR</span><span class="p">,</span> <span class="s2">&quot;variables&quot;</span><span class="p">)</span>
-        <span class="p">)</span>
-
-        <span class="c1"># We add to our tax and benefit system all the legislation parameters defined in the  parameters files</span>
-        <span class="n">param_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">COUNTRY_DIR</span><span class="p">,</span> <span class="s2">&quot;parameters&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">load_parameters</span><span class="p">(</span><span class="n">param_path</span><span class="p">)</span>
-
-        <span class="c1"># We define which variable, parameter and simulation example will be used in the OpenAPI specification</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">open_api_config</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;variable_example&quot;</span><span class="p">:</span> <span class="s2">&quot;disposable_income&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;parameter_example&quot;</span><span class="p">:</span> <span class="s2">&quot;taxes.income_tax_rate&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;simulation_example&quot;</span><span class="p">:</span> <span class="n">couple</span><span class="p">,</span>
-        <span class="p">}</span></div>
+    <span class="n">entities</span> <span class="o">=</span> <span class="n">entities</span><span class="o">.</span><span class="n">entities</span>
+    <span class="n">variables_dir</span> <span class="o">=</span> <span class="n">COUNTRY_DIR</span> <span class="o">/</span> <span class="s2">&quot;variables&quot;</span>
+    <span class="n">parameters_dir</span> <span class="o">=</span> <span class="n">COUNTRY_DIR</span> <span class="o">/</span> <span class="s2">&quot;parameters&quot;</span></div>
 
 
 <span class="k">class</span> <span class="nc">Simulation</span><span class="p">(</span><span class="n">CoreSimulation</span><span class="p">):</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="o">*</span><span class="n">args</span><span class="p">,</span>
-        <span class="n">tax_benefit_system</span><span class="p">:</span> <span class="n">TaxBenefitSystem</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-    <span class="p">):</span>
-        <span class="k">if</span> <span class="n">tax_benefit_system</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="n">CountryTaxBenefitSystem</span><span class="p">()</span>
-
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="o">*</span><span class="n">args</span><span class="p">,</span>
-            <span class="n">tax_benefit_system</span><span class="o">=</span><span class="n">tax_benefit_system</span><span class="p">,</span>
-            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-        <span class="p">)</span>
+    <span class="n">default_tax_benefit_system</span> <span class="o">=</span> <span class="n">CountryTaxBenefitSystem</span>
 
 
-<span class="k">class</span> <span class="nc">Microsimulation</span><span class="p">(</span><span class="n">CoreWeightedSimulation</span><span class="p">):</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="o">*</span><span class="n">args</span><span class="p">,</span>
-        <span class="n">tax_benefit_system</span><span class="p">:</span> <span class="n">TaxBenefitSystem</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">dataset</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">dataset_options</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-    <span class="p">):</span>
-        <span class="k">if</span> <span class="n">tax_benefit_system</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="n">CountryTaxBenefitSystem</span><span class="p">()</span>
+<span class="k">class</span> <span class="nc">Microsimulation</span><span class="p">(</span><span class="n">CoreMicrosimulation</span><span class="p">):</span>
+    <span class="n">default_tax_benefit_system</span> <span class="o">=</span> <span class="n">CountryTaxBenefitSystem</span>
+    <span class="n">default_dataset</span> <span class="o">=</span> <span class="n">CountryTemplateDataset</span>
+    <span class="n">default_dataset_year</span> <span class="o">=</span> <span class="mi">2022</span>
 
-        <span class="k">if</span> <span class="n">dataset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">dataset</span> <span class="o">=</span> <span class="n">CountryTemplateDataset</span>
 
-        <span class="n">dataset_instance</span> <span class="o">=</span> <span class="n">dataset</span><span class="p">()</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">dataset_instance</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">dataset_options</span><span class="p">):</span>
-            <span class="c1"># Build the dataset if it doesn&#39;t exist. A country package might not want to do this: for example,</span>
-            <span class="c1"># you might want to throw an exception instead.</span>
-            <span class="n">dataset_instance</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">dataset_options</span><span class="p">)</span>
-
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="o">*</span><span class="n">args</span><span class="p">,</span>
-            <span class="n">tax_benefit_system</span><span class="o">=</span><span class="n">tax_benefit_system</span><span class="p">,</span>
-            <span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span>
-            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-        <span class="p">)</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">CountryTemplateDataset</span>
+<span class="k">if</span> <span class="mi">2022</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dataset</span><span class="o">.</span><span class="n">years</span><span class="p">:</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Default country template dataset not found. Building it.&quot;</span><span class="p">)</span>
+    <span class="n">dataset</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="mi">2022</span><span class="p">)</span>
 </pre></div>
         </article>
       </div>

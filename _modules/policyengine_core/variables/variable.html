@@ -20,7 +20,7 @@
 
 <style>
   body {
-    --color-code-background: #eeffcc;
+    --color-code-background: #f8f8f8;
   --color-code-foreground: black;
   
   }
@@ -165,8 +165,10 @@
 <p class="caption" role="heading"><span class="caption-text">Using PolicyEngine Core</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/simulation.html">Simulating policy</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../usage/country.html">Country packages</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../usage/cli.html">Command-line interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/country.html">Creating a country package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/cli.html">Using the command-line interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/parameters.html">Writing parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/datasets.html">Writing datasets</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python API</span></p>
 <ul>
@@ -232,6 +234,7 @@
 <span class="kn">import</span> <span class="nn">inspect</span>
 <span class="kn">import</span> <span class="nn">re</span>
 <span class="kn">import</span> <span class="nn">textwrap</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Type</span>
 <span class="kn">import</span> <span class="nn">sortedcontainers</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span>
@@ -252,87 +255,67 @@
 <div class="viewcode-block" id="Variable"><a class="viewcode-back" href="../../../python_api/variables.html#policyengine_core.variables.variable.Variable">[docs]</a><span class="k">class</span> <span class="nc">Variable</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A `variable &lt;https://openfisca.org/doc/key-concepts/variables.html&gt;`_ of the legislation.</span>
-
-<span class="sd">    Main attributes:</span>
-
-<span class="sd">       .. attribute:: name</span>
-
-<span class="sd">           Name of the variable</span>
-
-<span class="sd">       .. attribute:: value_type</span>
-
-<span class="sd">           The value type of the variable. Possible value types in OpenFisca are ``int`` ``float`` ``bool`` ``str`` ``date`` and ``Enum``.</span>
-
-<span class="sd">       .. attribute:: entity</span>
-
-<span class="sd">           `Entity &lt;https://openfisca.org/doc/key-concepts/person,_entities,_role.html&gt;`_ the variable is defined for. For instance : ``Person``, ``Household``.</span>
-
-<span class="sd">       .. attribute:: definition_period</span>
-
-<span class="sd">           `Period &lt;https://openfisca.org/doc/coding-the-legislation/35_periods.html&gt;`_ the variable is defined for. Possible value: ``MONTH``, ``YEAR``, ``ETERNITY``.</span>
-
-<span class="sd">       .. attribute:: formulas</span>
-
-<span class="sd">           Formulas used to calculate the variable</span>
-
-<span class="sd">       .. attribute:: label</span>
-
-<span class="sd">           Description of the variable</span>
-
-<span class="sd">       .. attribute:: reference</span>
-
-<span class="sd">           Legislative reference describing the variable.</span>
-
-<span class="sd">       .. attribute:: default_value</span>
-
-<span class="sd">           `Default value &lt;https://openfisca.org/doc/key-concepts/variables.html#default-values&gt;`_ of the variable.</span>
-
-<span class="sd">    Secondary attributes:</span>
-
-<span class="sd">       .. attribute:: baseline_variable</span>
-
-<span class="sd">           If the variable has been introduced in a `reform &lt;https://openfisca.org/doc/key-concepts/reforms.html&gt;`_ to replace another variable, baseline_variable is the replaced variable.</span>
-
-<span class="sd">       .. attribute:: dtype</span>
-
-<span class="sd">           Numpy `dtype &lt;https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.dtype.html&gt;`_ used under the hood for the variable.</span>
-
-<span class="sd">       .. attribute:: end</span>
-
-<span class="sd">           `Date &lt;https://openfisca.org/doc/coding-the-legislation/40_legislation_evolutions.html#variable-end&gt;`_  when the variable disappears from the legislation.</span>
-
-<span class="sd">       .. attribute:: is_neutralized</span>
-
-<span class="sd">           True if the variable is neutralized. Neutralized variables never use their formula, and only return their default values when calculated.</span>
-
-<span class="sd">       .. attribute:: json_type</span>
-
-<span class="sd">           JSON type corresponding to the variable.</span>
-
-<span class="sd">       .. attribute:: max_length</span>
-
-<span class="sd">           If the value type of the variable is ``str``, max length of the string allowed. ``None`` if there is no limit.</span>
-
-<span class="sd">       .. attribute:: possible_values</span>
-
-<span class="sd">           If the value type of the variable is ``Enum``, contains the values the variable can take.</span>
-
-<span class="sd">       .. attribute:: set_input</span>
-
-<span class="sd">           Function used to automatically process variable inputs defined for periods not matching the definition_period of the variable. See more on the `documentation &lt;https://openfisca.org/doc/coding-the-legislation/35_periods.html#set-input-automatically-process-variable-inputs-defined-for-periods-not-matching-the-definition-period&gt;`_. Possible values are ``set_input_dispatch_by_period``, ``set_input_divide_by_period``, or nothing.</span>
-
-<span class="sd">       .. attribute:: unit</span>
-
-<span class="sd">           Free text field describing the unit of the variable. Only used as metadata.</span>
-
-<span class="sd">       .. attribute:: documentation</span>
-
-<span class="sd">           Free multilines text field describing the variable context and usage.</span>
-
-<span class="sd">       .. attribute:: quantity_type</span>
-
-<span class="sd">           Categorical attribute describing whether the variable is a stock or a flow.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="sd">&quot;&quot;&quot;Name of the variable&quot;&quot;&quot;</span>
+
+    <span class="n">value_type</span><span class="p">:</span> <span class="nb">type</span>
+    <span class="sd">&quot;&quot;&quot;The value type of the variable. Possible value types in OpenFisca are ``int`` ``float`` ``bool`` ``str`` ``date`` and ``Enum``.&quot;&quot;&quot;</span>
+
+    <span class="n">entity</span><span class="p">:</span> <span class="n">Entity</span>
+    <span class="sd">&quot;&quot;&quot;`Entity &lt;https://openfisca.org/doc/key-concepts/person,_entities,_role.html&gt;`_ the variable is defined for. For instance : ``Person``, ``Household``.&quot;&quot;&quot;</span>
+
+    <span class="n">definition_period</span><span class="p">:</span> <span class="n">Period</span>
+    <span class="sd">&quot;&quot;&quot;`Period &lt;https://openfisca.org/doc/coding-the-legislation/35_periods.html&gt;`_ the variable is defined for. Possible value: ``MONTH``, ``YEAR``, ``ETERNITY``.&quot;&quot;&quot;</span>
+
+    <span class="n">formulas</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span>
+    <span class="sd">&quot;&quot;&quot;Formulas used to calculate the variable&quot;&quot;&quot;</span>
+
+    <span class="n">label</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="sd">&quot;&quot;&quot;Description of the variable&quot;&quot;&quot;</span>
+
+    <span class="n">reference</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="sd">&quot;&quot;&quot;Legislative reference describing the variable.&quot;&quot;&quot;</span>
+
+    <span class="n">default_value</span><span class="p">:</span> <span class="nb">object</span>
+    <span class="sd">&quot;&quot;&quot;`Default value &lt;https://openfisca.org/doc/key-concepts/variables.html#default-values&gt;`_ of the variable.&quot;&quot;&quot;</span>
+
+    <span class="n">baseline_variable</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="sd">&quot;&quot;&quot;If the variable has been introduced in a `reform &lt;https://openfisca.org/doc/key-concepts/reforms.html&gt;`_ to replace another variable, baseline_variable is the replaced variable.&quot;&quot;&quot;</span>
+
+    <span class="n">dtype</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">dtype</span>
+    <span class="sd">&quot;&quot;&quot;Numpy `dtype &lt;https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.dtype.html&gt;`_ used under the hood for the variable.&quot;&quot;&quot;</span>
+
+    <span class="n">end</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span>
+    <span class="sd">&quot;&quot;&quot;`Date &lt;https://openfisca.org/doc/coding-the-legislation/40_legislation_evolutions.html#variable-end&gt;`_  when the variable disappears from the legislation.&quot;&quot;&quot;</span>
+
+    <span class="n">is_neutralized</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="sd">&quot;&quot;&quot;True if the variable is neutralized. Neutralized variables never use their formula, and only return their default values when calculated.&quot;&quot;&quot;</span>
+
+    <span class="n">json_type</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="sd">&quot;&quot;&quot;JSON type corresponding to the variable.&quot;&quot;&quot;</span>
+
+    <span class="n">max_length</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="sd">&quot;&quot;&quot;If the value type of the variable is ``str``, max length of the string allowed. ``None`` if there is no limit.&quot;&quot;&quot;</span>
+
+    <span class="n">possible_values</span><span class="p">:</span> <span class="n">EnumArray</span>
+    <span class="sd">&quot;&quot;&quot;If the value type of the variable is ``Enum``, contains the values the variable can take.&quot;&quot;&quot;</span>
+
+    <span class="n">set_input</span><span class="p">:</span> <span class="n">Callable</span>
+    <span class="sd">&quot;&quot;&quot;Function used to automatically process variable inputs defined for periods not matching the definition_period of the variable. See more on the `documentation &lt;https://openfisca.org/doc/coding-the-legislation/35_periods.html#set-input-automatically-process-variable-inputs-defined-for-periods-not-matching-the-definition-period&gt;`_. Possible values are ``set_input_dispatch_by_period``, ``set_input_divide_by_period``, or nothing.&quot;&quot;&quot;</span>
+
+    <span class="n">unit</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="sd">&quot;&quot;&quot;Free text field describing the unit of the variable. Only used as metadata.&quot;&quot;&quot;</span>
+
+    <span class="n">documentation</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="sd">&quot;&quot;&quot;Free multilines text field describing the variable context and usage.&quot;&quot;&quot;</span>
+
+    <span class="n">quantity_type</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="sd">&quot;&quot;&quot;Categorical attribute describing whether the variable is a stock or a flow.&quot;&quot;&quot;</span>
+
+    <span class="n">defined_for</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="sd">&quot;&quot;&quot;The name of another variable, nonzero values of which are used to define the set of entities for which this variable is defined.&quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">baseline_variable</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
@@ -351,7 +334,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">VALUE_TYPES</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">value_type</span><span class="p">][</span><span class="s2">&quot;dtype&quot;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">json_type</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">VALUE_TYPES</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">value_type</span><span class="p">][</span><span class="s2">&quot;json_type&quot;</span><span class="p">]</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_type</span> <span class="o">==</span> <span class="n">Enum</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">possible_values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">possible_values</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="n">Enum</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span>
                 <span class="n">attr</span><span class="p">,</span>
                 <span class="s2">&quot;possible_values&quot;</span><span class="p">,</span>
                 <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
@@ -423,6 +406,8 @@
                 <span class="s2">&quot;is_period_size_independent&quot;</span>
             <span class="p">],</span>
         <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">defined_for</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="s2">&quot;defined_for&quot;</span><span class="p">,</span> <span class="n">allowed_type</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 
         <span class="n">formulas_attr</span><span class="p">,</span> <span class="n">unexpected_attrs</span> <span class="o">=</span> <span class="n">helpers</span><span class="o">.</span><span class="n">_partition</span><span class="p">(</span>
             <span class="n">attr</span><span class="p">,</span>
@@ -528,20 +513,8 @@
                 <span class="k">pass</span>
             <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
                 <span class="n">reference</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">reference</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
-                    <span class="s2">&quot;The reference of the variable </span><span class="si">{}</span><span class="s2"> is a </span><span class="si">{}</span><span class="s2"> instead of a String or a List of Strings.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">reference</span><span class="p">)</span>
-                    <span class="p">)</span>
-                <span class="p">)</span>
-
-            <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">reference</span><span class="p">:</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">element</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-                    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
-                        <span class="s2">&quot;The reference of the variable </span><span class="si">{}</span><span class="s2"> is a </span><span class="si">{}</span><span class="s2"> instead of a String or a List of Strings.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">reference</span><span class="p">)</span>
-                        <span class="p">)</span>
-                    <span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="n">reference</span> <span class="o">=</span> <span class="p">[</span><span class="n">reference</span><span class="p">]</span>
 
         <span class="k">return</span> <span class="n">reference</span>
 
@@ -668,7 +641,6 @@
 <span class="sd">        If no period is given and the variable has several formula, return the oldest formula.</span>
 
 <span class="sd">        :returns: Formula used to compute the variable</span>
-<span class="sd">        :rtype: :any:`Formula`</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
 

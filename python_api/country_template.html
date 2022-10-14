@@ -21,7 +21,7 @@
 
 <style>
   body {
-    --color-code-background: #eeffcc;
+    --color-code-background: #f8f8f8;
   --color-code-foreground: black;
   
   }
@@ -166,8 +166,10 @@
 <p class="caption" role="heading"><span class="caption-text">Using PolicyEngine Core</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../usage/simulation.html">Simulating policy</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../usage/country.html">Country packages</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../usage/cli.html">Command-line interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage/country.html">Creating a country package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage/cli.html">Using the command-line interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage/parameters.html">Writing parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage/datasets.html">Writing datasets</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python API</span></p>
 <ul class="current">
@@ -236,8 +238,26 @@
 <h2>CountryTaxBenefitSystem<a class="headerlink" href="#countrytaxbenefitsystem" title="Permalink to this headline">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.country_template.CountryTaxBenefitSystem">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.country_template.</span></span><span class="sig-name descname"><span class="pre">CountryTaxBenefitSystem</span></span><a class="reference internal" href="../_modules/policyengine_core/country_template.html#CountryTaxBenefitSystem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.country_template.CountryTaxBenefitSystem" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.country_template.</span></span><span class="sig-name descname"><span class="pre">CountryTaxBenefitSystem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">entities</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="entities.html#policyengine_core.entities.entity.Entity" title="policyengine_core.entities.entity.Entity"><span class="pre">policyengine_core.entities.entity.Entity</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/country_template.html#CountryTaxBenefitSystem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.country_template.CountryTaxBenefitSystem" title="Permalink to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem" title="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem"><code class="xref py py-class docutils literal notranslate"><span class="pre">policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.country_template.CountryTaxBenefitSystem.entities">
+<span class="sig-name descname"><span class="pre">entities</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="entities.html#policyengine_core.entities.entity.Entity" title="policyengine_core.entities.entity.Entity"><span class="pre">Entity</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[&lt;policyengine_core.entities.group_entity.GroupEntity</span> <span class="pre">object&gt;,</span> <span class="pre">&lt;policyengine_core.entities.entity.Entity</span> <span class="pre">object&gt;]</span></em><a class="headerlink" href="#policyengine_core.country_template.CountryTaxBenefitSystem.entities" title="Permalink to this definition">#</a></dt>
+<dd><p>The entities of the tax and benefit system.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.country_template.CountryTaxBenefitSystem.parameters_dir">
+<span class="sig-name descname"><span class="pre">parameters_dir</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">PosixPath('/home/runner/work/policyengine-core/policyengine-core/policyengine_core/country_template/parameters')</span></em><a class="headerlink" href="#policyengine_core.country_template.CountryTaxBenefitSystem.parameters_dir" title="Permalink to this definition">#</a></dt>
+<dd><p>Directory containing the YAML parameter tree.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.country_template.CountryTaxBenefitSystem.variables_dir">
+<span class="sig-name descname"><span class="pre">variables_dir</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">PosixPath('/home/runner/work/policyengine-core/policyengine-core/policyengine_core/country_template/variables')</span></em><a class="headerlink" href="#policyengine_core.country_template.CountryTaxBenefitSystem.variables_dir" title="Permalink to this definition">#</a></dt>
+<dd><p>Directory containing the Python files defining the variables of the tax and benefit system.</p>
+</dd></dl>
+
 </dd></dl>
 
 </section>

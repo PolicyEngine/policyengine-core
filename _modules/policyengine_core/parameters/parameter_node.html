@@ -20,7 +20,7 @@
 
 <style>
   body {
-    --color-code-background: #eeffcc;
+    --color-code-background: #f8f8f8;
   --color-code-foreground: black;
   
   }
@@ -165,8 +165,10 @@
 <p class="caption" role="heading"><span class="caption-text">Using PolicyEngine Core</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/simulation.html">Simulating policy</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../usage/country.html">Country packages</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../usage/cli.html">Command-line interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/country.html">Creating a country package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/cli.html">Using the command-line interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/parameters.html">Writing parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/datasets.html">Writing datasets</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python API</span></p>
 <ul>
@@ -233,10 +235,13 @@
 <span class="kn">import</span> <span class="nn">copy</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">typing</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Type</span><span class="p">,</span> <span class="n">Union</span>
 <span class="kn">from</span> <span class="nn">policyengine_core</span> <span class="kn">import</span> <span class="n">commons</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">tools</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.periods.instant_</span> <span class="kn">import</span> <span class="n">Instant</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.data_structures</span> <span class="kn">import</span> <span class="n">Reference</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">config</span><span class="p">,</span> <span class="n">helpers</span><span class="p">,</span> <span class="n">AtInstantLike</span><span class="p">,</span> <span class="n">Parameter</span><span class="p">,</span> <span class="n">ParameterNodeAtInstant</span>
+
+<span class="n">EXCLUDED_PARAMETER_CHILD_NAMES</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;reference&quot;</span><span class="p">,</span> <span class="s2">&quot;__pycache__&quot;</span><span class="p">]</span>
 
 
 <div class="viewcode-block" id="ParameterNode"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_node.ParameterNode">[docs]</a><span class="k">class</span> <span class="nc">ParameterNode</span><span class="p">(</span><span class="n">AtInstantLike</span><span class="p">):</span>
@@ -247,6 +252,9 @@
     <span class="n">_allowed_keys</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span>
         <span class="n">typing</span><span class="o">.</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># By default, no restriction on the keys</span>
+
+    <span class="n">parent</span><span class="p">:</span> <span class="s2">&quot;ParameterNode&quot;</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="sd">&quot;&quot;&quot;The parent of the node, or None if the node is the root of the tree.&quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -293,7 +301,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">documentation</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="k">if</span> <span class="n">directory_path</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">file_path</span> <span class="o">=</span> <span class="n">directory_path</span>
@@ -313,11 +321,8 @@
                         <span class="p">)</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">)</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">documentation</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;documentation&quot;</span><span class="p">)</span>
-                        <span class="n">helpers</span><span class="o">.</span><span class="n">_set_backward_compatibility_metadata</span><span class="p">(</span>
-                            <span class="bp">self</span><span class="p">,</span> <span class="n">data</span>
-                        <span class="p">)</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="p">{}))</span>
-                    <span class="k">else</span><span class="p">:</span>
+                    <span class="k">elif</span> <span class="n">child_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">EXCLUDED_PARAMETER_CHILD_NAMES</span><span class="p">:</span>
                         <span class="n">child_name_expanded</span> <span class="o">=</span> <span class="n">helpers</span><span class="o">.</span><span class="n">_compose_name</span><span class="p">(</span>
                             <span class="n">name</span><span class="p">,</span> <span class="n">child_name</span>
                         <span class="p">)</span>
@@ -343,10 +348,12 @@
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">documentation</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;documentation&quot;</span><span class="p">)</span>
-            <span class="n">helpers</span><span class="o">.</span><span class="n">_set_backward_compatibility_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="p">{}))</span>
             <span class="k">for</span> <span class="n">child_name</span><span class="p">,</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="k">if</span> <span class="n">child_name</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">COMMON_KEYS</span><span class="p">:</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">child_name</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">COMMON_KEYS</span>
+                    <span class="ow">or</span> <span class="n">child_name</span> <span class="ow">in</span> <span class="n">EXCLUDED_PARAMETER_CHILD_NAMES</span>
+                <span class="p">):</span>
                     <span class="k">continue</span>  <span class="c1"># do not treat reserved keys as subparameters.</span>
 
                 <span class="n">child_name</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">child_name</span><span class="p">)</span>
@@ -387,7 +394,8 @@
                 <span class="p">)</span>
             <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">child</span>
-        <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">child</span><span class="p">)</span></div>
+        <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">child</span><span class="p">)</span>
+        <span class="n">child</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="bp">self</span></div>
 
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">linesep</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
@@ -422,7 +430,10 @@
         <span class="k">return</span> <span class="n">clone</span></div>
 
     <span class="k">def</span> <span class="nf">_get_at_instant</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instant</span><span class="p">:</span> <span class="n">Instant</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParameterNodeAtInstant</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">ParameterNodeAtInstant</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">instant</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">ParameterNodeAtInstant</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">instant</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ParameterNode.attach_to_parent"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_node.ParameterNode.attach_to_parent">[docs]</a>    <span class="k">def</span> <span class="nf">attach_to_parent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">:</span> <span class="s2">&quot;ParameterNode&quot;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="n">parent</span></div></div>
 </pre></div>
         </article>
       </div>

@@ -276,6 +276,9 @@
     <span class="n">default_role</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="sd">&quot;&quot;&quot;The default role to assign people to groups if none is provided.&quot;&quot;&quot;</span>
 
+    <span class="n">default_calculation_period</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="sd">&quot;&quot;&quot;The default period to calculate for if none is provided.&quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">tax_benefit_system</span><span class="p">:</span> <span class="s2">&quot;TaxBenefitSystem&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -334,6 +337,10 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">dataset_year</span> <span class="o">=</span> <span class="n">dataset_year</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">build_from_dataset</span><span class="p">()</span>
+
+        <span class="c1"># Backwards compatibility methods</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">calc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_dataframe</span>
 
 <div class="viewcode-block" id="Simulation.build_from_populations"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.build_from_populations">[docs]</a>    <span class="k">def</span> <span class="nf">build_from_populations</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">populations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Population</span><span class="p">]</span>
@@ -396,10 +403,15 @@
             <span class="n">entity_ids</span> <span class="o">=</span> <span class="n">get_eternity_array</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">entity_id_field</span><span class="p">])</span>
             <span class="n">builder</span><span class="o">.</span><span class="n">declare_entity</span><span class="p">(</span><span class="n">group_entity</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">entity_ids</span><span class="p">)</span>
 
-            <span class="n">person_membership_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">person_entity</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">group_entity</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">_id&quot;</span>
+            <span class="n">person_membership_id_field</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">person_entity</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">group_entity</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">_id&quot;</span>
+            <span class="p">)</span>
             <span class="k">assert</span> <span class="p">(</span>
-                <span class="n">person_membership_id</span> <span class="ow">in</span> <span class="n">data</span>
-            <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Missing </span><span class="si">{</span><span class="n">person_membership_id</span><span class="si">}</span><span class="s2"> column in the dataset. Each group entity must have a person membership array defined for ETERNITY.&quot;</span>
+                <span class="n">person_membership_id_field</span> <span class="ow">in</span> <span class="n">data</span>
+            <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Missing </span><span class="si">{</span><span class="n">person_membership_id_field</span><span class="si">}</span><span class="s2"> column in the dataset. Each group entity must have a person membership array defined for ETERNITY.&quot;</span>
+            <span class="n">person_membership_ids</span> <span class="o">=</span> <span class="n">get_eternity_array</span><span class="p">(</span>
+                <span class="n">data</span><span class="p">[</span><span class="n">person_membership_id_field</span><span class="p">]</span>
+            <span class="p">)</span>
 
             <span class="n">person_role_field</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">person_entity</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">group_entity</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">_role&quot;</span>
             <span class="k">if</span> <span class="n">person_role_field</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
@@ -414,9 +426,11 @@
                 <span class="p">)</span>
             <span class="n">builder</span><span class="o">.</span><span class="n">join_with_persons</span><span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">group_entity</span><span class="o">.</span><span class="n">key</span><span class="p">],</span>
-                <span class="n">person_membership_id</span><span class="p">,</span>
+                <span class="n">person_membership_ids</span><span class="p">,</span>
                 <span class="n">person_roles</span><span class="p">,</span>
             <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">build_from_populations</span><span class="p">(</span><span class="n">builder</span><span class="o">.</span><span class="n">populations</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">variable</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">variable</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
@@ -470,7 +484,10 @@
     <span class="c1"># ----- Calculation methods ----- #</span>
 
 <div class="viewcode-block" id="Simulation.calculate"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.calculate">[docs]</a>    <span class="k">def</span> <span class="nf">calculate</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">,</span> <span class="n">map_to</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">map_to</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Calculate ``variable_name`` for ``period``.</span>
 
@@ -485,6 +502,8 @@
 
         <span class="k">if</span> <span class="n">period</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">period</span><span class="p">,</span> <span class="n">Period</span><span class="p">):</span>
             <span class="n">period</span> <span class="o">=</span> <span class="n">periods</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="n">period</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">period</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_calculation_period</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">period</span> <span class="o">=</span> <span class="n">periods</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">default_calculation_period</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="o">.</span><span class="n">record_calculation_start</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
 
@@ -527,7 +546,7 @@
         <span class="n">target_pop</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">target_entity</span><span class="p">]</span>
         <span class="k">if</span> <span class="p">(</span>
             <span class="n">source_entity</span> <span class="o">==</span> <span class="s2">&quot;person&quot;</span>
-            <span class="ow">and</span> <span class="n">target_entity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">group_entity_names</span>
+            <span class="ow">and</span> <span class="n">target_entity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">group_entity_keys</span>
         <span class="p">):</span>
             <span class="k">if</span> <span class="n">how</span> <span class="ow">and</span> <span class="n">how</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span>
                 <span class="s2">&quot;sum&quot;</span><span class="p">,</span>
@@ -540,7 +559,7 @@
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Not a valid function.&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">target_pop</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="n">how</span> <span class="ow">or</span> <span class="s2">&quot;sum&quot;</span><span class="p">)(</span><span class="n">values</span><span class="p">)</span>
         <span class="k">elif</span> <span class="p">(</span>
-            <span class="n">source_entity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">group_entity_names</span>
+            <span class="n">source_entity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">group_entity_keys</span>
             <span class="ow">and</span> <span class="n">target_entity</span> <span class="o">==</span> <span class="s2">&quot;person&quot;</span>
         <span class="p">):</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">how</span><span class="p">:</span>
@@ -550,8 +569,8 @@
         <span class="k">elif</span> <span class="n">source_entity</span> <span class="o">==</span> <span class="n">target_entity</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">values</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_to</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">map_to</span><span class="p">(</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_result</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">map_result</span><span class="p">(</span>
                     <span class="n">values</span><span class="p">,</span>
                     <span class="n">source_entity</span><span class="p">,</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">person_entity</span><span class="o">.</span><span class="n">key</span><span class="p">,</span>
@@ -563,7 +582,10 @@
             <span class="p">)</span></div>
 
 <div class="viewcode-block" id="Simulation.calculate_dataframe"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.calculate_dataframe">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_dataframe</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">variable_names</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">,</span> <span class="n">map_to</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">variable_names</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">map_to</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Calculate ``variable_names`` for ``period``.</span>
 
@@ -588,7 +610,9 @@
             <span class="n">df</span><span class="p">[</span><span class="n">variable_name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">map_to</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">df</span></div>
 
-    <span class="k">def</span> <span class="nf">_calculate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">_calculate</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate the variable ``variable_name`` for the period ``period``, using the variable formula if it exists.</span>
 
@@ -618,10 +642,26 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_check_for_cycle</span><span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
             <span class="n">array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_formula</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">population</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">defined_for</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span>
+                    <span class="n">variable</span><span class="o">.</span><span class="n">defined_for</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">map_to</span><span class="o">=</span><span class="n">variable</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span>
+                <span class="p">)</span>
+                <span class="n">array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">array</span><span class="p">))</span>
 
             <span class="c1"># If no result, use the default value and cache it</span>
             <span class="k">if</span> <span class="n">array</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">array</span> <span class="o">=</span> <span class="n">holder</span><span class="o">.</span><span class="n">default_array</span><span class="p">()</span>
+                <span class="c1"># Check if the variable has a previously defined value</span>
+                <span class="n">known_periods</span> <span class="o">=</span> <span class="n">holder</span><span class="o">.</span><span class="n">get_known_periods</span><span class="p">()</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">auto_carry_over_input_variables</span>
+                    <span class="ow">and</span> <span class="n">variable</span><span class="o">.</span><span class="n">calculate_output</span> <span class="ow">is</span> <span class="kc">None</span>
+                    <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">known_periods</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+                <span class="p">):</span>
+                    <span class="c1"># Variables with a calculate-output property specify</span>
+                    <span class="n">last_known_period</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">known_periods</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">array</span> <span class="o">=</span> <span class="n">holder</span><span class="o">.</span><span class="n">get_array</span><span class="p">(</span><span class="n">last_known_period</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">array</span> <span class="o">=</span> <span class="n">holder</span><span class="o">.</span><span class="n">default_array</span><span class="p">()</span>
 
             <span class="n">array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cast_formula_result</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">variable</span><span class="p">)</span>
             <span class="n">holder</span><span class="o">.</span><span class="n">put_in_cache</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
@@ -640,7 +680,9 @@
             <span class="n">holder</span><span class="o">.</span><span class="n">delete_arrays</span><span class="p">(</span><span class="n">_period</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">invalidated_caches</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="Simulation.calculate_add"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.calculate_add">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
+<div class="viewcode-block" id="Simulation.calculate_add"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.calculate_add">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_add</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
         <span class="n">variable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
             <span class="n">variable_name</span><span class="p">,</span> <span class="n">check_existence</span><span class="o">=</span><span class="kc">True</span>
         <span class="p">)</span>
@@ -675,7 +717,7 @@
         <span class="p">)</span></div>
 
 <div class="viewcode-block" id="Simulation.calculate_divide"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.calculate_divide">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_divide</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
         <span class="n">variable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
             <span class="n">variable_name</span><span class="p">,</span> <span class="n">check_existence</span><span class="o">=</span><span class="kc">True</span>
@@ -712,7 +754,7 @@
         <span class="p">)</span></div>
 
 <div class="viewcode-block" id="Simulation.calculate_output"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.calculate_output">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_output</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate the value of a variable using the ``calculate_output`` attribute of the variable.</span>

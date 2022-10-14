@@ -303,6 +303,8 @@
     <span class="sd">&quot;&quot;&quot;Directory containing the Python files defining the variables of the tax and benefit system.&quot;&quot;&quot;</span>
     <span class="n">parameters_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="sd">&quot;&quot;&quot;Directory containing the YAML parameter tree.&quot;&quot;&quot;</span>
+    <span class="n">auto_carry_over_input_variables</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="sd">&quot;&quot;&quot;Whether to automatically carry over input variables when calculating a variable for a period different from the period of the input variables.&quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entities</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Entity</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">entities</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -327,6 +329,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">group_entities</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">entity</span> <span class="k">for</span> <span class="n">entity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entities</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">entity</span><span class="o">.</span><span class="n">is_person</span>
         <span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">group_entity_keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span> <span class="k">for</span> <span class="n">entity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">group_entities</span><span class="p">]</span>
         <span class="k">for</span> <span class="n">entity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entities</span><span class="p">:</span>
             <span class="n">entity</span><span class="o">.</span><span class="n">set_tax_benefit_system</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 

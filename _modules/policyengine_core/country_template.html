@@ -254,7 +254,8 @@
 <div class="viewcode-block" id="CountryTaxBenefitSystem"><a class="viewcode-back" href="../../python_api/country_template.html#policyengine_core.country_template.CountryTaxBenefitSystem">[docs]</a><span class="k">class</span> <span class="nc">CountryTaxBenefitSystem</span><span class="p">(</span><span class="n">TaxBenefitSystem</span><span class="p">):</span>
     <span class="n">entities</span> <span class="o">=</span> <span class="n">entities</span><span class="o">.</span><span class="n">entities</span>
     <span class="n">variables_dir</span> <span class="o">=</span> <span class="n">COUNTRY_DIR</span> <span class="o">/</span> <span class="s2">&quot;variables&quot;</span>
-    <span class="n">parameters_dir</span> <span class="o">=</span> <span class="n">COUNTRY_DIR</span> <span class="o">/</span> <span class="s2">&quot;parameters&quot;</span></div>
+    <span class="n">parameters_dir</span> <span class="o">=</span> <span class="n">COUNTRY_DIR</span> <span class="o">/</span> <span class="s2">&quot;parameters&quot;</span>
+    <span class="n">auto_carry_over_input_variables</span> <span class="o">=</span> <span class="kc">False</span></div>
 
 
 <span class="k">class</span> <span class="nc">Simulation</span><span class="p">(</span><span class="n">CoreSimulation</span><span class="p">):</span>
@@ -267,10 +268,9 @@
     <span class="n">default_dataset_year</span> <span class="o">=</span> <span class="mi">2022</span>
 
 
-<span class="n">dataset</span> <span class="o">=</span> <span class="n">CountryTemplateDataset</span>
-<span class="k">if</span> <span class="mi">2022</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dataset</span><span class="o">.</span><span class="n">years</span><span class="p">:</span>
+<span class="k">if</span> <span class="mi">2022</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">CountryTemplateDataset</span><span class="o">.</span><span class="n">years</span><span class="p">:</span>
     <span class="n">logging</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Default country template dataset not found. Building it.&quot;</span><span class="p">)</span>
-    <span class="n">dataset</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="mi">2022</span><span class="p">)</span>
+    <span class="n">CountryTemplateDataset</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="mi">2022</span><span class="p">)</span>
 </pre></div>
         </article>
       </div>

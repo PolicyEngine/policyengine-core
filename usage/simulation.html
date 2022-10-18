@@ -236,18 +236,47 @@
 <p>The most common use-case of PolicyEngine Core country packages is to compute unknown variables for a given household, under a country’s law. To do this, we need to specify the input household, using the entity and variable definitions as defined in the country code. If you’re not sure what entities to declare or which variables to specify for which time periods, check the repository of the country package you’re using. This page shows examples of how to use an existing country model to simulate policy.</p>
 <section id="simulating-on-individual-households">
 <h2>Simulating on individual households<a class="headerlink" href="#simulating-on-individual-households" title="Permalink to this headline">#</a></h2>
-<p>Simulating policy on individual households is simple: import <code class="docutils literal notranslate"><span class="pre">Simulation</span></code> from the country package, and pass in the household’s data as a dictionary. Then, use <code class="docutils literal notranslate"><span class="pre">Simulation.calculate(variable_name,</span> <span class="pre">time_period)</span></code> to compute a particular variable at a particular time period.</p>
+<p>Simulating policy on individual households is simple: import <code class="docutils literal notranslate"><span class="pre">Simulation</span></code> from the country package, and pass in the household’s data as a dictionary. Then, use <code class="docutils literal notranslate"><span class="pre">Simulation.calculate(variable_name,</span> <span class="pre">time_period)</span></code> to compute a particular variable at a particular time period. The input data should be a dictionary, under the following format:</p>
+<ul class="simple">
+<li><p>Entity plural (e.g. “people”)</p>
+<ul>
+<li><p>Entity ID (e.g. “person”)</p>
+<ul>
+<li><p>Variable name (e.g. “age”)</p>
+<ul>
+<li><p>Time period (e.g. “2019-01”). This is optional; providing a single value here will use the default time period.</p>
+<ul>
+<li><p>Value (e.g. 30)</p></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>(Only for group entities) The plural of the <em>role</em> (e.g. “members”).</p>
+<ul>
+<li><p>The list of entity IDs who meet that role</p></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>You don’t have to pass in group entity plurals if there’s only one group entity (e.g. if everyone is a member of the same household). Just pass in the single entity key (e.g. “household”).</p>
+</div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">policyengine_core.country_template</span> <span class="kn">import</span> <span class="n">Simulation</span>
 
-<span class="n">EXAMPLE</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;persons&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;person&quot;</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s2">&quot;salary&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;2022-01&quot;</span><span class="p">:</span> <span class="mi">10_000</span><span class="p">},</span>
-        <span class="p">},</span>
-    <span class="p">},</span>
-<span class="p">}</span>
+<span class="n">EXAMPLE</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+    <span class="n">persons</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+        <span class="n">person</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+            <span class="n">age</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+            <span class="n">salary</span><span class="o">=</span><span class="mi">30_000</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+<span class="p">)</span>
 
 <span class="n">simulation</span> <span class="o">=</span> <span class="n">Simulation</span><span class="p">(</span><span class="n">situation</span><span class="o">=</span><span class="n">EXAMPLE</span><span class="p">)</span>
 <span class="n">simulation</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;income_tax&quot;</span><span class="p">,</span> <span class="s2">&quot;2022-01&quot;</span><span class="p">)</span>
@@ -255,12 +284,98 @@
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>array([1500.], dtype=float32)
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>array([4500.], dtype=float32)
 </pre></div>
 </div>
 </div>
 </div>
 <p>Our example calculated €1,500 in income taxes for this input household, in three lines of code. We could also have asked for any other variable, at any other time period.</p>
+<section id="simulating-over-axes">
+<h3>Simulating over axes<a class="headerlink" href="#simulating-over-axes" title="Permalink to this headline">#</a></h3>
+<p>Often, we might want to see how a particular variable changes in response to another variable(s). For this, we can use <code class="docutils literal notranslate"><span class="pre">axes</span></code>. This is a list of lists, with the following structure:</p>
+<ul class="simple">
+<li><p>List of perpendicular axes</p>
+<ul>
+<li><p>List of parallel axes</p>
+<ul>
+<li><p>Axes description: the <em>name</em> of the variable to vary, the <em>min</em>, <em>max</em> and <em>count</em> of values</p></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">EXAMPLE</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+    <span class="n">persons</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+        <span class="n">person</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+            <span class="n">age</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+    <span class="n">axes</span><span class="o">=</span><span class="p">[[</span><span class="nb">dict</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;salary&quot;</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">100_000</span><span class="p">)]],</span>
+<span class="p">)</span>
+
+<span class="n">simulation</span> <span class="o">=</span> <span class="n">Simulation</span><span class="p">(</span><span class="n">situation</span><span class="o">=</span><span class="n">EXAMPLE</span><span class="p">)</span>
+<span class="n">simulation</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;income_tax&quot;</span><span class="p">,</span> <span class="s2">&quot;2022-01&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>array([    0.    ,  1666.6667,  3333.3335,  5000.    ,  6666.667 ,
+        8333.334 , 10000.    , 11666.668 , 13333.334 , 15000.001 ],
+      dtype=float32)
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">plotly.express</span> <span class="k">as</span> <span class="nn">px</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.charts</span> <span class="kn">import</span> <span class="n">format_fig</span><span class="p">,</span> <span class="n">display_fig</span><span class="p">,</span> <span class="n">BLUE</span>
+
+<span class="n">fig</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">px</span><span class="o">.</span><span class="n">line</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">simulation</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;salary&quot;</span><span class="p">),</span>
+        <span class="n">y</span><span class="o">=</span><span class="n">simulation</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;income_tax&quot;</span><span class="p">),</span>
+        <span class="n">color_discrete_sequence</span><span class="o">=</span><span class="p">[</span><span class="n">BLUE</span><span class="p">],</span>
+    <span class="p">)</span>
+    <span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+        <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Salary&quot;</span><span class="p">,</span>
+        <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Income tax&quot;</span><span class="p">,</span>
+        <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Income tax by salary&quot;</span><span class="p">,</span>
+        <span class="n">xaxis_tickformat</span><span class="o">=</span><span class="s2">&quot;,.0f&quot;</span><span class="p">,</span>
+        <span class="n">yaxis_tickformat</span><span class="o">=</span><span class="s2">&quot;,.0f&quot;</span><span class="p">,</span>
+        <span class="n">xaxis_tickprefix</span><span class="o">=</span><span class="s2">&quot;£&quot;</span><span class="p">,</span>
+        <span class="n">yaxis_tickprefix</span><span class="o">=</span><span class="s2">&quot;£&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="o">.</span><span class="n">update_traces</span><span class="p">(</span>
+        <span class="n">hovertemplate</span><span class="o">=</span><span class="s2">&quot;&lt;b&gt;Salary&lt;/b&gt;: £%</span><span class="si">{x:,.0f}</span><span class="s2">&lt;br&gt;&lt;b&gt;Income tax&lt;/b&gt;: £%</span><span class="si">{y:,.0f}</span><span class="s2">&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">display_fig</span><span class="p">(</span><span class="n">format_fig</span><span class="p">(</span><span class="n">fig</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">---------------------------------------------------------------------------</span>
+<span class="ne">ModuleNotFoundError</span><span class="g g-Whitespace">                       </span>Traceback (most recent call last)
+<span class="n">Cell</span> <span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">line</span> <span class="mi">1</span>
+<span class="ne">----&gt; </span><span class="mi">1</span> <span class="kn">import</span> <span class="nn">plotly.express</span> <span class="k">as</span> <span class="nn">px</span>
+<span class="g g-Whitespace">      </span><span class="mi">2</span> <span class="kn">from</span> <span class="nn">policyengine_core.charts</span> <span class="kn">import</span> <span class="n">format_fig</span><span class="p">,</span> <span class="n">display_fig</span><span class="p">,</span> <span class="n">BLUE</span>
+<span class="g g-Whitespace">      </span><span class="mi">4</span> <span class="n">fig</span> <span class="o">=</span> <span class="p">(</span>
+<span class="g g-Whitespace">      </span><span class="mi">5</span>     <span class="n">px</span><span class="o">.</span><span class="n">line</span><span class="p">(</span>
+<span class="g g-Whitespace">      </span><span class="mi">6</span>         <span class="n">x</span><span class="o">=</span><span class="n">simulation</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;salary&quot;</span><span class="p">),</span>
+   <span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="g g-Whitespace">     </span><span class="mi">21</span>     <span class="p">)</span>
+<span class="g g-Whitespace">     </span><span class="mi">22</span> <span class="p">)</span>
+
+<span class="ne">ModuleNotFoundError</span>: No module named &#39;plotly&#39;
+</pre></div>
+</div>
+</div>
+</div>
+</section>
 </section>
 <section id="simulating-over-populations">
 <h2>Simulating over populations<a class="headerlink" href="#simulating-over-populations" title="Permalink to this headline">#</a></h2>
@@ -362,7 +477,10 @@
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Simulating policy</a><ul>
-<li><a class="reference internal" href="#simulating-on-individual-households">Simulating on individual households</a></li>
+<li><a class="reference internal" href="#simulating-on-individual-households">Simulating on individual households</a><ul>
+<li><a class="reference internal" href="#simulating-over-axes">Simulating over axes</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#simulating-over-populations">Simulating over populations</a></li>
 </ul>
 </li>
@@ -386,6 +504,7 @@
     <script>let toggleHintHide = 'Click to hide';</script>
     <script>let toggleOpenOnPrint = 'true';</script>
     <script src="../_static/togglebutton.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../_static/design-tabs.js"></script>
     <script src="../_static/scripts/furo.js"></script>

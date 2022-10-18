@@ -237,8 +237,10 @@
 
 <span class="kn">import</span> <span class="nn">numpy</span>
 
-<span class="kn">from</span> <span class="nn">policyengine_core</span> <span class="kn">import</span> <span class="n">taxscales</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.taxscales</span> <span class="kn">import</span> <span class="n">RateTaxScaleLike</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.taxscales.marginal_rate_tax_scale</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">MarginalRateTaxScale</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.taxscales.rate_tax_scale_like</span> <span class="kn">import</span> <span class="n">RateTaxScaleLike</span>
 
 <span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
@@ -282,8 +284,8 @@
             <span class="o">+</span> <span class="p">(</span><span class="n">tax_base</span> <span class="o">-</span> <span class="n">bracket_threshold</span><span class="p">)</span> <span class="o">*</span> <span class="n">average_rate_slope</span>
         <span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">to_marginal</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">taxscales</span><span class="o">.</span><span class="n">MarginalRateTaxScale</span><span class="p">:</span>
-        <span class="n">marginal_tax_scale</span> <span class="o">=</span> <span class="n">taxscales</span><span class="o">.</span><span class="n">MarginalRateTaxScale</span><span class="p">(</span>
+    <span class="k">def</span> <span class="nf">to_marginal</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MarginalRateTaxScale</span><span class="p">:</span>
+        <span class="n">marginal_tax_scale</span> <span class="o">=</span> <span class="n">MarginalRateTaxScale</span><span class="p">(</span>
             <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
             <span class="n">option</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">option</span><span class="p">,</span>
             <span class="n">unit</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">unit</span><span class="p">,</span>
@@ -350,6 +352,7 @@
     <script>let toggleHintHide = 'Click to hide';</script>
     <script>let toggleOpenOnPrint = 'true';</script>
     <script src="../../../_static/togglebutton.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../../_static/design-tabs.js"></script>
     <script src="../../../_static/scripts/furo.js"></script>

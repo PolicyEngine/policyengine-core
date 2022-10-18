@@ -230,23 +230,22 @@
         </div>
         <article role="main">
           <h1>Source code for policyengine_core.commons.formulas</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Type</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Union</span>
+<span></span><span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Type</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Union</span>
+
 <span class="kn">import</span> <span class="nn">numpy</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="p">(</span>
-    <span class="n">logical_not</span> <span class="k">as</span> <span class="n">not_</span><span class="p">,</span>
-    <span class="n">maximum</span> <span class="k">as</span> <span class="n">max_</span><span class="p">,</span>
-    <span class="n">minimum</span> <span class="k">as</span> <span class="n">min_</span><span class="p">,</span>
-    <span class="nb">round</span> <span class="k">as</span> <span class="n">round_</span><span class="p">,</span>
-    <span class="n">select</span><span class="p">,</span>
-    <span class="n">where</span><span class="p">,</span>
-<span class="p">)</span>
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
-<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">logical_not</span> <span class="k">as</span> <span class="n">not_</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">maximum</span> <span class="k">as</span> <span class="n">max_</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">minimum</span> <span class="k">as</span> <span class="n">min_</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="nb">round</span> <span class="k">as</span> <span class="n">round_</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">select</span><span class="p">,</span> <span class="n">where</span>
+
 <span class="kn">from</span> <span class="nn">policyengine_core.parameters.parameter_node</span> <span class="kn">import</span> <span class="n">ParameterNode</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.types</span> <span class="kn">import</span> <span class="n">ArrayLike</span><span class="p">,</span> <span class="n">ArrayType</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.populations.population</span> <span class="kn">import</span> <span class="n">Population</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.periods.period_</span> <span class="kn">import</span> <span class="n">Period</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.populations.population</span> <span class="kn">import</span> <span class="n">Population</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.types</span> <span class="kn">import</span> <span class="n">ArrayLike</span><span class="p">,</span> <span class="n">ArrayType</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.variables.variable</span> <span class="kn">import</span> <span class="n">Variable</span>
 
 <span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;T&quot;</span><span class="p">)</span>
@@ -747,6 +746,7 @@
     <script>let toggleHintHide = 'Click to hide';</script>
     <script>let toggleOpenOnPrint = 'true';</script>
     <script src="../../../_static/togglebutton.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../../_static/design-tabs.js"></script>
     <script src="../../../_static/scripts/furo.js"></script>

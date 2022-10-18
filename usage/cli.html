@@ -318,7 +318,7 @@
 <h3>data<a class="headerlink" href="#data" title="Permalink to this headline">#</a></h3>
 <p>Manage OpenFisca data</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">policyengine</span><span class="o">-</span><span class="n">core</span> <span class="n">data</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">c</span> <span class="n">COUNTRY_PACKAGE</span><span class="p">]</span>
-                       <span class="n">dataset</span> <span class="p">{</span><span class="n">build</span><span class="p">,</span><span class="n">download</span><span class="p">,</span><span class="n">upload</span><span class="p">,</span><span class="n">remove</span><span class="p">,</span><span class="nb">list</span><span class="p">}</span>
+                       <span class="n">dataset</span> <span class="p">{</span><span class="n">generate</span><span class="p">,</span><span class="n">download</span><span class="p">,</span><span class="n">upload</span><span class="p">,</span><span class="n">remove</span><span class="p">,</span><span class="nb">list</span><span class="p">}</span>
 </pre></div>
 </div>
 <section id="Positional Arguments_repeat2">
@@ -328,7 +328,7 @@
 <dd><p>The dataset to focus on.</p>
 </dd>
 <dt><kbd>action</kbd></dt>
-<dd><p>Possible choices: build, download, upload, remove, list</p>
+<dd><p>Possible choices: generate, download, upload, remove, list</p>
 <p>The action to perform. Pass any additional options as keyword arguments.</p>
 </dd>
 </dl>
@@ -462,6 +462,7 @@
     <script>let toggleHintHide = 'Click to hide';</script>
     <script>let toggleOpenOnPrint = 'true';</script>
     <script src="../_static/togglebutton.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../_static/design-tabs.js"></script>
     <script src="../_static/scripts/furo.js"></script>

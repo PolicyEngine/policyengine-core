@@ -235,7 +235,8 @@
 
 <span class="kn">from</span> <span class="nn">policyengine_core</span> <span class="kn">import</span> <span class="n">commons</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.errors</span> <span class="kn">import</span> <span class="n">ParameterParsingError</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.parameters</span> <span class="kn">import</span> <span class="n">config</span><span class="p">,</span> <span class="n">helpers</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.parameters.config</span> <span class="kn">import</span> <span class="n">ALLOWED_PARAM_TYPES</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.parameters.helpers</span> <span class="kn">import</span> <span class="n">_validate_parameter</span>
 
 
 <div class="viewcode-block" id="ParameterAtInstant"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_at_instant.ParameterAtInstant">[docs]</a><span class="k">class</span> <span class="nc">ParameterAtInstant</span><span class="p">:</span>
@@ -265,7 +266,7 @@
 
         <span class="c1"># Accept { 2015-01-01: 4000 }</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span>
-            <span class="n">data</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">ALLOWED_PARAM_TYPES</span>
+            <span class="n">data</span><span class="p">,</span> <span class="n">ALLOWED_PARAM_TYPES</span>
         <span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">data</span>
             <span class="k">return</span>
@@ -277,7 +278,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span>
 
 <div class="viewcode-block" id="ParameterAtInstant.validate"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_at_instant.ParameterAtInstant.validate">[docs]</a>    <span class="k">def</span> <span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">helpers</span><span class="o">.</span><span class="n">_validate_parameter</span><span class="p">(</span>
+        <span class="n">_validate_parameter</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">data_type</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">allowed_keys</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_allowed_keys</span>
         <span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
@@ -287,10 +288,10 @@
                 <span class="s2">&quot;Missing &#39;value&#39; property for </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">),</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">file_path</span><span class="p">,</span>
             <span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">ALLOWED_PARAM_TYPES</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">ALLOWED_PARAM_TYPES</span><span class="p">):</span>
             <span class="k">raise</span> <span class="n">ParameterParsingError</span><span class="p">(</span>
                 <span class="s2">&quot;Value in </span><span class="si">{}</span><span class="s2"> has type </span><span class="si">{}</span><span class="s2">, which is not one of the allowed types (</span><span class="si">{}</span><span class="s2">): </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">),</span> <span class="n">config</span><span class="o">.</span><span class="n">ALLOWED_PARAM_TYPES</span><span class="p">,</span> <span class="n">value</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">),</span> <span class="n">ALLOWED_PARAM_TYPES</span><span class="p">,</span> <span class="n">value</span>
                 <span class="p">),</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">file_path</span><span class="p">,</span>
             <span class="p">)</span></div>
@@ -355,6 +356,7 @@
     <script>let toggleHintHide = 'Click to hide';</script>
     <script>let toggleOpenOnPrint = 'true';</script>
     <script src="../../../_static/togglebutton.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../../_static/design-tabs.js"></script>
     <script src="../../../_static/scripts/furo.js"></script>

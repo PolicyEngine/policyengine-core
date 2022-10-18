@@ -230,16 +230,26 @@
         </div>
         <article role="main">
           <h1>Source code for policyengine_core.parameters.parameter_node</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
-
-<span class="kn">import</span> <span class="nn">copy</span>
+<span></span><span class="kn">import</span> <span class="nn">copy</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">typing</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Type</span><span class="p">,</span> <span class="n">Union</span>
+
 <span class="kn">from</span> <span class="nn">policyengine_core</span> <span class="kn">import</span> <span class="n">commons</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">tools</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.periods.instant_</span> <span class="kn">import</span> <span class="n">Instant</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.data_structures</span> <span class="kn">import</span> <span class="n">Reference</span>
-<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">config</span><span class="p">,</span> <span class="n">helpers</span><span class="p">,</span> <span class="n">AtInstantLike</span><span class="p">,</span> <span class="n">Parameter</span><span class="p">,</span> <span class="n">ParameterNodeAtInstant</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.periods.instant_</span> <span class="kn">import</span> <span class="n">Instant</span>
+
+<span class="kn">from</span> <span class="nn">.at_instant_like</span> <span class="kn">import</span> <span class="n">AtInstantLike</span>
+<span class="kn">from</span> <span class="nn">.parameter</span> <span class="kn">import</span> <span class="n">Parameter</span>
+<span class="kn">from</span> <span class="nn">.parameter_node_at_instant</span> <span class="kn">import</span> <span class="n">ParameterNodeAtInstant</span>
+<span class="kn">from</span> <span class="nn">.config</span> <span class="kn">import</span> <span class="n">COMMON_KEYS</span><span class="p">,</span> <span class="n">FILE_EXTENSIONS</span>
+<span class="kn">from</span> <span class="nn">.helpers</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">load_parameter_file</span><span class="p">,</span>
+    <span class="n">_compose_name</span><span class="p">,</span>
+    <span class="n">_validate_parameter</span><span class="p">,</span>
+    <span class="n">_parse_child</span><span class="p">,</span>
+    <span class="n">_load_yaml_file</span><span class="p">,</span>
+<span class="p">)</span>
 
 <span class="n">EXCLUDED_PARAMETER_CHILD_NAMES</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;reference&quot;</span><span class="p">,</span> <span class="s2">&quot;__pycache__&quot;</span><span class="p">]</span>
 
@@ -311,31 +321,27 @@
                     <span class="n">child_name</span><span class="p">,</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">child_name</span><span class="p">)</span>
 
                     <span class="c1"># We ignore non-YAML files</span>
-                    <span class="k">if</span> <span class="n">ext</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">FILE_EXTENSIONS</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">ext</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">FILE_EXTENSIONS</span><span class="p">:</span>
                         <span class="k">continue</span>
 
                     <span class="k">if</span> <span class="n">child_name</span> <span class="o">==</span> <span class="s2">&quot;index&quot;</span><span class="p">:</span>
-                        <span class="n">data</span> <span class="o">=</span> <span class="n">helpers</span><span class="o">.</span><span class="n">_load_yaml_file</span><span class="p">(</span><span class="n">child_path</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
-                        <span class="n">helpers</span><span class="o">.</span><span class="n">_validate_parameter</span><span class="p">(</span>
-                            <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">allowed_keys</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">COMMON_KEYS</span>
+                        <span class="n">data</span> <span class="o">=</span> <span class="n">_load_yaml_file</span><span class="p">(</span><span class="n">child_path</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+                        <span class="n">_validate_parameter</span><span class="p">(</span>
+                            <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">allowed_keys</span><span class="o">=</span><span class="n">COMMON_KEYS</span>
                         <span class="p">)</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">)</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">documentation</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;documentation&quot;</span><span class="p">)</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="p">{}))</span>
                     <span class="k">elif</span> <span class="n">child_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">EXCLUDED_PARAMETER_CHILD_NAMES</span><span class="p">:</span>
-                        <span class="n">child_name_expanded</span> <span class="o">=</span> <span class="n">helpers</span><span class="o">.</span><span class="n">_compose_name</span><span class="p">(</span>
-                            <span class="n">name</span><span class="p">,</span> <span class="n">child_name</span>
-                        <span class="p">)</span>
-                        <span class="n">child</span> <span class="o">=</span> <span class="n">helpers</span><span class="o">.</span><span class="n">load_parameter_file</span><span class="p">(</span>
+                        <span class="n">child_name_expanded</span> <span class="o">=</span> <span class="n">_compose_name</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">child_name</span><span class="p">)</span>
+                        <span class="n">child</span> <span class="o">=</span> <span class="n">load_parameter_file</span><span class="p">(</span>
                             <span class="n">child_path</span><span class="p">,</span> <span class="n">child_name_expanded</span>
                         <span class="p">)</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">add_child</span><span class="p">(</span><span class="n">child_name</span><span class="p">,</span> <span class="n">child</span><span class="p">)</span>
 
                 <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">child_path</span><span class="p">):</span>
                     <span class="n">child_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">child_path</span><span class="p">)</span>
-                    <span class="n">child_name_expanded</span> <span class="o">=</span> <span class="n">helpers</span><span class="o">.</span><span class="n">_compose_name</span><span class="p">(</span>
-                        <span class="n">name</span><span class="p">,</span> <span class="n">child_name</span>
-                    <span class="p">)</span>
+                    <span class="n">child_name_expanded</span> <span class="o">=</span> <span class="n">_compose_name</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">child_name</span><span class="p">)</span>
                     <span class="n">child</span> <span class="o">=</span> <span class="n">ParameterNode</span><span class="p">(</span>
                         <span class="n">child_name_expanded</span><span class="p">,</span> <span class="n">directory_path</span><span class="o">=</span><span class="n">child_path</span>
                     <span class="p">)</span>
@@ -343,7 +349,7 @@
 
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">file_path</span> <span class="o">=</span> <span class="n">file_path</span>
-            <span class="n">helpers</span><span class="o">.</span><span class="n">_validate_parameter</span><span class="p">(</span>
+            <span class="n">_validate_parameter</span><span class="p">(</span>
                 <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">data_type</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">allowed_keys</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_allowed_keys</span>
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">)</span>
@@ -351,16 +357,14 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="p">{}))</span>
             <span class="k">for</span> <span class="n">child_name</span><span class="p">,</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                 <span class="k">if</span> <span class="p">(</span>
-                    <span class="n">child_name</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">COMMON_KEYS</span>
+                    <span class="n">child_name</span> <span class="ow">in</span> <span class="n">COMMON_KEYS</span>
                     <span class="ow">or</span> <span class="n">child_name</span> <span class="ow">in</span> <span class="n">EXCLUDED_PARAMETER_CHILD_NAMES</span>
                 <span class="p">):</span>
                     <span class="k">continue</span>  <span class="c1"># do not treat reserved keys as subparameters.</span>
 
                 <span class="n">child_name</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">child_name</span><span class="p">)</span>
-                <span class="n">child_name_expanded</span> <span class="o">=</span> <span class="n">helpers</span><span class="o">.</span><span class="n">_compose_name</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">child_name</span><span class="p">)</span>
-                <span class="n">child</span> <span class="o">=</span> <span class="n">helpers</span><span class="o">.</span><span class="n">_parse_child</span><span class="p">(</span>
-                    <span class="n">child_name_expanded</span><span class="p">,</span> <span class="n">child</span><span class="p">,</span> <span class="n">file_path</span>
-                <span class="p">)</span>
+                <span class="n">child_name_expanded</span> <span class="o">=</span> <span class="n">_compose_name</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">child_name</span><span class="p">)</span>
+                <span class="n">child</span> <span class="o">=</span> <span class="n">_parse_child</span><span class="p">(</span><span class="n">child_name_expanded</span><span class="p">,</span> <span class="n">child</span><span class="p">,</span> <span class="n">file_path</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">add_child</span><span class="p">(</span><span class="n">child_name</span><span class="p">,</span> <span class="n">child</span><span class="p">)</span>
 
 <div class="viewcode-block" id="ParameterNode.merge"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_node.ParameterNode.merge">[docs]</a>    <span class="k">def</span> <span class="nf">merge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="s2">&quot;ParameterNode&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -372,7 +376,7 @@
         <span class="k">for</span> <span class="n">child_name</span><span class="p">,</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">other</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">add_child</span><span class="p">(</span><span class="n">child_name</span><span class="p">,</span> <span class="n">child</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="ParameterNode.add_child"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_node.ParameterNode.add_child">[docs]</a>    <span class="k">def</span> <span class="nf">add_child</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">child</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">ParameterNode</span><span class="p">,</span> <span class="n">Parameter</span><span class="p">]):</span>
+<div class="viewcode-block" id="ParameterNode.add_child"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_node.ParameterNode.add_child">[docs]</a>    <span class="k">def</span> <span class="nf">add_child</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">child</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="s2">&quot;ParameterNode&quot;</span><span class="p">,</span> <span class="n">Parameter</span><span class="p">]):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Add a new child to the node.</span>
 
@@ -408,7 +412,7 @@
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">result</span>
 
-<div class="viewcode-block" id="ParameterNode.get_descendants"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_node.ParameterNode.get_descendants">[docs]</a>    <span class="k">def</span> <span class="nf">get_descendants</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">ParameterNode</span><span class="p">,</span> <span class="n">Parameter</span><span class="p">]]:</span>
+<div class="viewcode-block" id="ParameterNode.get_descendants"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_node.ParameterNode.get_descendants">[docs]</a>    <span class="k">def</span> <span class="nf">get_descendants</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="s2">&quot;ParameterNode&quot;</span><span class="p">,</span> <span class="n">Parameter</span><span class="p">]]:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return a generator containing all the parameters and nodes recursively contained in this `ParameterNode`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -479,6 +483,7 @@
     <script>let toggleHintHide = 'Click to hide';</script>
     <script>let toggleOpenOnPrint = 'true';</script>
     <script src="../../../_static/togglebutton.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../../_static/design-tabs.js"></script>
     <script src="../../../_static/scripts/furo.js"></script>

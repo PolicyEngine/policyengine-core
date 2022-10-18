@@ -231,16 +231,18 @@
         <article role="main">
           <h1>Source code for policyengine_core.simulations.simulation</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">tempfile</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Type</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Type</span>
+
 <span class="kn">import</span> <span class="nn">numpy</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">from</span> <span class="nn">numpy.typing</span> <span class="kn">import</span> <span class="n">ArrayLike</span>
+
 <span class="kn">from</span> <span class="nn">policyengine_core</span> <span class="kn">import</span> <span class="n">commons</span><span class="p">,</span> <span class="n">periods</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.data.dataset</span> <span class="kn">import</span> <span class="n">Dataset</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.entities.entity</span> <span class="kn">import</span> <span class="n">Entity</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.errors</span> <span class="kn">import</span> <span class="n">CycleError</span><span class="p">,</span> <span class="n">SpiralError</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.enums</span> <span class="kn">import</span> <span class="n">Enum</span><span class="p">,</span> <span class="n">EnumArray</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.errors</span> <span class="kn">import</span> <span class="n">CycleError</span><span class="p">,</span> <span class="n">SpiralError</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.holders.holder</span> <span class="kn">import</span> <span class="n">Holder</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.periods</span> <span class="kn">import</span> <span class="n">Period</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.periods.config</span> <span class="kn">import</span> <span class="n">ETERNITY</span>
@@ -253,10 +255,12 @@
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span> <span class="nn">policyengine_core.taxbenefitsystems</span> <span class="kn">import</span> <span class="n">TaxBenefitSystem</span>
+
+<span class="kn">from</span> <span class="nn">policyengine_core.experimental</span> <span class="kn">import</span> <span class="n">MemoryConfig</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.populations</span> <span class="kn">import</span> <span class="n">Population</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.tracers</span> <span class="kn">import</span> <span class="n">SimpleTracer</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.experimental</span> <span class="kn">import</span> <span class="n">MemoryConfig</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.variables</span> <span class="kn">import</span> <span class="n">Variable</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.reforms.reform</span> <span class="kn">import</span> <span class="n">Reform</span>
 
 
 <div class="viewcode-block" id="Simulation"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation">[docs]</a><span class="k">class</span> <span class="nc">Simulation</span><span class="p">:</span>
@@ -267,6 +271,9 @@
     <span class="n">default_tax_benefit_system</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="s2">&quot;TaxBenefitSystem&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="sd">&quot;&quot;&quot;The default tax-benefit system class to use if none is provided.&quot;&quot;&quot;</span>
 
+    <span class="n">default_tax_benefit_system_instance</span><span class="p">:</span> <span class="s2">&quot;TaxBenefitSystem&quot;</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="sd">&quot;&quot;&quot;The default tax-benefit system instance to use if none is provided. This requires that the tax-benefit system is initialised when importing a country package. This will slow down the import, but may speed up individual simulations.&quot;&quot;&quot;</span>
+
     <span class="n">default_dataset</span><span class="p">:</span> <span class="n">Dataset</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="sd">&quot;&quot;&quot;The default dataset class to use if none is provided.&quot;&quot;&quot;</span>
 
@@ -275,6 +282,9 @@
 
     <span class="n">default_role</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="sd">&quot;&quot;&quot;The default role to assign people to groups if none is provided.&quot;&quot;&quot;</span>
+
+    <span class="n">default_input_period</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="sd">&quot;&quot;&quot;The default period to use when inputting variables.&quot;&quot;&quot;</span>
 
     <span class="n">default_calculation_period</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="sd">&quot;&quot;&quot;The default period to calculate for if none is provided.&quot;&quot;&quot;</span>
@@ -286,6 +296,7 @@
         <span class="n">situation</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">dataset</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">dataset_year</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">reform</span><span class="p">:</span> <span class="n">Reform</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        This constructor is reserved for internal use; see :any:`SimulationBuilder`,</span>
@@ -293,7 +304,16 @@
 <span class="sd">        set of Entities.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">tax_benefit_system</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_tax_benefit_system</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_tax_benefit_system_instance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_tax_benefit_system_instance</span>
+                <span class="k">if</span> <span class="n">reform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_tax_benefit_system</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">reform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">reform</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">tax_benefit_system</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">reform</span> <span class="o">=</span> <span class="n">reform</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="n">tax_benefit_system</span>
 
         <span class="k">if</span> <span class="n">dataset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -326,9 +346,9 @@
                 <span class="n">SimulationBuilder</span><span class="p">,</span>
             <span class="p">)</span>  <span class="c1"># Import here to avoid circular dependency</span>
 
-            <span class="n">SimulationBuilder</span><span class="p">()</span><span class="o">.</span><span class="n">build_from_dict</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="p">,</span> <span class="n">situation</span><span class="p">,</span> <span class="bp">self</span>
-            <span class="p">)</span>
+            <span class="n">builder</span> <span class="o">=</span> <span class="n">SimulationBuilder</span><span class="p">()</span>
+            <span class="n">builder</span><span class="o">.</span><span class="n">default_period</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_input_period</span>
+            <span class="n">builder</span><span class="o">.</span><span class="n">build_from_dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="p">,</span> <span class="n">situation</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">populations</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">build_from_populations</span><span class="p">(</span><span class="n">populations</span><span class="p">)</span>
@@ -642,11 +662,6 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_check_for_cycle</span><span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
             <span class="n">array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_formula</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">population</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">defined_for</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span>
-                    <span class="n">variable</span><span class="o">.</span><span class="n">defined_for</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">map_to</span><span class="o">=</span><span class="n">variable</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span>
-                <span class="p">)</span>
-                <span class="n">array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">array</span><span class="p">))</span>
 
             <span class="c1"># If no result, use the default value and cache it</span>
             <span class="k">if</span> <span class="n">array</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -662,6 +677,12 @@
                     <span class="n">array</span> <span class="o">=</span> <span class="n">holder</span><span class="o">.</span><span class="n">get_array</span><span class="p">(</span><span class="n">last_known_period</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">array</span> <span class="o">=</span> <span class="n">holder</span><span class="o">.</span><span class="n">default_array</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">defined_for</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span>
+                    <span class="n">variable</span><span class="o">.</span><span class="n">defined_for</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">map_to</span><span class="o">=</span><span class="n">variable</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span>
+                <span class="p">)</span>
+                <span class="n">array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">array</span><span class="p">))</span>
 
             <span class="n">array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cast_formula_result</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">variable</span><span class="p">)</span>
             <span class="n">holder</span><span class="o">.</span><span class="n">put_in_cache</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
@@ -1099,6 +1120,7 @@
     <script>let toggleHintHide = 'Click to hide';</script>
     <script>let toggleOpenOnPrint = 'true';</script>
     <script src="../../../_static/togglebutton.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../../_static/design-tabs.js"></script>
     <script src="../../../_static/scripts/furo.js"></script>

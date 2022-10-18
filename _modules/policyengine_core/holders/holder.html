@@ -232,19 +232,21 @@
           <h1>Source code for policyengine_core.holders.holder</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span>
+
 <span class="kn">import</span> <span class="nn">numpy</span>
 <span class="kn">import</span> <span class="nn">psutil</span>
 <span class="kn">from</span> <span class="nn">numpy.typing</span> <span class="kn">import</span> <span class="n">ArrayLike</span>
+
 <span class="kn">from</span> <span class="nn">policyengine_core</span> <span class="kn">import</span> <span class="n">commons</span><span class="p">,</span> <span class="n">periods</span><span class="p">,</span> <span class="n">tools</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.errors</span> <span class="kn">import</span> <span class="n">PeriodMismatchError</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.data_storage</span> <span class="kn">import</span> <span class="n">InMemoryStorage</span><span class="p">,</span> <span class="n">OnDiskStorage</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.enums</span> <span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.errors</span> <span class="kn">import</span> <span class="n">PeriodMismatchError</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.periods</span> <span class="kn">import</span> <span class="n">Period</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
-    <span class="kn">from</span> <span class="nn">policyengine_core.variables</span> <span class="kn">import</span> <span class="n">Variable</span>
     <span class="kn">from</span> <span class="nn">policyengine_core.populations</span> <span class="kn">import</span> <span class="n">Population</span>
+    <span class="kn">from</span> <span class="nn">policyengine_core.variables</span> <span class="kn">import</span> <span class="n">Variable</span>
 
 
 <div class="viewcode-block" id="Holder"><a class="viewcode-back" href="../../../python_api/holders.html#policyengine_core.holders.holder.Holder">[docs]</a><span class="k">class</span> <span class="nc">Holder</span><span class="p">:</span>
@@ -575,6 +577,7 @@
     <script>let toggleHintHide = 'Click to hide';</script>
     <script>let toggleOpenOnPrint = 'true';</script>
     <script src="../../../_static/togglebutton.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../../_static/design-tabs.js"></script>
     <script src="../../../_static/scripts/furo.js"></script>

@@ -292,8 +292,8 @@
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>period</strong> – Period where the value is modified. If set, <cite>start</cite> and <cite>stop</cite> should be <cite>None</cite>.</p></li>
-<li><p><strong>start</strong> – Start of the period. Instance of <cite>policyengine_core.periods.Instant</cite>. If set, <cite>period</cite> should be <cite>None</cite>.</p></li>
-<li><p><strong>stop</strong> – Stop of the period. Instance of <cite>policyengine_core.periods.Instant</cite>. If set, <cite>period</cite> should be <cite>None</cite>.</p></li>
+<li><p><strong>start</strong> – Start of the period. Instance of <cite>policyengine_core.Instant</cite>. If set, <cite>period</cite> should be <cite>None</cite>.</p></li>
+<li><p><strong>stop</strong> – Stop of the period. Instance of <cite>policyengine_core.Instant</cite>. If set, <cite>period</cite> should be <cite>None</cite>.</p></li>
 <li><p><strong>value</strong> – New value. If <cite>None</cite>, the parameter is removed from the legislation parameters for the given period.</p></li>
 </ul>
 </dd>
@@ -621,6 +621,7 @@ Vectorized parameters allow requests such as parameters.housing_benefit[zipcode]
     <script>let toggleHintHide = 'Click to hide';</script>
     <script>let toggleOpenOnPrint = 'true';</script>
     <script src="../_static/togglebutton.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../_static/design-tabs.js"></script>
     <script src="../_static/scripts/furo.js"></script>

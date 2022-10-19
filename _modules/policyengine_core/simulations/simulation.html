@@ -298,11 +298,6 @@
         <span class="n">dataset_year</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">reform</span><span class="p">:</span> <span class="n">Reform</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        This constructor is reserved for internal use; see :any:`SimulationBuilder`,</span>
-<span class="sd">        which is the preferred way to obtain a Simulation initialized with a consistent</span>
-<span class="sd">        set of Entities.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">tax_benefit_system</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_tax_benefit_system_instance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_tax_benefit_system_instance</span>
@@ -315,6 +310,8 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">reform</span> <span class="o">=</span> <span class="n">reform</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="n">tax_benefit_system</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span> <span class="o">=</span> <span class="s2">&quot;default&quot;</span>
 
         <span class="k">if</span> <span class="n">dataset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -333,6 +330,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">max_spiral_loops</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">memory_config</span><span class="p">:</span> <span class="n">MemoryConfig</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_data_storage_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">branches</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Simulation</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="k">if</span> <span class="n">situation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -525,7 +524,9 @@
         <span class="k">elif</span> <span class="n">period</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_calculation_period</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">period</span> <span class="o">=</span> <span class="n">periods</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">default_calculation_period</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="o">.</span><span class="n">record_calculation_start</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="o">.</span><span class="n">record_calculation_start</span><span class="p">(</span>
+            <span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span>
+        <span class="p">)</span>
 
         <span class="k">try</span><span class="p">:</span>
             <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
@@ -536,7 +537,6 @@
                 <span class="p">)</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span>
                 <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_result</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">source_entity</span><span class="p">,</span> <span class="n">map_to</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">result</span>
-
         <span class="k">finally</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="o">.</span><span class="n">record_calculation_end</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">purge_cache_of_invalid_values</span><span class="p">()</span></div>
@@ -656,6 +656,18 @@
         <span class="k">if</span> <span class="n">cached_array</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">cached_array</span>
 
+        <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">defined_for</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span>
+                    <span class="n">variable</span><span class="o">.</span><span class="n">defined_for</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">map_to</span><span class="o">=</span><span class="n">variable</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span>
+                <span class="p">)</span>
+                <span class="o">&gt;</span> <span class="mi">0</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="o">~</span><span class="n">mask</span><span class="p">):</span>
+                <span class="n">array</span> <span class="o">=</span> <span class="n">holder</span><span class="o">.</span><span class="n">default_array</span><span class="p">()</span>
+                <span class="n">array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cast_formula_result</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">variable</span><span class="p">)</span>
+                <span class="n">holder</span><span class="o">.</span><span class="n">put_in_cache</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+
         <span class="n">array</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="c1"># First, try to run a formula</span>
@@ -679,9 +691,6 @@
                     <span class="n">array</span> <span class="o">=</span> <span class="n">holder</span><span class="o">.</span><span class="n">default_array</span><span class="p">()</span>
 
             <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">defined_for</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span>
-                    <span class="n">variable</span><span class="o">.</span><span class="n">defined_for</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">map_to</span><span class="o">=</span><span class="n">variable</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span>
-                <span class="p">)</span>
                 <span class="n">array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">array</span><span class="p">))</span>
 
             <span class="n">array</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cast_formula_result</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">variable</span><span class="p">)</span>
@@ -689,6 +698,16 @@
 
         <span class="k">except</span> <span class="n">SpiralError</span><span class="p">:</span>
             <span class="n">array</span> <span class="o">=</span> <span class="n">holder</span><span class="o">.</span><span class="n">default_array</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">RecursionError</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trace</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="o">.</span><span class="n">print_computation_log</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="s2">&quot;Computation log is only available with the trace=True option.&quot;</span>
+                <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;RecursionError while calculating </span><span class="si">{</span><span class="n">variable_name</span><span class="si">}</span><span class="s2"> for period </span><span class="si">{</span><span class="n">period</span><span class="si">}</span><span class="s2">. The full computation trace is printed above.&quot;</span>
+            <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">array</span>
 
@@ -794,6 +813,7 @@
         <span class="k">return</span> <span class="n">TracingParameterNodeAtInstant</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_parameters_at_instant</span><span class="p">(</span><span class="n">formula_period</span><span class="p">),</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span><span class="p">,</span>
         <span class="p">)</span></div>
 
     <span class="k">def</span> <span class="nf">_run_formula</span><span class="p">(</span>
@@ -886,11 +906,29 @@
             <span class="n">frame</span><span class="p">[</span><span class="s2">&quot;period&quot;</span><span class="p">]</span>
             <span class="k">for</span> <span class="n">frame</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="o">.</span><span class="n">stack</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
             <span class="k">if</span> <span class="n">frame</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">variable</span>
+            <span class="ow">and</span> <span class="n">frame</span><span class="p">[</span><span class="s2">&quot;branch_name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span>
         <span class="p">]</span>
         <span class="k">if</span> <span class="n">period</span> <span class="ow">in</span> <span class="n">previous_periods</span><span class="p">:</span>
+            <span class="n">found_last_frame</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">i</span> <span class="o">=</span> <span class="o">-</span><span class="mi">2</span>
+            <span class="k">while</span> <span class="ow">not</span> <span class="n">found_last_frame</span><span class="p">:</span>
+                <span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="o">.</span><span class="n">stack</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">frame</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">variable</span>
+                    <span class="ow">and</span> <span class="n">frame</span><span class="p">[</span><span class="s2">&quot;branch_name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span>
+                <span class="p">):</span>
+                    <span class="n">found_last_frame</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">i</span> <span class="o">-=</span> <span class="mi">1</span>
             <span class="k">raise</span> <span class="n">CycleError</span><span class="p">(</span>
-                <span class="s2">&quot;Circular definition detected on formula </span><span class="si">{}</span><span class="s2">@</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-                    <span class="n">variable</span><span class="p">,</span> <span class="n">period</span>
+                <span class="sa">f</span><span class="s2">&quot;Circular definition detected on formula </span><span class="si">{</span><span class="n">variable</span><span class="si">}</span><span class="s2">@</span><span class="si">{</span><span class="n">period</span><span class="si">}</span><span class="s2">. The circle is:</span><span class="se">\n\n</span><span class="s2">Normal computation tree:</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">frame</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">@</span><span class="si">{</span><span class="n">frame</span><span class="p">[</span><span class="s1">&#39;period&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (branch </span><span class="si">{</span><span class="n">frame</span><span class="p">[</span><span class="s1">&#39;branch_name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span>
+                    <span class="k">for</span> <span class="n">frame</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="o">.</span><span class="n">stack</span><span class="p">[:</span><span class="n">i</span><span class="p">]</span>
+                <span class="p">)</span>
+                <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">Cycle start:</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;  &gt;&gt; </span><span class="si">{</span><span class="n">frame</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">@</span><span class="si">{</span><span class="n">frame</span><span class="p">[</span><span class="s1">&#39;period&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (branch </span><span class="si">{</span><span class="n">frame</span><span class="p">[</span><span class="s1">&#39;branch_name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span>
+                    <span class="k">for</span> <span class="n">frame</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="o">.</span><span class="n">stack</span><span class="p">[</span><span class="n">i</span><span class="p">:]</span>
                 <span class="p">)</span>
             <span class="p">)</span>
         <span class="n">spiral</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">previous_periods</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_spiral_loops</span>
@@ -1065,7 +1103,7 @@
         <span class="n">new</span><span class="o">.</span><span class="n">populations</span> <span class="o">=</span> <span class="p">{</span><span class="n">new</span><span class="o">.</span><span class="n">persons</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">:</span> <span class="n">new</span><span class="o">.</span><span class="n">persons</span><span class="p">}</span>
 
         <span class="k">for</span> <span class="n">entity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">group_entities</span><span class="p">:</span>
-            <span class="n">population</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">(</span><span class="n">new</span><span class="p">)</span>
+            <span class="n">population</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">(</span><span class="n">new</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">persons</span><span class="p">)</span>
             <span class="n">new</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">population</span>
             <span class="nb">setattr</span><span class="p">(</span>
                 <span class="n">new</span><span class="p">,</span> <span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">population</span>
@@ -1074,7 +1112,27 @@
         <span class="n">new</span><span class="o">.</span><span class="n">debug</span> <span class="o">=</span> <span class="n">debug</span>
         <span class="n">new</span><span class="o">.</span><span class="n">trace</span> <span class="o">=</span> <span class="n">trace</span>
 
-        <span class="k">return</span> <span class="n">new</span></div></div>
+        <span class="k">return</span> <span class="n">new</span></div>
+
+<div class="viewcode-block" id="Simulation.get_branch"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_branch">[docs]</a>    <span class="k">def</span> <span class="nf">get_branch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;branch&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Simulation&quot;</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Create a clone of this simulation, whose calculations are traced in the original.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            name (str, optional): Name of the branch. Defaults to &quot;branch&quot;.</span>
+<span class="sd">            store (bool, optional): Whether to store the branch in the original simulation. Defaults to True.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Simulation: The cloned simulation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span>
+        <span class="n">branch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">branches</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">branch</span>
+        <span class="n">branch</span><span class="o">.</span><span class="n">branch_name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trace</span><span class="p">:</span>
+            <span class="n">branch</span><span class="o">.</span><span class="n">trace</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">branch</span><span class="o">.</span><span class="n">tracer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span>
+        <span class="k">return</span> <span class="n">branch</span></div></div>
 </pre></div>
         </article>
       </div>

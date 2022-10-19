@@ -257,9 +257,11 @@
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">parameter_node_at_instant</span><span class="p">:</span> <span class="n">ParameterNode</span><span class="p">,</span>
         <span class="n">tracer</span><span class="p">:</span> <span class="n">tracers</span><span class="o">.</span><span class="n">FullTracer</span><span class="p">,</span>
+        <span class="n">branch_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">parameter_node_at_instant</span> <span class="o">=</span> <span class="n">parameter_node_at_instant</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span> <span class="o">=</span> <span class="n">tracer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span> <span class="o">=</span> <span class="n">branch_name</span>
 
     <span class="k">def</span> <span class="fm">__getattr__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -289,7 +291,9 @@
                 <span class="n">parameters</span><span class="o">.</span><span class="n">VectorialParameterNodeAtInstant</span><span class="p">,</span>
             <span class="p">),</span>
         <span class="p">):</span>
-            <span class="k">return</span> <span class="n">TracingParameterNodeAtInstant</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">TracingParameterNodeAtInstant</span><span class="p">(</span>
+                <span class="n">child</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span>
+            <span class="p">)</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">parameter_node_at_instant</span><span class="p">,</span>
@@ -306,7 +310,9 @@
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span>
             <span class="n">child</span><span class="p">,</span> <span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,)</span> <span class="o">+</span> <span class="n">parameters</span><span class="o">.</span><span class="n">ALLOWED_PARAM_TYPES</span>
         <span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="o">.</span><span class="n">record_parameter_access</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">child</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="o">.</span><span class="n">record_parameter_access</span><span class="p">(</span>
+                <span class="n">name</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span><span class="p">,</span> <span class="n">child</span>
+            <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">child</span></div>
 </pre></div>

@@ -257,7 +257,7 @@
     <span class="k">def</span> <span class="nf">key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">tracers</span><span class="o">.</span><span class="n">TraceNode</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="n">name</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">name</span>
         <span class="n">period</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">period</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&lt;</span><span class="si">{</span><span class="n">period</span><span class="si">}</span><span class="s2">&gt;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&lt;</span><span class="si">{</span><span class="n">period</span><span class="si">}</span><span class="s2">, (</span><span class="si">{</span><span class="n">node</span><span class="o">.</span><span class="n">branch_name</span><span class="si">}</span><span class="s2">)&gt;&quot;</span>
 
     <span class="k">def</span> <span class="nf">get_trace</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
         <span class="n">trace</span> <span class="o">=</span> <span class="p">{}</span>

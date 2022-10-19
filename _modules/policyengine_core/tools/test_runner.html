@@ -232,22 +232,30 @@
           <h1>Source code for policyengine_core.tools.test_runner</h1><div class="highlight"><pre>
 <span></span><span class="c1"># -*- coding: utf-8 -*-</span>
 
-<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">sys</span>
-<span class="kn">import</span> <span class="nn">textwrap</span>
+<span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">traceback</span>
-<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">textwrap</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span>
 
 <span class="kn">import</span> <span class="nn">pytest</span>
 
+<span class="kn">from</span> <span class="nn">policyengine_core.enums</span> <span class="kn">import</span> <span class="n">EnumArray</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.tools</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">assert_enum_equals</span><span class="p">,</span>
+    <span class="n">assert_datetime_equals</span><span class="p">,</span>
+    <span class="n">eval_expression</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.simulations</span> <span class="kn">import</span> <span class="n">SimulationBuilder</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.errors</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">SituationParsingError</span><span class="p">,</span>
     <span class="n">VariableNotFoundError</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.simulations.simulation_builder</span> <span class="kn">import</span> <span class="n">SimulationBuilder</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.tools</span> <span class="kn">import</span> <span class="n">assert_near</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.warnings</span> <span class="kn">import</span> <span class="n">LibYAMLWarning</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.scripts</span> <span class="kn">import</span> <span class="n">build_tax_benefit_system</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.reforms</span> <span class="kn">import</span> <span class="n">Reform</span><span class="p">,</span> <span class="n">set_parameter</span>
+
+<span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 
 <span class="k">def</span> <span class="nf">import_yaml</span><span class="p">():</span>
@@ -256,13 +264,13 @@
     <span class="k">try</span><span class="p">:</span>
         <span class="kn">from</span> <span class="nn">yaml</span> <span class="kn">import</span> <span class="n">CLoader</span> <span class="k">as</span> <span class="n">Loader</span>
     <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
-        <span class="n">message</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="s2">&quot;libyaml is not installed in your environment.&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;This can make your test suite slower to run. Once you have installed libyaml, &quot;</span><span class="p">,</span>
-            <span class="s2">&quot;run &#39;pip uninstall pyyaml &amp;&amp; pip install pyyaml --no-cache-dir&#39;&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;so that it is used in your Python environment.&quot;</span><span class="p">,</span>
-        <span class="p">]</span>
-        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">message</span><span class="p">),</span> <span class="n">LibYAMLWarning</span><span class="p">)</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="s2">&quot; &quot;</span>
+            <span class="s2">&quot;libyaml is not installed in your environment, this can make your &quot;</span>
+            <span class="s2">&quot;test suite slower to run. Once you have installed libyaml, run `pip &quot;</span>
+            <span class="s2">&quot;uninstall pyyaml &amp;&amp; pip install pyyaml --no-cache-dir` so that it is used in your &quot;</span>
+            <span class="s2">&quot;Python environment.&quot;</span>
+        <span class="p">)</span>
         <span class="kn">from</span> <span class="nn">yaml</span> <span class="kn">import</span> <span class="n">SafeLoader</span> <span class="k">as</span> <span class="n">Loader</span>
     <span class="k">return</span> <span class="n">yaml</span><span class="p">,</span> <span class="n">Loader</span>
 
@@ -274,7 +282,6 @@
     <span class="s2">&quot;ignore_variables&quot;</span><span class="p">,</span>
     <span class="s2">&quot;input&quot;</span><span class="p">,</span>
     <span class="s2">&quot;keywords&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;max_spiral_loops&quot;</span><span class="p">,</span>
     <span class="s2">&quot;name&quot;</span><span class="p">,</span>
     <span class="s2">&quot;only_variables&quot;</span><span class="p">,</span>
     <span class="s2">&quot;output&quot;</span><span class="p">,</span>
@@ -295,10 +302,10 @@
 <span class="sd">    If `path` is a directory, subdirectories will be recursively explored.</span>
 
 <span class="sd">    :param TaxBenefitSystem tax_benefit_system: the tax-benefit system to use to run the tests</span>
-<span class="sd">    :param str or list paths: A path, or a list of paths, towards the files or directories containing the tests to run. If a path is a directory, subdirectories will be recursively explored.</span>
+<span class="sd">    :param (str/list) paths: A path, or a list of paths, towards the files or directories containing the tests to run. If a path is a directory, subdirectories will be recursively explored.</span>
 <span class="sd">    :param dict options: See more details below.</span>
 
-<span class="sd">    :raises :exc:`AssertionError`: if a test does not pass</span>
+<span class="sd">    :raises AssertionError: if a test does not pass</span>
 
 <span class="sd">    :return: the number of sucessful tests excecuted</span>
 
@@ -308,28 +315,28 @@
 <span class="sd">    | Key                           | Type      | Role                                      |</span>
 <span class="sd">    +===============================+===========+===========================================+</span>
 <span class="sd">    | verbose                       | ``bool``  |                                           |</span>
-<span class="sd">    +-------------------------------+-----------+-------------------------------------------|</span>
+<span class="sd">    +-------------------------------+-----------+ See :any:`openfisca_test` options doc +</span>
 <span class="sd">    | name_filter                   | ``str``   |                                           |</span>
 <span class="sd">    +-------------------------------+-----------+-------------------------------------------+</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">argv</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># Add PyTest config arguments here. We use the tb (traceback) option of &quot;no&quot;</span>
+    <span class="c1"># to avoid printing tons of traceback lines. Remove it to use the openfisca default.</span>
 
-    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pdb&quot;</span><span class="p">):</span>
+    <span class="n">argv</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;--capture&quot;</span><span class="p">,</span> <span class="s2">&quot;no&quot;</span><span class="p">,</span> <span class="s2">&quot;--maxfail&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;--tb&quot;</span><span class="p">,</span> <span class="s2">&quot;short&quot;</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">options</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pdb&quot;</span><span class="p">):</span>
         <span class="n">argv</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;--pdb&quot;</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;verbose&quot;</span><span class="p">):</span>
-        <span class="n">argv</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;--verbose&quot;</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">paths</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">paths</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
         <span class="n">paths</span> <span class="o">=</span> <span class="p">[</span><span class="n">paths</span><span class="p">]</span>
 
-    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">paths</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">str</span><span class="p">):</span>
-        <span class="n">paths</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">paths</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">options</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">options</span> <span class="o">=</span> <span class="p">{}</span>
 
     <span class="k">return</span> <span class="n">pytest</span><span class="o">.</span><span class="n">main</span><span class="p">(</span>
-        <span class="p">[</span><span class="o">*</span><span class="n">argv</span><span class="p">,</span> <span class="o">*</span><span class="n">paths</span><span class="p">]</span> <span class="k">if</span> <span class="kc">True</span> <span class="k">else</span> <span class="n">paths</span><span class="p">,</span>
+        <span class="p">[</span><span class="o">*</span><span class="n">argv</span><span class="p">,</span> <span class="o">*</span><span class="n">paths</span><span class="p">],</span>
         <span class="n">plugins</span><span class="o">=</span><span class="p">[</span><span class="n">OpenFiscaPlugin</span><span class="p">(</span><span class="n">tax_benefit_system</span><span class="p">,</span> <span class="n">options</span><span class="p">)],</span>
     <span class="p">)</span></div>
 
@@ -407,19 +414,53 @@
                 <span class="p">)</span>
             <span class="p">)</span>
 
+        <span class="n">builder</span> <span class="o">=</span> <span class="n">SimulationBuilder</span><span class="p">()</span>
+        <span class="n">unsafe_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;input&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">period</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;period&quot;</span><span class="p">)</span>
+        <span class="nb">input</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">inline_reforms</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">parametric_reform_items</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">unsafe_input</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="s2">&quot;.&quot;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
+                <span class="n">inline_reforms</span> <span class="o">+=</span> <span class="p">[</span>
+                    <span class="n">set_parameter</span><span class="p">(</span>
+                        <span class="n">key</span><span class="p">,</span>
+                        <span class="n">value</span><span class="p">,</span>
+                        <span class="n">return_modifier</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="n">period</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;year:2000:40&quot;</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="p">]</span>
+                <span class="n">parametric_reform_items</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">input</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">inline_reforms</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">inline_reform</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">else</span><span class="p">:</span>
+
+            <span class="k">class</span> <span class="nc">inline_reform_class</span><span class="p">(</span><span class="n">Reform</span><span class="p">):</span>
+                <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                    <span class="k">for</span> <span class="n">modifier</span> <span class="ow">in</span> <span class="n">inline_reforms</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">modifier</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span>
+
+            <span class="n">inline_reform</span> <span class="o">=</span> <span class="p">[</span><span class="n">inline_reform_class</span><span class="p">]</span>
+
+        <span class="n">reforms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reforms&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">reforms</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">reforms</span> <span class="o">=</span> <span class="p">[</span><span class="n">reforms</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">inline_reforms</span><span class="p">:</span>
+            <span class="n">inline_reform</span> <span class="o">=</span> <span class="p">[]</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="n">_get_tax_benefit_system</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">baseline_tax_benefit_system</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">test</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reforms&quot;</span><span class="p">,</span> <span class="p">[]),</span>
+            <span class="n">reforms</span> <span class="o">+</span> <span class="n">inline_reform</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">test</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;extensions&quot;</span><span class="p">,</span> <span class="p">[]),</span>
+            <span class="n">reform_key</span><span class="o">=</span><span class="s2">&quot;=&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">parametric_reform_items</span><span class="p">]</span>
+            <span class="p">),</span>
         <span class="p">)</span>
-
-        <span class="n">builder</span> <span class="o">=</span> <span class="n">SimulationBuilder</span><span class="p">()</span>
-        <span class="nb">input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;input&quot;</span><span class="p">,</span> <span class="p">{})</span>
-        <span class="n">period</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;period&quot;</span><span class="p">)</span>
-        <span class="n">max_spiral_loops</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_spiral_loops&quot;</span><span class="p">)</span>
         <span class="n">verbose</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;verbose&quot;</span><span class="p">)</span>
-        <span class="n">aggregate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;aggregate&quot;</span><span class="p">)</span>
-        <span class="n">max_depth</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_depth&quot;</span><span class="p">)</span>
         <span class="n">performance_graph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;performance_graph&quot;</span><span class="p">)</span>
         <span class="n">performance_tables</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;performance_tables&quot;</span><span class="p">)</span>
 
@@ -442,9 +483,6 @@
                 <span class="n">sys</span><span class="o">.</span><span class="n">exc_info</span><span class="p">()[</span><span class="mi">2</span><span class="p">]</span>
             <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>  <span class="c1"># Keep the stack trace from the root error</span>
 
-        <span class="k">if</span> <span class="n">max_spiral_loops</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">simulation</span><span class="o">.</span><span class="n">max_spiral_loops</span> <span class="o">=</span> <span class="n">max_spiral_loops</span>
-
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">simulation</span><span class="o">.</span><span class="n">trace</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">verbose</span> <span class="ow">or</span> <span class="n">performance_graph</span> <span class="ow">or</span> <span class="n">performance_tables</span>
@@ -453,15 +491,15 @@
         <span class="k">finally</span><span class="p">:</span>
             <span class="n">tracer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulation</span><span class="o">.</span><span class="n">tracer</span>
             <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">print_computation_log</span><span class="p">(</span><span class="n">tracer</span><span class="p">,</span> <span class="n">aggregate</span><span class="p">,</span> <span class="n">max_depth</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">print_computation_log</span><span class="p">(</span><span class="n">tracer</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">performance_graph</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">generate_performance_graph</span><span class="p">(</span><span class="n">tracer</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">performance_tables</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">generate_performance_tables</span><span class="p">(</span><span class="n">tracer</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">print_computation_log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tracer</span><span class="p">,</span> <span class="n">aggregate</span><span class="p">,</span> <span class="n">max_depth</span><span class="p">):</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Computation log:&quot;</span><span class="p">)</span>
-        <span class="n">tracer</span><span class="o">.</span><span class="n">print_computation_log</span><span class="p">(</span><span class="n">aggregate</span><span class="p">,</span> <span class="n">max_depth</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">print_computation_log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tracer</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Computation log:&quot;</span><span class="p">)</span>  <span class="c1"># noqa T001</span>
+        <span class="n">tracer</span><span class="o">.</span><span class="n">print_computation_log</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">generate_performance_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tracer</span><span class="p">):</span>
         <span class="n">tracer</span><span class="o">.</span><span class="n">generate_performance_graph</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
@@ -585,23 +623,46 @@
             <span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">_get_tax_benefit_system</span><span class="p">(</span><span class="n">baseline</span><span class="p">,</span> <span class="n">reforms</span><span class="p">,</span> <span class="n">extensions</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_get_tax_benefit_system</span><span class="p">(</span>
+    <span class="n">baseline</span><span class="p">,</span>
+    <span class="n">reforms</span><span class="p">,</span>
+    <span class="n">extensions</span><span class="p">,</span>
+    <span class="n">reform_key</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">reforms</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
         <span class="n">reforms</span> <span class="o">=</span> <span class="p">[</span><span class="n">reforms</span><span class="p">]</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">extensions</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
         <span class="n">extensions</span> <span class="o">=</span> <span class="p">[</span><span class="n">extensions</span><span class="p">]</span>
 
     <span class="c1"># keep reforms order in cache, ignore extensions order</span>
-    <span class="n">key</span> <span class="o">=</span> <span class="nb">hash</span><span class="p">((</span><span class="nb">id</span><span class="p">(</span><span class="n">baseline</span><span class="p">),</span> <span class="s2">&quot;:&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">reforms</span><span class="p">),</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">extensions</span><span class="p">)))</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="nb">hash</span><span class="p">(</span>
+        <span class="p">(</span>
+            <span class="nb">id</span><span class="p">(</span><span class="n">baseline</span><span class="p">),</span>
+            <span class="s2">&quot;:&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="p">[</span>
+                    <span class="n">reform</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">reform</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+                    <span class="k">for</span> <span class="n">reform</span> <span class="ow">in</span> <span class="n">reforms</span>
+                <span class="p">]</span>
+            <span class="p">),</span>
+            <span class="n">reform_key</span><span class="p">,</span>
+            <span class="nb">frozenset</span><span class="p">(</span><span class="n">extensions</span><span class="p">),</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
     <span class="k">if</span> <span class="n">_tax_benefit_system_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">_tax_benefit_system_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
 
-    <span class="n">current_tax_benefit_system</span> <span class="o">=</span> <span class="n">baseline</span>
+    <span class="n">current_tax_benefit_system</span> <span class="o">=</span> <span class="n">baseline</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
 
     <span class="k">for</span> <span class="n">reform_path</span> <span class="ow">in</span> <span class="n">reforms</span><span class="p">:</span>
-        <span class="n">current_tax_benefit_system</span> <span class="o">=</span> <span class="n">current_tax_benefit_system</span><span class="o">.</span><span class="n">apply_reform</span><span class="p">(</span>
-            <span class="n">reform_path</span>
-        <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">reform_path</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">current_tax_benefit_system</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">current_tax_benefit_system</span><span class="o">.</span><span class="n">apply_reform</span><span class="p">(</span><span class="n">reform_path</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">current_tax_benefit_system</span> <span class="o">=</span> <span class="n">reform_path</span><span class="p">(</span>
+                <span class="n">current_tax_benefit_system</span>
+            <span class="p">)</span>
+        <span class="n">current_tax_benefit_system</span><span class="o">.</span><span class="n">_parameters_at_instant_cache</span> <span class="o">=</span> <span class="p">{}</span>
 
     <span class="k">for</span> <span class="n">extension</span> <span class="ow">in</span> <span class="n">extensions</span><span class="p">:</span>
         <span class="n">current_tax_benefit_system</span> <span class="o">=</span> <span class="n">current_tax_benefit_system</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
@@ -610,6 +671,68 @@
     <span class="n">_tax_benefit_system_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">current_tax_benefit_system</span>
 
     <span class="k">return</span> <span class="n">current_tax_benefit_system</span>
+
+
+<span class="k">def</span> <span class="nf">assert_near</span><span class="p">(</span>
+    <span class="n">value</span><span class="p">,</span>
+    <span class="n">target_value</span><span class="p">,</span>
+    <span class="n">absolute_error_margin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">message</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="n">relative_error_margin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    :param value: Value returned by the test</span>
+<span class="sd">    :param target_value: Value that the test should return to pass</span>
+<span class="sd">    :param absolute_error_margin: Absolute error margin authorized</span>
+<span class="sd">    :param message: Error message to be displayed if the test fails</span>
+<span class="sd">    :param relative_error_margin: Relative error margin authorized</span>
+
+<span class="sd">    Limit : This function cannot be used to assert near periods.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+    <span class="k">if</span> <span class="n">absolute_error_margin</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">relative_error_margin</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">absolute_error_margin</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">EnumArray</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">assert_enum_equals</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">target_value</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">datetime64</span><span class="p">):</span>
+        <span class="n">target_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">target_value</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">value</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">assert_datetime_equals</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">target_value</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target_value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">target_value</span> <span class="o">=</span> <span class="n">eval_expression</span><span class="p">(</span><span class="n">target_value</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">target_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">target_value</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="c1"># Data type not translatable to floating point, assert complete equality</span>
+        <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+            <span class="n">target_value</span>
+        <span class="p">),</span> <span class="s2">&quot;</span><span class="si">{}{}</span><span class="s2"> differs from </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">target_value</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">diff</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">target_value</span> <span class="o">-</span> <span class="n">value</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">absolute_error_margin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="p">(</span>
+            <span class="n">diff</span> <span class="o">&lt;=</span> <span class="n">absolute_error_margin</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">(),</span> <span class="s2">&quot;</span><span class="si">{}{}</span><span class="s2"> differs from </span><span class="si">{}</span><span class="s2"> with an absolute margin </span><span class="si">{}</span><span class="s2"> &gt; </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">message</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">target_value</span><span class="p">,</span> <span class="n">diff</span><span class="p">,</span> <span class="n">absolute_error_margin</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">relative_error_margin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="p">(</span>
+            <span class="n">diff</span> <span class="o">&lt;=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">relative_error_margin</span> <span class="o">*</span> <span class="n">target_value</span><span class="p">)</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">(),</span> <span class="s2">&quot;</span><span class="si">{}{}</span><span class="s2"> differs from </span><span class="si">{}</span><span class="s2"> with a relative margin </span><span class="si">{}</span><span class="s2"> &gt; </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">message</span><span class="p">,</span>
+            <span class="n">value</span><span class="p">,</span>
+            <span class="n">target_value</span><span class="p">,</span>
+            <span class="n">diff</span><span class="p">,</span>
+            <span class="nb">abs</span><span class="p">(</span><span class="n">relative_error_margin</span> <span class="o">*</span> <span class="n">target_value</span><span class="p">),</span>
+        <span class="p">)</span>
 </pre></div>
         </article>
       </div>

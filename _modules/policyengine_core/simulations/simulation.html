@@ -361,6 +361,12 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">calc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_dataframe</span>
 
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_variables</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">variable</span><span class="o">.</span><span class="n">name</span>
+            <span class="k">for</span> <span class="n">variable</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_holder</span><span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">get_known_periods</span><span class="p">())</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="p">]</span>
+
 <div class="viewcode-block" id="Simulation.build_from_populations"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.build_from_populations">[docs]</a>    <span class="k">def</span> <span class="nf">build_from_populations</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">populations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Population</span><span class="p">]</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -1095,12 +1101,13 @@
         <span class="n">new_dict</span> <span class="o">=</span> <span class="n">new</span><span class="o">.</span><span class="vm">__dict__</span>
 
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;debug&quot;</span><span class="p">,</span> <span class="s2">&quot;trace&quot;</span><span class="p">,</span> <span class="s2">&quot;tracer&quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;debug&quot;</span><span class="p">,</span> <span class="s2">&quot;trace&quot;</span><span class="p">,</span> <span class="s2">&quot;tracer&quot;</span><span class="p">,</span> <span class="s2">&quot;branches&quot;</span><span class="p">):</span>
                 <span class="n">new_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
 
         <span class="n">new</span><span class="o">.</span><span class="n">persons</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">persons</span><span class="o">.</span><span class="n">clone</span><span class="p">(</span><span class="n">new</span><span class="p">)</span>
         <span class="nb">setattr</span><span class="p">(</span><span class="n">new</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">persons</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">persons</span><span class="p">)</span>
         <span class="n">new</span><span class="o">.</span><span class="n">populations</span> <span class="o">=</span> <span class="p">{</span><span class="n">new</span><span class="o">.</span><span class="n">persons</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">:</span> <span class="n">new</span><span class="o">.</span><span class="n">persons</span><span class="p">}</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">branches</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="k">for</span> <span class="n">entity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">group_entities</span><span class="p">:</span>
             <span class="n">population</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">(</span><span class="n">new</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">persons</span><span class="p">)</span>
@@ -1132,7 +1139,38 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trace</span><span class="p">:</span>
             <span class="n">branch</span><span class="o">.</span><span class="n">trace</span> <span class="o">=</span> <span class="kc">True</span>
             <span class="n">branch</span><span class="o">.</span><span class="n">tracer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span>
-        <span class="k">return</span> <span class="n">branch</span></div></div>
+        <span class="k">return</span> <span class="n">branch</span></div>
+
+<div class="viewcode-block" id="Simulation.derivative"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.derivative">[docs]</a>    <span class="k">def</span> <span class="nf">derivative</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">wrt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">delta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the derivative of a variable w.r.t another variable.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            variable (str): The variable to differentiate.</span>
+<span class="sd">            wrt (str): The variable to differentiate with respect to.</span>
+<span class="sd">            period (Period): The period for which to compute the derivative.</span>
+<span class="sd">            delta (float): The infinitesimal to use for the derivative.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ArrayLike: The derivative.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">period</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">period</span><span class="p">,</span> <span class="n">Period</span><span class="p">):</span>
+            <span class="n">period</span> <span class="o">=</span> <span class="n">periods</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="n">period</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">period</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_calculation_period</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">period</span> <span class="o">=</span> <span class="n">periods</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">default_calculation_period</span><span class="p">)</span>
+
+        <span class="n">alt_sim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">computed_variable</span> <span class="ow">in</span> <span class="n">alt_sim</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">computed_variable</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_variables</span><span class="p">:</span>
+                <span class="n">alt_sim</span><span class="o">.</span><span class="n">delete_arrays</span><span class="p">(</span><span class="n">computed_variable</span><span class="p">)</span>
+        <span class="n">alt_sim</span><span class="o">.</span><span class="n">set_input</span><span class="p">(</span><span class="n">wrt</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="n">wrt</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span> <span class="o">+</span> <span class="n">delta</span><span class="p">)</span>
+        <span class="n">original_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+        <span class="n">new_value</span> <span class="o">=</span> <span class="n">alt_sim</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+        <span class="n">difference</span> <span class="o">=</span> <span class="n">new_value</span> <span class="o">-</span> <span class="n">original_value</span>
+        <span class="k">return</span> <span class="n">difference</span> <span class="o">/</span> <span class="n">delta</span></div></div>
 </pre></div>
         </article>
       </div>

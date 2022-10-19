@@ -287,8 +287,15 @@
         <span class="n">new_dict</span> <span class="o">=</span> <span class="n">new</span><span class="o">.</span><span class="vm">__dict__</span>
 
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;population&quot;</span><span class="p">,</span> <span class="s2">&quot;formula&quot;</span><span class="p">,</span> <span class="s2">&quot;simulation&quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span>
+                <span class="s2">&quot;population&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;formula&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;simulation&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;_memory_storage&quot;</span><span class="p">,</span>
+            <span class="p">):</span>
                 <span class="n">new_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="n">new</span><span class="o">.</span><span class="n">_memory_storage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_memory_storage</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
 
         <span class="n">new_dict</span><span class="p">[</span><span class="s2">&quot;population&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">population</span>
         <span class="n">new_dict</span><span class="p">[</span><span class="s2">&quot;simulation&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">simulation</span>

@@ -251,6 +251,13 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_arrays</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">is_eternal</span> <span class="o">=</span> <span class="n">is_eternal</span>
 
+<div class="viewcode-block" id="InMemoryStorage.clone"><a class="viewcode-back" href="../../../python_api/data_storage.html#policyengine_core.data_storage.in_memory_storage.InMemoryStorage.clone">[docs]</a>    <span class="k">def</span> <span class="nf">clone</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;InMemoryStorage&quot;</span><span class="p">:</span>
+        <span class="n">clone</span> <span class="o">=</span> <span class="n">InMemoryStorage</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_eternal</span><span class="p">)</span>
+        <span class="n">clone</span><span class="o">.</span><span class="n">_arrays</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">period</span><span class="p">:</span> <span class="n">array</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">for</span> <span class="n">period</span><span class="p">,</span> <span class="n">array</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arrays</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">clone</span></div>
+
 <div class="viewcode-block" id="InMemoryStorage.get"><a class="viewcode-back" href="../../../python_api/data_storage.html#policyengine_core.data_storage.in_memory_storage.InMemoryStorage.get">[docs]</a>    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_eternal</span><span class="p">:</span>
             <span class="n">period</span> <span class="o">=</span> <span class="n">periods</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="n">periods</span><span class="o">.</span><span class="n">ETERNITY</span><span class="p">)</span>

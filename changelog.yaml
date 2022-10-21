@@ -94,3 +94,8 @@
     added:
     - Derivative calculation in simulations.
   date: 2022-10-19 22:44:19
+- bump: minor
+  changes:
+    added:
+    - Metadata dictionary input to Variables.
+  date: 2022-10-21 12:39:50

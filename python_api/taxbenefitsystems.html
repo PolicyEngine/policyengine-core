@@ -419,6 +419,18 @@
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.modify_parameters">
+<span class="sig-name descname"><span class="pre">modify_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">modifier_function</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="parameters.html#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">policyengine_core.parameters.parameter_node.ParameterNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="parameters.html#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">policyengine_core.parameters.parameter_node.ParameterNode</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.modify_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.modify_parameters" title="Permalink to this definition">#</a></dt>
+<dd><p>Make modifications on the parameters of the legislation.</p>
+<p>Call this function in <cite>apply()</cite> if the reform asks for legislation parameter modifications.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>modifier_function</strong> – A function that takes a <a class="reference internal" href="parameters.html#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ParameterNode</span></code></a> and should return an object of the same type.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.neutralize_variable">
 <span class="sig-name descname"><span class="pre">neutralize_variable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">variable_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.neutralize_variable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.neutralize_variable" title="Permalink to this definition">#</a></dt>
 <dd><p>Neutralizes an OpenFisca variable existing in the tax and benefit system.</p>

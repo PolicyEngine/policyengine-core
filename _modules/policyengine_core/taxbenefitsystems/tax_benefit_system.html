@@ -244,6 +244,7 @@
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">TYPE_CHECKING</span><span class="p">,</span>
     <span class="n">Any</span><span class="p">,</span>
+    <span class="n">Callable</span><span class="p">,</span>
     <span class="n">Dict</span><span class="p">,</span>
     <span class="n">List</span><span class="p">,</span>
     <span class="n">Optional</span><span class="p">,</span>
@@ -784,7 +785,28 @@
             <span class="n">run_tests</span><span class="p">,</span>
         <span class="p">)</span>  <span class="c1"># Import here to avoid circular dependency.</span>
 
-        <span class="n">run_tests</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">paths</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">))</span></div>
+        <span class="n">run_tests</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">paths</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">))</span>
+
+<div class="viewcode-block" id="TaxBenefitSystem.modify_parameters"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.modify_parameters">[docs]</a>    <span class="k">def</span> <span class="nf">modify_parameters</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">modifier_function</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">ParameterNode</span><span class="p">],</span> <span class="n">ParameterNode</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Make modifications on the parameters of the legislation.</span>
+
+<span class="sd">        Call this function in `apply()` if the reform asks for legislation parameter modifications.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            modifier_function: A function that takes a :obj:`.ParameterNode` and should return an object of the same type.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">reform_parameters</span> <span class="o">=</span> <span class="n">modifier_function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">reform_parameters</span><span class="p">,</span> <span class="n">ParameterNode</span><span class="p">):</span>
+            <span class="k">return</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;modifier_function </span><span class="si">{}</span><span class="s2"> in module </span><span class="si">{}</span><span class="s2"> must return a ParameterNode&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">modifier_function</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                    <span class="n">modifier_function</span><span class="o">.</span><span class="vm">__module__</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">reform_parameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parameters_at_instant_cache</span> <span class="o">=</span> <span class="p">{}</span></div></div>
 </pre></div>
         </article>
       </div>

@@ -304,7 +304,8 @@
         <span class="p">)</span>
 
 <div class="viewcode-block" id="ParameterScale.get_descendants"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_scale.ParameterScale.get_descendants">[docs]</a>    <span class="k">def</span> <span class="nf">get_descendants</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">iter</span><span class="p">(())</span></div>
+        <span class="k">for</span> <span class="n">bracket</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">brackets</span><span class="p">:</span>
+            <span class="k">yield from</span> <span class="n">bracket</span><span class="o">.</span><span class="n">get_descendants</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="ParameterScale.clone"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_scale.ParameterScale.clone">[docs]</a>    <span class="k">def</span> <span class="nf">clone</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;ParameterScale&quot;</span><span class="p">:</span>
         <span class="n">clone</span> <span class="o">=</span> <span class="n">commons</span><span class="o">.</span><span class="n">empty_clone</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>

@@ -99,3 +99,11 @@
     added:
     - Metadata dictionary input to Variables.
   date: 2022-10-21 12:39:50
+- bump: minor
+  changes:
+    changed:
+    - Parameter scale components now included in `get_descendants()`.
+    fixed:
+    - Folder paths in `Dataset`s are parsed as `Path`s.
+    - Empty `input:` fields are parsed as `{}`.
+  date: 2022-10-23 13:41:39

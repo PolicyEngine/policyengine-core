@@ -554,8 +554,6 @@ class TaxBenefitSystem:
         )  # Import here to avoid circular dependency.
 
         run_tests(self, paths, options=dict(verbose=verbose))
-    
-
 
     def modify_parameters(
         self, modifier_function: Callable[[ParameterNode], ParameterNode]

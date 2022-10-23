@@ -72,7 +72,8 @@ class ParameterScale(AtInstantLike):
         )
 
     def get_descendants(self) -> Iterable:
-        return iter(())
+        for bracket in self.brackets:
+            yield from bracket.get_descendants()
 
     def clone(self) -> "ParameterScale":
         clone = commons.empty_clone(self)

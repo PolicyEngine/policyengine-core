@@ -184,6 +184,8 @@ class YamlItem(pytest.Item):
 
         builder = SimulationBuilder()
         unsafe_input = self.test.get("input", {})
+        if unsafe_input is None:
+            unsafe_input = {}
         period = self.test.get("period")
         input = {}
         inline_reforms = []

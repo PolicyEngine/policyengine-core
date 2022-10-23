@@ -12,6 +12,7 @@ import typing
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     Dict,
     List,
     Optional,
@@ -553,3 +554,24 @@ class TaxBenefitSystem:
         )  # Import here to avoid circular dependency.
 
         run_tests(self, paths, options=dict(verbose=verbose))
+
+    def modify_parameters(
+        self, modifier_function: Callable[[ParameterNode], ParameterNode]
+    ) -> None:
+        """Make modifications on the parameters of the legislation.
+
+        Call this function in `apply()` if the reform asks for legislation parameter modifications.
+
+        Args:
+            modifier_function: A function that takes a :obj:`.ParameterNode` and should return an object of the same type.
+        """
+        reform_parameters = modifier_function(self.parameters)
+        if not isinstance(reform_parameters, ParameterNode):
+            return ValueError(
+                "modifier_function {} in module {} must return a ParameterNode".format(
+                    modifier_function.__name__,
+                    modifier_function.__module__,
+                )
+            )
+        self.parameters = reform_parameters
+        self._parameters_at_instant_cache = {}

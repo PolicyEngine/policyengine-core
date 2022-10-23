@@ -37,6 +37,8 @@ class Dataset:
             raise ValueError(
                 "Dataset folder_path must be specified in the dataset class definition."
             )
+        elif isinstance(self.folder_path, str):
+            self.folder_path = Path(self.folder_path)
 
         if not self.folder_path.exists():
             logging.info(

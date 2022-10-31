@@ -158,7 +158,7 @@ class YamlItem(pytest.Item):
     def __init__(
         self, name, parent, baseline_tax_benefit_system, test, options
     ):
-        super(YamlItem, self).__init__(name, parent)
+        super(YamlItem, self).from_parent(parent, name=name)
         self.baseline_tax_benefit_system = baseline_tax_benefit_system
         self.options = options
         self.test = test

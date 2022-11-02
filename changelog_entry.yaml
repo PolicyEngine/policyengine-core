@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    removed:
+      - Python 3.6 stated support.

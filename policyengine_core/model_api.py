@@ -25,9 +25,16 @@ from policyengine_core.simulations import (
     calculate_output_add,
     calculate_output_divide,
 )
-from policyengine_core.variables import QuantityType, Variable
+from policyengine_core.variables import QuantityType, Variable, VariableCategory
 
 STOCK = QuantityType.STOCK
 FLOW = QuantityType.FLOW
+
+INCOME = VariableCategory.INCOME
+DEMOGRAPHIC = VariableCategory.DEMOGRAPHIC
+CONSUMPTION = VariableCategory.CONSUMPTION
+WEALTH = VariableCategory.WEALTH
+TAX = VariableCategory.TAX
+BENEFIT = VariableCategory.BENEFIT
 
 from policyengine_core.commons.formulas import *

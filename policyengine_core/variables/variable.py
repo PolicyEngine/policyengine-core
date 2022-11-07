@@ -19,6 +19,19 @@ class QuantityType:
     STOCK = "stock"
     FLOW = "flow"
 
+class VariableStage:
+    INPUT = "input"
+    INTERMEDIATE = "intermediate"
+    OUTPUT = "output"
+
+class VariableCategory:
+    TAX = "tax"
+    BENEFIT = "benefit"
+    INCOME = "income"
+    CONSUMPTION = "consumption"
+    WEALTH = "wealth"
+    DEMOGRAPHIC = "demographic"
+
 
 class Variable:
     """
@@ -181,6 +194,10 @@ class Variable:
         self.defined_for = self.set_defined_for(attr.pop("defined_for", None))
 
         self.metadata = self.set(attr, "metadata", allowed_type=dict)
+
+        self.category = self.set(
+            attr, "category", allowed_type=str, default=None,
+        )
 
         formulas_attr, unexpected_attrs = helpers._partition(
             attr,

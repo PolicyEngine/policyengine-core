@@ -6,6 +6,7 @@ import importlib
 import inspect
 import logging
 import os
+from pathlib import Path
 import sys
 import traceback
 import typing
@@ -212,6 +213,16 @@ class TaxBenefitSystem:
         try:
             file_name = os.path.splitext(os.path.basename(file_path))[0]
 
+            path = Path(file_path)
+
+            # Get the relative location, e.g. policyengine_uk/variables/gov/child_benefit.py -> gov.child_benefit
+
+            relative_file_path = (
+                str(path.relative_to(self.variables_dir))
+                .replace("/", ".")
+                .replace(".py", "")
+            )
+
             #  As Python remembers loaded modules by name, in order to prevent collisions, we need to make sure that:
             #  - Files with the same name, but located in different directories, have a different module names. Hence the file path hash in the module name.
             #  - The same file, loaded by different tax and benefit systems, has distinct module names. Hence the `id(self)` in the module name.
@@ -244,6 +255,9 @@ class TaxBenefitSystem:
                     and issubclass(pot_variable, Variable)
                     and pot_variable.__module__ == module_name
                 ):
+                    pot_variable.full_name = (
+                        relative_file_path + "." + pot_variable.__name__
+                    )
                     self.add_variable(pot_variable)
         except Exception:
             log.error(

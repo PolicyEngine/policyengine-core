@@ -1,7 +1,0 @@
-- bump: minor
-  changes:
-    changed:
-    - Parameter scale components now included in `get_descendants()`.
-    fixed:
-    - Folder paths in `Dataset`s are parsed as `Path`s.
-    - Empty `input:` fields are parsed as `{}`.

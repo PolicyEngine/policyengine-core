@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.1] - 2022-11-02 01:31:48
+
+## [1.8.0] - 2022-10-23 13:41:39
+
+### Changed
+
+- Parameter scale components now included in `get_descendants()`.
+
+### Fixed
+
+- Folder paths in `Dataset`s are parsed as `Path`s.
+- Empty `input:` fields are parsed as `{}`.
+
 ## [1.7.0] - 2022-10-21 12:39:50
 
 ### Added
@@ -129,6 +142,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[1.8.1]: https://github.com/PolicyEngine/policyengine-core/compare/1.8.0...1.8.1
+[1.8.0]: https://github.com/PolicyEngine/policyengine-core/compare/1.7.0...1.8.0
 [1.7.0]: https://github.com/PolicyEngine/policyengine-core/compare/1.6.0...1.7.0
 [1.6.0]: https://github.com/PolicyEngine/policyengine-core/compare/1.5.0...1.6.0
 [1.5.0]: https://github.com/PolicyEngine/policyengine-core/compare/1.4.1...1.5.0

@@ -9,7 +9,7 @@ import numpy as np
 from policyengine_core.entities.entity import Entity
 from policyengine_core.periods import period
 from policyengine_core.reforms import Reform, set_parameter
-from policyengine_core.simulations import SimulationBuilder
+from policyengine_core.simulations import SimulationBuilder, Simulation
 from policyengine_core.taxbenefitsystems.tax_benefit_system import (
     TaxBenefitSystem,
 )
@@ -84,8 +84,11 @@ class IndividualSim:
                         default_role.plural
                     ] = members
             # Add missing entities with specified default roles
-        self.simulation = self.sim_builder.build_from_entities(
-            self.system, self.situation_data
+        print(f"Building simulation with reform {self.reform}")
+        self.simulation = Simulation(
+            tax_benefit_system=self.system,
+            situation=self.situation_data,
+            reform=self.reform,
         )
         self.simulation.trace = True
         self.sim = self.simulation

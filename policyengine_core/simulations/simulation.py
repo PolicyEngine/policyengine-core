@@ -1,5 +1,5 @@
 import tempfile
-from typing import TYPE_CHECKING, Any, Dict, List, Type
+from typing import TYPE_CHECKING, Any, Dict, List, Type, Union
 
 import numpy
 import numpy as np
@@ -73,11 +73,13 @@ class Simulation:
                     tax_benefit_system = tax_benefit_system.clone()
             else:
                 tax_benefit_system = self.default_tax_benefit_system()
-            if reform is not None:
-                reform.apply(tax_benefit_system)
+            self.tax_benefit_system = tax_benefit_system
 
         self.reform = reform
         self.tax_benefit_system = tax_benefit_system
+
+        if reform is not None:
+            self.apply_reform(reform)
 
         self.branch_name = "default"
 
@@ -134,6 +136,14 @@ class Simulation:
             for variable in self.tax_benefit_system.variables.values()
             if len(self.get_holder(variable.name).get_known_periods()) > 0
         ]
+
+    def apply_reform(self, reform: Union[tuple, Reform]):
+        if isinstance(reform, tuple):
+            for subreform in reform:
+                self.apply_reform(subreform)
+        else:
+            print("Applying reform")
+            reform.apply(self.tax_benefit_system)
 
     def build_from_populations(
         self, populations: Dict[str, Population]

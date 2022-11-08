@@ -112,3 +112,8 @@
     removed:
     - Python 3.6 stated support.
   date: 2022-11-02 01:31:48
+- bump: minor
+  changes:
+    fixed:
+    - Various fixes for PolicyEngine's server app.
+  date: 2022-11-08 15:00:26

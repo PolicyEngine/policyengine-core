@@ -216,12 +216,14 @@ class TaxBenefitSystem:
             path = Path(file_path)
 
             # Get the relative location, e.g. policyengine_uk/variables/gov/child_benefit.py -> gov.child_benefit
-
-            relative_file_path = (
-                str(path.relative_to(self.variables_dir))
-                .replace("/", ".")
-                .replace(".py", "")
-            )
+            try:
+                relative_file_path = (
+                    str(path.relative_to(self.variables_dir))
+                    .replace("/", ".")
+                    .replace(".py", "")
+                )
+            except:
+                relative_file_path = ""
 
             #  As Python remembers loaded modules by name, in order to prevent collisions, we need to make sure that:
             #  - Files with the same name, but located in different directories, have a different module names. Hence the file path hash in the module name.

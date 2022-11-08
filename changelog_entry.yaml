@@ -1,0 +1,4 @@
+- bump: minor
+  changes:
+    fixed:
+    - Various fixes for PolicyEngine's server app.

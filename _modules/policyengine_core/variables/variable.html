@@ -252,6 +252,21 @@
     <span class="n">FLOW</span> <span class="o">=</span> <span class="s2">&quot;flow&quot;</span>
 
 
+<span class="k">class</span> <span class="nc">VariableStage</span><span class="p">:</span>
+    <span class="n">INPUT</span> <span class="o">=</span> <span class="s2">&quot;input&quot;</span>
+    <span class="n">INTERMEDIATE</span> <span class="o">=</span> <span class="s2">&quot;intermediate&quot;</span>
+    <span class="n">OUTPUT</span> <span class="o">=</span> <span class="s2">&quot;output&quot;</span>
+
+
+<span class="k">class</span> <span class="nc">VariableCategory</span><span class="p">:</span>
+    <span class="n">TAX</span> <span class="o">=</span> <span class="s2">&quot;tax&quot;</span>
+    <span class="n">BENEFIT</span> <span class="o">=</span> <span class="s2">&quot;benefit&quot;</span>
+    <span class="n">INCOME</span> <span class="o">=</span> <span class="s2">&quot;income&quot;</span>
+    <span class="n">CONSUMPTION</span> <span class="o">=</span> <span class="s2">&quot;consumption&quot;</span>
+    <span class="n">WEALTH</span> <span class="o">=</span> <span class="s2">&quot;wealth&quot;</span>
+    <span class="n">DEMOGRAPHIC</span> <span class="o">=</span> <span class="s2">&quot;demographic&quot;</span>
+
+
 <div class="viewcode-block" id="Variable"><a class="viewcode-back" href="../../../python_api/variables.html#policyengine_core.variables.variable.Variable">[docs]</a><span class="k">class</span> <span class="nc">Variable</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A `variable &lt;https://openfisca.org/doc/key-concepts/variables.html&gt;`_ of the legislation.</span>
@@ -319,6 +334,9 @@
 
     <span class="n">metadata</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="sd">&quot;&quot;&quot;Free dictionary field used to store any metadata.&quot;&quot;&quot;</span>
+
+    <span class="n">full_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="sd">&quot;&quot;&quot;Full name of the variable, including the name of the module it is defined in.&quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">baseline_variable</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
@@ -413,6 +431,20 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">defined_for</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_defined_for</span><span class="p">(</span><span class="n">attr</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;defined_for&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="n">allowed_type</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">category</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span>
+            <span class="n">attr</span><span class="p">,</span>
+            <span class="s2">&quot;category&quot;</span><span class="p">,</span>
+            <span class="n">allowed_type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+            <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">full_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span>
+            <span class="n">attr</span><span class="p">,</span>
+            <span class="s2">&quot;full_name&quot;</span><span class="p">,</span>
+            <span class="n">allowed_type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+            <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
 
         <span class="n">formulas_attr</span><span class="p">,</span> <span class="n">unexpected_attrs</span> <span class="o">=</span> <span class="n">helpers</span><span class="o">.</span><span class="n">_partition</span><span class="p">(</span>
             <span class="n">attr</span><span class="p">,</span>

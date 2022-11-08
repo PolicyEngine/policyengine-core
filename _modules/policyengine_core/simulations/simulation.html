@@ -231,7 +231,7 @@
         <article role="main">
           <h1>Source code for policyengine_core.simulations.simulation</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">tempfile</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Type</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Type</span><span class="p">,</span> <span class="n">Union</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
@@ -305,11 +305,13 @@
                     <span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_tax_benefit_system</span><span class="p">()</span>
-            <span class="k">if</span> <span class="n">reform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">reform</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">tax_benefit_system</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="n">tax_benefit_system</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">reform</span> <span class="o">=</span> <span class="n">reform</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="n">tax_benefit_system</span>
+
+        <span class="k">if</span> <span class="n">reform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">apply_reform</span><span class="p">(</span><span class="n">reform</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span> <span class="o">=</span> <span class="s2">&quot;default&quot;</span>
 
@@ -366,6 +368,14 @@
             <span class="k">for</span> <span class="n">variable</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_holder</span><span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">get_known_periods</span><span class="p">())</span> <span class="o">&gt;</span> <span class="mi">0</span>
         <span class="p">]</span>
+
+<div class="viewcode-block" id="Simulation.apply_reform"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.apply_reform">[docs]</a>    <span class="k">def</span> <span class="nf">apply_reform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reform</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">,</span> <span class="n">Reform</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">reform</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">subreform</span> <span class="ow">in</span> <span class="n">reform</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">apply_reform</span><span class="p">(</span><span class="n">subreform</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Applying reform&quot;</span><span class="p">)</span>
+            <span class="n">reform</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Simulation.build_from_populations"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.build_from_populations">[docs]</a>    <span class="k">def</span> <span class="nf">build_from_populations</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">populations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Population</span><span class="p">]</span>

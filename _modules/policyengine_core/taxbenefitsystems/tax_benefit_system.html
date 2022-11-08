@@ -238,6 +238,7 @@
 <span class="kn">import</span> <span class="nn">inspect</span>
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">traceback</span>
 <span class="kn">import</span> <span class="nn">typing</span>
@@ -444,6 +445,18 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="n">file_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">file_path</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
 
+            <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+
+            <span class="c1"># Get the relative location, e.g. policyengine_uk/variables/gov/child_benefit.py -&gt; gov.child_benefit</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">relative_file_path</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">variables_dir</span><span class="p">))</span>
+                    <span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="s2">&quot;.&quot;</span><span class="p">)</span>
+                    <span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.py&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="n">relative_file_path</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
             <span class="c1">#  As Python remembers loaded modules by name, in order to prevent collisions, we need to make sure that:</span>
             <span class="c1">#  - Files with the same name, but located in different directories, have a different module names. Hence the file path hash in the module name.</span>
             <span class="c1">#  - The same file, loaded by different tax and benefit systems, has distinct module names. Hence the `id(self)` in the module name.</span>
@@ -476,6 +489,9 @@
                     <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">pot_variable</span><span class="p">,</span> <span class="n">Variable</span><span class="p">)</span>
                     <span class="ow">and</span> <span class="n">pot_variable</span><span class="o">.</span><span class="vm">__module__</span> <span class="o">==</span> <span class="n">module_name</span>
                 <span class="p">):</span>
+                    <span class="n">pot_variable</span><span class="o">.</span><span class="n">full_name</span> <span class="o">=</span> <span class="p">(</span>
+                        <span class="n">relative_file_path</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">pot_variable</span><span class="o">.</span><span class="vm">__name__</span>
+                    <span class="p">)</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">add_variable</span><span class="p">(</span><span class="n">pot_variable</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
             <span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>

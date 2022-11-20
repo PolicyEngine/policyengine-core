@@ -52,6 +52,7 @@ class SimulationBuilder:
         self.variable_entities: typing.Dict[Variable.name, Entity] = {}
 
         self.axes = [[]]
+        self.has_axes = False
         self.axes_entity_counts: typing.Dict[Entity.plural, int] = {}
         self.axes_entity_ids: typing.Dict[Entity.plural, typing.List[int]] = {}
         self.axes_memberships: typing.Dict[
@@ -792,6 +793,8 @@ class SimulationBuilder:
                         axis_count - 1
                     )
                     self.input_buffer[axis_name][str(axis_period)] = array
+        
+        self.has_axes = True
 
     def get_variable_entity(self, variable_name):
         return self.variable_entities[variable_name]

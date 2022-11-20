@@ -72,6 +72,7 @@ class TaxBenefitSystem:
     baseline: "TaxBenefitSystem" = None  # Baseline tax-benefit system. Used only by reforms. Note: Reforms can be chained.
     cache_blacklist = None
     decomposition_file_path = None
+    variable_module_metadata: dict = None
 
     # The following properties should be specified by country packages.
 
@@ -110,6 +111,8 @@ class TaxBenefitSystem:
         self.group_entity_keys = [entity.key for entity in self.group_entities]
         for entity in self.entities:
             entity.set_tax_benefit_system(self)
+
+        self.variable_module_metadata = {}
 
         if self.variables_dir is not None:
             self.add_variables_from_directory(self.variables_dir)
@@ -247,9 +250,16 @@ class TaxBenefitSystem:
                 raise
             potential_variables = [
                 getattr(module, item)
-                for item in dir(module)
+                for item in module.__dict__
                 if not item.startswith("__")
             ]
+
+            metadata = {}
+            metadata["label"] = module.__dict__.get("label", relative_file_path)
+            metadata["description"] = module.__dict__.get("description", None)
+            self.variable_module_metadata[relative_file_path] = metadata
+
+            i = 0
             for pot_variable in potential_variables:
                 # We only want to get the module classes defined in this module (not imported)
                 if (
@@ -257,9 +267,11 @@ class TaxBenefitSystem:
                     and issubclass(pot_variable, Variable)
                     and pot_variable.__module__ == module_name
                 ):
-                    pot_variable.full_name = (
-                        relative_file_path + "." + pot_variable.__name__
+                    pot_variable.module_name = (
+                        relative_file_path
                     )
+                    pot_variable.index_in_module = i
+                    i += 1
                     self.add_variable(pot_variable)
         except Exception:
             log.error(
@@ -269,11 +281,69 @@ class TaxBenefitSystem:
             )
             raise
 
+    def add_variable_metadata_from_folder(self, file_path: str) -> None:
+        """
+        Adds metadata from a given __init__.py file to the tax and benefit system.
+        """
+        try:
+            file_name = os.path.splitext(os.path.basename(file_path))[0]
+
+            path = Path(file_path)
+
+            # Get the relative location, e.g. policyengine_uk/variables/gov/child_benefit.py -> gov.child_benefit
+            try:
+                relative_file_path = (
+                    str(path.parent.relative_to(self.variables_dir))
+                    .replace("/", ".")
+                )
+            except:
+                relative_file_path = ""
+
+            #  As Python remembers loaded modules by name, in order to prevent collisions, we need to make sure that:
+            #  - Files with the same name, but located in different directories, have a different module names. Hence the file path hash in the module name.
+            #  - The same file, loaded by different tax and benefit systems, has distinct module names. Hence the `id(self)` in the module name.
+            module_name = (
+                f"{id(self)}_{hash(os.path.abspath(file_path))}_{file_name}"
+            )
+
+            try:
+                spec = importlib.util.spec_from_file_location(
+                    module_name, file_path
+                )
+                module = importlib.util.module_from_spec(spec)
+                sys.modules[module_name] = module
+                spec.loader.exec_module(module)
+            except NameError as e:
+                logging.error(
+                    str(e)
+                    + ": if this code used to work, this error might be due to a major change in OpenFisca-Core. Checkout the changelog to learn more: <https://github.com/openfisca/openfisca-core/blob/master/CHANGELOG.md>"
+                )
+                raise
+
+            metadata = {}
+            metadata["label"] = module.__dict__.get("label", relative_file_path)
+            metadata["description"] = module.__dict__.get("description", None)
+            self.variable_module_metadata[relative_file_path] = metadata
+        except Exception:
+            log.error(
+                'Unable to load OpenFisca metadata from file "{}"'.format(
+                    file_path
+                )
+            )
+            raise
+
+
     def add_variables_from_directory(self, directory: str) -> None:
         """
         Recursively explores a directory, and adds all OpenFisca variables found there to the tax and benefit system.
         """
         py_files = glob.glob(os.path.join(directory, "*.py"))
+        # Try to get the __init__.py file. The __init__.py file may contain metadata about the directory.
+        init_module = os.path.join(directory, "__init__.py")
+        if init_module in py_files:
+            # Extract the label and description from the __init__.py file
+            py_files.remove(init_module)
+            self.add_variable_metadata_from_folder(init_module)
         for py_file in py_files:
             self.add_variables_from_file(py_file)
         subdirectories = glob.glob(os.path.join(directory, "*/"))

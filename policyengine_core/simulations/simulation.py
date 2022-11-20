@@ -102,6 +102,7 @@ class Simulation:
         self._data_storage_dir: str = None
 
         self.branches: Dict[str, Simulation] = {}
+        self.has_axes = False
 
         if situation is not None:
             if dataset is not None:
@@ -118,6 +119,7 @@ class Simulation:
             builder = SimulationBuilder()
             builder.default_period = self.default_input_period
             builder.build_from_dict(self.tax_benefit_system, situation, self)
+            self.has_axes = builder.has_axes
 
         if populations is not None:
             self.build_from_populations(populations)
@@ -142,7 +144,6 @@ class Simulation:
             for subreform in reform:
                 self.apply_reform(subreform)
         else:
-            print("Applying reform")
             reform.apply(self.tax_benefit_system)
 
     def build_from_populations(
@@ -609,7 +610,17 @@ class Simulation:
 
         formula = variable.get_formula(period)
         if formula is None:
-            return None
+            values = None
+            if variable.adds is not None:
+                values = 0
+                for added_variable in variable.adds:
+                    values = values + self.calculate(added_variable, period, map_to=variable.entity.key)
+            if variable.subtracts is not None:
+                if values is None:
+                    values = 0
+                for subtracted_variable in variable.subtracts:
+                    values = values - self.calculate(subtracted_variable, period, map_to=variable.entity.key)
+            return values
 
         if self.trace:
             parameters_at = self.trace_parameters_at_instant

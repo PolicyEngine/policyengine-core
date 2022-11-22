@@ -620,12 +620,13 @@ class TaxBenefitSystem:
                 "variables",
             ):
                 new_dict[key] = value
-        for entity in new_dict["entities"]:
-            entity.set_tax_benefit_system(new)
 
         new_dict["parameters"] = self.parameters.clone()
         new_dict["_parameters_at_instant_cache"] = {}
-        new_dict["variables"] = self.variables.copy()
+        new_dict["variables"] = {variable_name: variable.clone() for variable_name, variable in self.variables.items()}
+        
+        for entity in new_dict["entities"]:
+            entity.set_tax_benefit_system(new)
         return new
 
     def entities_plural(self) -> dict:

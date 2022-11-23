@@ -115,6 +115,9 @@ class Variable:
     subtracts: List[str] = None
     """List of variables that are subtracted from the variable."""
 
+    uprating: str = None
+    """Name of a parameter used to uprate the variable."""
+
     def __init__(self, baseline_variable=None):
         self.name = self.__class__.__name__
         attr = {
@@ -232,6 +235,8 @@ class Variable:
 
         self.adds = self.set(attr, "adds", allowed_type=list)
         self.subtracts = self.set(attr, "subtracts", allowed_type=list)
+
+        self.uprating = self.set(attr, "uprating", allowed_type=str)
 
         formulas_attr, unexpected_attrs = helpers._partition(
             attr,

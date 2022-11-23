@@ -158,9 +158,7 @@ class TaxBenefitSystem:
         baseline_variable = self.get_variable(name)
         if baseline_variable and not update:
             raise VariableNameConflictError(
-                'Variable "{}" is already defined. Use `update_variable` to replace it.'.format(
-                    name
-                )
+                f"You've already defined {name} in {baseline_variable.module_name}. You tried to define it again in {variable_class.module_name}."
             )
 
         variable = variable_class(baseline_variable=baseline_variable)
@@ -283,11 +281,9 @@ class TaxBenefitSystem:
 
     def add_variable_metadata_from_folder(self, file_path: str) -> None:
         """
-        Adds metadata from a given __init__.py file to the tax and benefit system.
+        Adds metadata from a given README.md file to the tax and benefit system.
         """
         try:
-            file_name = os.path.splitext(os.path.basename(file_path))[0]
-
             path = Path(file_path)
 
             # Get the relative location, e.g. policyengine_uk/variables/gov/child_benefit.py -> gov.child_benefit
@@ -299,30 +295,14 @@ class TaxBenefitSystem:
             except:
                 relative_file_path = ""
 
-            #  As Python remembers loaded modules by name, in order to prevent collisions, we need to make sure that:
-            #  - Files with the same name, but located in different directories, have a different module names. Hence the file path hash in the module name.
-            #  - The same file, loaded by different tax and benefit systems, has distinct module names. Hence the `id(self)` in the module name.
-            module_name = (
-                f"{id(self)}_{hash(os.path.abspath(file_path))}_{file_name}"
-            )
-
-            try:
-                spec = importlib.util.spec_from_file_location(
-                    module_name, file_path
-                )
-                module = importlib.util.module_from_spec(spec)
-                sys.modules[module_name] = module
-                spec.loader.exec_module(module)
-            except NameError as e:
-                logging.error(
-                    str(e)
-                    + ": if this code used to work, this error might be due to a major change in OpenFisca-Core. Checkout the changelog to learn more: <https://github.com/openfisca/openfisca-core/blob/master/CHANGELOG.md>"
-                )
-                raise
-
             metadata = {}
-            metadata["label"] = module.__dict__.get("label", relative_file_path)
-            metadata["description"] = module.__dict__.get("description", None)
+            
+            with open(file_path, "r") as f:
+                # Get the header as the label (making sure to remove the leading hash), and the rest as the description
+                lines = f.readlines()
+                metadata["label"] = lines[0].replace("# ", "").strip()
+                metadata["description"] = "".join(lines[1:]).strip()
+            
             self.variable_module_metadata[relative_file_path] = metadata
         except Exception:
             log.error(
@@ -344,6 +324,8 @@ class TaxBenefitSystem:
             # Extract the label and description from the __init__.py file
             py_files.remove(init_module)
             self.add_variable_metadata_from_folder(init_module)
+        if "README.md" in os.listdir(directory):
+            self.add_variable_metadata_from_folder(os.path.join(directory, "README.md"))
         for py_file in py_files:
             self.add_variables_from_file(py_file)
         subdirectories = glob.glob(os.path.join(directory, "*/"))

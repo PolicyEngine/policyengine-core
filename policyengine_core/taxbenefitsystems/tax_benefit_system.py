@@ -253,7 +253,9 @@ class TaxBenefitSystem:
             ]
 
             metadata = {}
-            metadata["label"] = module.__dict__.get("label", relative_file_path)
+            metadata["label"] = module.__dict__.get(
+                "label", relative_file_path
+            )
             metadata["description"] = module.__dict__.get("description", None)
             self.variable_module_metadata[relative_file_path] = metadata
 
@@ -265,9 +267,7 @@ class TaxBenefitSystem:
                     and issubclass(pot_variable, Variable)
                     and pot_variable.__module__ == module_name
                 ):
-                    pot_variable.module_name = (
-                        relative_file_path
-                    )
+                    pot_variable.module_name = relative_file_path
                     pot_variable.index_in_module = i
                     i += 1
                     self.add_variable(pot_variable)
@@ -288,21 +288,20 @@ class TaxBenefitSystem:
 
             # Get the relative location, e.g. policyengine_uk/variables/gov/child_benefit.py -> gov.child_benefit
             try:
-                relative_file_path = (
-                    str(path.parent.relative_to(self.variables_dir))
-                    .replace("/", ".")
-                )
+                relative_file_path = str(
+                    path.parent.relative_to(self.variables_dir)
+                ).replace("/", ".")
             except:
                 relative_file_path = ""
 
             metadata = {}
-            
+
             with open(file_path, "r") as f:
                 # Get the header as the label (making sure to remove the leading hash), and the rest as the description
                 lines = f.readlines()
                 metadata["label"] = lines[0].replace("# ", "").strip()
                 metadata["description"] = "".join(lines[1:]).strip()
-            
+
             self.variable_module_metadata[relative_file_path] = metadata
         except Exception:
             log.error(
@@ -311,7 +310,6 @@ class TaxBenefitSystem:
                 )
             )
             raise
-
 
     def add_variables_from_directory(self, directory: str) -> None:
         """
@@ -325,7 +323,9 @@ class TaxBenefitSystem:
             py_files.remove(init_module)
             self.add_variable_metadata_from_folder(init_module)
         if "README.md" in os.listdir(directory):
-            self.add_variable_metadata_from_folder(os.path.join(directory, "README.md"))
+            self.add_variable_metadata_from_folder(
+                os.path.join(directory, "README.md")
+            )
         for py_file in py_files:
             self.add_variables_from_file(py_file)
         subdirectories = glob.glob(os.path.join(directory, "*/"))
@@ -605,8 +605,11 @@ class TaxBenefitSystem:
 
         new_dict["parameters"] = self.parameters.clone()
         new_dict["_parameters_at_instant_cache"] = {}
-        new_dict["variables"] = {variable_name: variable.clone() for variable_name, variable in self.variables.items()}
-        
+        new_dict["variables"] = {
+            variable_name: variable.clone()
+            for variable_name, variable in self.variables.items()
+        }
+
         for entity in new_dict["entities"]:
             entity.set_tax_benefit_system(new)
         return new

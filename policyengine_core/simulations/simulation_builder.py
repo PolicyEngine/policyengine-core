@@ -793,7 +793,7 @@ class SimulationBuilder:
                         axis_count - 1
                     )
                     self.input_buffer[axis_name][str(axis_period)] = array
-        
+
         self.has_axes = True
 
     def get_variable_entity(self, variable_name):

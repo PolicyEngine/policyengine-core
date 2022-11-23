@@ -441,23 +441,32 @@ class Simulation:
         cached_array = holder.get_array(period)
         if cached_array is not None:
             return cached_array
-        
-        if variable.uprating is not None and len(holder.get_known_periods()) > 0:
+
+        if (
+            variable.uprating is not None
+            and len(holder.get_known_periods()) > 0
+        ):
             # Check to see if we have a previous period to uprate from.
             known_periods = holder.get_known_periods()
-            start_instants = [known_period.start for known_period in known_periods]
+            start_instants = [
+                known_period.start for known_period in known_periods
+            ]
             latest_known_period = known_periods[np.argmax(start_instants)]
             if latest_known_period.start < period.start:
                 try:
-                    uprating_parameter = get_parameter(self.tax_benefit_system.parameters, variable.uprating)
+                    uprating_parameter = get_parameter(
+                        self.tax_benefit_system.parameters, variable.uprating
+                    )
                 except:
-                    raise ValueError(f"Could not find uprating parameter {variable.uprating} when trying to uprate {variable_name}.")
-                value_in_last_period = uprating_parameter(latest_known_period.start)
+                    raise ValueError(
+                        f"Could not find uprating parameter {variable.uprating} when trying to uprate {variable_name}."
+                    )
+                value_in_last_period = uprating_parameter(
+                    latest_known_period.start
+                )
                 value_in_this_period = uprating_parameter(period.start)
                 uprating_factor = value_in_this_period / value_in_last_period
                 return holder.get_array(latest_known_period) * uprating_factor
-        
-            
 
         if variable.defined_for is not None:
             mask = (
@@ -632,12 +641,16 @@ class Simulation:
             if variable.adds is not None:
                 values = 0
                 for added_variable in variable.adds:
-                    values = values + self.calculate(added_variable, period, map_to=variable.entity.key)
+                    values = values + self.calculate(
+                        added_variable, period, map_to=variable.entity.key
+                    )
             if variable.subtracts is not None:
                 if values is None:
                     values = 0
                 for subtracted_variable in variable.subtracts:
-                    values = values - self.calculate(subtracted_variable, period, map_to=variable.entity.key)
+                    values = values - self.calculate(
+                        subtracted_variable, period, map_to=variable.entity.key
+                    )
             return values
 
         if self.trace:

@@ -117,3 +117,12 @@
     fixed:
     - Various fixes for PolicyEngine's server app.
   date: 2022-11-08 15:00:26
+- bump: minor
+  changes:
+    added:
+    - Variables can now specify an 'uprating' parameter.
+    - Variables can now specify 'adds' and 'subtracts' variable dependencies.
+    - Variable folders are now automatically stored in a tree.
+    fixed:
+    - Bugs in cloned simulations.
+  date: 2022-11-24 00:15:28

@@ -556,6 +556,9 @@
 
 
 <span class="k">def</span> <span class="nf">random</span><span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">reset</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">entity</span><span class="o">.</span><span class="n">simulation</span><span class="o">.</span><span class="n">has_axes</span><span class="p">:</span>
+        <span class="c1"># Don&#39;t simulate randomness in simulations with axes.</span>
+        <span class="k">return</span> <span class="mi">0</span>
     <span class="k">if</span> <span class="n">reset</span><span class="p">:</span>
         <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
     <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">entity</span><span class="o">.</span><span class="n">count</span><span class="p">)</span>

@@ -335,8 +335,20 @@
     <span class="n">metadata</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="sd">&quot;&quot;&quot;Free dictionary field used to store any metadata.&quot;&quot;&quot;</span>
 
-    <span class="n">full_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="sd">&quot;&quot;&quot;Full name of the variable, including the name of the module it is defined in.&quot;&quot;&quot;</span>
+    <span class="n">module_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="sd">&quot;&quot;&quot;The name of the module it is defined in.&quot;&quot;&quot;</span>
+
+    <span class="n">index_in_module</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="sd">&quot;&quot;&quot;Index of the variable in the module it is defined in.&quot;&quot;&quot;</span>
+
+    <span class="n">adds</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="sd">&quot;&quot;&quot;List of variables that are added to the variable.&quot;&quot;&quot;</span>
+
+    <span class="n">subtracts</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="sd">&quot;&quot;&quot;List of variables that are subtracted from the variable.&quot;&quot;&quot;</span>
+
+    <span class="n">uprating</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="sd">&quot;&quot;&quot;Name of a parameter used to uprate the variable.&quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">baseline_variable</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
@@ -439,12 +451,24 @@
             <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">full_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">module_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span>
             <span class="n">attr</span><span class="p">,</span>
-            <span class="s2">&quot;full_name&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;module_name&quot;</span><span class="p">,</span>
             <span class="n">allowed_type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
             <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">index_in_module</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span>
+            <span class="n">attr</span><span class="p">,</span>
+            <span class="s2">&quot;index_in_module&quot;</span><span class="p">,</span>
+            <span class="n">allowed_type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+            <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">adds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="s2">&quot;adds&quot;</span><span class="p">,</span> <span class="n">allowed_type</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">subtracts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="s2">&quot;subtracts&quot;</span><span class="p">,</span> <span class="n">allowed_type</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">uprating</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="s2">&quot;uprating&quot;</span><span class="p">,</span> <span class="n">allowed_type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
 
         <span class="n">formulas_attr</span><span class="p">,</span> <span class="n">unexpected_attrs</span> <span class="o">=</span> <span class="n">helpers</span><span class="o">.</span><span class="n">_partition</span><span class="p">(</span>
             <span class="n">attr</span><span class="p">,</span>
@@ -646,7 +670,9 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns True if the variable is an input variable.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">formulas</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span></div>
+        <span class="n">no_specified_formulas</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">formulas</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+        <span class="n">no_adds_or_subtracts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adds</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">subtracts</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">no_specified_formulas</span> <span class="ow">and</span> <span class="n">no_adds_or_subtracts</span></div>
 
 <div class="viewcode-block" id="Variable.get_introspection_data"><a class="viewcode-back" href="../../../python_api/variables.html#policyengine_core.variables.variable.Variable.get_introspection_data">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">get_introspection_data</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">tax_benefit_system</span><span class="p">):</span>

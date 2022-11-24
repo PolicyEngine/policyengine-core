@@ -261,6 +261,7 @@
 <span class="kn">from</span> <span class="nn">policyengine_core.tracers</span> <span class="kn">import</span> <span class="n">SimpleTracer</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.variables</span> <span class="kn">import</span> <span class="n">Variable</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.reforms.reform</span> <span class="kn">import</span> <span class="n">Reform</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.parameters</span> <span class="kn">import</span> <span class="n">get_parameter</span>
 
 
 <div class="viewcode-block" id="Simulation"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation">[docs]</a><span class="k">class</span> <span class="nc">Simulation</span><span class="p">:</span>
@@ -334,6 +335,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_data_storage_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">branches</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Simulation</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">has_axes</span> <span class="o">=</span> <span class="kc">False</span>
 
         <span class="k">if</span> <span class="n">situation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -350,6 +352,7 @@
             <span class="n">builder</span> <span class="o">=</span> <span class="n">SimulationBuilder</span><span class="p">()</span>
             <span class="n">builder</span><span class="o">.</span><span class="n">default_period</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_input_period</span>
             <span class="n">builder</span><span class="o">.</span><span class="n">build_from_dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="p">,</span> <span class="n">situation</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">has_axes</span> <span class="o">=</span> <span class="n">builder</span><span class="o">.</span><span class="n">has_axes</span>
 
         <span class="k">if</span> <span class="n">populations</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">build_from_populations</span><span class="p">(</span><span class="n">populations</span><span class="p">)</span>
@@ -374,7 +377,6 @@
             <span class="k">for</span> <span class="n">subreform</span> <span class="ow">in</span> <span class="n">reform</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">apply_reform</span><span class="p">(</span><span class="n">subreform</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Applying reform&quot;</span><span class="p">)</span>
             <span class="n">reform</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Simulation.build_from_populations"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.build_from_populations">[docs]</a>    <span class="k">def</span> <span class="nf">build_from_populations</span><span class="p">(</span>
@@ -672,6 +674,32 @@
         <span class="k">if</span> <span class="n">cached_array</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">cached_array</span>
 
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">variable</span><span class="o">.</span><span class="n">uprating</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">holder</span><span class="o">.</span><span class="n">get_known_periods</span><span class="p">())</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="p">):</span>
+            <span class="c1"># Check to see if we have a previous period to uprate from.</span>
+            <span class="n">known_periods</span> <span class="o">=</span> <span class="n">holder</span><span class="o">.</span><span class="n">get_known_periods</span><span class="p">()</span>
+            <span class="n">start_instants</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">known_period</span><span class="o">.</span><span class="n">start</span> <span class="k">for</span> <span class="n">known_period</span> <span class="ow">in</span> <span class="n">known_periods</span>
+            <span class="p">]</span>
+            <span class="n">latest_known_period</span> <span class="o">=</span> <span class="n">known_periods</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">start_instants</span><span class="p">)]</span>
+            <span class="k">if</span> <span class="n">latest_known_period</span><span class="o">.</span><span class="n">start</span> <span class="o">&lt;</span> <span class="n">period</span><span class="o">.</span><span class="n">start</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">uprating_parameter</span> <span class="o">=</span> <span class="n">get_parameter</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">parameters</span><span class="p">,</span> <span class="n">variable</span><span class="o">.</span><span class="n">uprating</span>
+                    <span class="p">)</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Could not find uprating parameter </span><span class="si">{</span><span class="n">variable</span><span class="o">.</span><span class="n">uprating</span><span class="si">}</span><span class="s2"> when trying to uprate </span><span class="si">{</span><span class="n">variable_name</span><span class="si">}</span><span class="s2">.&quot;</span>
+                    <span class="p">)</span>
+                <span class="n">value_in_last_period</span> <span class="o">=</span> <span class="n">uprating_parameter</span><span class="p">(</span>
+                    <span class="n">latest_known_period</span><span class="o">.</span><span class="n">start</span>
+                <span class="p">)</span>
+                <span class="n">value_in_this_period</span> <span class="o">=</span> <span class="n">uprating_parameter</span><span class="p">(</span><span class="n">period</span><span class="o">.</span><span class="n">start</span><span class="p">)</span>
+                <span class="n">uprating_factor</span> <span class="o">=</span> <span class="n">value_in_this_period</span> <span class="o">/</span> <span class="n">value_in_last_period</span>
+                <span class="k">return</span> <span class="n">holder</span><span class="o">.</span><span class="n">get_array</span><span class="p">(</span><span class="n">latest_known_period</span><span class="p">)</span> <span class="o">*</span> <span class="n">uprating_factor</span>
+
         <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">defined_for</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span>
@@ -841,7 +869,21 @@
 
         <span class="n">formula</span> <span class="o">=</span> <span class="n">variable</span><span class="o">.</span><span class="n">get_formula</span><span class="p">(</span><span class="n">period</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">formula</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">None</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">adds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">values</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">for</span> <span class="n">added_variable</span> <span class="ow">in</span> <span class="n">variable</span><span class="o">.</span><span class="n">adds</span><span class="p">:</span>
+                    <span class="n">values</span> <span class="o">=</span> <span class="n">values</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span>
+                        <span class="n">added_variable</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">map_to</span><span class="o">=</span><span class="n">variable</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span>
+                    <span class="p">)</span>
+            <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">subtracts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">values</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">values</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">for</span> <span class="n">subtracted_variable</span> <span class="ow">in</span> <span class="n">variable</span><span class="o">.</span><span class="n">subtracts</span><span class="p">:</span>
+                    <span class="n">values</span> <span class="o">=</span> <span class="n">values</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span>
+                        <span class="n">subtracted_variable</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">map_to</span><span class="o">=</span><span class="n">variable</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span>
+                    <span class="p">)</span>
+            <span class="k">return</span> <span class="n">values</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trace</span><span class="p">:</span>
             <span class="n">parameters_at</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trace_parameters_at_instant</span>

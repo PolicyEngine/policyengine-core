@@ -242,6 +242,12 @@
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>A <a class="reference external" href="https://openfisca.org/doc/key-concepts/variables.html">variable</a> of the legislation.</p>
 <dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.adds">
+<span class="sig-name descname"><span class="pre">adds</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.adds" title="Permalink to this definition">#</a></dt>
+<dd><p>List of variables that are added to the variable.</p>
+</dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.baseline_variable">
 <span class="sig-name descname"><span class="pre">baseline_variable</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.baseline_variable" title="Permalink to this definition">#</a></dt>
 <dd><p>//openfisca.org/doc/key-concepts/reforms.html&gt;`_ to replace another variable, baseline_variable is the replaced variable.</p>
@@ -331,12 +337,6 @@
 <dd><p>Formulas used to calculate the variable</p>
 </dd></dl>
 
-<dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.full_name">
-<span class="sig-name descname"><span class="pre">full_name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.full_name" title="Permalink to this definition">#</a></dt>
-<dd><p>Full name of the variable, including the name of the module it is defined in.</p>
-</dd></dl>
-
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.get_formula">
 <span class="sig-name descname"><span class="pre">get_formula</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/variables/variable.html#Variable.get_formula"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.variables.variable.Variable.get_formula" title="Permalink to this definition">#</a></dt>
@@ -361,6 +361,12 @@
 <dd class="field-even"><p>tuple</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.index_in_module">
+<span class="sig-name descname"><span class="pre">index_in_module</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.index_in_module" title="Permalink to this definition">#</a></dt>
+<dd><p>Index of the variable in the module it is defined in.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -397,6 +403,12 @@
 <dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.metadata">
 <span class="sig-name descname"><span class="pre">metadata</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.metadata" title="Permalink to this definition">#</a></dt>
 <dd><p>Free dictionary field used to store any metadata.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.module_name">
+<span class="sig-name descname"><span class="pre">module_name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.module_name" title="Permalink to this definition">#</a></dt>
+<dd><p>The name of the module it is defined in.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -450,9 +462,21 @@
 </dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.subtracts">
+<span class="sig-name descname"><span class="pre">subtracts</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.subtracts" title="Permalink to this definition">#</a></dt>
+<dd><p>List of variables that are subtracted from the variable.</p>
+</dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.unit">
 <span class="sig-name descname"><span class="pre">unit</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.unit" title="Permalink to this definition">#</a></dt>
 <dd><p>Free text field describing the unit of the variable. Only used as metadata.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.uprating">
+<span class="sig-name descname"><span class="pre">uprating</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.uprating" title="Permalink to this definition">#</a></dt>
+<dd><p>Name of a parameter used to uprate the variable.</p>
 </dd></dl>
 
 <dl class="py attribute">

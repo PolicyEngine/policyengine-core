@@ -304,6 +304,7 @@
     <span class="n">baseline</span><span class="p">:</span> <span class="s2">&quot;TaxBenefitSystem&quot;</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Baseline tax-benefit system. Used only by reforms. Note: Reforms can be chained.</span>
     <span class="n">cache_blacklist</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">decomposition_file_path</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">variable_module_metadata</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="c1"># The following properties should be specified by country packages.</span>
 
@@ -342,6 +343,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">group_entity_keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span> <span class="k">for</span> <span class="n">entity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">group_entities</span><span class="p">]</span>
         <span class="k">for</span> <span class="n">entity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entities</span><span class="p">:</span>
             <span class="n">entity</span><span class="o">.</span><span class="n">set_tax_benefit_system</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">variable_module_metadata</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">variables_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">add_variables_from_directory</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">variables_dir</span><span class="p">)</span>
@@ -387,9 +390,7 @@
         <span class="n">baseline_variable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">baseline_variable</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">update</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">VariableNameConflictError</span><span class="p">(</span>
-                <span class="s1">&#39;Variable &quot;</span><span class="si">{}</span><span class="s1">&quot; is already defined. Use `update_variable` to replace it.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-                    <span class="n">name</span>
-                <span class="p">)</span>
+                <span class="sa">f</span><span class="s2">&quot;You&#39;ve already defined </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> in </span><span class="si">{</span><span class="n">baseline_variable</span><span class="o">.</span><span class="n">module_name</span><span class="si">}</span><span class="s2">. You tried to define it again in </span><span class="si">{</span><span class="n">variable_class</span><span class="o">.</span><span class="n">module_name</span><span class="si">}</span><span class="s2">.&quot;</span>
             <span class="p">)</span>
 
         <span class="n">variable</span> <span class="o">=</span> <span class="n">variable_class</span><span class="p">(</span><span class="n">baseline_variable</span><span class="o">=</span><span class="n">baseline_variable</span><span class="p">)</span>
@@ -479,9 +480,18 @@
                 <span class="k">raise</span>
             <span class="n">potential_variables</span> <span class="o">=</span> <span class="p">[</span>
                 <span class="nb">getattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">item</span><span class="p">)</span>
-                <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="n">module</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">module</span><span class="o">.</span><span class="vm">__dict__</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="n">item</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;__&quot;</span><span class="p">)</span>
             <span class="p">]</span>
+
+            <span class="n">metadata</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">relative_file_path</span>
+            <span class="p">)</span>
+            <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;description&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">variable_module_metadata</span><span class="p">[</span><span class="n">relative_file_path</span><span class="p">]</span> <span class="o">=</span> <span class="n">metadata</span>
+
+            <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
             <span class="k">for</span> <span class="n">pot_variable</span> <span class="ow">in</span> <span class="n">potential_variables</span><span class="p">:</span>
                 <span class="c1"># We only want to get the module classes defined in this module (not imported)</span>
                 <span class="k">if</span> <span class="p">(</span>
@@ -489,13 +499,45 @@
                     <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">pot_variable</span><span class="p">,</span> <span class="n">Variable</span><span class="p">)</span>
                     <span class="ow">and</span> <span class="n">pot_variable</span><span class="o">.</span><span class="vm">__module__</span> <span class="o">==</span> <span class="n">module_name</span>
                 <span class="p">):</span>
-                    <span class="n">pot_variable</span><span class="o">.</span><span class="n">full_name</span> <span class="o">=</span> <span class="p">(</span>
-                        <span class="n">relative_file_path</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">pot_variable</span><span class="o">.</span><span class="vm">__name__</span>
-                    <span class="p">)</span>
+                    <span class="n">pot_variable</span><span class="o">.</span><span class="n">module_name</span> <span class="o">=</span> <span class="n">relative_file_path</span>
+                    <span class="n">pot_variable</span><span class="o">.</span><span class="n">index_in_module</span> <span class="o">=</span> <span class="n">i</span>
+                    <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">add_variable</span><span class="p">(</span><span class="n">pot_variable</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
             <span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
                 <span class="s1">&#39;Unable to load OpenFisca variables from file &quot;</span><span class="si">{}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">file_path</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">raise</span></div>
+
+<div class="viewcode-block" id="TaxBenefitSystem.add_variable_metadata_from_folder"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.add_variable_metadata_from_folder">[docs]</a>    <span class="k">def</span> <span class="nf">add_variable_metadata_from_folder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adds metadata from a given README.md file to the tax and benefit system.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+
+            <span class="c1"># Get the relative location, e.g. policyengine_uk/variables/gov/child_benefit.py -&gt; gov.child_benefit</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">relative_file_path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span>
+                    <span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">variables_dir</span><span class="p">)</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="s2">&quot;.&quot;</span><span class="p">)</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="n">relative_file_path</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+            <span class="n">metadata</span> <span class="o">=</span> <span class="p">{}</span>
+
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="c1"># Get the header as the label (making sure to remove the leading hash), and the rest as the description</span>
+                <span class="n">lines</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+                <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;# &quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;description&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">variable_module_metadata</span><span class="p">[</span><span class="n">relative_file_path</span><span class="p">]</span> <span class="o">=</span> <span class="n">metadata</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="s1">&#39;Unable to load OpenFisca metadata from file &quot;</span><span class="si">{}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                     <span class="n">file_path</span>
                 <span class="p">)</span>
             <span class="p">)</span>
@@ -506,6 +548,16 @@
 <span class="sd">        Recursively explores a directory, and adds all OpenFisca variables found there to the tax and benefit system.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">py_files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="s2">&quot;*.py&quot;</span><span class="p">))</span>
+        <span class="c1"># Try to get the __init__.py file. The __init__.py file may contain metadata about the directory.</span>
+        <span class="n">init_module</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="s2">&quot;__init__.py&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">init_module</span> <span class="ow">in</span> <span class="n">py_files</span><span class="p">:</span>
+            <span class="c1"># Extract the label and description from the __init__.py file</span>
+            <span class="n">py_files</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">init_module</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_variable_metadata_from_folder</span><span class="p">(</span><span class="n">init_module</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;README.md&quot;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">directory</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_variable_metadata_from_folder</span><span class="p">(</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="s2">&quot;README.md&quot;</span><span class="p">)</span>
+            <span class="p">)</span>
         <span class="k">for</span> <span class="n">py_file</span> <span class="ow">in</span> <span class="n">py_files</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">add_variables_from_file</span><span class="p">(</span><span class="n">py_file</span><span class="p">)</span>
         <span class="n">subdirectories</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="s2">&quot;*/&quot;</span><span class="p">))</span>
@@ -782,12 +834,16 @@
                 <span class="s2">&quot;variables&quot;</span><span class="p">,</span>
             <span class="p">):</span>
                 <span class="n">new_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-        <span class="k">for</span> <span class="n">entity</span> <span class="ow">in</span> <span class="n">new_dict</span><span class="p">[</span><span class="s2">&quot;entities&quot;</span><span class="p">]:</span>
-            <span class="n">entity</span><span class="o">.</span><span class="n">set_tax_benefit_system</span><span class="p">(</span><span class="n">new</span><span class="p">)</span>
 
         <span class="n">new_dict</span><span class="p">[</span><span class="s2">&quot;parameters&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
         <span class="n">new_dict</span><span class="p">[</span><span class="s2">&quot;_parameters_at_instant_cache&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="n">new_dict</span><span class="p">[</span><span class="s2">&quot;variables&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">new_dict</span><span class="p">[</span><span class="s2">&quot;variables&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">variable_name</span><span class="p">:</span> <span class="n">variable</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">variable_name</span><span class="p">,</span> <span class="n">variable</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">}</span>
+
+        <span class="k">for</span> <span class="n">entity</span> <span class="ow">in</span> <span class="n">new_dict</span><span class="p">[</span><span class="s2">&quot;entities&quot;</span><span class="p">]:</span>
+            <span class="n">entity</span><span class="o">.</span><span class="n">set_tax_benefit_system</span><span class="p">(</span><span class="n">new</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">new</span>
 
     <span class="k">def</span> <span class="nf">entities_plural</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>

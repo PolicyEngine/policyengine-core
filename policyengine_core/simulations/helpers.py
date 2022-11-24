@@ -22,8 +22,10 @@ def check_type(input, input_type, path=None):
     if not isinstance(input, input_type):
         raise SituationParsingError(
             path,
-            "Invalid type: must be of type '{}'.".format(
-                json_type_map[input_type]
+            "Invalid type: must be of type '{}'. You passed {}, of type {}.".format(
+                json_type_map[input_type],
+                input,
+                type(input),
             ),
         )
 

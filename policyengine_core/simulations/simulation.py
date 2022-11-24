@@ -29,6 +29,7 @@ from policyengine_core.populations import Population
 from policyengine_core.tracers import SimpleTracer
 from policyengine_core.variables import Variable
 from policyengine_core.reforms.reform import Reform
+from policyengine_core.parameters import get_parameter
 
 
 class Simulation:
@@ -102,6 +103,7 @@ class Simulation:
         self._data_storage_dir: str = None
 
         self.branches: Dict[str, Simulation] = {}
+        self.has_axes = False
 
         if situation is not None:
             if dataset is not None:
@@ -118,6 +120,7 @@ class Simulation:
             builder = SimulationBuilder()
             builder.default_period = self.default_input_period
             builder.build_from_dict(self.tax_benefit_system, situation, self)
+            self.has_axes = builder.has_axes
 
         if populations is not None:
             self.build_from_populations(populations)
@@ -142,7 +145,6 @@ class Simulation:
             for subreform in reform:
                 self.apply_reform(subreform)
         else:
-            print("Applying reform")
             reform.apply(self.tax_benefit_system)
 
     def build_from_populations(
@@ -440,6 +442,32 @@ class Simulation:
         if cached_array is not None:
             return cached_array
 
+        if (
+            variable.uprating is not None
+            and len(holder.get_known_periods()) > 0
+        ):
+            # Check to see if we have a previous period to uprate from.
+            known_periods = holder.get_known_periods()
+            start_instants = [
+                known_period.start for known_period in known_periods
+            ]
+            latest_known_period = known_periods[np.argmax(start_instants)]
+            if latest_known_period.start < period.start:
+                try:
+                    uprating_parameter = get_parameter(
+                        self.tax_benefit_system.parameters, variable.uprating
+                    )
+                except:
+                    raise ValueError(
+                        f"Could not find uprating parameter {variable.uprating} when trying to uprate {variable_name}."
+                    )
+                value_in_last_period = uprating_parameter(
+                    latest_known_period.start
+                )
+                value_in_this_period = uprating_parameter(period.start)
+                uprating_factor = value_in_this_period / value_in_last_period
+                return holder.get_array(latest_known_period) * uprating_factor
+
         if variable.defined_for is not None:
             mask = (
                 self.calculate(
@@ -609,7 +637,21 @@ class Simulation:
 
         formula = variable.get_formula(period)
         if formula is None:
-            return None
+            values = None
+            if variable.adds is not None:
+                values = 0
+                for added_variable in variable.adds:
+                    values = values + self.calculate(
+                        added_variable, period, map_to=variable.entity.key
+                    )
+            if variable.subtracts is not None:
+                if values is None:
+                    values = 0
+                for subtracted_variable in variable.subtracts:
+                    values = values - self.calculate(
+                        subtracted_variable, period, map_to=variable.entity.key
+                    )
+            return values
 
         if self.trace:
             parameters_at = self.trace_parameters_at_instant

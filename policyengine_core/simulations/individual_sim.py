@@ -84,7 +84,6 @@ class IndividualSim:
                         default_role.plural
                     ] = members
             # Add missing entities with specified default roles
-        print(f"Building simulation with reform {self.reform}")
         self.simulation = Simulation(
             tax_benefit_system=self.system,
             situation=self.situation_data,

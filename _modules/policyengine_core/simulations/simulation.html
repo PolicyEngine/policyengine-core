@@ -169,6 +169,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/cli.html">Using the command-line interface</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/parameters.html">Writing parameters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/datasets.html">Writing datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/reforms.html">Writing reforms</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python API</span></p>
 <ul>
@@ -674,32 +675,6 @@
         <span class="k">if</span> <span class="n">cached_array</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">cached_array</span>
 
-        <span class="k">if</span> <span class="p">(</span>
-            <span class="n">variable</span><span class="o">.</span><span class="n">uprating</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-            <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">holder</span><span class="o">.</span><span class="n">get_known_periods</span><span class="p">())</span> <span class="o">&gt;</span> <span class="mi">0</span>
-        <span class="p">):</span>
-            <span class="c1"># Check to see if we have a previous period to uprate from.</span>
-            <span class="n">known_periods</span> <span class="o">=</span> <span class="n">holder</span><span class="o">.</span><span class="n">get_known_periods</span><span class="p">()</span>
-            <span class="n">start_instants</span> <span class="o">=</span> <span class="p">[</span>
-                <span class="n">known_period</span><span class="o">.</span><span class="n">start</span> <span class="k">for</span> <span class="n">known_period</span> <span class="ow">in</span> <span class="n">known_periods</span>
-            <span class="p">]</span>
-            <span class="n">latest_known_period</span> <span class="o">=</span> <span class="n">known_periods</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">start_instants</span><span class="p">)]</span>
-            <span class="k">if</span> <span class="n">latest_known_period</span><span class="o">.</span><span class="n">start</span> <span class="o">&lt;</span> <span class="n">period</span><span class="o">.</span><span class="n">start</span><span class="p">:</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="n">uprating_parameter</span> <span class="o">=</span> <span class="n">get_parameter</span><span class="p">(</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">parameters</span><span class="p">,</span> <span class="n">variable</span><span class="o">.</span><span class="n">uprating</span>
-                    <span class="p">)</span>
-                <span class="k">except</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Could not find uprating parameter </span><span class="si">{</span><span class="n">variable</span><span class="o">.</span><span class="n">uprating</span><span class="si">}</span><span class="s2"> when trying to uprate </span><span class="si">{</span><span class="n">variable_name</span><span class="si">}</span><span class="s2">.&quot;</span>
-                    <span class="p">)</span>
-                <span class="n">value_in_last_period</span> <span class="o">=</span> <span class="n">uprating_parameter</span><span class="p">(</span>
-                    <span class="n">latest_known_period</span><span class="o">.</span><span class="n">start</span>
-                <span class="p">)</span>
-                <span class="n">value_in_this_period</span> <span class="o">=</span> <span class="n">uprating_parameter</span><span class="p">(</span><span class="n">period</span><span class="o">.</span><span class="n">start</span><span class="p">)</span>
-                <span class="n">uprating_factor</span> <span class="o">=</span> <span class="n">value_in_this_period</span> <span class="o">/</span> <span class="n">value_in_last_period</span>
-                <span class="k">return</span> <span class="n">holder</span><span class="o">.</span><span class="n">get_array</span><span class="p">(</span><span class="n">latest_known_period</span><span class="p">)</span> <span class="o">*</span> <span class="n">uprating_factor</span>
-
         <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">defined_for</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span>
@@ -723,7 +698,35 @@
             <span class="k">if</span> <span class="n">array</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="c1"># Check if the variable has a previously defined value</span>
                 <span class="n">known_periods</span> <span class="o">=</span> <span class="n">holder</span><span class="o">.</span><span class="n">get_known_periods</span><span class="p">()</span>
-                <span class="k">if</span> <span class="p">(</span>
+                <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">uprating</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">known_periods</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">start_instants</span> <span class="o">=</span> <span class="p">[</span>
+                        <span class="n">known_period</span><span class="o">.</span><span class="n">start</span> <span class="k">for</span> <span class="n">known_period</span> <span class="ow">in</span> <span class="n">known_periods</span>
+                    <span class="p">]</span>
+                    <span class="n">latest_known_period</span> <span class="o">=</span> <span class="n">known_periods</span><span class="p">[</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">start_instants</span><span class="p">)</span>
+                    <span class="p">]</span>
+                    <span class="k">if</span> <span class="n">latest_known_period</span><span class="o">.</span><span class="n">start</span> <span class="o">&lt;</span> <span class="n">period</span><span class="o">.</span><span class="n">start</span><span class="p">:</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="n">uprating_parameter</span> <span class="o">=</span> <span class="n">get_parameter</span><span class="p">(</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">parameters</span><span class="p">,</span>
+                                <span class="n">variable</span><span class="o">.</span><span class="n">uprating</span><span class="p">,</span>
+                            <span class="p">)</span>
+                        <span class="k">except</span><span class="p">:</span>
+                            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;Could not find uprating parameter </span><span class="si">{</span><span class="n">variable</span><span class="o">.</span><span class="n">uprating</span><span class="si">}</span><span class="s2"> when trying to uprate </span><span class="si">{</span><span class="n">variable_name</span><span class="si">}</span><span class="s2">.&quot;</span>
+                            <span class="p">)</span>
+                        <span class="n">value_in_last_period</span> <span class="o">=</span> <span class="n">uprating_parameter</span><span class="p">(</span>
+                            <span class="n">latest_known_period</span><span class="o">.</span><span class="n">start</span>
+                        <span class="p">)</span>
+                        <span class="n">value_in_this_period</span> <span class="o">=</span> <span class="n">uprating_parameter</span><span class="p">(</span><span class="n">period</span><span class="o">.</span><span class="n">start</span><span class="p">)</span>
+                        <span class="n">uprating_factor</span> <span class="o">=</span> <span class="p">(</span>
+                            <span class="n">value_in_this_period</span> <span class="o">/</span> <span class="n">value_in_last_period</span>
+                        <span class="p">)</span>
+                        <span class="k">return</span> <span class="p">(</span>
+                            <span class="n">holder</span><span class="o">.</span><span class="n">get_array</span><span class="p">(</span><span class="n">latest_known_period</span><span class="p">)</span>
+                            <span class="o">*</span> <span class="n">uprating_factor</span>
+                        <span class="p">)</span>
+                <span class="k">elif</span> <span class="p">(</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">auto_carry_over_input_variables</span>
                     <span class="ow">and</span> <span class="n">variable</span><span class="o">.</span><span class="n">calculate_output</span> <span class="ow">is</span> <span class="kc">None</span>
                     <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">known_periods</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>

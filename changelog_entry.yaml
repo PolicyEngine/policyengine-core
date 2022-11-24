@@ -1,0 +1,6 @@
+- bump: patch
+  changes:
+    fixed:
+    - Moved the uprating logic to after formulas are checked.
+    added:
+    - Documentation page on reforms.

@@ -126,3 +126,10 @@
     fixed:
     - Bugs in cloned simulations.
   date: 2022-11-24 00:15:28
+- bump: patch
+  changes:
+    added:
+    - Documentation page on reforms.
+    fixed:
+    - Moved the uprating logic to after formulas are checked.
+  date: 2022-11-24 00:33:05

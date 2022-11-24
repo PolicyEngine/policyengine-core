@@ -1,0 +1,8 @@
+- bump: minor
+  changes:
+    added:
+    - Variables can now specify an 'uprating' parameter.
+    - Variables can now specify 'adds' and 'subtracts' variable dependencies.
+    - Variable folders are now automatically stored in a tree.
+    fixed:
+    - Bugs in cloned simulations.

@@ -11,6 +11,7 @@ parts:
     - file: usage/cli
     - file: usage/parameters
     - file: usage/datasets
+    - file: usage/reforms
   - caption: Python API
     chapters:
     - file: python_api/commons

@@ -33,22 +33,24 @@ class OnDiskStorage:
         else:
             return numpy.load(file)
 
-    def get(self, period: Period) -> ArrayLike:
+    def get(self, period: Period, branch_name: str = "default") -> ArrayLike:
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
 
-        values = self._files.get(period)
+        values = self._files.get(f"{branch_name}:{period}")
         if values is None:
             return None
         return self._decode_file(values)
 
-    def put(self, value: ArrayLike, period: Period) -> None:
+    def put(
+        self, value: ArrayLike, period: Period, branch_name: str = "default"
+    ) -> None:
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
 
-        filename = str(period)
+        filename = f"{branch_name}:{period}"
         path = os.path.join(self.storage_dir, filename) + ".npy"
         if isinstance(value, EnumArray):
             self._enums[path] = value.possible_values

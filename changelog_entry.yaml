@@ -1,0 +1,5 @@
+- bump: patch
+  changes:
+    fixed:
+    - Bug in defined-for causing it to be ignored.
+    - Branched simulations now cache variables specifically for the branch and time period, not sharing with the parent simulation.

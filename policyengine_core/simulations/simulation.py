@@ -438,7 +438,7 @@ class Simulation:
         self._check_period_consistency(period, variable)
 
         # First look for a value already cached
-        cached_array = holder.get_array(period)
+        cached_array = holder.get_array(period, self.branch_name)
         if cached_array is not None:
             return cached_array
 
@@ -452,7 +452,8 @@ class Simulation:
             if np.all(~mask):
                 array = holder.default_array()
                 array = self._cast_formula_result(array, variable)
-                holder.put_in_cache(array, period)
+                holder.put_in_cache(array, period, self.branch_name)
+                return array
 
         array = None
 
@@ -490,7 +491,9 @@ class Simulation:
                             value_in_this_period / value_in_last_period
                         )
                         return (
-                            holder.get_array(latest_known_period)
+                            holder.get_array(
+                                latest_known_period, self.branch_name
+                            )
                             * uprating_factor
                         )
                 elif (
@@ -508,7 +511,7 @@ class Simulation:
                 array = np.where(mask, array, np.zeros_like(array))
 
             array = self._cast_formula_result(array, variable)
-            holder.put_in_cache(array, period)
+            holder.put_in_cache(array, period, self.branch_name)
 
         except SpiralError:
             array = holder.default_array()
@@ -887,7 +890,9 @@ class Simulation:
         period = periods.period(period)
         if (variable.end is not None) and (period.start.date > variable.end):
             return
-        self.get_holder(variable_name).set_input(period, value)
+        self.get_holder(variable_name).set_input(
+            period, value, self.branch_name
+        )
 
     def get_variable_population(self, variable_name: str) -> Population:
         variable = self.tax_benefit_system.get_variable(
@@ -938,6 +943,7 @@ class Simulation:
                 new, entity.key, population
             )  # create shortcut simulation.household (for instance)
 
+        new.tax_benefit_system = self.tax_benefit_system.clone()
         new.debug = debug
         new.trace = trace
 

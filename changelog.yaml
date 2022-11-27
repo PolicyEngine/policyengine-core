@@ -145,3 +145,8 @@
     fixed:
     - Fixed a bug causing Windows tests to fail.
   date: 2022-11-27 16:08:33
+- bump: patch
+  changes:
+    fixed:
+    - Removed debug lines.
+  date: 2022-11-27 16:16:29

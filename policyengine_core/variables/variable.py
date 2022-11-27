@@ -20,6 +20,21 @@ class QuantityType:
     FLOW = "flow"
 
 
+class VariableStage:
+    INPUT = "input"
+    INTERMEDIATE = "intermediate"
+    OUTPUT = "output"
+
+
+class VariableCategory:
+    TAX = "tax"
+    BENEFIT = "benefit"
+    INCOME = "income"
+    CONSUMPTION = "consumption"
+    WEALTH = "wealth"
+    DEMOGRAPHIC = "demographic"
+
+
 class Variable:
     """
     A `variable <https://openfisca.org/doc/key-concepts/variables.html>`_ of the legislation.
@@ -87,6 +102,21 @@ class Variable:
 
     metadata: dict = None
     """Free dictionary field used to store any metadata."""
+
+    module_name: str = None
+    """The name of the module it is defined in."""
+
+    index_in_module: int = None
+    """Index of the variable in the module it is defined in."""
+
+    adds: List[str] = None
+    """List of variables that are added to the variable."""
+
+    subtracts: List[str] = None
+    """List of variables that are subtracted from the variable."""
+
+    uprating: str = None
+    """Name of a parameter used to uprate the variable."""
 
     def __init__(self, baseline_variable=None):
         self.name = self.__class__.__name__
@@ -181,6 +211,32 @@ class Variable:
         self.defined_for = self.set_defined_for(attr.pop("defined_for", None))
 
         self.metadata = self.set(attr, "metadata", allowed_type=dict)
+
+        self.category = self.set(
+            attr,
+            "category",
+            allowed_type=str,
+            default=None,
+        )
+
+        self.module_name = self.set(
+            attr,
+            "module_name",
+            allowed_type=str,
+            default=None,
+        )
+
+        self.index_in_module = self.set(
+            attr,
+            "index_in_module",
+            allowed_type=int,
+            default=None,
+        )
+
+        self.adds = self.set(attr, "adds", allowed_type=list)
+        self.subtracts = self.set(attr, "subtracts", allowed_type=list)
+
+        self.uprating = self.set(attr, "uprating", allowed_type=str)
 
         formulas_attr, unexpected_attrs = helpers._partition(
             attr,
@@ -382,7 +438,9 @@ class Variable:
         """
         Returns True if the variable is an input variable.
         """
-        return len(self.formulas) == 0
+        no_specified_formulas = len(self.formulas) == 0
+        no_adds_or_subtracts = self.adds is None and self.subtracts is None
+        return no_specified_formulas and no_adds_or_subtracts
 
     @classmethod
     def get_introspection_data(cls, tax_benefit_system):

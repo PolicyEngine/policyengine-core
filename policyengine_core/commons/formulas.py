@@ -324,6 +324,9 @@ def amount_between(
 
 
 def random(entity, reset=True):
+    if entity.simulation.has_axes:
+        # Don't simulate randomness in simulations with axes.
+        return 0
     if reset:
         np.random.seed(0)
     x = np.random.rand(entity.count)

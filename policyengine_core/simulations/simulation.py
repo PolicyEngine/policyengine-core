@@ -1,5 +1,5 @@
 import tempfile
-from typing import TYPE_CHECKING, Any, Dict, List, Type
+from typing import TYPE_CHECKING, Any, Dict, List, Type, Union
 
 import numpy
 import numpy as np
@@ -29,6 +29,7 @@ from policyengine_core.populations import Population
 from policyengine_core.tracers import SimpleTracer
 from policyengine_core.variables import Variable
 from policyengine_core.reforms.reform import Reform
+from policyengine_core.parameters import get_parameter
 
 
 class Simulation:
@@ -73,11 +74,13 @@ class Simulation:
                     tax_benefit_system = tax_benefit_system.clone()
             else:
                 tax_benefit_system = self.default_tax_benefit_system()
-            if reform is not None:
-                reform.apply(tax_benefit_system)
+            self.tax_benefit_system = tax_benefit_system
 
         self.reform = reform
         self.tax_benefit_system = tax_benefit_system
+
+        if reform is not None:
+            self.apply_reform(reform)
 
         self.branch_name = "default"
 
@@ -100,6 +103,7 @@ class Simulation:
         self._data_storage_dir: str = None
 
         self.branches: Dict[str, Simulation] = {}
+        self.has_axes = False
 
         if situation is not None:
             if dataset is not None:
@@ -116,6 +120,7 @@ class Simulation:
             builder = SimulationBuilder()
             builder.default_period = self.default_input_period
             builder.build_from_dict(self.tax_benefit_system, situation, self)
+            self.has_axes = builder.has_axes
 
         if populations is not None:
             self.build_from_populations(populations)
@@ -134,6 +139,13 @@ class Simulation:
             for variable in self.tax_benefit_system.variables.values()
             if len(self.get_holder(variable.name).get_known_periods()) > 0
         ]
+
+    def apply_reform(self, reform: Union[tuple, Reform]):
+        if isinstance(reform, tuple):
+            for subreform in reform:
+                self.apply_reform(subreform)
+        else:
+            reform.apply(self.tax_benefit_system)
 
     def build_from_populations(
         self, populations: Dict[str, Population]
@@ -426,7 +438,7 @@ class Simulation:
         self._check_period_consistency(period, variable)
 
         # First look for a value already cached
-        cached_array = holder.get_array(period)
+        cached_array = holder.get_array(period, self.branch_name)
         if cached_array is not None:
             return cached_array
 
@@ -440,7 +452,8 @@ class Simulation:
             if np.all(~mask):
                 array = holder.default_array()
                 array = self._cast_formula_result(array, variable)
-                holder.put_in_cache(array, period)
+                holder.put_in_cache(array, period, self.branch_name)
+                return array
 
         array = None
 
@@ -453,7 +466,37 @@ class Simulation:
             if array is None:
                 # Check if the variable has a previously defined value
                 known_periods = holder.get_known_periods()
-                if (
+                if variable.uprating is not None and len(known_periods) > 0:
+                    start_instants = [
+                        known_period.start for known_period in known_periods
+                    ]
+                    latest_known_period = known_periods[
+                        np.argmax(start_instants)
+                    ]
+                    if latest_known_period.start < period.start:
+                        try:
+                            uprating_parameter = get_parameter(
+                                self.tax_benefit_system.parameters,
+                                variable.uprating,
+                            )
+                        except:
+                            raise ValueError(
+                                f"Could not find uprating parameter {variable.uprating} when trying to uprate {variable_name}."
+                            )
+                        value_in_last_period = uprating_parameter(
+                            latest_known_period.start
+                        )
+                        value_in_this_period = uprating_parameter(period.start)
+                        uprating_factor = (
+                            value_in_this_period / value_in_last_period
+                        )
+                        return (
+                            holder.get_array(
+                                latest_known_period, self.branch_name
+                            )
+                            * uprating_factor
+                        )
+                elif (
                     self.tax_benefit_system.auto_carry_over_input_variables
                     and variable.calculate_output is None
                     and len(known_periods) > 0
@@ -468,7 +511,7 @@ class Simulation:
                 array = np.where(mask, array, np.zeros_like(array))
 
             array = self._cast_formula_result(array, variable)
-            holder.put_in_cache(array, period)
+            holder.put_in_cache(array, period, self.branch_name)
 
         except SpiralError:
             array = holder.default_array()
@@ -599,7 +642,21 @@ class Simulation:
 
         formula = variable.get_formula(period)
         if formula is None:
-            return None
+            values = None
+            if variable.adds is not None:
+                values = 0
+                for added_variable in variable.adds:
+                    values = values + self.calculate(
+                        added_variable, period, map_to=variable.entity.key
+                    )
+            if variable.subtracts is not None:
+                if values is None:
+                    values = 0
+                for subtracted_variable in variable.subtracts:
+                    values = values - self.calculate(
+                        subtracted_variable, period, map_to=variable.entity.key
+                    )
+            return values
 
         if self.trace:
             parameters_at = self.trace_parameters_at_instant
@@ -739,7 +796,9 @@ class Simulation:
         """
         if period is not None and not isinstance(period, Period):
             period = periods.period(period)
-        return self.get_holder(variable_name).get_array(period)
+        return self.get_holder(variable_name).get_array(
+            period, self.branch_name
+        )
 
     def get_holder(self, variable_name: str) -> Holder:
         """
@@ -833,7 +892,9 @@ class Simulation:
         period = periods.period(period)
         if (variable.end is not None) and (period.start.date > variable.end):
             return
-        self.get_holder(variable_name).set_input(period, value)
+        self.get_holder(variable_name).set_input(
+            period, value, self.branch_name
+        )
 
     def get_variable_population(self, variable_name: str) -> Population:
         variable = self.tax_benefit_system.get_variable(
@@ -884,6 +945,7 @@ class Simulation:
                 new, entity.key, population
             )  # create shortcut simulation.household (for instance)
 
+        new.tax_benefit_system = self.tax_benefit_system.clone()
         new.debug = debug
         new.trace = trace
 

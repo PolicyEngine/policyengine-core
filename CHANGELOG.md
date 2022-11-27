@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.4] - 2022-11-27 16:16:29
+
+### Fixed
+
+- Removed debug lines.
+
+## [1.10.3] - 2022-11-27 16:08:33
+
+### Fixed
+
+- Fixed a bug causing Windows tests to fail.
+
+## [1.10.2] - 2022-11-27 14:33:53
+
+### Fixed
+
+- Bug in defined-for causing it to be ignored.
+- Branched simulations now cache variables specifically for the branch and time period, not sharing with the parent simulation.
+
+## [1.10.1] - 2022-11-24 00:33:05
+
+### Added
+
+- Documentation page on reforms.
+
+### Fixed
+
+- Moved the uprating logic to after formulas are checked.
+
+## [1.10.0] - 2022-11-24 00:15:28
+
+### Added
+
+- Variables can now specify an 'uprating' parameter.
+- Variables can now specify 'adds' and 'subtracts' variable dependencies.
+- Variable folders are now automatically stored in a tree.
+
+### Fixed
+
+- Bugs in cloned simulations.
+
+## [1.9.0] - 2022-11-08 15:00:26
+
+### Fixed
+
+- Various fixes for PolicyEngine's server app.
+
+## [1.8.1] - 2022-11-02 01:31:48
+
 ## [1.8.0] - 2022-10-23 13:41:39
 
 ### Changed
@@ -140,6 +189,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[1.10.4]: https://github.com/PolicyEngine/policyengine-core/compare/1.10.3...1.10.4
+[1.10.3]: https://github.com/PolicyEngine/policyengine-core/compare/1.10.2...1.10.3
+[1.10.2]: https://github.com/PolicyEngine/policyengine-core/compare/1.10.1...1.10.2
+[1.10.1]: https://github.com/PolicyEngine/policyengine-core/compare/1.10.0...1.10.1
+[1.10.0]: https://github.com/PolicyEngine/policyengine-core/compare/1.9.0...1.10.0
+[1.9.0]: https://github.com/PolicyEngine/policyengine-core/compare/1.8.1...1.9.0
+[1.8.1]: https://github.com/PolicyEngine/policyengine-core/compare/1.8.0...1.8.1
 [1.8.0]: https://github.com/PolicyEngine/policyengine-core/compare/1.7.0...1.8.0
 [1.7.0]: https://github.com/PolicyEngine/policyengine-core/compare/1.6.0...1.7.0
 [1.6.0]: https://github.com/PolicyEngine/policyengine-core/compare/1.5.0...1.6.0

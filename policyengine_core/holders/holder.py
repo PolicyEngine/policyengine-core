@@ -84,18 +84,22 @@ class Holder:
             preserve_storage_dir=preserve,
         )
 
-    def delete_arrays(self, period: Period = None) -> None:
+    def delete_arrays(
+        self, period: Period = None, branch_name: str = "default"
+    ) -> None:
         """
         If ``period`` is ``None``, remove all known values of the variable.
 
         If ``period`` is not ``None``, only remove all values for any period included in period (e.g. if period is "2017", values for "2017-01", "2017-07", etc. would be removed)
         """
 
-        self._memory_storage.delete(period)
+        self._memory_storage.delete(period, branch_name)
         if self._disk_storage:
-            self._disk_storage.delete(period)
+            self._disk_storage.delete(period, branch_name)
 
-    def get_array(self, period: Period) -> ArrayLike:
+    def get_array(
+        self, period: Period, branch_name: str = "default"
+    ) -> ArrayLike:
         """
         Get the value of the variable for the given period.
 
@@ -103,11 +107,11 @@ class Holder:
         """
         if self.variable.is_neutralized:
             return self.default_array()
-        value = self._memory_storage.get(period)
+        value = self._memory_storage.get(period, branch_name)
         if value is not None:
             return value
         if self._disk_storage:
-            return self._disk_storage.get(period)
+            return self._disk_storage.get(period, branch_name)
 
     def get_memory_usage(self) -> dict:
         """
@@ -166,7 +170,9 @@ class Holder:
             )
         )
 
-    def set_input(self, period: Period, array: ArrayLike) -> None:
+    def set_input(
+        self, period: Period, array: ArrayLike, branch_name: str = "default"
+    ) -> None:
         """
         Set a variable's value (``array``) for a given period (``period``)
 
@@ -209,7 +215,7 @@ class Holder:
             array = tools.eval_expression(array)
         if self.variable.set_input:
             return self.variable.set_input(self, period, array)
-        return self._set(period, array)
+        return self._set(period, array, branch_name)
 
     def _to_array(self, value: Any) -> ArrayLike:
         if not isinstance(value, numpy.ndarray):
@@ -243,7 +249,9 @@ class Holder:
                 )
         return value
 
-    def _set(self, period: Period, value: ArrayLike) -> None:
+    def _set(
+        self, period: Period, value: ArrayLike, branch_name: str = "default"
+    ) -> None:
         value = self._to_array(value)
         if self.variable.definition_period != periods.ETERNITY:
             if period is None:
@@ -277,17 +285,19 @@ class Holder:
 
         should_store_on_disk = (
             self._on_disk_storable
-            and self._memory_storage.get(period) is None
+            and self._memory_storage.get(period, branch_name) is None
             and psutil.virtual_memory().percent  # If there is already a value in memory, replace it and don't put a new value in the disk storage
             >= self.simulation.memory_config.max_memory_occupation_pc
         )
 
         if should_store_on_disk:
-            self._disk_storage.put(value, period)
+            self._disk_storage.put(value, period, branch_name)
         else:
-            self._memory_storage.put(value, period)
+            self._memory_storage.put(value, period, branch_name)
 
-    def put_in_cache(self, value: ArrayLike, period: Period) -> None:
+    def put_in_cache(
+        self, value: ArrayLike, period: Period, branch_name: str = "default"
+    ) -> None:
         if self._do_not_store:
             return
 
@@ -299,7 +309,7 @@ class Holder:
         ):
             return
 
-        self._set(period, value)
+        self._set(period, value, branch_name)
 
     def default_array(self) -> ArrayLike:
         """

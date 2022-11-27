@@ -250,7 +250,7 @@ class Holder:
         return value
 
     def _set(
-        self, period: Period, value: ArrayLike, branch_name: str = None
+        self, period: Period, value: ArrayLike, branch_name: str = "default"
     ) -> None:
         value = self._to_array(value)
         if self.variable.definition_period != periods.ETERNITY:

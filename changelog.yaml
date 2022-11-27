@@ -140,3 +140,8 @@
     - Branched simulations now cache variables specifically for the branch and time
       period, not sharing with the parent simulation.
   date: 2022-11-27 14:33:53
+- bump: patch
+  changes:
+    fixed:
+    - Fixed a bug causing Windows tests to fail.
+  date: 2022-11-27 16:08:33

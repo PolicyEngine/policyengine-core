@@ -1,4 +1,0 @@
-- bump: patch 
-  changes:
-    fixed:
-    - Fixed a bug causing Windows tests to fail.

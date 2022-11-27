@@ -133,3 +133,10 @@
     fixed:
     - Moved the uprating logic to after formulas are checked.
   date: 2022-11-24 00:33:05
+- bump: patch
+  changes:
+    fixed:
+    - Bug in defined-for causing it to be ignored.
+    - Branched simulations now cache variables specifically for the branch and time
+      period, not sharing with the parent simulation.
+  date: 2022-11-27 14:33:53

@@ -59,7 +59,7 @@ class InMemoryStorage:
         self._arrays = {
             period_item: value
             for period_item, value in self._arrays.items()
-            if not period.contains(f"{branch_name}:{period_item}")
+            if not period.contains(periods.period(period_item.split(":")[1]))
         }
 
     def get_known_periods(self) -> list:

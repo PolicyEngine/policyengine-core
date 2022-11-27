@@ -56,9 +56,12 @@ class OnDiskStorage:
             self._enums[path] = value.possible_values
             value = value.view(numpy.ndarray)
         numpy.save(path, value)
-        self._files[period] = path
+        print(f"Saving {filename}")
+        self._files[filename] = path
 
-    def delete(self, period: Period = None) -> None:
+    def delete(
+        self, period: Period = None, branch_name: str = "default"
+    ) -> None:
         if period is None:
             self._files = {}
             return
@@ -71,11 +74,13 @@ class OnDiskStorage:
             self._files = {
                 period_item: value
                 for period_item, value in self._files.items()
-                if not period.contains(period_item)
+                if not period_item == f"{branch_name}:{period}"
             }
 
     def get_known_periods(self) -> list:
-        return list(self._files.keys())
+        return list(
+            [periods.period(x.split(":")[1]) for x in self._files.keys()]
+        )
 
     def restore(self) -> None:
         self._files = files = {}
@@ -85,8 +90,7 @@ class OnDiskStorage:
                 continue
             path = os.path.join(self.storage_dir, filename)
             filename_core = filename.rsplit(".", 1)[0]
-            period = periods.period(filename_core)
-            files[period] = path
+            files[filename_core] = path
 
     def __del__(self) -> None:
         if self.preserve_storage_dir:

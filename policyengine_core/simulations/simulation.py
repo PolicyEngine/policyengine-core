@@ -796,7 +796,9 @@ class Simulation:
         """
         if period is not None and not isinstance(period, Period):
             period = periods.period(period)
-        return self.get_holder(variable_name).get_array(period)
+        return self.get_holder(variable_name).get_array(
+            period, self.branch_name
+        )
 
     def get_holder(self, variable_name: str) -> Holder:
         """

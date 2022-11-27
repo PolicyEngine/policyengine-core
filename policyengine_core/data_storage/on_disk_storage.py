@@ -38,7 +38,7 @@ class OnDiskStorage:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
 
-        values = self._files.get(f"{branch_name}:{period}")
+        values = self._files.get(f"{branch_name}_{period}")
         if values is None:
             return None
         return self._decode_file(values)
@@ -50,7 +50,7 @@ class OnDiskStorage:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
 
-        filename = f"{branch_name}:{period}"
+        filename = f"{branch_name}_{period}"
         path = os.path.join(self.storage_dir, filename) + ".npy"
         if isinstance(value, EnumArray):
             self._enums[path] = value.possible_values
@@ -74,12 +74,12 @@ class OnDiskStorage:
             self._files = {
                 period_item: value
                 for period_item, value in self._files.items()
-                if not period_item == f"{branch_name}:{period}"
+                if not period_item == f"{branch_name}_{period}"
             }
 
     def get_known_periods(self) -> list:
         return list(
-            [periods.period(x.split(":")[1]) for x in self._files.keys()]
+            [periods.period(x.split("_")[1]) for x in self._files.keys()]
         )
 
     def restore(self) -> None:

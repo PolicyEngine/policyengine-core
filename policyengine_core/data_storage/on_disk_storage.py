@@ -56,7 +56,6 @@ class OnDiskStorage:
             self._enums[path] = value.possible_values
             value = value.view(numpy.ndarray)
         numpy.save(path, value)
-        print(f"Saving {filename}")
         self._files[filename] = path
 
     def delete(

@@ -31,7 +31,7 @@ class InMemoryStorage:
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
-
+        print(f"Current periods: {self._arrays.keys()}")
         values = self._arrays.get(f"{branch_name}:{period}")
         if values is None:
             print(f"Could not find {branch_name}:{period}")

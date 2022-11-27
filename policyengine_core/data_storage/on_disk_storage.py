@@ -33,30 +33,35 @@ class OnDiskStorage:
         else:
             return numpy.load(file)
 
-    def get(self, period: Period) -> ArrayLike:
+    def get(self, period: Period, branch_name: str = "default") -> ArrayLike:
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
 
-        values = self._files.get(period)
+        values = self._files.get(f"{branch_name}:{period}")
         if values is None:
             return None
         return self._decode_file(values)
 
-    def put(self, value: ArrayLike, period: Period) -> None:
+    def put(
+        self, value: ArrayLike, period: Period, branch_name: str = "default"
+    ) -> None:
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
 
-        filename = str(period)
+        filename = f"{branch_name}:{period}"
         path = os.path.join(self.storage_dir, filename) + ".npy"
         if isinstance(value, EnumArray):
             self._enums[path] = value.possible_values
             value = value.view(numpy.ndarray)
         numpy.save(path, value)
-        self._files[period] = path
+        print(f"Saving {filename}")
+        self._files[filename] = path
 
-    def delete(self, period: Period = None) -> None:
+    def delete(
+        self, period: Period = None, branch_name: str = "default"
+    ) -> None:
         if period is None:
             self._files = {}
             return
@@ -69,11 +74,13 @@ class OnDiskStorage:
             self._files = {
                 period_item: value
                 for period_item, value in self._files.items()
-                if not period.contains(period_item)
+                if not period_item == f"{branch_name}:{period}"
             }
 
     def get_known_periods(self) -> list:
-        return list(self._files.keys())
+        return list(
+            [periods.period(x.split(":")[1]) for x in self._files.keys()]
+        )
 
     def restore(self) -> None:
         self._files = files = {}
@@ -83,8 +90,7 @@ class OnDiskStorage:
                 continue
             path = os.path.join(self.storage_dir, filename)
             filename_core = filename.rsplit(".", 1)[0]
-            period = periods.period(filename_core)
-            files[period] = path
+            files[filename_core] = path
 
     def __del__(self) -> None:
         if self.preserve_storage_dir:

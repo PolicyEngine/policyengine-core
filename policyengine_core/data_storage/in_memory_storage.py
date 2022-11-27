@@ -27,14 +27,11 @@ class InMemoryStorage:
         return clone
 
     def get(self, period: Period, branch_name: str = "default") -> ArrayLike:
-        print(f"Looking up {branch_name}:{period}")
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
-        print(f"Current periods: {self._arrays.keys()}")
         values = self._arrays.get(f"{branch_name}:{period}")
         if values is None:
-            print(f"Could not find {branch_name}:{period}")
             return None
         return values
 

@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    added:
+    - Functionality for getting all known branch-period caches.

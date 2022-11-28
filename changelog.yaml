@@ -150,3 +150,8 @@
     fixed:
     - Removed debug lines.
   date: 2022-11-27 16:16:29
+- bump: patch
+  changes:
+    added:
+    - Functionality for getting all known branch-period caches.
+  date: 2022-11-28 10:37:23

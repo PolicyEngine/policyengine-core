@@ -81,6 +81,14 @@ class OnDiskStorage:
             [periods.period(x.split("_")[1]) for x in self._files.keys()]
         )
 
+    def get_known_branch_periods(self) -> list:
+        return [
+            (branch_name, periods.period(period))
+            for branch_name, period in map(
+                lambda x: x.split("_"), self._files.keys()
+            )
+        ]
+
     def restore(self) -> None:
         self._files = files = {}
         # Restore self._files from content of storage_dir.

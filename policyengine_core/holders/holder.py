@@ -1,6 +1,6 @@
 import os
 import warnings
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any, List, Tuple
 
 import numpy
 import psutil
@@ -108,6 +108,15 @@ class Holder:
         if self.variable.is_neutralized:
             return self.default_array()
         value = self._memory_storage.get(period, branch_name)
+        if value is None and period in self.get_known_periods():
+            # If the value is on a different branch, use that.
+            branch_periods = self.get_known_branch_periods()
+            branches = [
+                branch
+                for branch, branch_period in branch_periods
+                if period == branch_period
+            ]
+            return self.get_array(period, branches[0])
         if value is not None:
             return value
         if self._disk_storage:
@@ -165,6 +174,19 @@ class Holder:
         return list(self._memory_storage.get_known_periods()) + list(
             (
                 self._disk_storage.get_known_periods()
+                if self._disk_storage
+                else []
+            )
+        )
+
+    def get_known_branch_periods(self) -> List[Tuple[str, Period]]:
+        """
+        Get the list of periods the variable value is known for.
+        """
+
+        return list(self._memory_storage.get_known_branch_periods()) + list(
+            (
+                self._disk_storage.get_known_branch_periods()
                 if self._disk_storage
                 else []
             )

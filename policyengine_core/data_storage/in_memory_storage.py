@@ -62,7 +62,17 @@ class InMemoryStorage:
         }
 
     def get_known_periods(self) -> list:
-        return list(map(lambda x: x.split(":")[1], self._arrays.keys()))
+        return list(
+            map(lambda x: periods.period(x.split(":")[1]), self._arrays.keys())
+        )
+
+    def get_known_branch_periods(self) -> list:
+        return [
+            (branch_name, periods.period(period))
+            for branch_name, period in map(
+                lambda x: x.split(":"), self._arrays.keys()
+            )
+        ]
 
     def get_memory_usage(self) -> dict:
         if not self._arrays:

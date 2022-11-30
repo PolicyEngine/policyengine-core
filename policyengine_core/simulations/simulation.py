@@ -402,7 +402,10 @@ class Simulation:
         Returns:
             pd.DataFrame: A dataframe containing the calculated variables.
         """
-
+        if period is not None and not isinstance(period, Period):
+            period = periods.period(period)
+        elif period is None and self.default_calculation_period is not None:
+            period = periods.period(self.default_calculation_period)
         df = pd.DataFrame()
         entities = [
             self.tax_benefit_system.get_variable(variable_name).entity.key
@@ -515,15 +518,18 @@ class Simulation:
 
         except SpiralError:
             array = holder.default_array()
-        except RecursionError:
-            if self.trace:
+        except RecursionError as e:
+            if isinstance(self.tracer, FullTracer):
                 self.tracer.print_computation_log()
-            else:
-                print(
-                    "Computation log is only available with the trace=True option."
-                )
+            stack = self.tracer.stack
+            stack_formatted = "\n".join(
+                [
+                    f"  - {node.get('name')} {node.get('period')}, {node.get('branch_name')}"
+                    for node in stack
+                ]
+            )
             raise Exception(
-                f"RecursionError while calculating {variable_name} for period {period}. The full computation trace is printed above."
+                f"RecursionError while calculating {variable_name} for period {period}. The full computation stack is:\n{stack_formatted}"
             )
 
         return array

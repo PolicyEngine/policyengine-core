@@ -89,6 +89,22 @@ class ParameterNode(AtInstantLike):
                     child_name, ext = os.path.splitext(child_name)
 
                     # We ignore non-YAML files
+                    if child_name.upper() == "README":
+                        data = {}
+                        metadata = {}
+
+                        with open(child_path, "r") as f:
+                            # Get the header as the label (making sure to remove the leading hash), and the rest as the description
+                            lines = f.readlines()
+                            metadata["label"] = (
+                                lines[0].replace("# ", "").strip()
+                            )
+                            metadata["description"] = "".join(
+                                lines[1:]
+                            ).strip()
+
+                        self.metadata.update(metadata)
+
                     if ext not in FILE_EXTENSIONS:
                         continue
 

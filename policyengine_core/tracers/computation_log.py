@@ -45,7 +45,7 @@ class ComputationLog:
 
         return self._flatten(lines_by_tree)
 
-    def print_log(self, aggregate=False, max_depth=None) -> None:
+    def print_log(self, aggregate=False, max_depth=100) -> None:
         """
         Print the computation log of a simulation.
 

@@ -89,6 +89,10 @@ class Microsimulation(Simulation):
         map_to: str = None,
         use_weights: bool = True,
     ) -> MicroDataFrame:
+        if period is not None and not isinstance(period, Period):
+            period = get_period(period)
+        elif period is None and self.default_calculation_period is not None:
+            period = get_period(self.default_calculation_period)
         values = super().calculate_dataframe(variable_names, period, map_to)
         if not use_weights:
             return values

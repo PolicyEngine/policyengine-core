@@ -160,3 +160,8 @@
     fixed:
     - README.md files in parameter trees now inform metadata.
   date: 2022-11-30 15:19:56
+- bump: patch
+  changes:
+    fixed:
+    - Various safety checks.
+  date: 2022-11-30 20:33:21

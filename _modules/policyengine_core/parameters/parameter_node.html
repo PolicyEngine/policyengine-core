@@ -322,6 +322,22 @@
                     <span class="n">child_name</span><span class="p">,</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">child_name</span><span class="p">)</span>
 
                     <span class="c1"># We ignore non-YAML files</span>
+                    <span class="k">if</span> <span class="n">child_name</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;README&quot;</span><span class="p">:</span>
+                        <span class="n">data</span> <span class="o">=</span> <span class="p">{}</span>
+                        <span class="n">metadata</span> <span class="o">=</span> <span class="p">{}</span>
+
+                        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">child_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                            <span class="c1"># Get the header as the label (making sure to remove the leading hash), and the rest as the description</span>
+                            <span class="n">lines</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+                            <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                                <span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;# &quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                            <span class="p">)</span>
+                            <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;description&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                                <span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+                            <span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+                        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">metadata</span><span class="p">)</span>
+
                     <span class="k">if</span> <span class="n">ext</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">FILE_EXTENSIONS</span><span class="p">:</span>
                         <span class="k">continue</span>
 

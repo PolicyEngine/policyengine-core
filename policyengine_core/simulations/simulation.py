@@ -94,7 +94,7 @@ class Simulation:
 
         self.invalidated_caches = set()
         self.debug: bool = False
-        self.trace: bool = True
+        self.trace: bool = False
         self.tracer: SimpleTracer = SimpleTracer()
         self.opt_out_cache: bool = False
         # controls the spirals detection; check for performance impact if > 1

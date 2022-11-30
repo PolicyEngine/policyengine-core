@@ -155,3 +155,8 @@
     added:
     - Functionality for getting all known branch-period caches.
   date: 2022-11-28 10:37:23
+- bump: patch
+  changes:
+    fixed:
+    - README.md files in parameter trees now inform metadata.
+  date: 2022-11-30 15:19:56

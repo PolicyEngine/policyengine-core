@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    fixed:
-    - README.md files in parameter trees now inform metadata.

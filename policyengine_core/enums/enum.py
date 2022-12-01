@@ -67,6 +67,9 @@ class Enum(enum.Enum):
         if isinstance(array, EnumArray):
             return array
 
+        if isinstance(array == 0, bool):
+            array = array.astype(str)
+
         # String array
         if isinstance(array, numpy.ndarray) and array.dtype.kind in {"U", "S"}:
             array = numpy.select(

@@ -316,6 +316,8 @@ class Simulation:
 
         try:
             result = self._calculate(variable_name, period)
+            if isinstance(result, EnumArray):
+                result = result.decode_to_str()
             self.tracer.record_calculation_result(result)
             if map_to is not None:
                 source_entity = self.tax_benefit_system.get_variable(
@@ -493,7 +495,8 @@ class Simulation:
                         uprating_factor = (
                             value_in_this_period / value_in_last_period
                         )
-                        return (
+
+                        array = (
                             holder.get_array(
                                 latest_known_period, self.branch_name
                             )

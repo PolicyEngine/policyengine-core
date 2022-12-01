@@ -1,7 +1,7 @@
 from typing import Dict, Type
 
 from microdf import MicroDataFrame, MicroSeries
-
+import numpy as np
 from policyengine_core.data.dataset import Dataset
 from policyengine_core.periods import Period
 from policyengine_core.periods import period as get_period
@@ -54,7 +54,7 @@ class Microsimulation(Simulation):
         if not use_weights:
             return values
         weights = self.get_weights(variable_name, period, map_to)
-        return MicroSeries(values, weights=weights)
+        return MicroSeries(np.array(values), weights=weights)
 
     def calculate_add(
         self,
@@ -67,7 +67,7 @@ class Microsimulation(Simulation):
         if not use_weights:
             return values
         weights = self.get_weights(variable_name, period)
-        return MicroSeries(values, weights=weights)
+        return MicroSeries(np.array(values), weights=weights)
 
     def calculate_divide(
         self,
@@ -80,7 +80,7 @@ class Microsimulation(Simulation):
         if not use_weights:
             return values
         weights = self.get_weights(variable_name, period)
-        return MicroSeries(values, weights=weights)
+        return MicroSeries(np.array(values), weights=weights)
 
     def calculate_dataframe(
         self,

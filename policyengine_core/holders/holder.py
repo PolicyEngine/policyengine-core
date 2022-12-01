@@ -256,7 +256,10 @@ class Holder:
                 )
             )
         if self.variable.value_type == Enum:
+            original_value = value
             value = self.variable.possible_values.encode(value)
+            if value.shape != original_value.shape:
+                value = self.variable.possible_values.encode(original_value.astype("O"))
         if value.dtype != self.variable.dtype:
             try:
                 value = value.astype(self.variable.dtype)

@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    fixed:
+    - Singleton files have a shorter moduleName.

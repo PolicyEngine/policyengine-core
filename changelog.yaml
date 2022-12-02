@@ -165,3 +165,8 @@
     fixed:
     - Various safety checks.
   date: 2022-11-30 20:33:21
+- bump: patch
+  changes:
+    fixed:
+    - Singleton files have a shorter moduleName.
+  date: 2022-12-02 18:11:10

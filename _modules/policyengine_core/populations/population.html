@@ -350,6 +350,7 @@
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">simulation</span><span class="p">,</span> <span class="n">Microsimulation</span><span class="p">):</span>
             <span class="c1"># Internal simulation code shouldn&#39;t use weights in order to avoid performance slowdowns.</span>
             <span class="n">calculate_kwargs</span><span class="p">[</span><span class="s2">&quot;use_weights&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">calculate_kwargs</span><span class="p">[</span><span class="s2">&quot;decode_enums&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
 
         <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">ADD</span> <span class="ow">in</span> <span class="n">options</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulation</span><span class="o">.</span><span class="n">calculate_add</span><span class="p">(</span>

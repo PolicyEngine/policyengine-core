@@ -293,6 +293,7 @@ class Simulation:
         variable_name: str,
         period: Period = None,
         map_to: str = None,
+        decode_enums: bool = False,
     ) -> ArrayLike:
         """Calculate ``variable_name`` for ``period``.
 
@@ -300,6 +301,7 @@ class Simulation:
             variable_name (str): The name of the variable to calculate.
             period (Period): The period to calculate the variable for.
             map_to (str): The name of the variable to map the result to. If None, the result is returned as is.
+            decode_enums (bool): If True, the result is decoded from an array of integers to an array of strings.
 
         Returns:
             ArrayLike: The calculated variable.
@@ -316,7 +318,7 @@ class Simulation:
 
         try:
             result = self._calculate(variable_name, period)
-            if isinstance(result, EnumArray):
+            if isinstance(result, EnumArray) and decode_enums:
                 result = result.decode_to_str()
             self.tracer.record_calculation_result(result)
             if map_to is not None:
@@ -547,7 +549,10 @@ class Simulation:
         self.invalidated_caches = set()
 
     def calculate_add(
-        self, variable_name: str, period: Period = None
+        self,
+        variable_name: str,
+        period: Period = None,
+        decode_enums: bool = False,
     ) -> ArrayLike:
         variable = self.tax_benefit_system.get_variable(
             variable_name, check_existence=True
@@ -583,7 +588,10 @@ class Simulation:
         )
 
     def calculate_divide(
-        self, variable_name: str, period: Period = None
+        self,
+        variable_name: str,
+        period: Period = None,
+        decode_enums: bool = False,
     ) -> ArrayLike:
         variable = self.tax_benefit_system.get_variable(
             variable_name, check_existence=True

@@ -45,12 +45,13 @@ class Microsimulation(Simulation):
         period: Period = None,
         map_to: str = None,
         use_weights: bool = True,
+        decode_enums: bool = True,
     ) -> MicroSeries:
         if period is not None and not isinstance(period, Period):
             period = get_period(period)
         elif period is None and self.default_calculation_period is not None:
             period = get_period(self.default_calculation_period)
-        values = super().calculate(variable_name, period, map_to)
+        values = super().calculate(variable_name, period, map_to, decode_enums)
         if not use_weights:
             return values
         weights = self.get_weights(variable_name, period, map_to)

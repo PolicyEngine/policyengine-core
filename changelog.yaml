@@ -170,3 +170,8 @@
     fixed:
     - Singleton files have a shorter moduleName.
   date: 2022-12-02 18:11:10
+- bump: patch
+  changes:
+    fixed:
+    - Bug with Enum decoding.
+  date: 2022-12-03 15:21:15

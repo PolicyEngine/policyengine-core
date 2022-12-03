@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.9] - 2022-12-03 15:21:15
+
+### Fixed
+
+- Bug with Enum decoding.
+
 ## [1.10.8] - 2022-12-02 18:11:10
 
 ### Fixed
@@ -213,6 +219,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[1.10.9]: https://github.com/PolicyEngine/policyengine-core/compare/1.10.8...1.10.9
 [1.10.8]: https://github.com/PolicyEngine/policyengine-core/compare/1.10.7...1.10.8
 [1.10.7]: https://github.com/PolicyEngine/policyengine-core/compare/1.10.6...1.10.7
 [1.10.6]: https://github.com/PolicyEngine/policyengine-core/compare/1.10.5...1.10.6

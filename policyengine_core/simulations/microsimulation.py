@@ -1,7 +1,7 @@
 from typing import Dict, Type
 
 from microdf import MicroDataFrame, MicroSeries
-
+import numpy as np
 from policyengine_core.data.dataset import Dataset
 from policyengine_core.periods import Period
 from policyengine_core.periods import period as get_period
@@ -45,16 +45,17 @@ class Microsimulation(Simulation):
         period: Period = None,
         map_to: str = None,
         use_weights: bool = True,
+        decode_enums: bool = True,
     ) -> MicroSeries:
         if period is not None and not isinstance(period, Period):
             period = get_period(period)
         elif period is None and self.default_calculation_period is not None:
             period = get_period(self.default_calculation_period)
-        values = super().calculate(variable_name, period, map_to)
+        values = super().calculate(variable_name, period, map_to, decode_enums)
         if not use_weights:
             return values
         weights = self.get_weights(variable_name, period, map_to)
-        return MicroSeries(values, weights=weights)
+        return MicroSeries(np.array(values), weights=weights)
 
     def calculate_add(
         self,
@@ -67,7 +68,7 @@ class Microsimulation(Simulation):
         if not use_weights:
             return values
         weights = self.get_weights(variable_name, period)
-        return MicroSeries(values, weights=weights)
+        return MicroSeries(np.array(values), weights=weights)
 
     def calculate_divide(
         self,
@@ -80,7 +81,7 @@ class Microsimulation(Simulation):
         if not use_weights:
             return values
         weights = self.get_weights(variable_name, period)
-        return MicroSeries(values, weights=weights)
+        return MicroSeries(np.array(values), weights=weights)
 
     def calculate_dataframe(
         self,

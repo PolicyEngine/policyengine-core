@@ -117,6 +117,7 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
         if isinstance(self.simulation, Microsimulation):
             # Internal simulation code shouldn't use weights in order to avoid performance slowdowns.
             calculate_kwargs["use_weights"] = False
+        calculate_kwargs["decode_enums"] = False
 
         if config.ADD in options:
             return self.simulation.calculate_add(

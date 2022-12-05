@@ -241,6 +241,10 @@
 <span class="kn">from</span> <span class="nn">.config</span> <span class="kn">import</span> <span class="n">ENUM_ARRAY_DTYPE</span>
 <span class="kn">from</span> <span class="nn">.enum_array</span> <span class="kn">import</span> <span class="n">EnumArray</span>
 
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">FutureWarning</span><span class="p">)</span>
+
 
 <div class="viewcode-block" id="Enum"><a class="viewcode-back" href="../../../python_api/enums.html#policyengine_core.enums.enum.Enum">[docs]</a><span class="k">class</span> <span class="nc">Enum</span><span class="p">(</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>

@@ -175,3 +175,8 @@
     fixed:
     - Bug with Enum decoding.
   date: 2022-12-03 15:21:15
+- bump: patch
+  changes:
+    fixed:
+    - Removed warning on Enum decoding.
+  date: 2022-12-05 16:21:04

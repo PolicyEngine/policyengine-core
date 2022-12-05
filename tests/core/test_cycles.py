@@ -3,7 +3,7 @@ import pytest
 from policyengine_core import periods, tools
 from policyengine_core.country_template import entities
 from policyengine_core.errors import CycleError
-from policyengine_core.simulations import SimulationBuilder
+from policyengine_core.simulations import SimulationBuilder, Simulation
 from policyengine_core.variables import Variable
 
 
@@ -124,7 +124,8 @@ def test_spirals_result_in_default_value(simulation, reference_period):
     tools.assert_near(variable3, [0])
 
 
-def test_spiral_heuristic(simulation, reference_period):
+def test_spiral_heuristic(simulation: Simulation, reference_period):
+    simulation.max_spiral_loops = 1
     variable5 = simulation.calculate("variable5", period=reference_period)
     variable6 = simulation.calculate("variable6", period=reference_period)
     variable6_last_month = simulation.calculate(
@@ -145,5 +146,6 @@ def test_spiral_cache(simulation, reference_period):
 
 def test_cotisation_1_level(simulation, reference_period):
     month = reference_period.last_month
+    simulation.max_spiral_loops = 1
     cotisation = simulation.calculate("cotisation", period=month)
     tools.assert_near(cotisation, [0])

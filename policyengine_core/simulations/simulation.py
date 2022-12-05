@@ -98,7 +98,7 @@ class Simulation:
         self.tracer: SimpleTracer = SimpleTracer()
         self.opt_out_cache: bool = False
         # controls the spirals detection; check for performance impact if > 1
-        self.max_spiral_loops: int = 1
+        self.max_spiral_loops: int = 10
         self.memory_config: MemoryConfig = None
         self._data_storage_dir: str = None
 

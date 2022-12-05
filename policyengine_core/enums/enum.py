@@ -8,6 +8,10 @@ import numpy
 from .config import ENUM_ARRAY_DTYPE
 from .enum_array import EnumArray
 
+import warnings
+
+warnings.simplefilter("ignore", category=FutureWarning)
+
 
 class Enum(enum.Enum):
     """

@@ -180,3 +180,8 @@
     fixed:
     - Removed warning on Enum decoding.
   date: 2022-12-05 16:21:04
+- bump: patch
+  changes:
+    fixed:
+    - Include scale brackets in descendants.
+  date: 2022-12-07 12:51:49

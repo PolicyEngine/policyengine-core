@@ -475,8 +475,14 @@ class Simulation:
                 known_periods = holder.get_known_periods()
                 if variable.uprating is not None and len(known_periods) > 0:
                     start_instants = [
-                        known_period.start for known_period in known_periods
+                        str(known_period.start)
+                        for known_period in known_periods
                     ]
+                    print(
+                        start_instants,
+                        known_periods,
+                        np.argmax(start_instants),
+                    )
                     latest_known_period = known_periods[
                         np.argmax(start_instants)
                     ]

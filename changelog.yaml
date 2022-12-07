@@ -185,3 +185,8 @@
     fixed:
     - Include scale brackets in descendants.
   date: 2022-12-07 12:51:49
+- bump: patch
+  changes:
+    fixed:
+    - Uprating bug affecting the UK.
+  date: 2022-12-07 13:41:29

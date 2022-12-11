@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    fixed:
-    - Added documentation on populating changelog entries. Also created a CONTRIBUTING.md symlink to make contributing guidelines easier to find.

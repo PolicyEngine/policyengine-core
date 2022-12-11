@@ -195,3 +195,9 @@
     fixed:
     - Git config now ignores JetBrains IDE config files
   date: 2022-12-11 23:46:33
+- bump: patch
+  changes:
+    fixed:
+    - Added documentation on populating changelog entries. Also created a CONTRIBUTING.md
+      symlink to make contributing guidelines easier to find.
+  date: 2022-12-11 23:52:13

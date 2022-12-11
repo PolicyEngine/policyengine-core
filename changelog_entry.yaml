@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    fixed:
+    - Git config now ignores JetBrains IDE config files

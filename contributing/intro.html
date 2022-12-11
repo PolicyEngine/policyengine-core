@@ -240,6 +240,20 @@
 <li><p>Fixing issues. File a pull request to fix an issue you or someone else has filed.</p></li>
 </ul>
 <p>If you file an issue or a pull request, one of the maintainers (primarily &#64;nikhilwoodruff) will respond to it within at least a week. If you don’t hear back, feel free to ping us on the issue or pull request.</p>
+<section id="changelog-entries">
+<h2>Changelog Entries<a class="headerlink" href="#changelog-entries" title="Permalink to this headline">#</a></h2>
+<p>Before you send out a pull request, make sure to add a description of your changes to <span class="xref myst">changelog_entry.yaml</span>.
+For example,</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">bump</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">patch</span><span class="w"></span>
+<span class="w">  </span><span class="nt">changes</span><span class="p">:</span><span class="w"></span>
+<span class="w">    </span><span class="nt">fixed</span><span class="p">:</span><span class="w"></span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Fixed a bug causing Windows tests to fail.</span><span class="w"></span>
+</pre></div>
+</div>
+<p>You can find more examples in <span class="xref myst">changelog.yaml</span>. Note that you do not need to add the date field.
+That field is automatically populated by <code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">changelog</span></code>. Also, note that <strong>you should not run <code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">changelog</span></code>
+yourself</strong>, as <span class="xref myst">our GitHub workflows</span> will do this for you as part of the build process.</p>
+</section>
 <section id="pull-requests">
 <h2>Pull requests<a class="headerlink" href="#pull-requests" title="Permalink to this headline">#</a></h2>
 <p>Each pull request should:</p>
@@ -329,6 +343,7 @@
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">How to contribute</a><ul>
+<li><a class="reference internal" href="#changelog-entries">Changelog Entries</a></li>
 <li><a class="reference internal" href="#pull-requests">Pull requests</a></li>
 </ul>
 </li>

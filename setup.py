@@ -34,9 +34,14 @@ dev_requirements = [
     "jupyter-book<1",
     "furo<2023",
     "markupsafe==2.0.1",
+    "mypy>=0.991,<1",
     "sphinx>=4.5.0,<5",
     "sphinx-argparse>=0.3.2,<1",
     "sphinx-math-dollar>=1.2.1,<2",
+    "types-PyYAML>=6.0<7",
+    "types-requests>=2.28,<3",
+    "types-setuptools>=65.6<66",
+    "types-urllib3>=1.26<2",
 ]
 
 setup(

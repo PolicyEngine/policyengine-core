@@ -190,3 +190,8 @@
     fixed:
     - Uprating bug affecting the UK.
   date: 2022-12-07 13:41:29
+- bump: patch
+  changes:
+    fixed:
+    - Git config now ignores JetBrains IDE config files
+  date: 2022-12-11 23:46:33

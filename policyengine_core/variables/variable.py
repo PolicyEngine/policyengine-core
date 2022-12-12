@@ -118,6 +118,9 @@ class Variable:
     uprating: str = None
     """Name of a parameter used to uprate the variable."""
 
+    hidden_input: bool = False
+    """Whether the variable is hidden from the input screen entirely on PolicyEngine."""
+
     def __init__(self, baseline_variable=None):
         self.name = self.__class__.__name__
         attr = {
@@ -235,8 +238,10 @@ class Variable:
 
         self.adds = self.set(attr, "adds", allowed_type=list)
         self.subtracts = self.set(attr, "subtracts", allowed_type=list)
-
         self.uprating = self.set(attr, "uprating", allowed_type=str)
+        self.hidden_input = self.set(
+            attr, "hidden_input", allowed_type=bool, default=False
+        )
 
         formulas_attr, unexpected_attrs = helpers._partition(
             attr,

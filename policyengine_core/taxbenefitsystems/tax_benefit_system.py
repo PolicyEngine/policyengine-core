@@ -215,10 +215,6 @@ class TaxBenefitSystem:
             file_name = os.path.splitext(os.path.basename(file_path))[0]
 
             path = Path(file_path)
-            count_python_files = len(list(path.parent.glob("*.py")))
-
-            if count_python_files == 1:
-                path = path.parent
 
             # Get the relative location, e.g. policyengine_uk/variables/gov/child_benefit.py -> gov.child_benefit
             try:

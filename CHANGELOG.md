@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.14] - 2022-12-11 23:52:13
+
+### Fixed
+
+- Added documentation on populating changelog entries. Also created a CONTRIBUTING.md symlink to make contributing guidelines easier to find.
+
+## [1.10.13] - 2022-12-11 23:46:33
+
+### Fixed
+
+- Git config now ignores JetBrains IDE config files
+
 ## [1.10.12] - 2022-12-07 13:41:29
 
 ### Fixed
@@ -237,6 +249,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[1.10.14]: https://github.com/PolicyEngine/policyengine-core/compare/1.10.13...1.10.14
+[1.10.13]: https://github.com/PolicyEngine/policyengine-core/compare/1.10.12...1.10.13
 [1.10.12]: https://github.com/PolicyEngine/policyengine-core/compare/1.10.11...1.10.12
 [1.10.11]: https://github.com/PolicyEngine/policyengine-core/compare/1.10.10...1.10.11
 [1.10.10]: https://github.com/PolicyEngine/policyengine-core/compare/1.10.9...1.10.10

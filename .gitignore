@@ -8,3 +8,4 @@ docs/_build/
 **/*.ipynb_checkpoints/
 **/*.h5
 **/iframe_figures/
+.idea

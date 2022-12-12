@@ -201,3 +201,8 @@
     - Added documentation on populating changelog entries. Also created a CONTRIBUTING.md
       symlink to make contributing guidelines easier to find.
   date: 2022-12-11 23:52:13
+- bump: patch
+  changes:
+    added:
+    - Hidden input field for variables.
+  date: 2022-12-12 15:28:47

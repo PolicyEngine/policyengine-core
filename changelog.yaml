@@ -206,3 +206,8 @@
     added:
     - Hidden input field for variables.
   date: 2022-12-12 15:28:47
+- bump: patch
+  changes:
+    added:
+    - Added mypy to our test suite to prevent new type regressions
+  date: 2022-12-13 23:40:47

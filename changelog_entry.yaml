@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    added:
+    - Added mypy to our test suite to prevent new type regressions

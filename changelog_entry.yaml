@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    added:
-    - Added `basic_inputs`, a metadata field for the basic inputs needed to get a country model running.

@@ -84,6 +84,8 @@ class TaxBenefitSystem:
     """Directory containing the YAML parameter tree."""
     auto_carry_over_input_variables: bool = False
     """Whether to automatically carry over input variables when calculating a variable for a period different from the period of the input variables."""
+    basic_inputs: List[str] = None
+    """Short list of basic inputs to get medium accuracy."""
 
     def __init__(self, entities: Sequence[Entity] = None) -> None:
         if entities is None:
@@ -257,6 +259,7 @@ class TaxBenefitSystem:
                 "label", relative_file_path
             )
             metadata["description"] = module.__dict__.get("description", None)
+            metadata["index"] = module.__dict__.get("index", 0)
             self.variable_module_metadata[relative_file_path] = metadata
 
             i = 0

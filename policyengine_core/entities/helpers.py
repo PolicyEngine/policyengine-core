@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 from policyengine_core import entities
 from policyengine_core.entities.entity import Entity
@@ -9,7 +9,7 @@ def build_entity(
     plural: str,
     label: str,
     doc: str = "",
-    roles: List[str] = None,
+    roles: List = None,
     is_person: bool = False,
     containing_entities: List[str] = (),
 ) -> Entity:

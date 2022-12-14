@@ -1,5 +1,5 @@
 import traceback
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any, List, Optional, Container
 
 import numpy
 from numpy.typing import ArrayLike
@@ -82,7 +82,10 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
             )
 
     def __call__(
-        self, variable_name: str, period: Period = None, options: dict = None
+        self,
+        variable_name: str,
+        period: Period = None,
+        options: Optional[Container[str]] = None,
     ):
         """
         Calculate the variable ``variable_name`` for the entity and the period ``period``, using the variable formula if it exists.

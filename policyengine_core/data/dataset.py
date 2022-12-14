@@ -2,12 +2,15 @@ import importlib
 import logging
 import os
 import re
+from array import ArrayType
 from pathlib import Path
-from typing import Callable, Dict, Union
+from typing import Callable, Dict, Union, Optional, Sequence, TypeVar, Generic
 
 import h5py
 import numpy as np
 import pandas as pd
+
+from policyengine_core.types import ArrayLike
 
 
 class Dataset:
@@ -23,7 +26,7 @@ class Dataset:
     """Whether the dataset is compatible with OpenFisca. If True, the dataset will be stored as a collection of arrays. If False, the dataset will be stored as a collection of tables."""
     data_format: str = None
     """The format of the dataset. This can be either `Dataset.ARRAYS`, `Dataset.TIME_PERIOD_ARRAYS` or `Dataset.TABLES`. If `Dataset.ARRAYS`, the dataset is stored as a collection of arrays. If `Dataset.TIME_PERIOD_ARRAYS`, the dataset is stored as a collection of arrays, with one array per time period. If `Dataset.TABLES`, the dataset is stored as a collection of tables (DataFrames)."""
-    folder_path: str = None
+    folder_path: Optional[Union[str, Path]] = None
     """The path to the folder where the dataset is stored (in .h5 files)."""
 
     # Data formats
@@ -164,13 +167,20 @@ class Dataset:
             )
 
     def save_variable_values(
-        self, year: int, data: Dict[str, Dict[str, np.array]]
+        self, year: int, data: Dict[str, Dict[str, Sequence]]
     ) -> None:
         """Writes data values for variables in specific time periods.
 
         Args:
             year (int): The year of the dataset to save.
-            data (Dict[str, Dict[str, np.array]]): The data to save. Should be nested in the form {variable_name: {time_period: values}}.
+            data (Dict[str, Dict[str, Sequence]): The data to save. Should be nested in the form {variable_name: {time_period: values}}.
+
+        >>> example_data: Dict[str, Dict[str, Sequence]] = {
+        ...     "employment_income": {
+        ...         "2022": np.array([25000, 25000, 30000, 30000]),
+        ...     },
+        ... }
+        >>> example_data["employment_income"]["2022"] = [25000, 25000, 30000, 30000]
         """
         if self.data_format is not self.TIME_PERIOD_ARRAYS:
             raise ValueError(

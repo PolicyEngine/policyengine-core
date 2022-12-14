@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    added:
+    - Fixed mypy errors in several files.

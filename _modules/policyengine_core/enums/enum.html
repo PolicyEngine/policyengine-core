@@ -329,11 +329,16 @@
             <span class="c1"># the right type.</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">array</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span> <span class="ow">is</span> <span class="n">array</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">:</span>
                 <span class="bp">cls</span> <span class="o">=</span> <span class="n">array</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="vm">__class__</span>
-
-            <span class="n">array</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">select</span><span class="p">(</span>
-                <span class="p">[</span><span class="n">array</span> <span class="o">==</span> <span class="n">item</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="bp">cls</span><span class="p">],</span>
-                <span class="p">[</span><span class="n">item</span><span class="o">.</span><span class="n">index</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="bp">cls</span><span class="p">],</span>
-            <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">ENUM_ARRAY_DTYPE</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">array</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">!=</span> <span class="s2">&quot;bytes&quot;</span><span class="p">:</span>
+                <span class="n">array</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">select</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">array</span> <span class="o">==</span> <span class="n">item</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="bp">cls</span><span class="p">],</span>
+                    <span class="p">[</span><span class="n">item</span><span class="o">.</span><span class="n">index</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="bp">cls</span><span class="p">],</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">ENUM_ARRAY_DTYPE</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">array</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">select</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">array</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span> <span class="o">==</span> <span class="n">item</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="bp">cls</span><span class="p">],</span>
+                    <span class="p">[</span><span class="n">item</span><span class="o">.</span><span class="n">index</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="bp">cls</span><span class="p">],</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">ENUM_ARRAY_DTYPE</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">EnumArray</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="bp">cls</span><span class="p">)</span></div></div>
 </pre></div>

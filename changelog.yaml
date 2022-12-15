@@ -217,3 +217,8 @@
     - Added `basic_inputs`, a metadata field for the basic inputs needed to get a
       country model running.
   date: 2022-12-14 15:33:46
+- bump: patch
+  changes:
+    fixed:
+    - Bugs with Enum inputs.
+  date: 2022-12-15 15:27:35

@@ -232,3 +232,8 @@
     fixed:
     - Fixed mypy errors in policyengine_core/tracers/tracing_parameter_node_at_instant.py
   date: 2022-12-17 16:36:53
+- bump: patch
+  changes:
+    changed:
+    - Removed seemingly unused "N_" function
+  date: 2022-12-17 21:51:59

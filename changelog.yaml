@@ -222,3 +222,8 @@
     fixed:
     - Bugs with Enum inputs.
   date: 2022-12-15 15:27:35
+- bump: patch
+  changes:
+    fixed:
+    - Fixed mypy errors in tests/core/test_entities.py
+  date: 2022-12-17 09:23:10

@@ -9,7 +9,6 @@ from .config import (
     year_or_month_or_day_re,
 )
 from .helpers import (
-    N_,
     instant,
     instant_date,
     key_period_size,

@@ -5,10 +5,12 @@ Taxes and benefits can be calculated for different entities: persons, household,
 
 See https://openfisca.org/doc/key-concepts/person,_entities,_role.html
 """
+from typing import Any
 
 from policyengine_core.entities import build_entity
 
-Household = build_entity(
+# TODO: Consider removing use of setattr so that we can use mypy for Entities
+Household: Any = build_entity(
     key="household",
     plural="households",
     label="All the people in a family or group who live together in the same place.",

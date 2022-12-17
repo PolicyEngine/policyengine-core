@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    fixed:
-      - Fixed mypy errors in policyengine_core/tracers/tracing_parameter_node_at_instant.py

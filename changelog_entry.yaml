@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    added:
+      - Added black code style badge

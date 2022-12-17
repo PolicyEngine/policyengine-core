@@ -5,10 +5,6 @@ from policyengine_core import periods
 from policyengine_core.periods import config
 
 
-def N_(message):
-    return message
-
-
 def instant(instant):
     """Return a new instant, aka a triple of integers (year, month, day).
 

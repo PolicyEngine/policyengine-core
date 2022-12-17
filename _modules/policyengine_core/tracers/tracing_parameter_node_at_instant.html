@@ -273,7 +273,7 @@
 
     <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">key</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ArrayLike</span><span class="p">],</span>
+        <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">TracingParameterNodeAtInstant</span><span class="p">,</span> <span class="n">Child</span><span class="p">]:</span>
         <span class="n">child</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter_node_at_instant</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_traced_child</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
@@ -283,7 +283,7 @@
         <span class="n">child</span><span class="p">:</span> <span class="n">Child</span><span class="p">,</span>
         <span class="n">key</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ArrayLike</span><span class="p">],</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">TracingParameterNodeAtInstant</span><span class="p">,</span> <span class="n">Child</span><span class="p">]:</span>
-        <span class="n">period</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter_node_at_instant</span><span class="o">.</span><span class="n">_instant_str</span>
+        <span class="n">period</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter_node_at_instant</span><span class="o">.</span><span class="n">_instant_str</span>
 
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span>
             <span class="n">child</span><span class="p">,</span>

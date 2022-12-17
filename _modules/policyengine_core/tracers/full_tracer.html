@@ -261,7 +261,7 @@
     <span class="k">def</span> <span class="nf">record_calculation_start</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-        <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">,</span>
+        <span class="n">period</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">branch_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;default&quot;</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_simple_tracer</span><span class="o">.</span><span class="n">record_calculation_start</span><span class="p">(</span>
@@ -273,7 +273,7 @@
     <span class="k">def</span> <span class="nf">_enter_calculation</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-        <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">,</span>
+        <span class="n">period</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">branch_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;default&quot;</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">new_node</span> <span class="o">=</span> <span class="n">tracers</span><span class="o">.</span><span class="n">TraceNode</span><span class="p">(</span>
@@ -294,7 +294,7 @@
     <span class="k">def</span> <span class="nf">record_parameter_access</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">parameter</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-        <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">,</span>
+        <span class="n">period</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">branch_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">value</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>

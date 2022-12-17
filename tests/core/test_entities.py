@@ -1,11 +1,12 @@
 from copy import deepcopy
+from typing import Dict, Any
 
 from policyengine_core import tools
 from policyengine_core.country_template import entities, situation_examples
 from policyengine_core.simulations import SimulationBuilder
 from policyengine_core.tools import test_runner
 
-TEST_CASE = {
+TEST_CASE: Dict[str, Dict[str, Any]] = {
     "persons": {
         "ind0": {},
         "ind1": {},

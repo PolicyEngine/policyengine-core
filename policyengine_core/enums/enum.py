@@ -96,10 +96,15 @@ class Enum(enum.Enum):
             # the right type.
             if len(array) > 0 and cls.__name__ is array[0].__class__.__name__:
                 cls = array[0].__class__
-
-            array = numpy.select(
-                [array == item for item in cls],
-                [item.index for item in cls],
-            ).astype(ENUM_ARRAY_DTYPE)
+            if array[0].__class__.__name__ != "bytes":
+                array = numpy.select(
+                    [array == item for item in cls],
+                    [item.index for item in cls],
+                ).astype(ENUM_ARRAY_DTYPE)
+            else:
+                array = numpy.select(
+                    [array.astype(str) == item.name for item in cls],
+                    [item.index for item in cls],
+                ).astype(ENUM_ARRAY_DTYPE)
 
         return EnumArray(array, cls)

@@ -40,7 +40,7 @@ class TracingParameterNodeAtInstant:
 
     def __getitem__(
         self,
-        key: Union[str, ArrayLike],
+        key: str,
     ) -> Union[TracingParameterNodeAtInstant, Child]:
         child = self.parameter_node_at_instant[key]
         return self.get_traced_child(child, key)
@@ -50,7 +50,7 @@ class TracingParameterNodeAtInstant:
         child: Child,
         key: Union[str, ArrayLike],
     ) -> Union[TracingParameterNodeAtInstant, Child]:
-        period = self.parameter_node_at_instant._instant_str
+        period: str = self.parameter_node_at_instant._instant_str
 
         if isinstance(
             child,

@@ -16,7 +16,7 @@ test-country-template:
 mypy:
 	mypy --config-file mypy.ini policyengine_core tests
 
-test: mypy test-country-template
+test: test-country-template
 	coverage run -a --branch -m pytest tests --disable-pytest-warnings
 	coverage xml -i
 

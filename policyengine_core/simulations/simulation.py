@@ -478,11 +478,6 @@ class Simulation:
                         str(known_period.start)
                         for known_period in known_periods
                     ]
-                    print(
-                        start_instants,
-                        known_periods,
-                        np.argmax(start_instants),
-                    )
                     latest_known_period = known_periods[
                         np.argmax(start_instants)
                     ]

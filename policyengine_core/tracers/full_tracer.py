@@ -28,7 +28,7 @@ class FullTracer:
     def record_calculation_start(
         self,
         variable: str,
-        period: Period,
+        period: str,
         branch_name: str = "default",
     ) -> None:
         self._simple_tracer.record_calculation_start(
@@ -40,7 +40,7 @@ class FullTracer:
     def _enter_calculation(
         self,
         variable: str,
-        period: Period,
+        period: str,
         branch_name: str = "default",
     ) -> None:
         new_node = tracers.TraceNode(
@@ -61,7 +61,7 @@ class FullTracer:
     def record_parameter_access(
         self,
         parameter: str,
-        period: Period,
+        period: str,
         branch_name: str,
         value: ArrayLike,
     ) -> None:

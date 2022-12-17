@@ -19,7 +19,7 @@ class SimpleTracer:
         self._stack = []
 
     def record_calculation_start(
-        self, variable: str, period: Period, branch_name: str = "default"
+        self, variable: str, period: str, branch_name: str = "default"
     ) -> None:
         self.stack.append(
             {"name": variable, "period": period, "branch_name": branch_name}

@@ -49,7 +49,7 @@ class Variable:
     entity: Entity
     """`Entity <https://openfisca.org/doc/key-concepts/person,_entities,_role.html>`_ the variable is defined for. For instance : ``Person``, ``Household``."""
 
-    definition_period: Period
+    definition_period: str
     """`Period <https://openfisca.org/doc/coding-the-legislation/35_periods.html>`_ the variable is defined for. Possible value: ``MONTH``, ``YEAR``, ``ETERNITY``."""
 
     formulas: List[Callable]

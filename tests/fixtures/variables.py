@@ -1,4 +1,5 @@
 from policyengine_core import periods
+from policyengine_core.entities import Entity
 from policyengine_core.variables import Variable
 
 

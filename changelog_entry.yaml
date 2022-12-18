@@ -1,4 +1,4 @@
 - bump: patch
   changes:
     added:
-      - Added black code style badge
+    - Fixed mypy errors in several files.

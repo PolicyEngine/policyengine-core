@@ -235,12 +235,15 @@
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">from</span> <span class="nn">array</span> <span class="kn">import</span> <span class="n">ArrayType</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Generic</span>
 
 <span class="kn">import</span> <span class="nn">h5py</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+<span class="kn">from</span> <span class="nn">policyengine_core.types</span> <span class="kn">import</span> <span class="n">ArrayLike</span>
 
 
 <div class="viewcode-block" id="Dataset"><a class="viewcode-back" href="../../../python_api/data.html#policyengine_core.data.Dataset">[docs]</a><span class="k">class</span> <span class="nc">Dataset</span><span class="p">:</span>
@@ -256,7 +259,7 @@
     <span class="sd">&quot;&quot;&quot;Whether the dataset is compatible with OpenFisca. If True, the dataset will be stored as a collection of arrays. If False, the dataset will be stored as a collection of tables.&quot;&quot;&quot;</span>
     <span class="n">data_format</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="sd">&quot;&quot;&quot;The format of the dataset. This can be either `Dataset.ARRAYS`, `Dataset.TIME_PERIOD_ARRAYS` or `Dataset.TABLES`. If `Dataset.ARRAYS`, the dataset is stored as a collection of arrays. If `Dataset.TIME_PERIOD_ARRAYS`, the dataset is stored as a collection of arrays, with one array per time period. If `Dataset.TABLES`, the dataset is stored as a collection of tables (DataFrames).&quot;&quot;&quot;</span>
-    <span class="n">folder_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">folder_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="sd">&quot;&quot;&quot;The path to the folder where the dataset is stored (in .h5 files).&quot;&quot;&quot;</span>
 
     <span class="c1"># Data formats</span>
@@ -397,13 +400,20 @@
             <span class="p">)</span></div>
 
 <div class="viewcode-block" id="Dataset.save_variable_values"><a class="viewcode-back" href="../../../python_api/data.html#policyengine_core.data.Dataset.save_variable_values">[docs]</a>    <span class="k">def</span> <span class="nf">save_variable_values</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">year</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">]]</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">year</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">]]</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Writes data values for variables in specific time periods.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            year (int): The year of the dataset to save.</span>
-<span class="sd">            data (Dict[str, Dict[str, np.array]]): The data to save. Should be nested in the form {variable_name: {time_period: values}}.</span>
+<span class="sd">            data (Dict[str, Dict[str, Sequence]): The data to save. Should be nested in the form {variable_name: {time_period: values}}.</span>
+
+<span class="sd">        &gt;&gt;&gt; example_data: Dict[str, Dict[str, Sequence]] = {</span>
+<span class="sd">        ...     &quot;employment_income&quot;: {</span>
+<span class="sd">        ...         &quot;2022&quot;: np.array([25000, 25000, 30000, 30000]),</span>
+<span class="sd">        ...     },</span>
+<span class="sd">        ... }</span>
+<span class="sd">        &gt;&gt;&gt; example_data[&quot;employment_income&quot;][&quot;2022&quot;] = [25000, 25000, 30000, 30000]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_format</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">TIME_PERIOD_ARRAYS</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>

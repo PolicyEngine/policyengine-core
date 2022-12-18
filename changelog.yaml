@@ -237,3 +237,8 @@
     changed:
     - Removed seemingly unused "N_" function
   date: 2022-12-17 21:51:59
+- bump: patch
+  changes:
+    added:
+    - Fixed mypy errors in several files.
+  date: 2022-12-18 06:07:32

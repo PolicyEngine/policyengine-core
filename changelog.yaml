@@ -242,3 +242,8 @@
     added:
     - Fixed mypy errors in several files.
   date: 2022-12-18 06:07:32
+- bump: patch
+  changes:
+    fixed:
+    - Fix incorrect type annotation in policyengine_core/variables/variable.py
+  date: 2022-12-18 06:12:52

@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    fixed:
-    - Fix incorrect type annotation in policyengine_core/variables/variable.py

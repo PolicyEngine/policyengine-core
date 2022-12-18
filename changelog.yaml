@@ -227,3 +227,18 @@
     fixed:
     - Fixed mypy errors in tests/core/test_entities.py
   date: 2022-12-17 09:23:10
+- bump: patch
+  changes:
+    fixed:
+    - Fixed mypy errors in policyengine_core/tracers/tracing_parameter_node_at_instant.py
+  date: 2022-12-17 16:36:53
+- bump: patch
+  changes:
+    changed:
+    - Removed seemingly unused "N_" function
+  date: 2022-12-17 21:51:59
+- bump: patch
+  changes:
+    added:
+    - Fixed mypy errors in several files.
+  date: 2022-12-18 06:07:32

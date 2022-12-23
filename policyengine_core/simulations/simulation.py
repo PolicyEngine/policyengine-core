@@ -436,7 +436,7 @@ class Simulation:
         Returns:
             ArrayLike: The calculated variable.
         """
-        if variable not in self.tax_benefit_system.variables:
+        if variable_name not in self.tax_benefit_system.variables:
             raise ValueError(f"Variable {variable_name} does not exist.")
         population = self.get_variable_population(variable_name)
         holder = population.get_holder(variable_name)

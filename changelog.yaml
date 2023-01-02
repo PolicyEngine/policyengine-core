@@ -247,3 +247,8 @@
     fixed:
     - Fix incorrect type annotation in policyengine_core/variables/variable.py
   date: 2022-12-18 06:12:52
+- bump: patch
+  changes:
+    changed:
+    - Pin all package versions.
+  date: 2023-01-02 20:40:49

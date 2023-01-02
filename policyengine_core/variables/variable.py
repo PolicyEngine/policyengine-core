@@ -110,10 +110,10 @@ class Variable:
     """Index of the variable in the module it is defined in."""
 
     adds: List[str] = None
-    """List of variables that are added to the variable."""
+    """List of variables that are added to the variable. Alternatively, can be a parameter name."""
 
     subtracts: List[str] = None
-    """List of variables that are subtracted from the variable."""
+    """List of variables that are subtracted from the variable. Alternatively, can be a parameter name."""
 
     uprating: str = None
     """Name of a parameter used to uprate the variable."""
@@ -236,7 +236,7 @@ class Variable:
             default=None,
         )
 
-        self.adds = self.set(attr, "adds", allowed_type=list)
+        self.adds = self.set(attr, "adds")
         self.subtracts = self.set(attr, "subtracts", allowed_type=list)
         self.uprating = self.set(attr, "uprating", allowed_type=str)
         self.hidden_input = self.set(

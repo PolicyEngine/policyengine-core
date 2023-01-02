@@ -239,7 +239,7 @@
 
 
 <div class="viewcode-block" id="instant"><a class="viewcode-back" href="../../../python_api/periods.html#policyengine_core.periods.helpers.instant">[docs]</a><span class="k">def</span> <span class="nf">instant</span><span class="p">(</span><span class="n">instant</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Return a new instant, aka a triple of integers (year, month, day).</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a new instant, aka a triple of integers (year, month, day).</span>
 
 <span class="sd">    &gt;&gt;&gt; instant(2014)</span>
 <span class="sd">    Instant((2014, 1, 1))</span>
@@ -301,7 +301,7 @@
 
 
 <div class="viewcode-block" id="period"><a class="viewcode-back" href="../../../python_api/periods.html#policyengine_core.periods.helpers.period">[docs]</a><span class="k">def</span> <span class="nf">period</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Return a new period, aka a triple (unit, start_instant, size).</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a new period, aka a triple (unit, start_instant, size).</span>
 
 <span class="sd">    &gt;&gt;&gt; period(&#39;2014&#39;)</span>
 <span class="sd">    Period((YEAR, Instant((2014, 1, 1)), 1))</span>
@@ -325,7 +325,7 @@
         <span class="k">return</span> <span class="n">periods</span><span class="o">.</span><span class="n">Period</span><span class="p">((</span><span class="n">config</span><span class="o">.</span><span class="n">DAY</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
 
     <span class="k">def</span> <span class="nf">parse_simple_period</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Parses simple periods respecting the ISO format, such as 2012 or 2015-03</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
@@ -424,7 +424,7 @@
 
 
 <span class="k">def</span> <span class="nf">key_period_size</span><span class="p">(</span><span class="n">period</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Defines a key in order to sort periods by length. It uses two aspects : first unit then size</span>
 
 <span class="sd">    :param period: an OpenFisca period</span>

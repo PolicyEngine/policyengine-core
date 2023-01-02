@@ -299,7 +299,7 @@
         <span class="n">input_dict</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
         <span class="n">simulation</span><span class="p">:</span> <span class="n">Simulation</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Simulation</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Build a simulation from ``input_dict``. Optionally overwrites an existing simulation.</span>
 
 <span class="sd">        This method uses :any:`build_from_entities` if entities are fully specified, or :any:`build_from_variables` if not.</span>
@@ -326,7 +326,7 @@
         <span class="n">input_dict</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
         <span class="n">simulation</span><span class="p">:</span> <span class="n">Simulation</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Simulation</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Build a simulation from a Python dict ``input_dict`` fully specifying entities.</span>
 
 <span class="sd">        Examples:</span>
@@ -430,7 +430,7 @@
         <span class="n">input_dict</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
         <span class="n">simulation</span><span class="p">:</span> <span class="n">Simulation</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Simulation</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Build a simulation from a Python dict ``input_dict`` describing variables values without expliciting entities.</span>
 
 <span class="sd">        This method uses :any:`build_default_simulation` to infer an entity structure</span>
@@ -464,7 +464,7 @@
         <span class="n">count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
         <span class="n">simulation</span><span class="p">:</span> <span class="n">Simulation</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Simulation</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Build a simulation where:</span>
 <span class="sd">            - There are ``count`` persons</span>
 <span class="sd">            - There are ``count`` instances of each group entity, containing one person</span>
@@ -545,7 +545,7 @@
 <div class="viewcode-block" id="SimulationBuilder.explicit_singular_entities"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.explicit_singular_entities">[docs]</a>    <span class="k">def</span> <span class="nf">explicit_singular_entities</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">tax_benefit_system</span><span class="p">:</span> <span class="s2">&quot;TaxBenefitSystem&quot;</span><span class="p">,</span> <span class="n">input_dict</span><span class="p">:</span> <span class="nb">dict</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Preprocess ``input_dict`` to explicit entities defined using the single-entity shortcut</span>
 
 <span class="sd">        Example:</span>
@@ -582,7 +582,7 @@
 <div class="viewcode-block" id="SimulationBuilder.add_person_entity"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.add_person_entity">[docs]</a>    <span class="k">def</span> <span class="nf">add_person_entity</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">:</span> <span class="n">Entity</span><span class="p">,</span> <span class="n">instances_json</span><span class="p">:</span> <span class="nb">dict</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Add the simulation&#39;s instances of the persons entity as described in ``instances_json``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">check_type</span><span class="p">(</span><span class="n">instances_json</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">])</span>
@@ -619,7 +619,7 @@
         <span class="n">entity</span><span class="p">:</span> <span class="n">Entity</span><span class="p">,</span>
         <span class="n">instances_json</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Add all instances of one of the model&#39;s entities as described in ``instances_json``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">check_type</span><span class="p">(</span><span class="n">instances_json</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">])</span>

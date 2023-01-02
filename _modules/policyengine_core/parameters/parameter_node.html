@@ -256,7 +256,7 @@
 
 
 <div class="viewcode-block" id="ParameterNode"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_node.ParameterNode">[docs]</a><span class="k">class</span> <span class="nc">ParameterNode</span><span class="p">(</span><span class="n">AtInstantLike</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A node in the legislation `parameter tree &lt;https://openfisca.org/doc/coding-the-legislation/legislation_parameters.html&gt;`_.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
@@ -265,7 +265,7 @@
     <span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># By default, no restriction on the keys</span>
 
     <span class="n">parent</span><span class="p">:</span> <span class="s2">&quot;ParameterNode&quot;</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="sd">&quot;&quot;&quot;The parent of the node, or None if the node is the root of the tree.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The parent of the node, or None if the node is the root of the tree.&quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -274,7 +274,7 @@
         <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Instantiate a ParameterNode either from a dict, (using `data`), or from a directory containing YAML files (using `directory_path`).</span>
 
 <span class="sd">        :param str name: Name of the node, eg &quot;taxes.some_tax&quot;.</span>
@@ -385,7 +385,7 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">add_child</span><span class="p">(</span><span class="n">child_name</span><span class="p">,</span> <span class="n">child</span><span class="p">)</span>
 
 <div class="viewcode-block" id="ParameterNode.merge"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_node.ParameterNode.merge">[docs]</a>    <span class="k">def</span> <span class="nf">merge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="s2">&quot;ParameterNode&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Merges another ParameterNode into the current node.</span>
 
 <span class="sd">        In case of child name conflict, the other node child will replace the current node child.</span>
@@ -394,7 +394,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">add_child</span><span class="p">(</span><span class="n">child_name</span><span class="p">,</span> <span class="n">child</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="ParameterNode.add_child"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_node.ParameterNode.add_child">[docs]</a>    <span class="k">def</span> <span class="nf">add_child</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">child</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="s2">&quot;ParameterNode&quot;</span><span class="p">,</span> <span class="n">Parameter</span><span class="p">]):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Add a new child to the node.</span>
 
 <span class="sd">        :param name: Name of the child that must be used to access that child. Should not contain anything that could interfere with the operator `.` (dot).</span>
@@ -430,7 +430,7 @@
         <span class="k">return</span> <span class="n">result</span>
 
 <div class="viewcode-block" id="ParameterNode.get_descendants"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_node.ParameterNode.get_descendants">[docs]</a>    <span class="k">def</span> <span class="nf">get_descendants</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="s2">&quot;ParameterNode&quot;</span><span class="p">,</span> <span class="n">Parameter</span><span class="p">]]:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return a generator containing all the parameters and nodes recursively contained in this `ParameterNode`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>

@@ -240,12 +240,12 @@
 
 
 <div class="viewcode-block" id="PrivateDataset"><a class="viewcode-back" href="../../../python_api/data.html#policyengine_core.data.PrivateDataset">[docs]</a><span class="k">class</span> <span class="nc">PrivateDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Private datasets are stored on Google Cloud Buckets (requires the Google Cloud CLI to be installed).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Private datasets are stored on Google Cloud Buckets (requires the Google Cloud CLI to be installed).&quot;&quot;&quot;</span>
 
     <span class="n">bucket_name</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="sd">&quot;&quot;&quot;The name of the Google Cloud Storage bucket to use for this dataset.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The name of the Google Cloud Storage bucket to use for this dataset.&quot;&quot;&quot;</span>
     <span class="n">filename_by_year</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="sd">&quot;&quot;&quot;A dictionary mapping years to filenames.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A dictionary mapping years to filenames.&quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="nf">_get_storage_bucket</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="kn">from</span> <span class="nn">google.cloud</span> <span class="kn">import</span> <span class="n">storage</span>
@@ -281,7 +281,7 @@
             <span class="p">)</span>
 
 <div class="viewcode-block" id="PrivateDataset.download"><a class="viewcode-back" href="../../../python_api/data.html#policyengine_core.data.PrivateDataset.download">[docs]</a>    <span class="k">def</span> <span class="nf">download</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">year</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Downloads the dataset from Google Cloud Storage for the given year. Overwrites any existing dataset for the year specified.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Downloads the dataset from Google Cloud Storage for the given year. Overwrites any existing dataset for the year specified.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            year (int): The year of the dataset to download.</span>
@@ -305,7 +305,7 @@
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Successfully downloaded and saved dataset.&quot;</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="PrivateDataset.upload"><a class="viewcode-back" href="../../../python_api/data.html#policyengine_core.data.PrivateDataset.upload">[docs]</a>    <span class="k">def</span> <span class="nf">upload</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">year</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Uploads the dataset to Google Cloud Storage for the given year.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Uploads the dataset to Google Cloud Storage for the given year.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            year (int): The year of the dataset to upload.</span>

@@ -257,7 +257,7 @@
     <span class="n">thresholds</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
     <span class="n">choices</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayType</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
-    <span class="sd">&quot;&quot;&quot;Makes a choice based on an input and thresholds.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Makes a choice based on an input and thresholds.</span>
 
 <span class="sd">    From a list of ``choices``, this function selects one of these values</span>
 <span class="sd">    based on a list of inputs, depending on the value of each ``input`` within</span>
@@ -304,7 +304,7 @@
 
 
 <div class="viewcode-block" id="concat"><a class="viewcode-back" href="../../../python_api/commons.html#policyengine_core.commons.formulas.concat">[docs]</a><span class="k">def</span> <span class="nf">concat</span><span class="p">(</span><span class="n">this</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">that</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">ArrayType</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-    <span class="sd">&quot;&quot;&quot;Concatenates the values of two arrays.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Concatenates the values of two arrays.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        this: An array to concatenate.</span>
@@ -341,7 +341,7 @@
     <span class="n">conditions</span><span class="p">:</span> <span class="n">ArrayType</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
     <span class="n">value_by_condition</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">T</span><span class="p">],</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayType</span><span class="p">[</span><span class="n">T</span><span class="p">]:</span>
-    <span class="sd">&quot;&quot;&quot;Mimicks a switch statement.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Mimicks a switch statement.</span>
 
 <span class="sd">    Given an array of conditions, returns an array of the same size,</span>
 <span class="sd">    replacing each condition item with the matching given value.</span>
@@ -384,7 +384,7 @@
     <span class="n">group_agg_func</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;add&quot;</span><span class="p">,</span>
     <span class="n">options</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Applies operations to lists of variables.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Applies operations to lists of variables.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        entity (Population): The entity population, as passed in formulas.</span>
@@ -441,7 +441,7 @@
     <span class="n">variables</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">options</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Sums a list of variables.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sums a list of variables.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        entity (Population): The entity population, as passed in formulas.</span>
@@ -461,7 +461,7 @@
 
 
 <span class="k">def</span> <span class="nf">aggr</span><span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">variables</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Sums a list of variables belonging to entity members.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sums a list of variables belonging to entity members.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        entity (Population): The entity population, as passed in formulas.</span>
@@ -491,7 +491,7 @@
     <span class="n">variables</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">options</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Performs a logical and operation on a list of variables.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Performs a logical and operation on a list of variables.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        entity (Population): The entity population, as passed in formulas.</span>
@@ -525,7 +525,7 @@
 
 
 <span class="k">def</span> <span class="nf">amount_over</span><span class="p">(</span><span class="n">amount</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span> <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Calculates the amounts over a threshold.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculates the amounts over a threshold.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        amount (ArrayLike): The amount to calculate for.</span>
@@ -543,7 +543,7 @@
 <span class="k">def</span> <span class="nf">amount_between</span><span class="p">(</span>
     <span class="n">amount</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span> <span class="n">threshold_1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">threshold_2</span><span class="p">:</span> <span class="nb">float</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Calculates the amounts between two thresholds.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculates the amounts between two thresholds.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        amount (ArrayLike): The amount to calculate for.</span>
@@ -567,7 +567,7 @@
 
 
 <span class="k">def</span> <span class="nf">is_in</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span> <span class="o">*</span><span class="n">targets</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Returns true if the value is in the list of targets.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns true if the value is in the list of targets.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        values (ArrayLike): The values to test.</span>
@@ -583,7 +583,7 @@
 <span class="k">def</span> <span class="nf">between</span><span class="p">(</span>
     <span class="n">values</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span> <span class="n">lower</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">upper</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">inclusive</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;both&quot;</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Returns true if values are between lower and upper.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns true if values are between lower and upper.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        values (ArrayLike): The input array.</span>
@@ -598,7 +598,7 @@
 
 
 <span class="k">def</span> <span class="nf">uprated</span><span class="p">(</span><span class="n">by</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">start_year</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2015</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Attaches a formula applying an uprating factor to input variables (going back as far as 2015).</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Attaches a formula applying an uprating factor to input variables (going back as far as 2015).</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        by (str, optional): The name of the parameter (under parameters.uprating). Defaults to None (no uprating applied).</span>
@@ -646,7 +646,7 @@
 
 
 <span class="k">def</span> <span class="nf">sum_of_variables</span><span class="p">(</span><span class="n">variables</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Returns a function that sums the values of a list of variables.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns a function that sums the values of a list of variables.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        variables (Union[List[str], str]): A list of variable names.</span>
@@ -678,7 +678,7 @@
     <span class="n">where</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
     <span class="n">fill</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Indexes into a object, but only when a condition is true. This improves</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Indexes into a object, but only when a condition is true. This improves</span>
 <span class="sd">    performance over `np.where`, which will index all values and then filter the result.</span>
 
 <span class="sd">    Args:</span>

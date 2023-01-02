@@ -240,7 +240,7 @@
 
 <div class="viewcode-block" id="Instant"><a class="viewcode-back" href="../../../python_api/periods.html#policyengine_core.periods.instant_.Instant">[docs]</a><span class="k">class</span> <span class="nc">Instant</span><span class="p">(</span><span class="nb">tuple</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Transform instant to to its Python representation as a string.</span>
 
 <span class="sd">        &gt;&gt;&gt; repr(instant(2014))</span>
@@ -255,7 +255,7 @@
         <span class="p">)</span>
 
     <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Transform instant to a string.</span>
 
 <span class="sd">        &gt;&gt;&gt; str(instant(2014))</span>
@@ -275,7 +275,7 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">date</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Convert instant to a date.</span>
 
 <span class="sd">        &gt;&gt;&gt; instant(2014).date</span>
@@ -294,7 +294,7 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">day</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Extract day from instant.</span>
 
 <span class="sd">        &gt;&gt;&gt; instant(2014).day</span>
@@ -308,7 +308,7 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">month</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Extract month from instant.</span>
 
 <span class="sd">        &gt;&gt;&gt; instant(2014).month</span>
@@ -321,7 +321,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
 
 <div class="viewcode-block" id="Instant.period"><a class="viewcode-back" href="../../../python_api/periods.html#policyengine_core.periods.instant_.Instant.period">[docs]</a>    <span class="k">def</span> <span class="nf">period</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unit</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Create a new period starting at instant.</span>
 
 <span class="sd">        &gt;&gt;&gt; instant(2014).period(&#39;month&#39;)</span>
@@ -342,7 +342,7 @@
         <span class="k">return</span> <span class="n">periods</span><span class="o">.</span><span class="n">Period</span><span class="p">((</span><span class="n">unit</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="Instant.offset"><a class="viewcode-back" href="../../../python_api/periods.html#policyengine_core.periods.instant_.Instant.offset">[docs]</a>    <span class="k">def</span> <span class="nf">offset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">unit</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Instant&quot;</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Increment (or decrement) the given instant with offset units.</span>
 
 <span class="sd">        &gt;&gt;&gt; instant(2014).offset(1, &#39;day&#39;)</span>
@@ -486,7 +486,7 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">year</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Extract year from instant.</span>
 
 <span class="sd">        &gt;&gt;&gt; instant(2014).year</span>

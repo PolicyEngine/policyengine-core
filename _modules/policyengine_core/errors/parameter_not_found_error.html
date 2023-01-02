@@ -232,12 +232,12 @@
         <article role="main">
           <h1>Source code for policyengine_core.errors.parameter_not_found_error</h1><div class="highlight"><pre>
 <div class="viewcode-block" id="ParameterNotFoundError"><a class="viewcode-back" href="../../../python_api/errors.html#policyengine_core.errors.parameter_not_found_error.ParameterNotFoundError">[docs]</a><span></span><span class="k">class</span> <span class="nc">ParameterNotFoundError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Exception raised when a parameter is not found in the parameters.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">instant_str</span><span class="p">,</span> <span class="n">variable_name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        :param name: Name of the parameter</span>
 <span class="sd">        :param instant_str: Instant where the parameter does not exist, in the format `YYYY-MM-DD`.</span>
 <span class="sd">        :param variable_name: If the parameter was queried during the computation of a variable, name of that variable.</span>

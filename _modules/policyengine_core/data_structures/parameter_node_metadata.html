@@ -237,31 +237,31 @@
 
 
 <div class="viewcode-block" id="VariableBreakdown"><a class="viewcode-back" href="../../../usage/parameters.html#policyengine_core.data_structures.VariableBreakdown">[docs]</a><span class="k">class</span> <span class="nc">VariableBreakdown</span><span class="p">(</span><span class="nb">str</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The name of a variable with Enum type, whose possible values form the child nodes in a parameter node.</span>
 <span class="sd">    &quot;&quot;&quot;</span></div>
 
 
 <div class="viewcode-block" id="DynamicBreakdown"><a class="viewcode-back" href="../../../usage/parameters.html#policyengine_core.data_structures.DynamicBreakdown">[docs]</a><span class="k">class</span> <span class="nc">DynamicBreakdown</span><span class="p">(</span><span class="nb">str</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A Python expression that evaluates to a list of child nodes in a parameter node.</span>
 <span class="sd">    &quot;&quot;&quot;</span></div>
 
 
 <div class="viewcode-block" id="ParameterNodeMetadata"><a class="viewcode-back" href="../../../usage/parameters.html#policyengine_core.data_structures.ParameterNodeMetadata">[docs]</a><span class="k">class</span> <span class="nc">ParameterNodeMetadata</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;A collection of related parameters.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A collection of related parameters.&quot;&quot;&quot;</span>
 
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="sd">&quot;&quot;&quot;The name identifying this parameter node and its children (unless overridden). Should be snake-case and Python-safe.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The name identifying this parameter node and its children (unless overridden). Should be snake-case and Python-safe.&quot;&quot;&quot;</span>
 
     <span class="n">label</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="sd">&quot;&quot;&quot;The display text to use for the parameter node and its children (unless overridden). Should be short and less than a full sentence.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The display text to use for the parameter node and its children (unless overridden). Should be short and less than a full sentence.&quot;&quot;&quot;</span>
 
     <span class="n">reference</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Reference</span><span class="p">]</span>
-    <span class="sd">&quot;&quot;&quot;A list of references that apply to all descendants of this node.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A list of references that apply to all descendants of this node.&quot;&quot;&quot;</span>
 
     <span class="n">breakdown</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">VariableBreakdown</span><span class="p">,</span> <span class="n">DynamicBreakdown</span><span class="p">]]</span>
-    <span class="sd">&quot;&quot;&quot;The sets defining the children, grandchildren and further descendants of this node.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The sets defining the children, grandchildren and further descendants of this node.</span>
 
 <span class="sd">    For example:</span>
 
@@ -276,7 +276,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">propagate_metadata_to_children</span><span class="p">:</span> <span class="nb">bool</span>
-    <span class="sd">&quot;&quot;&quot;Whether to propagate metadata to children of this node. This excludes `breakdown`.&quot;&quot;&quot;</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Whether to propagate metadata to children of this node. This excludes `breakdown`.&quot;&quot;&quot;</span></div>
 </pre></div>
         </article>
       </div>

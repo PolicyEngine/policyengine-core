@@ -303,7 +303,7 @@
             <span class="n">stack</span> <span class="o">=</span> <span class="n">traceback</span><span class="o">.</span><span class="n">extract_stack</span><span class="p">()</span>
             <span class="n">filename</span><span class="p">,</span> <span class="n">line_number</span><span class="p">,</span> <span class="n">function_name</span><span class="p">,</span> <span class="n">line_of_code</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">]</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">                </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">You requested computation of variable &quot;{}&quot;, but you did not specify on which period in &quot;{}:{}&quot;:</span>
 <span class="sd">    {}</span>
 <span class="sd">When you request the computation of a variable within a formula, you must always specify the period as the second parameter. The convention is to call this parameter &quot;period&quot;. For example:</span>
@@ -320,7 +320,7 @@
         <span class="n">period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">options</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Container</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate the variable ``variable_name`` for the entity and the period ``period``, using the variable formula if it exists.</span>
 
 <span class="sd">        Example:</span>
@@ -397,7 +397,7 @@
 
 <div class="viewcode-block" id="Population.has_role"><a class="viewcode-back" href="../../../python_api/populations.html#policyengine_core.populations.population.Population.has_role">[docs]</a>    <span class="nd">@projectors</span><span class="o">.</span><span class="n">projectable</span>
     <span class="k">def</span> <span class="nf">has_role</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">role</span><span class="p">:</span> <span class="n">Role</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Check if a person has a given role within its `GroupEntity`</span>
 
 <span class="sd">        Example:</span>
@@ -442,7 +442,7 @@
     <span class="k">def</span> <span class="nf">get_rank</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">:</span> <span class="n">Entity</span><span class="p">,</span> <span class="n">criteria</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span> <span class="n">condition</span><span class="p">:</span> <span class="n">ArrayLike</span> <span class="o">=</span> <span class="kc">True</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get the rank of a person within an entity according to a criteria.</span>
 <span class="sd">        The person with rank 0 has the minimum value of criteria.</span>
 <span class="sd">        If condition is specified, then the persons who don&#39;t respect it are not taken into account and their rank is -1.</span>

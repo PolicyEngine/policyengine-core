@@ -251,7 +251,7 @@
 
 
 <div class="viewcode-block" id="Holder"><a class="viewcode-back" href="../../../python_api/holders.html#policyengine_core.holders.holder.Holder">[docs]</a><span class="k">class</span> <span class="nc">Holder</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A holder keeps tracks of a variable values after they have been calculated, or set as an input.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
@@ -281,7 +281,7 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">_do_not_store</span> <span class="o">=</span> <span class="kc">True</span>
 
 <div class="viewcode-block" id="Holder.clone"><a class="viewcode-back" href="../../../python_api/holders.html#policyengine_core.holders.holder.Holder.clone">[docs]</a>    <span class="k">def</span> <span class="nf">clone</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">population</span><span class="p">:</span> <span class="s2">&quot;Population&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Holder&quot;</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Copy the holder just enough to be able to run a new simulation without modifying the original simulation.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">new</span> <span class="o">=</span> <span class="n">commons</span><span class="o">.</span><span class="n">empty_clone</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
@@ -320,7 +320,7 @@
 <div class="viewcode-block" id="Holder.delete_arrays"><a class="viewcode-back" href="../../../python_api/holders.html#policyengine_core.holders.holder.Holder.delete_arrays">[docs]</a>    <span class="k">def</span> <span class="nf">delete_arrays</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">branch_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;default&quot;</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        If ``period`` is ``None``, remove all known values of the variable.</span>
 
 <span class="sd">        If ``period`` is not ``None``, only remove all values for any period included in period (e.g. if period is &quot;2017&quot;, values for &quot;2017-01&quot;, &quot;2017-07&quot;, etc. would be removed)</span>
@@ -333,7 +333,7 @@
 <div class="viewcode-block" id="Holder.get_array"><a class="viewcode-back" href="../../../python_api/holders.html#policyengine_core.holders.holder.Holder.get_array">[docs]</a>    <span class="k">def</span> <span class="nf">get_array</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">,</span> <span class="n">branch_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;default&quot;</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get the value of the variable for the given period.</span>
 
 <span class="sd">        If the value is not known, return ``None``.</span>
@@ -356,7 +356,7 @@
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_disk_storage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">period</span><span class="p">,</span> <span class="n">branch_name</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Holder.get_memory_usage"><a class="viewcode-back" href="../../../python_api/holders.html#policyengine_core.holders.holder.Holder.get_memory_usage">[docs]</a>    <span class="k">def</span> <span class="nf">get_memory_usage</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get data about the virtual memory usage of the holder.</span>
 
 <span class="sd">        :returns: Memory usage data</span>
@@ -400,7 +400,7 @@
         <span class="k">return</span> <span class="n">usage</span></div>
 
 <div class="viewcode-block" id="Holder.get_known_periods"><a class="viewcode-back" href="../../../python_api/holders.html#policyengine_core.holders.holder.Holder.get_known_periods">[docs]</a>    <span class="k">def</span> <span class="nf">get_known_periods</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Period</span><span class="p">]:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get the list of periods the variable value is known for.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
@@ -413,7 +413,7 @@
         <span class="p">)</span></div>
 
 <div class="viewcode-block" id="Holder.get_known_branch_periods"><a class="viewcode-back" href="../../../python_api/holders.html#policyengine_core.holders.holder.Holder.get_known_branch_periods">[docs]</a>    <span class="k">def</span> <span class="nf">get_known_branch_periods</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Period</span><span class="p">]]:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get the list of periods the variable value is known for.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
@@ -428,7 +428,7 @@
 <div class="viewcode-block" id="Holder.set_input"><a class="viewcode-back" href="../../../python_api/holders.html#policyengine_core.holders.holder.Holder.set_input">[docs]</a>    <span class="k">def</span> <span class="nf">set_input</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">,</span> <span class="n">array</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span> <span class="n">branch_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;default&quot;</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Set a variable&#39;s value (``array``) for a given period (``period``)</span>
 
 <span class="sd">        :param array: the input value for the variable</span>
@@ -572,7 +572,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="n">period</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">branch_name</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Holder.default_array"><a class="viewcode-back" href="../../../python_api/holders.html#policyengine_core.holders.holder.Holder.default_array">[docs]</a>    <span class="k">def</span> <span class="nf">default_array</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return a new array of the appropriate length for the entity, filled with the variable default values.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 

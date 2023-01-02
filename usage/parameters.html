@@ -258,12 +258,12 @@
 <section id="parameter-values">
 <h2>Parameter values<a class="headerlink" href="#parameter-values" title="Permalink to this headline">#</a></h2>
 <p>Parameters are defined as a function of time, and are evaluated at a given instant. To achieve this, parameters must be defined with a <strong>value history</strong>: a set of time-dated values (where the value at a given instant is the last-set value before that instant). For example, the <code class="docutils literal notranslate"><span class="pre">child_benefit.basic.amount</span></code> parameter might have the following value history:</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">values</span><span class="p">:</span><span class="w"></span>
-<span class="w">   </span><span class="nt">2019-04-01</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20.00</span><span class="w"></span>
-<span class="w">   </span><span class="nt">2019-04-02</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">21.00</span><span class="w"></span>
-<span class="w">   </span><span class="nt">2019-04-03</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">22.00</span><span class="w"></span>
-<span class="w">   </span><span class="nt">2019-04-04</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">23.00</span><span class="w"></span>
-<span class="w">   </span><span class="nt">2019-04-05</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">24.00</span><span class="w"></span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">values</span><span class="p">:</span>
+<span class="w">   </span><span class="nt">2019-04-01</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20.00</span>
+<span class="w">   </span><span class="nt">2019-04-02</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">21.00</span>
+<span class="w">   </span><span class="nt">2019-04-03</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">22.00</span>
+<span class="w">   </span><span class="nt">2019-04-04</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">23.00</span>
+<span class="w">   </span><span class="nt">2019-04-05</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">24.00</span>
 </pre></div>
 </div>
 </section>
@@ -271,14 +271,14 @@
 <h2>Metadata<a class="headerlink" href="#metadata" title="Permalink to this headline">#</a></h2>
 <p>Each parameter (or parameter node) can also set <strong>metadata</strong>: data that describes the parameter, such as its name, description, and units. While the metadata for each parameter and node is freeform, using the schemas defined in <code class="docutils literal notranslate"><span class="pre">policyengine_core.data_structures</span></code> will ensure consistency between country packages, and better maintainability.</p>
 <p>Here’s an example metadata specification for the <code class="docutils literal notranslate"><span class="pre">child_benefit.basic.amount</span></code> parameter:</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">metadata</span><span class="p">:</span><span class="w"></span>
-<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">child_benefit</span><span class="w"></span>
-<span class="w">    </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Child Benefit</span><span class="w"></span>
-<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">The amount of Child Benefit paid per child.</span><span class="w"></span>
-<span class="w">    </span><span class="nt">unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">currency-GBP</span><span class="w"></span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">metadata</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">child_benefit</span>
+<span class="w">    </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Child Benefit</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">The amount of Child Benefit paid per child.</span>
+<span class="w">    </span><span class="nt">unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">currency-GBP</span>
 <span class="w">    </span><span class="nt">reference</span><span class="p">:</span><span class="w"> </span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GOV.UK | Child Benefit</span><span class="w"></span>
-<span class="w">          </span><span class="nt">href</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://www.gov.uk/government/publications/child-benefit-rates-and-thresholds/child-benefit-rates-and-thresholds</span><span class="w"></span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GOV.UK | Child Benefit</span>
+<span class="w">          </span><span class="nt">href</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://www.gov.uk/government/publications/child-benefit-rates-and-thresholds/child-benefit-rates-and-thresholds</span>
 </pre></div>
 </div>
 <section id="metadata-for-parameters">
@@ -348,11 +348,11 @@
 <span class="sig-name descname"><span class="pre">breakdown</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#policyengine_core.data_structures.parameter_node_metadata.VariableBreakdown" title="policyengine_core.data_structures.parameter_node_metadata.VariableBreakdown"><span class="pre">policyengine_core.data_structures.parameter_node_metadata.VariableBreakdown</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.data_structures.parameter_node_metadata.DynamicBreakdown" title="policyengine_core.data_structures.parameter_node_metadata.DynamicBreakdown"><span class="pre">policyengine_core.data_structures.parameter_node_metadata.DynamicBreakdown</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#policyengine_core.data_structures.ParameterNodeMetadata.breakdown" title="Permalink to this definition">#</a></dt>
 <dd><p>The sets defining the children, grandchildren and further descendants of this node.</p>
 <p>For example:</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">metadata</span><span class="p">:</span><span class="w"></span>
-<span class="w">    </span><span class="nt">breakdown</span><span class="p">:</span><span class="w"></span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">region</span><span class="w"> </span><span class="c1"># If `region` is an Enum-type variable with possible values `[ENGLAND, WALES]` then these children will be added.</span><span class="w"></span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">range(1, 7)</span><span class="w"> </span><span class="c1"># This code is `eval`uated to produce the list `[1, 2, 3, 4, 5, 6]` which are then added as grandchildren.</span><span class="w"></span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">True</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">False</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="c1"># This list is added as great-grandchildren (using the same `eval` method as above).</span><span class="w"></span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">metadata</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">breakdown</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">region</span><span class="w"> </span><span class="c1"># If `region` is an Enum-type variable with possible values `[ENGLAND, WALES]` then these children will be added.</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">range(1, 7)</span><span class="w"> </span><span class="c1"># This code is `eval`uated to produce the list `[1, 2, 3, 4, 5, 6]` which are then added as grandchildren.</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">True</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">False</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="c1"># This list is added as great-grandchildren (using the same `eval` method as above).</span>
 </pre></div>
 </div>
 </dd></dl>

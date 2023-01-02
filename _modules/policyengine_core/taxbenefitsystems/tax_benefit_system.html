@@ -285,7 +285,7 @@
 
 
 <div class="viewcode-block" id="TaxBenefitSystem"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem">[docs]</a><span class="k">class</span> <span class="nc">TaxBenefitSystem</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Represents the legislation.</span>
 
 <span class="sd">    It stores parameters (values defined for everyone) and variables (values defined for some given entity e.g. a person).</span>
@@ -310,15 +310,15 @@
     <span class="c1"># The following properties should be specified by country packages.</span>
 
     <span class="n">entities</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Entity</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="sd">&quot;&quot;&quot;The entities of the tax and benefit system.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The entities of the tax and benefit system.&quot;&quot;&quot;</span>
     <span class="n">variables_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="sd">&quot;&quot;&quot;Directory containing the Python files defining the variables of the tax and benefit system.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Directory containing the Python files defining the variables of the tax and benefit system.&quot;&quot;&quot;</span>
     <span class="n">parameters_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="sd">&quot;&quot;&quot;Directory containing the YAML parameter tree.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Directory containing the YAML parameter tree.&quot;&quot;&quot;</span>
     <span class="n">auto_carry_over_input_variables</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="sd">&quot;&quot;&quot;Whether to automatically carry over input variables when calculating a variable for a period different from the period of the input variables.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Whether to automatically carry over input variables when calculating a variable for a period different from the period of the input variables.&quot;&quot;&quot;</span>
     <span class="n">basic_inputs</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="sd">&quot;&quot;&quot;Short list of basic inputs to get medium accuracy.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Short list of basic inputs to get medium accuracy.&quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entities</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Entity</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">entities</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -402,7 +402,7 @@
         <span class="k">return</span> <span class="n">variable</span>
 
 <div class="viewcode-block" id="TaxBenefitSystem.add_variable"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.add_variable">[docs]</a>    <span class="k">def</span> <span class="nf">add_variable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="n">Variable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Variable</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Adds an OpenFisca variable to the tax and benefit system.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Adds an OpenFisca variable to the tax and benefit system.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            variable: The variable to add. Must be a subclass of Variable.</span>
@@ -414,7 +414,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_variable</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">update</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="TaxBenefitSystem.replace_variable"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.replace_variable">[docs]</a>    <span class="k">def</span> <span class="nf">replace_variable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Variable</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Replaces an existing OpenFisca variable in the tax and benefit system by a new one.</span>
 
 <span class="sd">        The new variable must have the same name than the replaced one.</span>
@@ -429,7 +429,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">load_variable</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">update</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="TaxBenefitSystem.update_variable"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.update_variable">[docs]</a>    <span class="k">def</span> <span class="nf">update_variable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Variable</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Updates an existing OpenFisca variable in the tax and benefit system.</span>
 
 <span class="sd">        All attributes of the updated variable that are not explicitely overridden by the new ``variable`` will stay unchanged.</span>
@@ -443,7 +443,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_variable</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">update</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="TaxBenefitSystem.add_variables_from_file"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.add_variables_from_file">[docs]</a>    <span class="k">def</span> <span class="nf">add_variables_from_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Adds all OpenFisca variables contained in a given file to the tax and benefit system.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
@@ -516,7 +516,7 @@
             <span class="k">raise</span></div>
 
 <div class="viewcode-block" id="TaxBenefitSystem.add_variable_metadata_from_folder"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.add_variable_metadata_from_folder">[docs]</a>    <span class="k">def</span> <span class="nf">add_variable_metadata_from_folder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Adds metadata from a given README.md file to the tax and benefit system.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
@@ -548,7 +548,7 @@
             <span class="k">raise</span></div>
 
 <div class="viewcode-block" id="TaxBenefitSystem.add_variables_from_directory"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.add_variables_from_directory">[docs]</a>    <span class="k">def</span> <span class="nf">add_variables_from_directory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">directory</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Recursively explores a directory, and adds all OpenFisca variables found there to the tax and benefit system.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">py_files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="s2">&quot;*.py&quot;</span><span class="p">))</span>
@@ -569,7 +569,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">add_variables_from_directory</span><span class="p">(</span><span class="n">subdirectory</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="TaxBenefitSystem.add_variables"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.add_variables">[docs]</a>    <span class="k">def</span> <span class="nf">add_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">variables</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Type</span><span class="p">[</span><span class="n">Variable</span><span class="p">]]):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Adds a list of OpenFisca Variables to the `TaxBenefitSystem`.</span>
 
 <span class="sd">        See also :any:`add_variable`</span>
@@ -578,7 +578,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">add_variable</span><span class="p">(</span><span class="n">variable</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="TaxBenefitSystem.load_extension"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.load_extension">[docs]</a>    <span class="k">def</span> <span class="nf">load_extension</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">extension</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Loads an extension to the tax and benefit system.</span>
 
 <span class="sd">        :param str extension: The extension to load. Can be an absolute path pointing to an extension directory, or the name of an OpenFisca extension installed as a pip package.</span>
@@ -608,7 +608,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">extension_parameters</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="TaxBenefitSystem.apply_reform"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.apply_reform">[docs]</a>    <span class="k">def</span> <span class="nf">apply_reform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reform_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;TaxBenefitSystem&quot;</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Generates a new tax and benefit system applying a reform to the tax and benefit system.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generates a new tax and benefit system applying a reform to the tax and benefit system.</span>
 
 <span class="sd">        The current tax and benefit system is **not** mutated.</span>
 
@@ -661,7 +661,7 @@
 <div class="viewcode-block" id="TaxBenefitSystem.get_variable"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.get_variable">[docs]</a>    <span class="k">def</span> <span class="nf">get_variable</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">check_existence</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Variable</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get a variable from the tax and benefit system.</span>
 
 <span class="sd">        :param variable_name: Name of the requested variable.</span>
@@ -674,7 +674,7 @@
         <span class="k">return</span> <span class="n">found</span></div>
 
 <div class="viewcode-block" id="TaxBenefitSystem.neutralize_variable"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.neutralize_variable">[docs]</a>    <span class="k">def</span> <span class="nf">neutralize_variable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Neutralizes an OpenFisca variable existing in the tax and benefit system.</span>
 
 <span class="sd">        A neutralized variable always returns its default value when computed.</span>
@@ -696,7 +696,7 @@
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">path_to_yaml_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Loads the legislation parameter for a directory containing YAML parameters files.</span>
 
 <span class="sd">        :param path_to_yaml_dir: Absolute path towards the YAML parameter directory.</span>
@@ -727,7 +727,7 @@
 <div class="viewcode-block" id="TaxBenefitSystem.get_parameters_at_instant"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.get_parameters_at_instant">[docs]</a>    <span class="k">def</span> <span class="nf">get_parameters_at_instant</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">instant</span><span class="p">:</span> <span class="n">Instant</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParameterNodeAtInstant</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get the parameters of the legislation at a given instant</span>
 
 <span class="sd">        :param instant: :obj:`str` of the format &#39;YYYY-MM-DD&#39; or :class:`.Instant` instance.</span>
@@ -754,7 +754,7 @@
         <span class="k">return</span> <span class="n">parameters_at_instant</span></div>
 
 <div class="viewcode-block" id="TaxBenefitSystem.get_package_metadata"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.get_package_metadata">[docs]</a>    <span class="k">def</span> <span class="nf">get_package_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Gets metatada relative to the country package the tax and benefit system is built from.</span>
 
 <span class="sd">        :returns: Country package metadata</span>
@@ -808,7 +808,7 @@
         <span class="p">}</span></div>
 
 <div class="viewcode-block" id="TaxBenefitSystem.get_variables"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.get_variables">[docs]</a>    <span class="k">def</span> <span class="nf">get_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">:</span> <span class="n">Entity</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Gets all variables contained in a tax and benefit system.</span>
 
 <span class="sd">        :param Entity entity: If set, returns only the variable defined for the given entity.</span>
@@ -866,7 +866,7 @@
 <div class="viewcode-block" id="TaxBenefitSystem.modify_parameters"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.modify_parameters">[docs]</a>    <span class="k">def</span> <span class="nf">modify_parameters</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">modifier_function</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">ParameterNode</span><span class="p">],</span> <span class="n">ParameterNode</span><span class="p">]</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Make modifications on the parameters of the legislation.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Make modifications on the parameters of the legislation.</span>
 
 <span class="sd">        Call this function in `apply()` if the reform asks for legislation parameter modifications.</span>
 

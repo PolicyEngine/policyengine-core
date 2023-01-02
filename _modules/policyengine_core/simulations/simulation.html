@@ -266,30 +266,30 @@
 
 
 <div class="viewcode-block" id="Simulation"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation">[docs]</a><span class="k">class</span> <span class="nc">Simulation</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Represents a simulation, and handles the calculation logic</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">default_tax_benefit_system</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="s2">&quot;TaxBenefitSystem&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="sd">&quot;&quot;&quot;The default tax-benefit system class to use if none is provided.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The default tax-benefit system class to use if none is provided.&quot;&quot;&quot;</span>
 
     <span class="n">default_tax_benefit_system_instance</span><span class="p">:</span> <span class="s2">&quot;TaxBenefitSystem&quot;</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="sd">&quot;&quot;&quot;The default tax-benefit system instance to use if none is provided. This requires that the tax-benefit system is initialised when importing a country package. This will slow down the import, but may speed up individual simulations.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The default tax-benefit system instance to use if none is provided. This requires that the tax-benefit system is initialised when importing a country package. This will slow down the import, but may speed up individual simulations.&quot;&quot;&quot;</span>
 
     <span class="n">default_dataset</span><span class="p">:</span> <span class="n">Dataset</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="sd">&quot;&quot;&quot;The default dataset class to use if none is provided.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The default dataset class to use if none is provided.&quot;&quot;&quot;</span>
 
     <span class="n">default_dataset_year</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="sd">&quot;&quot;&quot;The default dataset year to use if none is provided.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The default dataset year to use if none is provided.&quot;&quot;&quot;</span>
 
     <span class="n">default_role</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="sd">&quot;&quot;&quot;The default role to assign people to groups if none is provided.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The default role to assign people to groups if none is provided.&quot;&quot;&quot;</span>
 
     <span class="n">default_input_period</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="sd">&quot;&quot;&quot;The default period to use when inputting variables.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The default period to use when inputting variables.&quot;&quot;&quot;</span>
 
     <span class="n">default_calculation_period</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="sd">&quot;&quot;&quot;The default period to calculate for if none is provided.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The default period to calculate for if none is provided.&quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -383,7 +383,7 @@
 <div class="viewcode-block" id="Simulation.build_from_populations"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.build_from_populations">[docs]</a>    <span class="k">def</span> <span class="nf">build_from_populations</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">populations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Population</span><span class="p">]</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;This method of initialisation requires the populations to be pre-initialised.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;This method of initialisation requires the populations to be pre-initialised.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            populations (Dict[str, Population]): A dictionary of populations, indexed by entity key.</span>
@@ -400,7 +400,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">create_shortcuts</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="Simulation.build_from_dataset"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.build_from_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">build_from_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Build a simulation from a dataset.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build a simulation from a dataset.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">build_from_populations</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">instantiate_entities</span><span class="p">()</span>
         <span class="p">)</span>
@@ -506,7 +506,7 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">data_storage_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Temporary folder used to store intermediate calculation data in case the memory is saturated</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_storage_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -528,7 +528,7 @@
         <span class="n">map_to</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">decode_enums</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Calculate ``variable_name`` for ``period``.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate ``variable_name`` for ``period``.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            variable_name (str): The name of the variable to calculate.</span>
@@ -571,7 +571,7 @@
         <span class="n">target_entity</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">how</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Maps values from one entity to another.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Maps values from one entity to another.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            arr (np.array): The values in their original position.</span>
@@ -630,7 +630,7 @@
         <span class="n">period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">map_to</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Calculate ``variable_names`` for ``period``.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate ``variable_names`` for ``period``.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            variable_names (List[str]): A list of variable names to calculate.</span>
@@ -659,7 +659,7 @@
     <span class="k">def</span> <span class="nf">_calculate</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate the variable ``variable_name`` for the period ``period``, using the variable formula if it exists.</span>
 
 <span class="sd">        Args:</span>
@@ -864,7 +864,7 @@
 <div class="viewcode-block" id="Simulation.calculate_output"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.calculate_output">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_output</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate the value of a variable using the ``calculate_output`` attribute of the variable.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
@@ -887,7 +887,7 @@
     <span class="k">def</span> <span class="nf">_run_formula</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">population</span><span class="p">:</span> <span class="n">Population</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Find the ``variable`` formula for the given ``period`` if it exists, and apply it to ``population``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
@@ -924,7 +924,7 @@
     <span class="k">def</span> <span class="nf">_check_period_consistency</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="n">Variable</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Check that a period matches the variable definition_period</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">definition_period</span> <span class="o">==</span> <span class="n">periods</span><span class="o">.</span><span class="n">ETERNITY</span><span class="p">:</span>
@@ -977,7 +977,7 @@
     <span class="c1"># ----- Handle circular dependencies in a calculation ----- #</span>
 
     <span class="k">def</span> <span class="nf">_check_for_cycle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Raise an exception in the case of a circular definition, where evaluating a variable for</span>
 <span class="sd">        a given period loops around to evaluating the same variable/period pair. Also guards, as</span>
 <span class="sd">        a heuristic, against &quot;quasicircles&quot;, where the evaluation of a variable at a period involves</span>
@@ -1040,7 +1040,7 @@
     <span class="c1"># ----- Methods to access stored values ----- #</span>
 
 <div class="viewcode-block" id="Simulation.get_array"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_array">[docs]</a>    <span class="k">def</span> <span class="nf">get_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return the value of ``variable_name`` for ``period``, if this value is alreay in the cache (if it has been set as an input or previously calculated).</span>
 
 <span class="sd">        Unlike :meth:`.calculate`, this method *does not* trigger calculations and *does not* use any formula.</span>
@@ -1052,7 +1052,7 @@
         <span class="p">)</span></div>
 
 <div class="viewcode-block" id="Simulation.get_holder"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_holder">[docs]</a>    <span class="k">def</span> <span class="nf">get_holder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Holder</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get the :obj:`.Holder` associated with the variable ``variable_name`` for the simulation</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_variable_population</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span><span class="o">.</span><span class="n">get_holder</span><span class="p">(</span>
@@ -1060,7 +1060,7 @@
         <span class="p">)</span></div>
 
 <div class="viewcode-block" id="Simulation.get_memory_usage"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_memory_usage">[docs]</a>    <span class="k">def</span> <span class="nf">get_memory_usage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variables</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get data about the virtual memory usage of the simulation</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">result</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">total_nb_bytes</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">by_variable</span><span class="o">=</span><span class="p">{})</span>
@@ -1073,7 +1073,7 @@
     <span class="c1"># ----- Misc ----- #</span>
 
 <div class="viewcode-block" id="Simulation.delete_arrays"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.delete_arrays">[docs]</a>    <span class="k">def</span> <span class="nf">delete_arrays</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Delete a variable&#39;s value for a given period</span>
 
 <span class="sd">        :param variable: the variable to be set</span>
@@ -1102,7 +1102,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">get_holder</span><span class="p">(</span><span class="n">variable</span><span class="p">)</span><span class="o">.</span><span class="n">delete_arrays</span><span class="p">(</span><span class="n">period</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Simulation.get_known_periods"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_known_periods">[docs]</a>    <span class="k">def</span> <span class="nf">get_known_periods</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Period</span><span class="p">]:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get a list variable&#39;s known period, i.e. the periods where a value has been initialized and</span>
 
 <span class="sd">        :param variable: the variable to be set</span>
@@ -1121,7 +1121,7 @@
 <div class="viewcode-block" id="Simulation.set_input"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.set_input">[docs]</a>    <span class="k">def</span> <span class="nf">set_input</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">ArrayLike</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Set a variable&#39;s value for a given period</span>
 
 <span class="sd">        :param variable: the variable to be set</span>
@@ -1174,7 +1174,7 @@
         <span class="p">}</span></div>
 
 <div class="viewcode-block" id="Simulation.clone"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.clone">[docs]</a>    <span class="k">def</span> <span class="nf">clone</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">debug</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">trace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Simulation&quot;</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Copy the simulation just enough to be able to run the copy without modifying the original simulation</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">new</span> <span class="o">=</span> <span class="n">commons</span><span class="o">.</span><span class="n">empty_clone</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
@@ -1203,7 +1203,7 @@
         <span class="k">return</span> <span class="n">new</span></div>
 
 <div class="viewcode-block" id="Simulation.get_branch"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_branch">[docs]</a>    <span class="k">def</span> <span class="nf">get_branch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;branch&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Simulation&quot;</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Create a clone of this simulation, whose calculations are traced in the original.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a clone of this simulation, whose calculations are traced in the original.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            name (str, optional): Name of the branch. Defaults to &quot;branch&quot;.</span>
@@ -1225,7 +1225,7 @@
 <div class="viewcode-block" id="Simulation.derivative"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.derivative">[docs]</a>    <span class="k">def</span> <span class="nf">derivative</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">wrt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">delta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Compute the derivative of a variable w.r.t another variable.</span>
 
 <span class="sd">        Args:</span>

@@ -269,7 +269,7 @@
         <span class="n">factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
         <span class="n">round_base_decimals</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">numpy</span><span class="o">.</span><span class="n">float_</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Compute the tax amount for the given tax bases by applying a taxscale.</span>
 
 <span class="sd">        :param ndarray tax_base: Array of the tax bases.</span>
@@ -352,7 +352,7 @@
         <span class="n">factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
         <span class="n">round_base_decimals</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">numpy</span><span class="o">.</span><span class="n">float_</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Compute the marginal tax rates relevant for the given tax bases.</span>
 
 <span class="sd">        :param ndarray tax_base: Array of the tax bases.</span>
@@ -384,7 +384,7 @@
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">bracket_indice</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">int_</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">numpy</span><span class="o">.</span><span class="n">float_</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Compute the relevant tax rates for the given bracket indices.</span>
 
 <span class="sd">        :param: ndarray bracket_indice: Array of the bracket indices.</span>
@@ -419,7 +419,7 @@
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">tax_base</span><span class="p">:</span> <span class="n">NumericalArray</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">numpy</span><span class="o">.</span><span class="n">float_</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Compute the relevant tax rates for the given tax bases.</span>
 
 <span class="sd">        :param: ndarray tax_base: Array of the tax bases.</span>
@@ -442,7 +442,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">rate_from_bracket_indice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bracket_indices</span><span class="p">(</span><span class="n">tax_base</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="MarginalRateTaxScale.inverse"><a class="viewcode-back" href="../../../python_api/taxscales.html#policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.inverse">[docs]</a>    <span class="k">def</span> <span class="nf">inverse</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MarginalRateTaxScale</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns a new instance of MarginalRateTaxScale.</span>
 
 <span class="sd">        Invert a taxscale:</span>
@@ -489,7 +489,7 @@
         <span class="k">return</span> <span class="n">inverse</span></div>
 
 <div class="viewcode-block" id="MarginalRateTaxScale.scale_tax_scales"><a class="viewcode-back" href="../../../python_api/taxscales.html#policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.scale_tax_scales">[docs]</a>    <span class="k">def</span> <span class="nf">scale_tax_scales</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">factor</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MarginalRateTaxScale</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Scale all the MarginalRateTaxScales in the node.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Scale all the MarginalRateTaxScales in the node.&quot;&quot;&quot;</span>
         <span class="n">scaled_tax_scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">scaled_tax_scale</span><span class="o">.</span><span class="n">multiply_thresholds</span><span class="p">(</span><span class="n">factor</span><span class="p">)</span></div>
 

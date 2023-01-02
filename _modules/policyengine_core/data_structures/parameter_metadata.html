@@ -237,69 +237,69 @@
 
 
 <div class="viewcode-block" id="UpratingIndex"><a class="viewcode-back" href="../../../usage/parameters.html#policyengine_core.data_structures.UpratingIndex">[docs]</a><span class="k">class</span> <span class="nc">UpratingIndex</span><span class="p">(</span><span class="nb">str</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The name of a parameter whose values are used to uprate a parameter node.</span>
 <span class="sd">    &quot;&quot;&quot;</span></div>
 
 
 <div class="viewcode-block" id="SelfUprating"><a class="viewcode-back" href="../../../usage/parameters.html#policyengine_core.data_structures.SelfUprating">[docs]</a><span class="k">class</span> <span class="nc">SelfUprating</span><span class="p">(</span><span class="n">UpratingIndex</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A special value (&quot;self&quot;) that indicates that the parameter node should be uprated based on the fixed rate increase between two points in its history.</span>
 <span class="sd">    &quot;&quot;&quot;</span></div>
 
 
 <div class="viewcode-block" id="UpratingRoundingConfig"><a class="viewcode-back" href="../../../usage/parameters.html#policyengine_core.data_structures.UpratingRoundingConfig">[docs]</a><span class="k">class</span> <span class="nc">UpratingRoundingConfig</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
     <span class="nb">type</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="sd">&quot;&quot;&quot;Either &#39;nearest&#39;, &#39;upwards&#39; or &#39;downwards&#39;.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Either &#39;nearest&#39;, &#39;upwards&#39; or &#39;downwards&#39;.&quot;&quot;&quot;</span>
 
     <span class="n">interval</span><span class="p">:</span> <span class="nb">float</span>
-    <span class="sd">&quot;&quot;&quot;The interval to round to.&quot;&quot;&quot;</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The interval to round to.&quot;&quot;&quot;</span></div>
 
 
 <div class="viewcode-block" id="UpratingSchema"><a class="viewcode-back" href="../../../usage/parameters.html#policyengine_core.data_structures.UpratingSchema">[docs]</a><span class="k">class</span> <span class="nc">UpratingSchema</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A schema for uprating a parameter node.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">parameter</span><span class="p">:</span> <span class="n">UpratingIndex</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The name of the parameter whose values are used to uprate the parameter node.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">start_instant</span><span class="p">:</span> <span class="nb">int</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The instant to add uprated values after.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="nb">type</span><span class="p">:</span> <span class="n">UpratingRoundingConfig</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The rounding configuration to use when uprating.</span>
 <span class="sd">    &quot;&quot;&quot;</span></div>
 
 
 <div class="viewcode-block" id="ParameterMetadata"><a class="viewcode-back" href="../../../usage/parameters.html#policyengine_core.data_structures.ParameterMetadata">[docs]</a><span class="k">class</span> <span class="nc">ParameterMetadata</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;A single legislative value that can change over time.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A single legislative value that can change over time.&quot;&quot;&quot;</span>
 
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="sd">&quot;&quot;&quot;The name identifying this parameter. Should be snake-case and Python-safe.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The name identifying this parameter. Should be snake-case and Python-safe.&quot;&quot;&quot;</span>
 
     <span class="n">label</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="sd">&quot;&quot;&quot;The display text to use for the parameter. Should be short and less than a full sentence.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The display text to use for the parameter. Should be short and less than a full sentence.&quot;&quot;&quot;</span>
 
     <span class="n">description</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="sd">&quot;&quot;&quot;A longer description of the parameter.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A longer description of the parameter.&quot;&quot;&quot;</span>
 
     <span class="n">documentation</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="sd">&quot;&quot;&quot;Any relevant information about the parameter&#39;s *implementation* (not its legislative meaning- use the description for that field).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Any relevant information about the parameter&#39;s *implementation* (not its legislative meaning- use the description for that field).&quot;&quot;&quot;</span>
 
     <span class="n">reference</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Reference</span><span class="p">]</span>
-    <span class="sd">&quot;&quot;&quot;A list of references to legislation or other documents that define this parameter.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A list of references to legislation or other documents that define this parameter.&quot;&quot;&quot;</span>
 
     <span class="n">unit</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="sd">&quot;&quot;&quot;The real-world meaning of a particular value.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The real-world meaning of a particular value.&quot;&quot;&quot;</span>
 
     <span class="n">uprating</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">UpratingIndex</span><span class="p">,</span> <span class="n">UpratingSchema</span><span class="p">]</span>
-    <span class="sd">&quot;&quot;&quot;The schema for uprating this parameter.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The schema for uprating this parameter.</span>
 
 <span class="sd">    The process for uprating parameter $X$ based on parameter $Y$ is as follows:</span>
 <span class="sd">    </span>

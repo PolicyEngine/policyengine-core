@@ -662,15 +662,41 @@ class Simulation:
         if formula is None:
             values = None
             if variable.adds is not None:
+                if isinstance(variable.adds, str):
+                    try:
+                        adds_parameter = get_parameter(
+                            self.tax_benefit_system.parameters,
+                            variable.adds,
+                        )
+                    except:
+                        raise ValueError(
+                            f"In the variable '{variable.name}', the 'adds' attribute is a string '{variable.adds}' that does not match any parameter."
+                        )
+                    adds_list = adds_parameter(period.start)
+                else:
+                    adds_list = variable.adds
                 values = 0
-                for added_variable in variable.adds:
+                for added_variable in adds_list:
                     values = values + self.calculate(
                         added_variable, period, map_to=variable.entity.key
                     )
             if variable.subtracts is not None:
+                if isinstance(variable.subtracts, str):
+                    try:
+                        subtracts_parameter = get_parameter(
+                            self.tax_benefit_system.parameters,
+                            variable.subtracts,
+                        )
+                    except:
+                        raise ValueError(
+                            f"In the variable '{variable.name}', the 'subtracts' attribute is a string '{variable.subtracts}' that does not match any parameter."
+                        )
+                    subtracts_list = subtracts_parameter(period.start)
+                else:
+                    subtracts_list = variable.subtracts
                 if values is None:
                     values = 0
-                for subtracted_variable in variable.subtracts:
+                for subtracted_variable in subtracts_list:
                     values = values - self.calculate(
                         subtracted_variable, period, map_to=variable.entity.key
                     )

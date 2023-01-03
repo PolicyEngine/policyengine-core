@@ -895,15 +895,41 @@
         <span class="k">if</span> <span class="n">formula</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">values</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">adds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">adds</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">adds_parameter</span> <span class="o">=</span> <span class="n">get_parameter</span><span class="p">(</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">parameters</span><span class="p">,</span>
+                            <span class="n">variable</span><span class="o">.</span><span class="n">adds</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="k">except</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;In the variable &#39;</span><span class="si">{</span><span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;, the &#39;adds&#39; attribute is a string &#39;</span><span class="si">{</span><span class="n">variable</span><span class="o">.</span><span class="n">adds</span><span class="si">}</span><span class="s2">&#39; that does not match any parameter.&quot;</span>
+                        <span class="p">)</span>
+                    <span class="n">adds_list</span> <span class="o">=</span> <span class="n">adds_parameter</span><span class="p">(</span><span class="n">period</span><span class="o">.</span><span class="n">start</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">adds_list</span> <span class="o">=</span> <span class="n">variable</span><span class="o">.</span><span class="n">adds</span>
                 <span class="n">values</span> <span class="o">=</span> <span class="mi">0</span>
-                <span class="k">for</span> <span class="n">added_variable</span> <span class="ow">in</span> <span class="n">variable</span><span class="o">.</span><span class="n">adds</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">added_variable</span> <span class="ow">in</span> <span class="n">adds_list</span><span class="p">:</span>
                     <span class="n">values</span> <span class="o">=</span> <span class="n">values</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span>
                         <span class="n">added_variable</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">map_to</span><span class="o">=</span><span class="n">variable</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span>
                     <span class="p">)</span>
             <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">subtracts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">subtracts</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">subtracts_parameter</span> <span class="o">=</span> <span class="n">get_parameter</span><span class="p">(</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">parameters</span><span class="p">,</span>
+                            <span class="n">variable</span><span class="o">.</span><span class="n">subtracts</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="k">except</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;In the variable &#39;</span><span class="si">{</span><span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;, the &#39;subtracts&#39; attribute is a string &#39;</span><span class="si">{</span><span class="n">variable</span><span class="o">.</span><span class="n">subtracts</span><span class="si">}</span><span class="s2">&#39; that does not match any parameter.&quot;</span>
+                        <span class="p">)</span>
+                    <span class="n">subtracts_list</span> <span class="o">=</span> <span class="n">subtracts_parameter</span><span class="p">(</span><span class="n">period</span><span class="o">.</span><span class="n">start</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">subtracts_list</span> <span class="o">=</span> <span class="n">variable</span><span class="o">.</span><span class="n">subtracts</span>
                 <span class="k">if</span> <span class="n">values</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="n">values</span> <span class="o">=</span> <span class="mi">0</span>
-                <span class="k">for</span> <span class="n">subtracted_variable</span> <span class="ow">in</span> <span class="n">variable</span><span class="o">.</span><span class="n">subtracts</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">subtracted_variable</span> <span class="ow">in</span> <span class="n">subtracts_list</span><span class="p">:</span>
                     <span class="n">values</span> <span class="o">=</span> <span class="n">values</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span>
                         <span class="n">subtracted_variable</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">map_to</span><span class="o">=</span><span class="n">variable</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span>
                     <span class="p">)</span>

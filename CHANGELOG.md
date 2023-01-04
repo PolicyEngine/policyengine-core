@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.2] - 2023-01-04 13:05:49
+
+### Added
+
+- Error message for an unknown variable.
+
 ## [1.11.1] - 2023-01-04 12:51:00
 
 ### Added
@@ -321,6 +327,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[1.11.2]: https://github.com/PolicyEngine/policyengine-core/compare/1.11.1...1.11.2
 [1.11.1]: https://github.com/PolicyEngine/policyengine-core/compare/1.11.0...1.11.1
 [1.11.0]: https://github.com/PolicyEngine/policyengine-core/compare/1.10.24...1.11.0
 [1.10.24]: https://github.com/PolicyEngine/policyengine-core/compare/1.10.23...1.10.24

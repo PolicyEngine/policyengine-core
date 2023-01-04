@@ -239,6 +239,7 @@
 <span class="kn">import</span> <span class="nn">inspect</span>
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">yaml</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">traceback</span>
@@ -319,6 +320,8 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Whether to automatically carry over input variables when calculating a variable for a period different from the period of the input variables.&quot;&quot;&quot;</span>
     <span class="n">basic_inputs</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Short list of basic inputs to get medium accuracy.&quot;&quot;&quot;</span>
+    <span class="n">modelled_policies</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A YAML filepath containing metadata describing the modelled policies.&quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entities</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Entity</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">entities</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -361,6 +364,8 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">interpolate_parameters</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">uprate_parameters</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">propagate_parameter_metadata</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_modelled_policy_metadata</span><span class="p">()</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">base_tax_benefit_system</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;TaxBenefitSystem&quot;</span><span class="p">:</span>
@@ -882,7 +887,17 @@
                 <span class="p">)</span>
             <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">reform_parameters</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_parameters_at_instant_cache</span> <span class="o">=</span> <span class="p">{}</span></div></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parameters_at_instant_cache</span> <span class="o">=</span> <span class="p">{}</span></div>
+
+<div class="viewcode-block" id="TaxBenefitSystem.add_modelled_policy_metadata"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.add_modelled_policy_metadata">[docs]</a>    <span class="k">def</span> <span class="nf">add_modelled_policy_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adds metadata to variables that are modelled by PolicyEngine.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelled_policies</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modelled_policies</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">modelled_policies</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">Loader</span><span class="o">=</span><span class="n">yaml</span><span class="o">.</span><span class="n">FullLoader</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">modelled_policies</span> <span class="o">=</span> <span class="n">modelled_policies</span></div></div>
 </pre></div>
         </article>
       </div>

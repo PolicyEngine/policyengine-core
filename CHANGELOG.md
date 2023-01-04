@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.1] - 2023-01-04 12:51:00
+
+### Added
+
+- A metadata option to specify which policies are modelled and not modelled.
+
+## [1.11.0] - 2023-01-03 20:50:02
+
+### Added
+
+- Adds/subtracts option for parameter names.
+
+## [1.10.24] - 2023-01-02 20:40:49
+
+### Changed
+
+- Pin all package versions.
+
 ## [1.10.23] - 2022-12-18 06:12:52
 
 ### Fixed
@@ -303,6 +321,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[1.11.1]: https://github.com/PolicyEngine/policyengine-core/compare/1.11.0...1.11.1
+[1.11.0]: https://github.com/PolicyEngine/policyengine-core/compare/1.10.24...1.11.0
+[1.10.24]: https://github.com/PolicyEngine/policyengine-core/compare/1.10.23...1.10.24
 [1.10.23]: https://github.com/PolicyEngine/policyengine-core/compare/1.10.22...1.10.23
 [1.10.22]: https://github.com/PolicyEngine/policyengine-core/compare/1.10.21...1.10.22
 [1.10.21]: https://github.com/PolicyEngine/policyengine-core/compare/1.10.20...1.10.21

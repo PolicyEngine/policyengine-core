@@ -247,3 +247,18 @@
     fixed:
     - Fix incorrect type annotation in policyengine_core/variables/variable.py
   date: 2022-12-18 06:12:52
+- bump: patch
+  changes:
+    changed:
+    - Pin all package versions.
+  date: 2023-01-02 20:40:49
+- bump: minor
+  changes:
+    added:
+    - Adds/subtracts option for parameter names.
+  date: 2023-01-03 20:50:02
+- bump: patch
+  changes:
+    added:
+    - A metadata option to specify which policies are modelled and not modelled.
+  date: 2023-01-04 12:51:00

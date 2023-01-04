@@ -6,6 +6,7 @@ import importlib
 import inspect
 import logging
 import os
+import yaml
 from pathlib import Path
 import sys
 import traceback
@@ -86,6 +87,8 @@ class TaxBenefitSystem:
     """Whether to automatically carry over input variables when calculating a variable for a period different from the period of the input variables."""
     basic_inputs: List[str] = None
     """Short list of basic inputs to get medium accuracy."""
+    modelled_policies: str = None
+    """A YAML filepath containing metadata describing the modelled policies."""
 
     def __init__(self, entities: Sequence[Entity] = None) -> None:
         if entities is None:
@@ -128,6 +131,8 @@ class TaxBenefitSystem:
             self.parameters = interpolate_parameters(self.parameters)
             self.parameters = uprate_parameters(self.parameters)
             self.parameters = propagate_parameter_metadata(self.parameters)
+
+        self.add_modelled_policy_metadata()
 
     @property
     def base_tax_benefit_system(self) -> "TaxBenefitSystem":
@@ -650,3 +655,13 @@ class TaxBenefitSystem:
             )
         self.parameters = reform_parameters
         self._parameters_at_instant_cache = {}
+
+    def add_modelled_policy_metadata(self):
+        """
+        Adds metadata to variables that are modelled by PolicyEngine.
+        """
+        if self.modelled_policies is None:
+            return
+        with open(self.modelled_policies, "r") as f:
+            modelled_policies = yaml.load(f, Loader=yaml.FullLoader)
+        self.modelled_policies = modelled_policies

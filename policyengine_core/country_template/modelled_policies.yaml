@@ -1,0 +1,14 @@
+# This is an example.
+core:
+  modelled:
+    - Child Benefit
+    - Income Tax
+  not_modelled:
+    - Child Tax Credit
+filtered:
+  state_code:
+    MA:
+      modelled:
+        - Massachusetts State income tax
+      not_modelled:
+        - Massachusetts TANF

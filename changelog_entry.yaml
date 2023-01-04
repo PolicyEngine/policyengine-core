@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    added:
-    - A metadata option to specify which policies are modelled and not modelled.

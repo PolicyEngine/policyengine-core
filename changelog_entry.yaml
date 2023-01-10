@@ -1,4 +1,4 @@
 - bump: patch
   changes:
     removed:
-      - `aggr` function, which is superseded by `add`.
+      - aggr function, which is superseded by add.

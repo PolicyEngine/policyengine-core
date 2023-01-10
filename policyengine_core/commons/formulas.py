@@ -227,31 +227,6 @@ def add(
     )
 
 
-def aggr(entity, period, variables, options=None):
-    """Sums a list of variables belonging to entity members.
-
-    Args:
-        entity (Population): The entity population, as passed in formulas.
-        period (Period): The period, as pass in formulas.
-        variables (List[str]): A list of variable names.
-        options (List[str], optional): Options to pass to the `entity(variable, period)` call. Defaults to None.
-
-    Raises:
-        ValueError: If any target variable is not below the target entity level.
-
-    Returns:
-        ArrayLike: The result of the operation.
-    """
-    return for_each_variable(
-        entity,
-        period,
-        variables,
-        agg_func="add",
-        group_agg_func="add",
-        options=options,
-    )
-
-
 def and_(
     entity: Population,
     period: Period,

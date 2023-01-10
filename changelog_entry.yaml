@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    removed:
-      - aggr function, which is superseded by add.

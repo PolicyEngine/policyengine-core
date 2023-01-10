@@ -267,3 +267,8 @@
     added:
     - Error message for an unknown variable.
   date: 2023-01-04 13:05:49
+- bump: patch
+  changes:
+    removed:
+    - aggr function, which is superseded by add.
+  date: 2023-01-10 17:32:23

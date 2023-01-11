@@ -61,7 +61,7 @@ def test_bareme(simulation):
 
 @pytest.mark.parametrize("simulation", [({}, PERIOD)], indirect=True)
 def test_non_existing_variable(simulation):
-    with pytest.raises(VariableNotFoundError):
+    with pytest.raises(ValueError):
         simulation.calculate("non_existent_variable", PERIOD)
 
 

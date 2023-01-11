@@ -262,3 +262,13 @@
     added:
     - A metadata option to specify which policies are modelled and not modelled.
   date: 2023-01-04 12:51:00
+- bump: patch
+  changes:
+    added:
+    - Error message for an unknown variable.
+  date: 2023-01-04 13:05:49
+- bump: patch
+  changes:
+    removed:
+    - aggr function, which is superseded by add.
+  date: 2023-01-10 17:32:23

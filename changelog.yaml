@@ -272,3 +272,8 @@
     removed:
     - aggr function, which is superseded by add.
   date: 2023-01-10 17:32:23
+- bump: patch
+  changes:
+    fixed:
+    - Labels and names aren't propagated in parameters.
+  date: 2023-01-11 23:44:12

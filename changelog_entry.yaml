@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    fixed:
-    - Labels and names aren't propagated in parameters.

@@ -14,7 +14,7 @@ def propagate_parameter_metadata(root: ParameterNode) -> ParameterNode:
         ParameterNode: The edited parameter root.
     """
 
-    UNPROPAGAGED_METADATA = ["breakdown"]
+    UNPROPAGAGED_METADATA = ["breakdown", "label", "name", "description"]
 
     for parameter in root.get_descendants():
         if parameter.metadata.get("propagate_metadata_to_children"):

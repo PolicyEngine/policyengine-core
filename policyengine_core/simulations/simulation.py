@@ -31,6 +31,8 @@ from policyengine_core.variables import Variable
 from policyengine_core.reforms.reform import Reform
 from policyengine_core.parameters import get_parameter
 
+from survey_enhance.survey import Survey
+
 
 class Simulation:
     """
@@ -178,7 +180,13 @@ class Simulation:
         builder = SimulationBuilder()
         builder.populations = self.populations
         try:
-            data = self.dataset.load(self.dataset_year)
+            if isinstance(self.dataset, Survey):
+                data = {}
+                for dataframe in self.dataset.load_all().values():
+                    for column in dataframe.columns:
+                        data[column] = dataframe[column].values
+            else:
+                data = self.dataset.load(self.dataset_year)
         except FileNotFoundError as e:
             raise FileNotFoundError(
                 f"The dataset file {self.dataset.name} (with year {self.dataset_year}) could not be found. "
@@ -192,31 +200,38 @@ class Simulation:
         ), f"Missing {entity_id_field} column in the dataset. Each person entity must have an ID array defined for ETERNITY."
 
         get_eternity_array = (
-            lambda ds: ds[list(ds.keys())[0]]
-            if self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS
-            else ds
+            lambda ds: ds
+                if isinstance(self.dataset, Survey) or not self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS
+                else ds[list(ds.keys())[0]]
         )
         entity_ids = get_eternity_array(data[entity_id_field])
+        person_ids = entity_ids
         builder.declare_person_entity(person_entity.key, entity_ids)
 
         for group_entity in self.tax_benefit_system.group_entities:
             entity_id_field = f"{group_entity.key}_id"
-            assert (
-                entity_id_field in data
-            ), f"Missing {entity_id_field} column in the dataset. Each group entity must have an ID array defined for ETERNITY."
+            if entity_id_field == "state_id":
+                entity_ids = np.array([0])
+            else:
+                assert (
+                    entity_id_field in data
+                ), f"Missing {entity_id_field} column in the dataset. Each group entity must have an ID array defined for ETERNITY."
 
-            entity_ids = get_eternity_array(data[entity_id_field])
+                entity_ids = get_eternity_array(data[entity_id_field])
             builder.declare_entity(group_entity.key, entity_ids)
 
             person_membership_id_field = (
                 f"{person_entity.key}_{group_entity.key}_id"
             )
-            assert (
-                person_membership_id_field in data
-            ), f"Missing {person_membership_id_field} column in the dataset. Each group entity must have a person membership array defined for ETERNITY."
-            person_membership_ids = get_eternity_array(
-                data[person_membership_id_field]
-            )
+            if person_membership_id_field == "person_state_id":
+                person_membership_ids = np.array([0] * len(person_ids))
+            else:
+                assert (
+                    person_membership_id_field in data
+                ), f"Missing {person_membership_id_field} column in the dataset. Each group entity must have a person membership array defined for ETERNITY."
+                person_membership_ids = get_eternity_array(
+                    data[person_membership_id_field]
+                )
 
             person_role_field = f"{person_entity.key}_{group_entity.key}_role"
             if person_role_field in data:
@@ -239,7 +254,7 @@ class Simulation:
 
         for variable in data:
             if variable in self.tax_benefit_system.variables:
-                if self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS:
+                if not isinstance(self.dataset, Survey) and self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS:
                     for time_period in data[variable]:
                         self.set_input(
                             variable, time_period, data[variable][time_period]
@@ -479,6 +494,7 @@ class Simulation:
                     start_instants = [
                         str(known_period.start)
                         for known_period in known_periods
+                        if known_period.start <= period.start
                     ]
                     latest_known_period = known_periods[
                         np.argmax(start_instants)
@@ -679,9 +695,10 @@ class Simulation:
                     adds_list = variable.adds
                 values = 0
                 for added_variable in adds_list:
-                    values = values + self.calculate(
+                    new_values = self.calculate(
                         added_variable, period, map_to=variable.entity.key
                     )
+                    values = values + new_values
             if variable.subtracts is not None:
                 if isinstance(variable.subtracts, str):
                     try:
@@ -699,9 +716,10 @@ class Simulation:
                 if values is None:
                     values = 0
                 for subtracted_variable in subtracts_list:
-                    values = values - self.calculate(
+                    new_values = self.calculate(
                         subtracted_variable, period, map_to=variable.entity.key
                     )
+                    values = values - new_values
             return values
 
         if self.trace:

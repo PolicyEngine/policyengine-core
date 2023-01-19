@@ -68,6 +68,7 @@ class Enum(enum.Enum):
         >>> encoded_array[0]
         2  # Encoded value
         """
+
         if isinstance(array, EnumArray):
             return array
 
@@ -75,9 +76,9 @@ class Enum(enum.Enum):
             array = array.astype(str)
 
         # String array
-        if isinstance(array, numpy.ndarray) and array.dtype.kind in {"U", "S"}:
+        if isinstance(array, numpy.ndarray) and array.dtype.kind in {"U", "S", "O"}:
             array = numpy.select(
-                [array == item.name for item in cls],
+                [(array == item.name) | (array == item) for item in cls],
                 [item.index for item in cls],
             ).astype(ENUM_ARRAY_DTYPE)
 

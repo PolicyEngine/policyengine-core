@@ -76,7 +76,13 @@ class Enum(enum.Enum):
             array = array.astype(str)
 
         # String array
-        if isinstance(array, numpy.ndarray) and array.dtype.kind in {"U", "S", "O"}:
+        if isinstance(array, numpy.ndarray) and array.dtype.kind in {
+            "U",
+            "S",
+            "O",
+        }:
+            if type(array[0]).__name__ == cls.__name__:
+                array = numpy.array([item.name for item in array])
             array = numpy.select(
                 [(array == item.name) | (array == item) for item in cls],
                 [item.index for item in cls],

@@ -30,8 +30,7 @@ from policyengine_core.tracers import SimpleTracer
 from policyengine_core.variables import Variable
 from policyengine_core.reforms.reform import Reform
 from policyengine_core.parameters import get_parameter
-
-from survey_enhance.survey import Survey
+from policyengine_core.data.survey import Survey
 
 
 class Simulation:
@@ -201,8 +200,9 @@ class Simulation:
 
         get_eternity_array = (
             lambda ds: ds
-                if isinstance(self.dataset, Survey) or not self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS
-                else ds[list(ds.keys())[0]]
+            if isinstance(self.dataset, Survey)
+            or not self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS
+            else ds[list(ds.keys())[0]]
         )
         entity_ids = get_eternity_array(data[entity_id_field])
         person_ids = entity_ids
@@ -254,7 +254,10 @@ class Simulation:
 
         for variable in data:
             if variable in self.tax_benefit_system.variables:
-                if not isinstance(self.dataset, Survey) and self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS:
+                if (
+                    not isinstance(self.dataset, Survey)
+                    and self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS
+                ):
                     for time_period in data[variable]:
                         self.set_input(
                             variable, time_period, data[variable][time_period]

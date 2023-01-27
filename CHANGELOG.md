@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0] - 2023-01-27 22:28:10
+
+### Added
+
+- Likely high time savings for simulations making heavy usage of reforms and branches.
+
 ## [1.11.4] - 2023-01-11 23:44:12
 
 ### Fixed
@@ -335,6 +341,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[1.12.0]: https://github.com/PolicyEngine/policyengine-core/compare/1.11.4...1.12.0
 [1.11.4]: https://github.com/PolicyEngine/policyengine-core/compare/1.11.3...1.11.4
 [1.11.3]: https://github.com/PolicyEngine/policyengine-core/compare/1.11.2...1.11.3
 [1.11.2]: https://github.com/PolicyEngine/policyengine-core/compare/1.11.1...1.11.2

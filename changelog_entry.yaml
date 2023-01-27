@@ -1,4 +1,4 @@
 - bump: minor
   changes:
     added:
-    - Likely around 80% time savings for simulations making heavy usage of reforms and branches.
+    - Likely high time savings for simulations making heavy usage of reforms and branches.

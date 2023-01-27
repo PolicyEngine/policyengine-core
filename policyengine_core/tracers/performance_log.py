@@ -91,7 +91,7 @@ class PerformanceLog:
             }
 
         def _groupby(calculation: Calculation) -> str:
-            return calculation[0].split("<")[0]
+            return calculation[0]
 
         all_calculations: SortedTrace = sorted(flat_trace.items())
 

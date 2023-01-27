@@ -646,13 +646,6 @@ class Simulation:
 
         return variable.calculate_output(self, variable_name, period)
 
-    def trace_parameters_at_instant(self, formula_period):
-        return TracingParameterNodeAtInstant(
-            self.tax_benefit_system.get_parameters_at_instant(formula_period),
-            self.tracer,
-            self.branch_name,
-        )
-
     def _run_formula(
         self, variable: str, population: Population, period: Period
     ) -> ArrayLike:
@@ -704,10 +697,14 @@ class Simulation:
                     )
             return values
 
-        if self.trace:
-            parameters_at = self.trace_parameters_at_instant
-        else:
-            parameters_at = self.tax_benefit_system.get_parameters_at_instant
+        if self.trace and not isinstance(
+            self.tax_benefit_system.parameters, TracingParameterNodeAtInstant
+        ):
+            # Soft-recast
+            self.tax_benefit_system.parameters.branch_name = self.branch_name
+            self.tax_benefit_system.parameters.trace = True
+            self.tax_benefit_system.parameters.tracer = self.tracer
+        parameters_at = self.tax_benefit_system.parameters
 
         if formula.__code__.co_argcount == 2:
             array = formula(population, period)
@@ -968,7 +965,12 @@ class Simulation:
             for population in self.populations.values()
         }
 
-    def clone(self, debug: bool = False, trace: bool = False) -> "Simulation":
+    def clone(
+        self,
+        debug: bool = False,
+        trace: bool = False,
+        clone_tax_benefit_system: bool = True,
+    ) -> "Simulation":
         """
         Copy the simulation just enough to be able to run the copy without modifying the original simulation
         """
@@ -990,8 +992,10 @@ class Simulation:
             setattr(
                 new, entity.key, population
             )  # create shortcut simulation.household (for instance)
-
-        new.tax_benefit_system = self.tax_benefit_system.clone()
+        if clone_tax_benefit_system:
+            new.tax_benefit_system = self.tax_benefit_system.clone()
+        else:
+            new.tax_benefit_system = self.tax_benefit_system
         new.debug = debug
         new.trace = trace
 
@@ -1009,7 +1013,7 @@ class Simulation:
         """
         if name == self.branch_name:
             return self
-        branch = self.clone()
+        branch = self.clone(clone_tax_benefit_system=False)
         self.branches[name] = branch
         branch.branch_name = name
         if self.trace:

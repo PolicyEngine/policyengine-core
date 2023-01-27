@@ -6,6 +6,7 @@ from typing import Iterable, List, Type, Union
 from policyengine_core import commons, parameters, tools
 from policyengine_core.data_structures import Reference
 from policyengine_core.periods.instant_ import Instant
+from policyengine_core.tracers import TracingParameterNodeAtInstant
 
 from .at_instant_like import AtInstantLike
 from .parameter import Parameter
@@ -80,6 +81,13 @@ class ParameterNode(AtInstantLike):
         self.documentation: str = None
         self.file_path: str = None
         self.metadata: dict = {}
+        self.trace: bool = False
+        self.tracer = None
+        self.branch_name = None
+        self._at_instant_cache: typing.Dict[
+            Instant, ParameterNodeAtInstant
+        ] = {}
+        self.parent = None
 
         if directory_path:
             self.file_path = directory_path
@@ -214,11 +222,27 @@ class ParameterNode(AtInstantLike):
         }
         for child_key, child in clone.children.items():
             setattr(clone, child_key, child)
+        clone._at_instant_cache = {}
 
         return clone
 
     def _get_at_instant(self, instant: Instant) -> ParameterNodeAtInstant:
-        return ParameterNodeAtInstant(self.name, self, instant)
+        if instant in self._at_instant_cache:
+            return self._at_instant_cache[instant]
+        node_at_instant = ParameterNodeAtInstant(self.name, self, instant)
+        if self.trace:
+            at_instant = TracingParameterNodeAtInstant(
+                node_at_instant, self.tracer, self.branch_name
+            )
+        else:
+            at_instant = node_at_instant
+        self._at_instant_cache[instant] = at_instant
+        return at_instant
 
     def attach_to_parent(self, parent: "ParameterNode"):
         self.parent = parent
+
+    def clear_parent_cache(self):
+        if self.parent is not None:
+            self.parent.clear_parent_cache()
+            self._at_instant_cache.clear()

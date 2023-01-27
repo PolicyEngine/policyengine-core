@@ -437,7 +437,9 @@
             <span class="n">new_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">old_values</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
             <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">values_list</span> <span class="o">=</span> <span class="n">new_values</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">values_list</span> <span class="o">=</span> <span class="n">new_values</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">clear_parent_cache</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="Parameter.get_descendants"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter.Parameter.get_descendants">[docs]</a>    <span class="k">def</span> <span class="nf">get_descendants</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">iter</span><span class="p">(())</span></div>

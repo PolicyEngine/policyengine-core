@@ -879,13 +879,6 @@
 
         <span class="k">return</span> <span class="n">variable</span><span class="o">.</span><span class="n">calculate_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Simulation.trace_parameters_at_instant"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.trace_parameters_at_instant">[docs]</a>    <span class="k">def</span> <span class="nf">trace_parameters_at_instant</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">formula_period</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">TracingParameterNodeAtInstant</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_parameters_at_instant</span><span class="p">(</span><span class="n">formula_period</span><span class="p">),</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span><span class="p">,</span>
-        <span class="p">)</span></div>
-
     <span class="k">def</span> <span class="nf">_run_formula</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">population</span><span class="p">:</span> <span class="n">Population</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
@@ -937,10 +930,14 @@
                     <span class="p">)</span>
             <span class="k">return</span> <span class="n">values</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trace</span><span class="p">:</span>
-            <span class="n">parameters_at</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trace_parameters_at_instant</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">parameters_at</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_parameters_at_instant</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trace</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">parameters</span><span class="p">,</span> <span class="n">TracingParameterNodeAtInstant</span>
+        <span class="p">):</span>
+            <span class="c1"># Soft-recast</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">branch_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">trace</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">tracer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span>
+        <span class="n">parameters_at</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">parameters</span>
 
         <span class="k">if</span> <span class="n">formula</span><span class="o">.</span><span class="vm">__code__</span><span class="o">.</span><span class="n">co_argcount</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
             <span class="n">array</span> <span class="o">=</span> <span class="n">formula</span><span class="p">(</span><span class="n">population</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
@@ -1201,7 +1198,12 @@
             <span class="k">for</span> <span class="n">population</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
         <span class="p">}</span></div>
 
-<div class="viewcode-block" id="Simulation.clone"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.clone">[docs]</a>    <span class="k">def</span> <span class="nf">clone</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">debug</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">trace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Simulation&quot;</span><span class="p">:</span>
+<div class="viewcode-block" id="Simulation.clone"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.clone">[docs]</a>    <span class="k">def</span> <span class="nf">clone</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">debug</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">trace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">clone_tax_benefit_system</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Simulation&quot;</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Copy the simulation just enough to be able to run the copy without modifying the original simulation</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -1223,8 +1225,10 @@
             <span class="nb">setattr</span><span class="p">(</span>
                 <span class="n">new</span><span class="p">,</span> <span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">population</span>
             <span class="p">)</span>  <span class="c1"># create shortcut simulation.household (for instance)</span>
-
-        <span class="n">new</span><span class="o">.</span><span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">clone_tax_benefit_system</span><span class="p">:</span>
+            <span class="n">new</span><span class="o">.</span><span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">new</span><span class="o">.</span><span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span>
         <span class="n">new</span><span class="o">.</span><span class="n">debug</span> <span class="o">=</span> <span class="n">debug</span>
         <span class="n">new</span><span class="o">.</span><span class="n">trace</span> <span class="o">=</span> <span class="n">trace</span>
 
@@ -1242,7 +1246,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span>
-        <span class="n">branch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="n">branch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone</span><span class="p">(</span><span class="n">clone_tax_benefit_system</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">branches</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">branch</span>
         <span class="n">branch</span><span class="o">.</span><span class="n">branch_name</span> <span class="o">=</span> <span class="n">name</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trace</span><span class="p">:</span>

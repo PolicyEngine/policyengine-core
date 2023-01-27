@@ -239,6 +239,7 @@
 <span class="kn">from</span> <span class="nn">policyengine_core</span> <span class="kn">import</span> <span class="n">commons</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">tools</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.data_structures</span> <span class="kn">import</span> <span class="n">Reference</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.periods.instant_</span> <span class="kn">import</span> <span class="n">Instant</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.tracers</span> <span class="kn">import</span> <span class="n">TracingParameterNodeAtInstant</span>
 
 <span class="kn">from</span> <span class="nn">.at_instant_like</span> <span class="kn">import</span> <span class="n">AtInstantLike</span>
 <span class="kn">from</span> <span class="nn">.parameter</span> <span class="kn">import</span> <span class="n">Parameter</span>
@@ -313,6 +314,13 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">documentation</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_at_instant_cache</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span>
+            <span class="n">Instant</span><span class="p">,</span> <span class="n">ParameterNodeAtInstant</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="k">if</span> <span class="n">directory_path</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">file_path</span> <span class="o">=</span> <span class="n">directory_path</span>
@@ -447,14 +455,30 @@
         <span class="p">}</span>
         <span class="k">for</span> <span class="n">child_key</span><span class="p">,</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">clone</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="nb">setattr</span><span class="p">(</span><span class="n">clone</span><span class="p">,</span> <span class="n">child_key</span><span class="p">,</span> <span class="n">child</span><span class="p">)</span>
+        <span class="n">clone</span><span class="o">.</span><span class="n">_at_instant_cache</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="k">return</span> <span class="n">clone</span></div>
 
     <span class="k">def</span> <span class="nf">_get_at_instant</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instant</span><span class="p">:</span> <span class="n">Instant</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParameterNodeAtInstant</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">ParameterNodeAtInstant</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">instant</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">instant</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_at_instant_cache</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_at_instant_cache</span><span class="p">[</span><span class="n">instant</span><span class="p">]</span>
+        <span class="n">node_at_instant</span> <span class="o">=</span> <span class="n">ParameterNodeAtInstant</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">instant</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trace</span><span class="p">:</span>
+            <span class="n">at_instant</span> <span class="o">=</span> <span class="n">TracingParameterNodeAtInstant</span><span class="p">(</span>
+                <span class="n">node_at_instant</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">at_instant</span> <span class="o">=</span> <span class="n">node_at_instant</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_at_instant_cache</span><span class="p">[</span><span class="n">instant</span><span class="p">]</span> <span class="o">=</span> <span class="n">at_instant</span>
+        <span class="k">return</span> <span class="n">at_instant</span>
 
 <div class="viewcode-block" id="ParameterNode.attach_to_parent"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_node.ParameterNode.attach_to_parent">[docs]</a>    <span class="k">def</span> <span class="nf">attach_to_parent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">:</span> <span class="s2">&quot;ParameterNode&quot;</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="n">parent</span></div></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="n">parent</span></div>
+
+<div class="viewcode-block" id="ParameterNode.clear_parent_cache"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_node.ParameterNode.clear_parent_cache">[docs]</a>    <span class="k">def</span> <span class="nf">clear_parent_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">clear_parent_cache</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_at_instant_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span></div></div>
 </pre></div>
         </article>
       </div>

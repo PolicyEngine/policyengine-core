@@ -9,13 +9,16 @@ from policyengine_core import parameters
 
 from .. import tracers
 
-ParameterNode = Union[
-    parameters.VectorialParameterNodeAtInstant,
-    parameters.ParameterNodeAtInstant,
-]
-
 if typing.TYPE_CHECKING:
     from numpy.typing import ArrayLike
+    from policyengine_core.parameters import (
+        ParameterNodeAtInstant,
+        VectorialParameterNodeAtInstant,
+    )
+
+    ParameterNode = Union[
+        ParameterNodeAtInstant, VectorialParameterNodeAtInstant
+    ]
 
     Child = Union[ParameterNode, ArrayLike]
 

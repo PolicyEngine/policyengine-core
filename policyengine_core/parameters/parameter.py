@@ -206,6 +206,8 @@ class Parameter(AtInstantLike):
 
         self.values_list = new_values
 
+        self.parent.clear_parent_cache()
+
     def get_descendants(self):
         return iter(())
 

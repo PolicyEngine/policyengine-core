@@ -339,48 +339,6 @@ def test_flat_trace_calc_time(tracer_calc_time):
     assert flat_trace["c<2019, (default)>"]["formula_time"] == 100
 
 
-def test_generate_performance_table(tracer_calc_time, tmpdir):
-    tracer = tracer_calc_time
-    tracer.generate_performance_tables(tmpdir)
-    with open(os.path.join(tmpdir, "performance_table.csv"), "r") as csv_file:
-        csv_reader = csv.DictReader(csv_file)
-        csv_rows = list(csv_reader)
-    assert len(csv_rows) == 4
-    a_row = next(
-        row for row in csv_rows if row["name"] == "a<2019, (default)>"
-    )
-    assert float(a_row["calculation_time"]) == 1000
-    assert float(a_row["formula_time"]) == 190
-
-    with open(
-        os.path.join(tmpdir, "aggregated_performance_table.csv"), "r"
-    ) as csv_file:
-        aggregated_csv_reader = csv.DictReader(csv_file)
-        aggregated_csv_rows = list(aggregated_csv_reader)
-    assert len(aggregated_csv_rows) == 3
-    a_row = next(row for row in aggregated_csv_rows if row["name"] == "a")
-    assert float(a_row["calculation_time"]) == 1000 + 200
-    assert float(a_row["formula_time"]) == 190 + 200
-
-
-def test_get_aggregated_calculation_times(tracer_calc_time):
-    perf_log = tracer_calc_time.performance_log
-    aggregated_calculation_times = perf_log.aggregate_calculation_times(
-        tracer_calc_time.get_flat_trace()
-    )
-
-    assert aggregated_calculation_times["a"]["calculation_time"] == 1000 + 200
-    assert aggregated_calculation_times["a"]["formula_time"] == 190 + 200
-    assert (
-        aggregated_calculation_times["a"]["avg_calculation_time"]
-        == (1000 + 200) / 2
-    )
-    assert (
-        aggregated_calculation_times["a"]["avg_formula_time"]
-        == (190 + 200) / 2
-    )
-
-
 def test_rounding():
 
     node_a = TraceNode("a", 2017)

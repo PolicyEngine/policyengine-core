@@ -45,6 +45,8 @@ class ParameterNodeAtInstant:
         setattr(self, child_name, child_at_instant)
 
     def __getattr__(self, key: str):
+        if key == "_name":
+            raise AttributeError(key)
         param_name = helpers._compose_name(self._name, item_name=key)
         raise ParameterNotFoundError(param_name, self._instant_str)
 

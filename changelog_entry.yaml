@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    added:
+    - Abolition parameters for each variable under `gov.abolitions`.

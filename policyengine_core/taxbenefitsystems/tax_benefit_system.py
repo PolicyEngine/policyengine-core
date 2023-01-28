@@ -131,8 +131,42 @@ class TaxBenefitSystem:
             self.parameters = interpolate_parameters(self.parameters)
             self.parameters = uprate_parameters(self.parameters)
             self.parameters = propagate_parameter_metadata(self.parameters)
+            self.add_abolition_parameters()
 
         self.add_modelled_policy_metadata()
+
+    def add_abolition_parameters(self):
+        if self.parameters is None or "gov" not in self.parameters.children:
+            return
+        abolition_folder_data = {
+            "metadata": {
+                "label": "Abolitions",
+            }
+        }
+        for variable in self.variables.values():
+            if variable.is_input_variable() or variable.value_type not in (
+                bool,
+                float,
+                int,
+            ):
+                continue
+            abolition_folder_data[variable.name] = {
+                "description": f"Set all values of {variable.label} to zero.",
+                "values": {
+                    "0000-01-01": False,
+                },
+                "metadata": {
+                    "label": f"Abolish {variable.label}",
+                    "unit": "bool",
+                },
+            }
+        if not "abolitions" in self.parameters.gov.children:
+            self.parameters.gov.add_child(
+                "abolitions",
+                ParameterNode(
+                    name="gov.abolitions", data=abolition_folder_data
+                ),
+            )
 
     @property
     def base_tax_benefit_system(self) -> "TaxBenefitSystem":

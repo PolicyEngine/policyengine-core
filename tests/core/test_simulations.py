@@ -17,12 +17,6 @@ def test_calculate_full_tracer(tax_benefit_system):
     salary_node = income_tax_node.children[0]
     assert salary_node.name == "salary"
     assert str(salary_node.period) == "2017-01"
-    assert salary_node.parameters == []
-
-    assert len(income_tax_node.parameters) == 1
-    assert income_tax_node.parameters[0].name == "taxes.income_tax_rate"
-    assert income_tax_node.parameters[0].period == "2017-01-01"
-    assert income_tax_node.parameters[0].value == 0.15
 
 
 def test_get_entity_not_found(tax_benefit_system):

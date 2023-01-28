@@ -282,3 +282,8 @@
     added:
     - Likely high time savings for simulations making heavy usage of reforms and branches.
   date: 2023-01-27 22:28:10
+- bump: patch
+  changes:
+    added:
+    - Abolition parameters for each variable under `gov.abolitions`.
+  date: 2023-01-28 15:58:38

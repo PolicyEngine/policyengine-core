@@ -446,6 +446,15 @@ class Simulation:
 
         self._check_period_consistency(period, variable)
 
+        # Check if we've neutralized via parameters.
+        try:
+            if self.tax_benefit_system.parameters(period).gov.abolitions[
+                variable.name
+            ]:
+                return holder.default_array()
+        except Exception as e:
+            pass
+
         # First look for a value already cached
         cached_array = holder.get_array(period, self.branch_name)
         if cached_array is not None:

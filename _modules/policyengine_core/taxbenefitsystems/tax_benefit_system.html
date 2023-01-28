@@ -364,8 +364,42 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">interpolate_parameters</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">uprate_parameters</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">propagate_parameter_metadata</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_abolition_parameters</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">add_modelled_policy_metadata</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">add_abolition_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="s2">&quot;gov&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">children</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">abolition_folder_data</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;Abolitions&quot;</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="k">for</span> <span class="n">variable</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">is_input_variable</span><span class="p">()</span> <span class="ow">or</span> <span class="n">variable</span><span class="o">.</span><span class="n">value_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span>
+                <span class="nb">bool</span><span class="p">,</span>
+                <span class="nb">float</span><span class="p">,</span>
+                <span class="nb">int</span><span class="p">,</span>
+            <span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">abolition_folder_data</span><span class="p">[</span><span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Set all values of </span><span class="si">{</span><span class="n">variable</span><span class="o">.</span><span class="n">label</span><span class="si">}</span><span class="s2"> to zero.&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;values&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;0000-01-01&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Abolish </span><span class="si">{</span><span class="n">variable</span><span class="o">.</span><span class="n">label</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;unit&quot;</span><span class="p">:</span> <span class="s2">&quot;bool&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">}</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="s2">&quot;abolitions&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">gov</span><span class="o">.</span><span class="n">children</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">gov</span><span class="o">.</span><span class="n">add_child</span><span class="p">(</span>
+                <span class="s2">&quot;abolitions&quot;</span><span class="p">,</span>
+                <span class="n">ParameterNode</span><span class="p">(</span>
+                    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;gov.abolitions&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">abolition_folder_data</span>
+                <span class="p">),</span>
+            <span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">base_tax_benefit_system</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;TaxBenefitSystem&quot;</span><span class="p">:</span>

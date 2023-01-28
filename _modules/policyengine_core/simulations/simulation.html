@@ -679,6 +679,15 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_period_consistency</span><span class="p">(</span><span class="n">period</span><span class="p">,</span> <span class="n">variable</span><span class="p">)</span>
 
+        <span class="c1"># Check if we&#39;ve neutralized via parameters.</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">parameters</span><span class="p">(</span><span class="n">period</span><span class="p">)</span><span class="o">.</span><span class="n">gov</span><span class="o">.</span><span class="n">abolitions</span><span class="p">[</span>
+                <span class="n">variable</span><span class="o">.</span><span class="n">name</span>
+            <span class="p">]:</span>
+                <span class="k">return</span> <span class="n">holder</span><span class="o">.</span><span class="n">default_array</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">pass</span>
+
         <span class="c1"># First look for a value already cached</span>
         <span class="n">cached_array</span> <span class="o">=</span> <span class="n">holder</span><span class="o">.</span><span class="n">get_array</span><span class="p">(</span><span class="n">period</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">cached_array</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>

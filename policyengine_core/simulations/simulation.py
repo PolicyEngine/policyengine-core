@@ -178,7 +178,10 @@ class Simulation:
         builder = SimulationBuilder()
         builder.populations = self.populations
         try:
-            data = self.dataset.load(self.dataset_year)
+            try:
+                data = self.dataset.load(self.dataset_year)
+            except:
+                data = self.dataset.load()
         except FileNotFoundError as e:
             raise FileNotFoundError(
                 f"The dataset file {self.dataset.name} (with year {self.dataset_year}) could not be found. "

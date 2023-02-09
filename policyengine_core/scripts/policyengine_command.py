@@ -113,7 +113,6 @@ def get_parser():
 
 
 def main():
-
     parser = get_parser()
 
     args, _ = parser.parse_known_args()

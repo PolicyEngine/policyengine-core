@@ -12,7 +12,6 @@ if typing.TYPE_CHECKING:
 
 
 class SimpleTracer:
-
     _stack: Stack
 
     def __init__(self) -> None:

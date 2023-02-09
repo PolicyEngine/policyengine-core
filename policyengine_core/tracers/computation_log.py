@@ -16,7 +16,6 @@ if typing.TYPE_CHECKING:
 
 
 class ComputationLog:
-
     _full_tracer: tracers.FullTracer
 
     def __init__(self, full_tracer: tracers.FullTracer) -> None:
@@ -72,7 +71,6 @@ class ComputationLog:
         aggregate: bool,
         max_depth: Optional[int],
     ) -> List[str]:
-
         if max_depth is not None and depth > max_depth:
             return []
 

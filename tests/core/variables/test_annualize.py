@@ -9,7 +9,6 @@ from policyengine_core.variables import get_annualized_variable
 
 @fixture
 def monthly_variable():
-
     calculation_count = 0
 
     class monthly_variable(Variable):

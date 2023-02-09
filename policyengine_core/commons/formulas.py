@@ -92,13 +92,11 @@ def concat(this: ArrayLike[str], that: ArrayLike[str]) -> ArrayType[str]:
     if isinstance(this, numpy.ndarray) and not numpy.issubdtype(
         this.dtype, numpy.str_
     ):
-
         this = this.astype("str")
 
     if isinstance(that, numpy.ndarray) and not numpy.issubdtype(
         that.dtype, numpy.str_
     ):
-
         that = that.astype("str")
 
     return numpy.char.add(this, that)

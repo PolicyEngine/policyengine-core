@@ -558,7 +558,7 @@ class Simulation:
         # We wait for the end of calculate(), signalled by an empty stack, before purging the cache
         if self.tracer.stack:
             return
-        for (_name, _period) in self.invalidated_caches:
+        for _name, _period in self.invalidated_caches:
             holder = self.get_holder(_name)
             holder.delete_arrays(_period)
         self.invalidated_caches = set()

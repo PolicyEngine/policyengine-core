@@ -15,7 +15,6 @@ if typing.TYPE_CHECKING:
 
 
 class FullTracer:
-
     _simple_tracer: tracers.SimpleTracer
     _trees: list
     _current_node: Optional[tracers.TraceNode]
@@ -65,7 +64,6 @@ class FullTracer:
         branch_name: str,
         value: ArrayLike,
     ) -> None:
-
         if self._current_node is not None:
             self._current_node.parameters.append(
                 tracers.TraceNode(

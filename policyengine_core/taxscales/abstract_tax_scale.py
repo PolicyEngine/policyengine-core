@@ -23,7 +23,6 @@ class AbstractTaxScale(TaxScaleLike):
         option: typing.Any = None,
         unit: numpy.int_ = None,
     ) -> None:
-
         message = [
             "The 'AbstractTaxScale' class has been deprecated since",
             "version 34.7.0, and will be removed in the future.",

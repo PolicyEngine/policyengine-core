@@ -287,3 +287,8 @@
     added:
     - Abolition parameters for each variable under `gov.abolitions`.
   date: 2023-01-28 15:58:38
+- bump: patch
+  changes:
+    added:
+    - Option for loading non-year-specific datasets.
+  date: 2023-02-09 21:59:16

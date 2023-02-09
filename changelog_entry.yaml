@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    added:
-    - Option for loading non-year-specific datasets.

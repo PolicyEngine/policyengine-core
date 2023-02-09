@@ -248,7 +248,6 @@
 
 
 <div class="viewcode-block" id="FullTracer"><a class="viewcode-back" href="../../../python_api/tracers.html#policyengine_core.tracers.full_tracer.FullTracer">[docs]</a><span class="k">class</span> <span class="nc">FullTracer</span><span class="p">:</span>
-
     <span class="n">_simple_tracer</span><span class="p">:</span> <span class="n">tracers</span><span class="o">.</span><span class="n">SimpleTracer</span>
     <span class="n">_trees</span><span class="p">:</span> <span class="nb">list</span>
     <span class="n">_current_node</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">tracers</span><span class="o">.</span><span class="n">TraceNode</span><span class="p">]</span>
@@ -298,7 +297,6 @@
         <span class="n">branch_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">value</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_node</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_current_node</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
                 <span class="n">tracers</span><span class="o">.</span><span class="n">TraceNode</span><span class="p">(</span>

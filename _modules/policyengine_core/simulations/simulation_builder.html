@@ -345,7 +345,7 @@
             <span class="p">)</span>
 
         <span class="c1"># Register variables so get_variable_entity can find them</span>
-        <span class="k">for</span> <span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">_variable</span><span class="p">)</span> <span class="ow">in</span> <span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">variable_name</span><span class="p">,</span> <span class="n">_variable</span> <span class="ow">in</span> <span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">register_variable</span><span class="p">(</span>
                 <span class="n">variable_name</span><span class="p">,</span>
                 <span class="n">simulation</span><span class="o">.</span><span class="n">get_variable_population</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span><span class="o">.</span><span class="n">entity</span><span class="p">,</span>
@@ -767,7 +767,9 @@
             <span class="n">path_in_json</span> <span class="o">=</span> <span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">,</span> <span class="n">instance_id</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">]</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">entity</span><span class="o">.</span><span class="n">check_variable_defined_for_entity</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span>
-            <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>  <span class="c1"># The variable is defined for another entity</span>
+            <span class="k">except</span> <span class="p">(</span>
+                <span class="ne">ValueError</span>
+            <span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>  <span class="c1"># The variable is defined for another entity</span>
                 <span class="k">raise</span> <span class="n">SituationParsingError</span><span class="p">(</span><span class="n">path_in_json</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
             <span class="k">except</span> <span class="n">VariableNotFoundError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>  <span class="c1"># The variable doesn&#39;t exist</span>
                 <span class="k">raise</span> <span class="n">SituationParsingError</span><span class="p">(</span><span class="n">path_in_json</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="n">code</span><span class="o">=</span><span class="mi">404</span><span class="p">)</span>

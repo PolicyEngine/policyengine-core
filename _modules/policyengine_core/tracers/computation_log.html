@@ -249,7 +249,6 @@
 
 
 <div class="viewcode-block" id="ComputationLog"><a class="viewcode-back" href="../../../python_api/tracers.html#policyengine_core.tracers.computation_log.ComputationLog">[docs]</a><span class="k">class</span> <span class="nc">ComputationLog</span><span class="p">:</span>
-
     <span class="n">_full_tracer</span><span class="p">:</span> <span class="n">tracers</span><span class="o">.</span><span class="n">FullTracer</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full_tracer</span><span class="p">:</span> <span class="n">tracers</span><span class="o">.</span><span class="n">FullTracer</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -305,7 +304,6 @@
         <span class="n">aggregate</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
         <span class="n">max_depth</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-
         <span class="k">if</span> <span class="n">max_depth</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">depth</span> <span class="o">&gt;</span> <span class="n">max_depth</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[]</span>
 

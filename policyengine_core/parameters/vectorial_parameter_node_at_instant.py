@@ -172,7 +172,6 @@ class VectorialParameterNodeAtInstant:
         check_nodes_homogeneous(extract_named_children(node))
 
     def __init__(self, name: str, vector: ArrayLike, instant_str: str):
-
         self.vector = vector
         self._name = name
         self._instant_str = instant_str

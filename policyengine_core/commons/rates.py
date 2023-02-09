@@ -46,7 +46,6 @@ def average_rate(
     average_rate = 1 - target / varying
 
     if trim is not None:
-
         average_rate = numpy.where(
             average_rate <= max(trim),
             average_rate,
@@ -105,7 +104,6 @@ def marginal_rate(
     )
 
     if trim is not None:
-
         marginal_rate = numpy.where(
             marginal_rate <= max(trim),
             marginal_rate,

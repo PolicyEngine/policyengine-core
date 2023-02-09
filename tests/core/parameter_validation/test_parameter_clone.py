@@ -20,7 +20,6 @@ def test_clone():
 
 
 def test_clone_parameter(tax_benefit_system):
-
     param = tax_benefit_system.parameters.taxes.income_tax_rate
     clone = param.clone()
 

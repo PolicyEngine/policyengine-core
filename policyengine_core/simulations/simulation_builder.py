@@ -112,7 +112,7 @@ class SimulationBuilder:
             )
 
         # Register variables so get_variable_entity can find them
-        for (variable_name, _variable) in tax_benefit_system.variables.items():
+        for variable_name, _variable in tax_benefit_system.variables.items():
             self.register_variable(
                 variable_name,
                 simulation.get_variable_population(variable_name).entity,
@@ -534,7 +534,9 @@ class SimulationBuilder:
             path_in_json = [entity.plural, instance_id, variable_name]
             try:
                 entity.check_variable_defined_for_entity(variable_name)
-            except ValueError as e:  # The variable is defined for another entity
+            except (
+                ValueError
+            ) as e:  # The variable is defined for another entity
                 raise SituationParsingError(path_in_json, e.args[0])
             except VariableNotFoundError as e:  # The variable doesn't exist
                 raise SituationParsingError(path_in_json, str(e), code=404)

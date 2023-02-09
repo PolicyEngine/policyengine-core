@@ -340,7 +340,6 @@ def test_flat_trace_calc_time(tracer_calc_time):
 
 
 def test_rounding():
-
     node_a = TraceNode("a", 2017)
     node_a.start = 1.23456789
     node_a.end = node_a.start + 1.23456789e-03

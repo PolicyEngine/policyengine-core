@@ -16,7 +16,6 @@ if typing.TYPE_CHECKING:
 
 
 class FlatTrace:
-
     _full_tracer: tracers.FullTracer
 
     def __init__(self, full_tracer: tracers.FullTracer) -> None:

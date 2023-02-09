@@ -23,7 +23,7 @@ TEST_CASE: Dict[str, Dict[str, Any]] = {
 
 TEST_CASE_AGES = deepcopy(TEST_CASE)
 AGES = [40, 37, 7, 9, 54, 20]
-for (individu, age) in zip(TEST_CASE_AGES["persons"].values(), AGES):
+for individu, age in zip(TEST_CASE_AGES["persons"].values(), AGES):
     individu["age"] = age
 
 FIRST_PARENT = entities.Household.FIRST_PARENT

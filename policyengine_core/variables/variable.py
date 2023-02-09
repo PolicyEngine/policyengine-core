@@ -546,7 +546,7 @@ class Variable:
                     self.json_type, value
                 )
             raise ValueError(error_message)
-        except (OverflowError):
+        except OverflowError:
             error_message = "Can't deal with value: '{}', it's too large for type '{}'.".format(
                 value, self.json_type
             )

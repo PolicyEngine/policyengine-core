@@ -1246,19 +1246,23 @@
 
         <span class="k">return</span> <span class="n">new</span></div>
 
-<div class="viewcode-block" id="Simulation.get_branch"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_branch">[docs]</a>    <span class="k">def</span> <span class="nf">get_branch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;branch&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Simulation&quot;</span><span class="p">:</span>
+<div class="viewcode-block" id="Simulation.get_branch"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.get_branch">[docs]</a>    <span class="k">def</span> <span class="nf">get_branch</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;branch&quot;</span><span class="p">,</span> <span class="n">clone_system</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Simulation&quot;</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a clone of this simulation, whose calculations are traced in the original.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            name (str, optional): Name of the branch. Defaults to &quot;branch&quot;.</span>
-<span class="sd">            store (bool, optional): Whether to store the branch in the original simulation. Defaults to True.</span>
+<span class="sd">            clone_system (bool, optional): Whether to clone the tax-benefit system. Use this if you&#39;re changing policy parameters. Defaults to False.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Simulation: The cloned simulation.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span>
-        <span class="n">branch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone</span><span class="p">(</span><span class="n">clone_tax_benefit_system</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">branches</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">branches</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="n">branch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone</span><span class="p">(</span><span class="n">clone_tax_benefit_system</span><span class="o">=</span><span class="n">clone_system</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">branches</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">branch</span>
         <span class="n">branch</span><span class="o">.</span><span class="n">branch_name</span> <span class="o">=</span> <span class="n">name</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trace</span><span class="p">:</span>

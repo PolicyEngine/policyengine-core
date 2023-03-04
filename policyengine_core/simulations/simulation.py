@@ -1013,19 +1013,23 @@ class Simulation:
 
         return new
 
-    def get_branch(self, name: str = "branch") -> "Simulation":
+    def get_branch(
+        self, name: str = "branch", clone_system: bool = False
+    ) -> "Simulation":
         """Create a clone of this simulation, whose calculations are traced in the original.
 
         Args:
             name (str, optional): Name of the branch. Defaults to "branch".
-            store (bool, optional): Whether to store the branch in the original simulation. Defaults to True.
+            clone_system (bool, optional): Whether to clone the tax-benefit system. Use this if you're changing policy parameters. Defaults to False.
 
         Returns:
             Simulation: The cloned simulation.
         """
         if name == self.branch_name:
             return self
-        branch = self.clone(clone_tax_benefit_system=False)
+        if name in self.branches:
+            return self.branches[name]
+        branch = self.clone(clone_tax_benefit_system=clone_system)
         self.branches[name] = branch
         branch.branch_name = name
         if self.trace:

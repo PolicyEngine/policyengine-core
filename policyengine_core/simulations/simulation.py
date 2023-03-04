@@ -1013,7 +1013,9 @@ class Simulation:
 
         return new
 
-    def get_branch(self, name: str = "branch", clone_system: bool = False) -> "Simulation":
+    def get_branch(
+        self, name: str = "branch", clone_system: bool = False
+    ) -> "Simulation":
         """Create a clone of this simulation, whose calculations are traced in the original.
 
         Args:

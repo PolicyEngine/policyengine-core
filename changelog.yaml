@@ -297,3 +297,8 @@
     fixed:
     - Branches stay persistent between variables.
   date: 2023-03-04 22:58:51
+- bump: patch
+  changes:
+    fixed:
+    - Removed bad dependency fixes.
+  date: 2023-03-08 21:35:17

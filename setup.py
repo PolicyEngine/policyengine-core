@@ -45,6 +45,11 @@ dev_requirements = [
     "sphinx-math-dollar",
     "wheel",
     "yaml-changelog",
+    "mypy",
+    "types-PyYAML",
+    "types-requests",
+    "types-setuptools",
+    "types-urllib3",
 ]
 
 setup(

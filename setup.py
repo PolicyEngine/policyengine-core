@@ -19,7 +19,7 @@ general_requirements = [
     "sortedcontainers",
     "numexpr",
     "dpath",
-    "nptyping",
+    "nptyping<2",
     "psutil",
     "wheel",
     "h5py",

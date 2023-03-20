@@ -40,6 +40,7 @@ class Dataset:
             )
         elif isinstance(self.file_path, str):
             self.file_path = Path(self.file_path)
+            self.file_path.parent.mkdir(parents=True, exist_ok=True)
 
         assert (
             self.name

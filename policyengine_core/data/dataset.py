@@ -144,7 +144,7 @@ class Dataset:
             for table_name, dataframe in data.items():
                 self.save(table_name, dataframe)
         elif self.data_format == Dataset.TIME_PERIOD_ARRAYS:
-            with h5py.File(file, "a") as f:
+            with h5py.File(file, "a" if file.exists else "w") as f:
                 for variable, values in data.items():
                     for time_period, value in values.items():
                         key = f"{variable}/{time_period}"
@@ -153,7 +153,7 @@ class Dataset:
                             del f[key]
                         f.create_dataset(key, data=value)
         elif self.data_format == Dataset.ARRAYS:
-            with h5py.File(file, "a") as f:
+            with h5py.File(file, "a" if file.exists else "w") as f:
                 for variable, value in data.items():
                     # Overwrite if existing
                     if variable in f:

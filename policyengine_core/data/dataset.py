@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import shutil
 import requests
+import os
 
 
 class Dataset:
@@ -54,12 +55,20 @@ class Dataset:
             Dataset.TABLES,
             Dataset.ARRAYS,
             Dataset.TIME_PERIOD_ARRAYS,
-        ], "You tried to instantiate a Dataset object, but your data_format attribute is invalid."
+        ], f"You tried to instantiate a Dataset object, but your data_format attribute is invalid ({self.data_format})."
 
         self._table_cache = {}
 
+        if (self.data_format != Dataset.TIME_PERIOD_ARRAYS) and self.time_period is None:
+            raise ValueError(
+                "You tried to instantiate a Dataset object, but no time_period has been provided."
+            )
+
         if not self.exists:
             if self.url is not None:
+                self.download()
+            elif "http" in os.environ.get(self.name, ""):
+                self.url = os.environ[self.name]
                 self.download()
             else:
                 self.generate()
@@ -248,12 +257,15 @@ class Dataset:
             raise FileNotFoundError(f"File {file_path} does not exist.")
         shutil.move(file_path, self.file_path)
 
-    def download(self, url: str):
+    def download(self, url: str = None):
         """Downloads a file to the dataset's file path.
 
         Args:
             url (str): The url to download.
         """
+
+        if url is None:
+            url = self.url
 
         response = requests.get(url)
 

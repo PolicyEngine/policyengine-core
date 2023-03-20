@@ -130,7 +130,10 @@ class Simulation:
                         f"Dataset {dataset} not found. Available datasets: {list(datasets_by_name.keys())}"
                     )
                 dataset = datasets_by_name[dataset]
-            self.dataset: Dataset = dataset()
+            if isinstance(dataset, type):
+                self.dataset: Dataset = dataset()
+            else:
+                self.dataset = dataset
             self.build_from_dataset()
 
         # Backwards compatibility methods
@@ -254,6 +257,8 @@ class Simulation:
             else:
                 # Silently skip.
                 pass
+        
+        self.default_calculation_period = self.dataset.time_period
 
     @property
     def trace(self) -> bool:
@@ -421,7 +426,7 @@ class Simulation:
             for variable_name in variable_names
         ]
         # Check that all variables are from the same entity. If not, map values to the entity of the first variable.
-        entity = entities[0]
+        entity = map_to or entities[0]
         if not all(entity == e for e in entities):
             map_to = entity
         for variable_name in variable_names:

@@ -7,12 +7,14 @@ class CountryTemplateDataset(Dataset):
     # Specify metadata used to describe and store the dataset.
     name = "country_template_dataset"
     label = "Country template dataset"
-    folder_path = COUNTRY_DIR / "data" / "storage"
+    file_path = (
+        COUNTRY_DIR / "data" / "storage" / "country_template_dataset.h5"
+    )
     data_format = Dataset.TIME_PERIOD_ARRAYS
 
     # The generation function is the most important part: it defines
     # how the dataset is generated from the raw data for a given year.
-    def generate(self, year: int) -> None:
+    def generate(self) -> None:
         person_id = [0, 1, 2]
         household_id = [0, 1]
         person_household_id = [0, 0, 1]
@@ -29,8 +31,4 @@ class CountryTemplateDataset(Dataset):
             "salary": {salary_time_period: salary},
             "household_weight": {weight_time_period: weight},
         }
-        self.save_variable_values(year, data)
-
-
-# Important: we must instantiate datasets. This tests their validity and adds dynamic logic.
-CountryTemplateDataset = CountryTemplateDataset()
+        self.save_dataset(data)

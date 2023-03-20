@@ -1,0 +1,4 @@
+- bump: major
+  changes:
+    changed:
+    - Datasets API simplified and made more consistent.

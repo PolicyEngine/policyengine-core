@@ -46,9 +46,6 @@ class Simulation:
     default_dataset: Dataset = None
     """The default dataset class to use if none is provided."""
 
-    default_dataset_year: int = None
-    """The default dataset year to use if none is provided."""
-
     default_role: str = None
     """The default role to assign people to groups if none is provided."""
 
@@ -58,13 +55,15 @@ class Simulation:
     default_calculation_period: str = None
     """The default period to calculate for if none is provided."""
 
+    datasets: List[Dataset] = []
+    """The list of datasets available for this simulation."""
+
     def __init__(
         self,
         tax_benefit_system: "TaxBenefitSystem" = None,
         populations: Dict[str, Population] = None,
         situation: dict = None,
-        dataset: Type[Dataset] = None,
-        dataset_year: int = None,
+        dataset: Union[str, Type[Dataset]] = None,
         reform: Reform = None,
     ):
         if tax_benefit_system is None:
@@ -87,10 +86,6 @@ class Simulation:
         if dataset is None:
             if self.default_dataset is not None:
                 dataset = self.default_dataset
-
-        if dataset_year is None:
-            if self.default_dataset_year is not None:
-                dataset_year = self.default_dataset_year
 
         self.invalidated_caches = set()
         self.debug: bool = False
@@ -126,8 +121,16 @@ class Simulation:
             self.build_from_populations(populations)
 
         if dataset is not None:
-            self.dataset = dataset
-            self.dataset_year = dataset_year
+            if isinstance(dataset, str):
+                datasets_by_name = {
+                    dataset.name: dataset for dataset in self.datasets
+                }
+                if dataset not in datasets_by_name:
+                    raise ValueError(
+                        f"Dataset {dataset} not found. Available datasets: {list(datasets_by_name.keys())}"
+                    )
+                dataset = datasets_by_name[dataset]
+            self.dataset: Dataset = dataset()
             self.build_from_dataset()
 
         # Backwards compatibility methods
@@ -178,13 +181,10 @@ class Simulation:
         builder = SimulationBuilder()
         builder.populations = self.populations
         try:
-            try:
-                data = self.dataset.load(self.dataset_year)
-            except:
-                data = self.dataset.load()
+            data = self.dataset.load()
         except FileNotFoundError as e:
             raise FileNotFoundError(
-                f"The dataset file {self.dataset.name} (with year {self.dataset_year}) could not be found. "
+                f"The dataset file {self.dataset.name} could not be found. "
                 + "Make sure you have downloaded or built it using the `policyengine-core data` command."
             ) from e
 
@@ -248,7 +248,9 @@ class Simulation:
                             variable, time_period, data[variable][time_period]
                         )
                 else:
-                    self.set_input(variable, self.dataset_year, data[variable])
+                    self.set_input(
+                        variable, self.dataset.time_period, data[variable]
+                    )
             else:
                 # Silently skip.
                 pass

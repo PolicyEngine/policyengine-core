@@ -44,10 +44,8 @@ class Microsimulation(CoreMicrosimulation):
     default_tax_benefit_system = CountryTaxBenefitSystem
     default_dataset = CountryTemplateDataset
     default_tax_benefit_system_instance = system
-    default_dataset_year = 2022
     default_calculation_period = "2022-01"
 
 
-if 2022 not in CountryTemplateDataset.years:
-    logging.warn("Default country template dataset not found. Building it.")
-    CountryTemplateDataset.generate(2022)
+# Ensure that the default dataset exists
+CountryTemplateDataset()

@@ -59,7 +59,9 @@ class Dataset:
 
         self._table_cache = {}
 
-        if (self.data_format != Dataset.TIME_PERIOD_ARRAYS) and self.time_period is None:
+        if (
+            self.data_format != Dataset.TIME_PERIOD_ARRAYS
+        ) and self.time_period is None:
             raise ValueError(
                 "You tried to instantiate a Dataset object, but no time_period has been provided."
             )

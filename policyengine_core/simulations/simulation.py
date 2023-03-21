@@ -257,7 +257,7 @@ class Simulation:
             else:
                 # Silently skip.
                 pass
-        
+
         self.default_calculation_period = self.dataset.time_period
 
     @property

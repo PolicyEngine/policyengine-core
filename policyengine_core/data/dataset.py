@@ -275,7 +275,7 @@ class Dataset:
                 url,
                 headers={
                     "Authorization": f"token {os.environ['POLICYENGINE_GITHUB_MICRODATA_AUTH_TOKEN']}",
-                    "Accepts": "application/octet-stream",
+                    "Accept": "application/octet-stream",
                 },
             )
 

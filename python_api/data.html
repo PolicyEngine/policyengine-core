@@ -241,9 +241,9 @@
 <dt class="sig sig-object py" id="policyengine_core.data.Dataset">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.data.</span></span><span class="sig-name descname"><span class="pre">Dataset</span></span><a class="reference internal" href="../_modules/policyengine_core/data/dataset.html#Dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.Dataset" title="Permalink to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>The <cite>Dataset</cite> class is a base class for datasets used directly or indirectly for OpenFisca models.
+<p>The <cite>Dataset</cite> class is a base class for datasets used directly or indirectly for microsimulation models.
 A dataset defines a generation function to create it from other data, and this class provides common features
-like cloud storage, metadata and loading.</p>
+like storage, metadata and loading.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="policyengine_core.data.Dataset.ARRAYS">
 <span class="sig-name descname"><span class="pre">ARRAYS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'arrays'</span></em><a class="headerlink" href="#policyengine_core.data.Dataset.ARRAYS" title="Permalink to this definition">#</a></dt>
@@ -267,91 +267,42 @@ like cloud storage, metadata and loading.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.data.Dataset.download">
-<span class="sig-name descname"><span class="pre">download</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">year</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/data/dataset.html#Dataset.download"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.Dataset.download" title="Permalink to this definition">#</a></dt>
-<dd><p>Downloads the dataset for a given year (all datasets should implement this method).</p>
+<span class="sig-name descname"><span class="pre">download</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/data/dataset.html#Dataset.download"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.Dataset.download" title="Permalink to this definition">#</a></dt>
+<dd><p>Downloads a file to the dataset’s file path.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>year</strong> (<em>int</em>) – The year of the dataset to download.</p>
-</dd>
-<dt class="field-even">Raises</dt>
-<dd class="field-even"><p><strong>NotImplementedError</strong> – If the function has not been overriden.</p>
+<dd class="field-odd"><p><strong>url</strong> (<em>str</em>) – The url to download.</p>
 </dd>
 </dl>
 </dd></dl>
 
-<dl class="py method">
-<dt class="sig sig-object py" id="policyengine_core.data.Dataset.file">
-<span class="sig-name descname"><span class="pre">file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">year</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pathlib.Path</span></span></span><a class="reference internal" href="../_modules/policyengine_core/data/dataset.html#Dataset.file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.Dataset.file" title="Permalink to this definition">#</a></dt>
-<dd><p>Returns the path to the dataset for a given year.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="policyengine_core.data.Dataset.exists">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">exists</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#policyengine_core.data.Dataset.exists" title="Permalink to this definition">#</a></dt>
+<dd><p>Checks whether the dataset exists.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>year</strong> (<em>int</em>) – The year of the dataset to generate.</p>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Whether the dataset exists.</p>
 </dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>The path to the dataset.</p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>Path</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="policyengine_core.data.Dataset.filename">
-<span class="sig-name descname"><span class="pre">filename</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">year</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/policyengine_core/data/dataset.html#Dataset.filename"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.Dataset.filename" title="Permalink to this definition">#</a></dt>
-<dd><p>Returns the filename of the dataset for a given year.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>year</strong> (<em>int</em>) – The year of the dataset to generate.</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>The filename of the dataset.</p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>str</p>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>bool</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.data.Dataset.folder_path">
-<span class="sig-name descname"><span class="pre">folder_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">pathlib.Path</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#policyengine_core.data.Dataset.folder_path" title="Permalink to this definition">#</a></dt>
-<dd><p>The path to the folder where the dataset is stored (in .h5 files).</p>
+<dt class="sig sig-object py" id="policyengine_core.data.Dataset.file_path">
+<span class="sig-name descname"><span class="pre">file_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">pathlib.Path</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#policyengine_core.data.Dataset.file_path" title="Permalink to this definition">#</a></dt>
+<dd><p>The path to the dataset file. This is used to load the dataset from a file.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.data.Dataset.generate">
-<span class="sig-name descname"><span class="pre">generate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">year</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/data/dataset.html#Dataset.generate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.Dataset.generate" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">generate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/data/dataset.html#Dataset.generate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.Dataset.generate" title="Permalink to this definition">#</a></dt>
 <dd><p>Generates the dataset for a given year (all datasets should implement this method).</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>year</strong> (<em>int</em>) – The year of the dataset to generate.</p>
-</dd>
-<dt class="field-even">Raises</dt>
-<dd class="field-even"><p><strong>NotImplementedError</strong> – If the function has not been overriden.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.data.Dataset.is_openfisca_compatible">
-<span class="sig-name descname"><span class="pre">is_openfisca_compatible</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#policyengine_core.data.Dataset.is_openfisca_compatible" title="Permalink to this definition">#</a></dt>
-<dd><p>Whether the dataset is compatible with OpenFisca. If True, the dataset will be stored as a collection of arrays. If False, the dataset will be stored as a collection of tables.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="policyengine_core.data.Dataset.keys">
-<span class="sig-name descname"><span class="pre">keys</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">year</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/data/dataset.html#Dataset.keys"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.Dataset.keys" title="Permalink to this definition">#</a></dt>
-<dd><p>Returns the keys of the dataset for a given year.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>year</strong> (<em>int</em>) – The year of the dataset to generate.</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>The keys of the dataset.</p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>list</p>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><strong>NotImplementedError</strong> – If the function has not been overriden.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -364,13 +315,12 @@ like cloud storage, metadata and loading.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.data.Dataset.load">
-<span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">year</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'r'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">h5py._hl.files.File</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">numpy.array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">pandas.core.frame.DataFrame</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">pandas.io.pytables.HDFStore</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/policyengine_core/data/dataset.html#Dataset.load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.Dataset.load" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'r'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">h5py._hl.files.File</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">numpy.array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">pandas.core.frame.DataFrame</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">pandas.io.pytables.HDFStore</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/policyengine_core/data/dataset.html#Dataset.load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.Dataset.load" title="Permalink to this definition">#</a></dt>
 <dd><p>Loads the dataset for a given year, returning a H5 file reader. You can then access the
 dataset like a dictionary (e.g.e Dataset.load(2022)[“variable”]).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>year</strong> (<em>int</em>) – The year of the dataset to load.</p></li>
 <li><p><strong>key</strong> (<em>str</em><em>, </em><em>optional</em>) – The key to load. Defaults to None.</p></li>
 <li><p><strong>mode</strong> (<em>str</em><em>, </em><em>optional</em>) – The mode to open the file with. Defaults to “r”.</p></li>
 </ul>
@@ -384,6 +334,20 @@ dataset like a dictionary (e.g.e Dataset.load(2022)[“variable”]).</p>
 </dl>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.data.Dataset.load_dataset">
+<span class="sig-name descname"><span class="pre">load_dataset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/data/dataset.html#Dataset.load_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.Dataset.load_dataset" title="Permalink to this definition">#</a></dt>
+<dd><p>Loads a complete dataset from disk.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The dataset.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>Dict[str, Dict[str, Sequence]]</p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py attribute">
 <dt class="sig sig-object py" id="policyengine_core.data.Dataset.name">
 <span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#policyengine_core.data.Dataset.name" title="Permalink to this definition">#</a></dt>
@@ -392,29 +356,17 @@ dataset like a dictionary (e.g.e Dataset.load(2022)[“variable”]).</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.data.Dataset.remove">
-<span class="sig-name descname"><span class="pre">remove</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">year</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/data/dataset.html#Dataset.remove"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.Dataset.remove" title="Permalink to this definition">#</a></dt>
-<dd><p>Removes the dataset file for a given year.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>year</strong> (<em>int</em><em>, </em><em>optional</em>) – The year of the dataset to remove. Defaults to all.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="policyengine_core.data.Dataset.remove_all">
-<span class="sig-name descname"><span class="pre">remove_all</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/data/dataset.html#Dataset.remove_all"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.Dataset.remove_all" title="Permalink to this definition">#</a></dt>
-<dd><p>Removes all dataset files.</p>
+<span class="sig-name descname"><span class="pre">remove</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/data/dataset.html#Dataset.remove"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.Dataset.remove" title="Permalink to this definition">#</a></dt>
+<dd><p>Removes the dataset from disk.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.data.Dataset.save">
-<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">year</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">pandas.core.frame.DataFrame</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/data/dataset.html#Dataset.save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.Dataset.save" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">pandas.core.frame.DataFrame</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/data/dataset.html#Dataset.save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.Dataset.save" title="Permalink to this definition">#</a></dt>
 <dd><p>Overwrites the values for <cite>key</cite> with <cite>values</cite>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>year</strong> (<em>int</em>) – The year of the dataset to save.</p></li>
 <li><p><strong>key</strong> (<em>str</em>) – The key to save.</p></li>
 <li><p><strong>values</strong> (<em>Union</em><em>[</em><em>np.array</em><em>, </em><em>pd.DataFrame</em><em>]</em>) – The values to save.</p></li>
 </ul>
@@ -423,15 +375,12 @@ dataset like a dictionary (e.g.e Dataset.load(2022)[“variable”]).</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="policyengine_core.data.Dataset.save_variable_values">
-<span class="sig-name descname"><span class="pre">save_variable_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">year</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../_modules/policyengine_core/data/dataset.html#Dataset.save_variable_values"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.Dataset.save_variable_values" title="Permalink to this definition">#</a></dt>
-<dd><p>Writes data values for variables in specific time periods.</p>
+<dt class="sig sig-object py" id="policyengine_core.data.Dataset.save_dataset">
+<span class="sig-name descname"><span class="pre">save_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../_modules/policyengine_core/data/dataset.html#Dataset.save_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.Dataset.save_dataset" title="Permalink to this definition">#</a></dt>
+<dd><p>Writes a complete dataset to disk.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>year</strong> (<em>int</em>) – The year of the dataset to save.</p></li>
-<li><p><strong>data</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>Dict</em><em>[</em><em>str</em><em>, </em><em>Sequence</em><em>]</em>) – The data to save. Should be nested in the form {variable_name: {time_period: values}}.</p></li>
-</ul>
+<dd class="field-odd"><p><strong>data</strong> – The data to save.</p>
 </dd>
 </dl>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">example_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
@@ -445,23 +394,40 @@ dataset like a dictionary (e.g.e Dataset.load(2022)[“variable”]).</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="policyengine_core.data.Dataset.upload">
-<span class="sig-name descname"><span class="pre">upload</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">year</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/data/dataset.html#Dataset.upload"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.Dataset.upload" title="Permalink to this definition">#</a></dt>
-<dd><p>Uploads the dataset for a given year (all datasets should implement this method).</p>
+<dt class="sig sig-object py" id="policyengine_core.data.Dataset.store_file">
+<span class="sig-name descname"><span class="pre">store_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/data/dataset.html#Dataset.store_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.Dataset.store_file" title="Permalink to this definition">#</a></dt>
+<dd><p>Moves a file to the dataset’s file path.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>year</strong> (<em>int</em>) – The year of the dataset to upload.</p>
-</dd>
-<dt class="field-even">Raises</dt>
-<dd class="field-even"><p><strong>NotImplementedError</strong> – If the function has not been overriden.</p>
+<dd class="field-odd"><p><strong>file_path</strong> (<em>str</em>) – The file path to move.</p>
 </dd>
 </dl>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.data.Dataset.time_period">
+<span class="sig-name descname"><span class="pre">time_period</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#policyengine_core.data.Dataset.time_period" title="Permalink to this definition">#</a></dt>
+<dd><p>The time period of the dataset. This is used to automatically enter the values in the correct time period if the data type is <cite>Dataset.ARRAYS</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="policyengine_core.data.Dataset.url">
+<span class="sig-name descname"><span class="pre">url</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#policyengine_core.data.Dataset.url" title="Permalink to this definition">#</a></dt>
+<dd><p>The URL to download the dataset from. This is used to download the dataset if it does not exist.</p>
+</dd></dl>
+
 <dl class="py property">
-<dt class="sig sig-object py" id="policyengine_core.data.Dataset.years">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">years</span></span><a class="headerlink" href="#policyengine_core.data.Dataset.years" title="Permalink to this definition">#</a></dt>
-<dd><p>Returns the years for which the dataset has been generated.</p>
+<dt class="sig sig-object py" id="policyengine_core.data.Dataset.variables">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">variables</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#policyengine_core.data.Dataset.variables" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns the variables in the dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The variables in the dataset.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>List[str]</p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
@@ -469,91 +435,9 @@ dataset like a dictionary (e.g.e Dataset.load(2022)[“variable”]).</p>
 </section>
 <section id="publicdataset">
 <h2>PublicDataset<a class="headerlink" href="#publicdataset" title="Permalink to this headline">#</a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="policyengine_core.data.PublicDataset">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.data.</span></span><span class="sig-name descname"><span class="pre">PublicDataset</span></span><a class="reference internal" href="../_modules/policyengine_core/data/public_dataset.html#PublicDataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.PublicDataset" title="Permalink to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#policyengine_core.data.Dataset" title="policyengine_core.data.dataset.Dataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">policyengine_core.data.dataset.Dataset</span></code></a></p>
-<p>Datasets inheriting from this class are stored on publicly accessible URLs.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="policyengine_core.data.PublicDataset.download">
-<span class="sig-name descname"><span class="pre">download</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">year</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/data/public_dataset.html#PublicDataset.download"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.PublicDataset.download" title="Permalink to this definition">#</a></dt>
-<dd><p>Downloads the dataset from the given URL for the given year.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>year</strong> (<em>int</em>) – The year of the dataset to download.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="policyengine_core.data.PublicDataset.upload">
-<span class="sig-name descname"><span class="pre">upload</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">year</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/data/public_dataset.html#PublicDataset.upload"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.PublicDataset.upload" title="Permalink to this definition">#</a></dt>
-<dd><p>Uploads the dataset for a given year (all datasets should implement this method).</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>year</strong> (<em>int</em>) – The year of the dataset to upload.</p>
-</dd>
-<dt class="field-even">Raises</dt>
-<dd class="field-even"><p><strong>NotImplementedError</strong> – If the function has not been overriden.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.data.PublicDataset.url_by_year">
-<span class="sig-name descname"><span class="pre">url_by_year</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#policyengine_core.data.PublicDataset.url_by_year" title="Permalink to this definition">#</a></dt>
-<dd><p>A dictionary mapping years to URLs.</p>
-</dd></dl>
-
-</dd></dl>
-
 </section>
 <section id="privatedataset">
 <h2>PrivateDataset<a class="headerlink" href="#privatedataset" title="Permalink to this headline">#</a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="policyengine_core.data.PrivateDataset">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.data.</span></span><span class="sig-name descname"><span class="pre">PrivateDataset</span></span><a class="reference internal" href="../_modules/policyengine_core/data/private_dataset.html#PrivateDataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.PrivateDataset" title="Permalink to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#policyengine_core.data.Dataset" title="policyengine_core.data.dataset.Dataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">policyengine_core.data.dataset.Dataset</span></code></a></p>
-<p>Private datasets are stored on Google Cloud Buckets (requires the Google Cloud CLI to be installed).</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.data.PrivateDataset.bucket_name">
-<span class="sig-name descname"><span class="pre">bucket_name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#policyengine_core.data.PrivateDataset.bucket_name" title="Permalink to this definition">#</a></dt>
-<dd><p>The name of the Google Cloud Storage bucket to use for this dataset.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="policyengine_core.data.PrivateDataset.download">
-<span class="sig-name descname"><span class="pre">download</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">year</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/data/private_dataset.html#PrivateDataset.download"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.PrivateDataset.download" title="Permalink to this definition">#</a></dt>
-<dd><p>Downloads the dataset from Google Cloud Storage for the given year. Overwrites any existing dataset for the year specified.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>year</strong> (<em>int</em>) – The year of the dataset to download.</p>
-</dd>
-<dt class="field-even">Raises</dt>
-<dd class="field-even"><p><strong>FileNotFoundError</strong> – If the dataset could not be found on Google Cloud Storage.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.data.PrivateDataset.filename_by_year">
-<span class="sig-name descname"><span class="pre">filename_by_year</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#policyengine_core.data.PrivateDataset.filename_by_year" title="Permalink to this definition">#</a></dt>
-<dd><p>A dictionary mapping years to filenames.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="policyengine_core.data.PrivateDataset.upload">
-<span class="sig-name descname"><span class="pre">upload</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">year</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/data/private_dataset.html#PrivateDataset.upload"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data.PrivateDataset.upload" title="Permalink to this definition">#</a></dt>
-<dd><p>Uploads the dataset to Google Cloud Storage for the given year.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>year</strong> (<em>int</em>) – The year of the dataset to upload.</p>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
 </section>
 </section>
 

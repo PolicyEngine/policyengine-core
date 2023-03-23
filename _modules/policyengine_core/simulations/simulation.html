@@ -279,9 +279,6 @@
     <span class="n">default_dataset</span><span class="p">:</span> <span class="n">Dataset</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The default dataset class to use if none is provided.&quot;&quot;&quot;</span>
 
-    <span class="n">default_dataset_year</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;The default dataset year to use if none is provided.&quot;&quot;&quot;</span>
-
     <span class="n">default_role</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The default role to assign people to groups if none is provided.&quot;&quot;&quot;</span>
 
@@ -291,13 +288,15 @@
     <span class="n">default_calculation_period</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The default period to calculate for if none is provided.&quot;&quot;&quot;</span>
 
+    <span class="n">datasets</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The list of datasets available for this simulation.&quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">tax_benefit_system</span><span class="p">:</span> <span class="s2">&quot;TaxBenefitSystem&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">populations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Population</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">situation</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">dataset</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">dataset_year</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Type</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">reform</span><span class="p">:</span> <span class="n">Reform</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="k">if</span> <span class="n">tax_benefit_system</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -320,10 +319,6 @@
         <span class="k">if</span> <span class="n">dataset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_dataset</span>
-
-        <span class="k">if</span> <span class="n">dataset_year</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_dataset_year</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">dataset_year</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_dataset_year</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">invalidated_caches</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
@@ -359,8 +354,19 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">build_from_populations</span><span class="p">(</span><span class="n">populations</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">dataset_year</span> <span class="o">=</span> <span class="n">dataset_year</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="n">datasets_by_name</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="n">dataset</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">dataset</span> <span class="k">for</span> <span class="n">dataset</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">datasets</span>
+                <span class="p">}</span>
+                <span class="k">if</span> <span class="n">dataset</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">datasets_by_name</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Dataset </span><span class="si">{</span><span class="n">dataset</span><span class="si">}</span><span class="s2"> not found. Available datasets: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">datasets_by_name</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+                <span class="n">dataset</span> <span class="o">=</span> <span class="n">datasets_by_name</span><span class="p">[</span><span class="n">dataset</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">build_from_dataset</span><span class="p">()</span>
 
         <span class="c1"># Backwards compatibility methods</span>
@@ -411,13 +417,10 @@
         <span class="n">builder</span> <span class="o">=</span> <span class="n">SimulationBuilder</span><span class="p">()</span>
         <span class="n">builder</span><span class="o">.</span><span class="n">populations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset_year</span><span class="p">)</span>
-            <span class="k">except</span><span class="p">:</span>
-                <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
         <span class="k">except</span> <span class="ne">FileNotFoundError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;The dataset file </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> (with year </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset_year</span><span class="si">}</span><span class="s2">) could not be found. &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;The dataset file </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> could not be found. &quot;</span>
                 <span class="o">+</span> <span class="s2">&quot;Make sure you have downloaded or built it using the `policyengine-core data` command.&quot;</span>
             <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
 
@@ -481,10 +484,14 @@
                             <span class="n">variable</span><span class="p">,</span> <span class="n">time_period</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">variable</span><span class="p">][</span><span class="n">time_period</span><span class="p">]</span>
                         <span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">set_input</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_year</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">variable</span><span class="p">])</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">set_input</span><span class="p">(</span>
+                        <span class="n">variable</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">time_period</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">variable</span><span class="p">]</span>
+                    <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># Silently skip.</span>
-                <span class="k">pass</span></div>
+                <span class="k">pass</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">default_calculation_period</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">time_period</span></div>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">trace</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
@@ -652,7 +659,7 @@
             <span class="k">for</span> <span class="n">variable_name</span> <span class="ow">in</span> <span class="n">variable_names</span>
         <span class="p">]</span>
         <span class="c1"># Check that all variables are from the same entity. If not, map values to the entity of the first variable.</span>
-        <span class="n">entity</span> <span class="o">=</span> <span class="n">entities</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">entity</span> <span class="o">=</span> <span class="n">map_to</span> <span class="ow">or</span> <span class="n">entities</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">entity</span> <span class="o">==</span> <span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">entities</span><span class="p">):</span>
             <span class="n">map_to</span> <span class="o">=</span> <span class="n">entity</span>
         <span class="k">for</span> <span class="n">variable_name</span> <span class="ow">in</span> <span class="n">variable_names</span><span class="p">:</span>

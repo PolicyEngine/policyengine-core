@@ -277,13 +277,11 @@
     <span class="n">default_tax_benefit_system</span> <span class="o">=</span> <span class="n">CountryTaxBenefitSystem</span>
     <span class="n">default_dataset</span> <span class="o">=</span> <span class="n">CountryTemplateDataset</span>
     <span class="n">default_tax_benefit_system_instance</span> <span class="o">=</span> <span class="n">system</span>
-    <span class="n">default_dataset_year</span> <span class="o">=</span> <span class="mi">2022</span>
     <span class="n">default_calculation_period</span> <span class="o">=</span> <span class="s2">&quot;2022-01&quot;</span>
 
 
-<span class="k">if</span> <span class="mi">2022</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">CountryTemplateDataset</span><span class="o">.</span><span class="n">years</span><span class="p">:</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Default country template dataset not found. Building it.&quot;</span><span class="p">)</span>
-    <span class="n">CountryTemplateDataset</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="mi">2022</span><span class="p">)</span>
+<span class="c1"># Ensure that the default dataset exists</span>
+<span class="n">CountryTemplateDataset</span><span class="p">()</span>
 </pre></div>
         </article>
       </div>

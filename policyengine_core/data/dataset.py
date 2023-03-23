@@ -270,7 +270,10 @@ class Dataset:
             url = self.url
 
         if "POLICYENGINE_GITHUB_MICRODATA_AUTH_TOKEN" not in os.environ:
-            response = requests.get(url)
+            response = requests.get(
+                url,
+                headers={"Accept": "application/octet-stream"},
+            )
         else:
             # Download from GitHub using a personal access token
             response = requests.get(

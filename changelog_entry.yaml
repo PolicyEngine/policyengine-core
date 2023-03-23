@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    fixed:
-    - A bug where public datasets would fail to download.

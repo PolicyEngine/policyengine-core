@@ -1,53 +1,48 @@
-import importlib
-import logging
-import os
-import re
-from array import ArrayType
 from pathlib import Path
-from typing import Callable, Dict, Union, Optional, Sequence, TypeVar, Generic
-
+from typing import Dict, Union, List
 import h5py
 import numpy as np
 import pandas as pd
-
-from policyengine_core.types import ArrayLike
+import shutil
+import requests
+import os
 
 
 class Dataset:
-    """The `Dataset` class is a base class for datasets used directly or indirectly for OpenFisca models.
+    """The `Dataset` class is a base class for datasets used directly or indirectly for microsimulation models.
     A dataset defines a generation function to create it from other data, and this class provides common features
-    like cloud storage, metadata and loading."""
+    like storage, metadata and loading."""
 
     name: str = None
     """The name of the dataset. This is used to generate filenames and is used as the key in the `datasets` dictionary."""
     label: str = None
     """The label of the dataset. This is used for logging and is used as the key in the `datasets` dictionary."""
-    is_openfisca_compatible: bool = True
-    """Whether the dataset is compatible with OpenFisca. If True, the dataset will be stored as a collection of arrays. If False, the dataset will be stored as a collection of tables."""
     data_format: str = None
     """The format of the dataset. This can be either `Dataset.ARRAYS`, `Dataset.TIME_PERIOD_ARRAYS` or `Dataset.TABLES`. If `Dataset.ARRAYS`, the dataset is stored as a collection of arrays. If `Dataset.TIME_PERIOD_ARRAYS`, the dataset is stored as a collection of arrays, with one array per time period. If `Dataset.TABLES`, the dataset is stored as a collection of tables (DataFrames)."""
-    folder_path: Optional[Union[str, Path]] = None
-    """The path to the folder where the dataset is stored (in .h5 files)."""
+    file_path: Path = None
+    """The path to the dataset file. This is used to load the dataset from a file."""
+    time_period: str = None
+    """The time period of the dataset. This is used to automatically enter the values in the correct time period if the data type is `Dataset.ARRAYS`."""
+    url: str = None
+    """The URL to download the dataset from. This is used to download the dataset if it does not exist."""
 
     # Data formats
     TABLES = "tables"
     ARRAYS = "arrays"
     TIME_PERIOD_ARRAYS = "time_period_arrays"
 
+    _table_cache: Dict[str, pd.DataFrame] = None
+
     def __init__(self):
         # Setup dataset
-        if self.folder_path is None:
+        if self.file_path is None:
             raise ValueError(
-                "Dataset folder_path must be specified in the dataset class definition."
+                "Dataset file_path must be specified in the dataset class definition."
             )
-        elif isinstance(self.folder_path, str):
-            self.folder_path = Path(self.folder_path)
+        elif isinstance(self.file_path, str):
+            self.file_path = Path(self.file_path)
 
-        if not self.folder_path.exists():
-            logging.info(
-                f"Creating folder {self.folder_path} for {self.label} dataset."
-            )
-            self.folder_path.mkdir(parents=True)
+        self.file_path.parent.mkdir(parents=True, exist_ok=True)
 
         assert (
             self.name
@@ -56,70 +51,44 @@ class Dataset:
             self.label
         ), "You tried to instantiate a Dataset object, but no label has been provided."
 
-        if self.data_format is None:
-            if not self.is_openfisca_compatible:
-                # Assume that external (raw) datasets are a collection of tables.
-                self.data_format = Dataset.TABLES
-            else:
-                # OpenFisca datasets are a collection of arrays.
-                self.data_format = Dataset.ARRAYS
-
         assert self.data_format in [
             Dataset.TABLES,
             Dataset.ARRAYS,
             Dataset.TIME_PERIOD_ARRAYS,
-        ], "You tried to instantiate a Dataset object, but your data_format attribute is invalid."
+        ], f"You tried to instantiate a Dataset object, but your data_format attribute is invalid ({self.data_format})."
 
-        # Ensure typed arguments are enforced in `generate`
+        self._table_cache = {}
 
-        def cast_first_arg_as_int(fn: Callable) -> Callable:
-            def wrapper(year: str, *args, **kwargs):
-                year = int(year)
-                return fn(year, *args, **kwargs)
+        if (
+            self.data_format != Dataset.TIME_PERIOD_ARRAYS
+        ) and self.time_period is None:
+            raise ValueError(
+                "You tried to instantiate a Dataset object, but no time_period has been provided."
+            )
 
-            return wrapper
-
-        self.generate = cast_first_arg_as_int(self.generate)
-        self.download = cast_first_arg_as_int(self.download)
-        self.upload = cast_first_arg_as_int(self.upload)
-
-    def filename(self, year: int) -> str:
-        """Returns the filename of the dataset for a given year.
-
-        Args:
-            year (int): The year of the dataset to generate.
-
-        Returns:
-            str: The filename of the dataset.
-        """
-        return f"{self.name}_{year}.h5"
-
-    def file(self, year: int) -> Path:
-        """Returns the path to the dataset for a given year.
-
-        Args:
-            year (int): The year of the dataset to generate.
-
-        Returns:
-            Path: The path to the dataset.
-        """
-        return self.folder_path / self.filename(year)
+        if not self.exists:
+            if self.url is not None:
+                self.download()
+            elif "http" in os.environ.get(self.name, ""):
+                self.url = os.environ[self.name]
+                self.download()
+            else:
+                self.generate()
 
     def load(
-        self, year: int, key: str = None, mode: str = "r"
+        self, key: str = None, mode: str = "r"
     ) -> Union[h5py.File, np.array, pd.DataFrame, pd.HDFStore]:
         """Loads the dataset for a given year, returning a H5 file reader. You can then access the
         dataset like a dictionary (e.g.e Dataset.load(2022)["variable"]).
 
         Args:
-            year (int): The year of the dataset to load.
             key (str, optional): The key to load. Defaults to None.
             mode (str, optional): The mode to open the file with. Defaults to "r".
 
         Returns:
             Union[h5py.File, np.array, pd.DataFrame, pd.HDFStore]: The dataset.
         """
-        file = self.folder_path / self.filename(year)
+        file = self.file_path
         if self.data_format in (Dataset.ARRAYS, Dataset.TIME_PERIOD_ARRAYS):
             if key is None:
                 # If no key provided, return the basic H5 reader.
@@ -134,24 +103,26 @@ class Dataset:
                 # Non-openfisca datasets are assumed to be of the format (table name: [table], ...).
                 return pd.HDFStore(file)
             else:
+                if key in self._table_cache:
+                    return self._table_cache[key]
                 # If a table name is provided, return that table.
                 with pd.HDFStore(file) as f:
                     values = f[key]
+                self._table_cache[key] = values
                 return values
         else:
             raise ValueError(
                 f"Invalid data format {self.data_format} for dataset {self.label}."
             )
 
-    def save(self, year: int, key: str, values: Union[np.array, pd.DataFrame]):
+    def save(self, key: str, values: Union[np.array, pd.DataFrame]):
         """Overwrites the values for `key` with `values`.
 
         Args:
-            year (int): The year of the dataset to save.
             key (str): The key to save.
             values (Union[np.array, pd.DataFrame]): The values to save.
         """
-        file = self.folder_path / self.filename(year)
+        file = self.file_path
         if self.data_format in (Dataset.ARRAYS, Dataset.TIME_PERIOD_ARRAYS):
             with h5py.File(file, "a") as f:
                 # Overwrite if existing
@@ -161,19 +132,17 @@ class Dataset:
         elif self.data_format == Dataset.TABLES:
             with pd.HDFStore(file, "a") as f:
                 f.put(key, values)
+            self._table_cache = {}
         else:
             raise ValueError(
                 f"Invalid data format {self.data_format} for dataset {self.label}."
             )
 
-    def save_variable_values(
-        self, year: int, data: Dict[str, Dict[str, Sequence]]
-    ) -> None:
-        """Writes data values for variables in specific time periods.
+    def save_dataset(self, data) -> None:
+        """Writes a complete dataset to disk.
 
         Args:
-            year (int): The year of the dataset to save.
-            data (Dict[str, Dict[str, Sequence]): The data to save. Should be nested in the form {variable_name: {time_period: values}}.
+            data: The data to save.
 
         >>> example_data: Dict[str, Dict[str, Sequence]] = {
         ...     "employment_income": {
@@ -182,112 +151,145 @@ class Dataset:
         ... }
         >>> example_data["employment_income"]["2022"] = [25000, 25000, 30000, 30000]
         """
-        if self.data_format is not self.TIME_PERIOD_ARRAYS:
-            raise ValueError(
-                f"Invalid data format {self.data_format} for dataset {self.label}."
-            )
-
-        file = self.folder_path / self.filename(year)
-        with h5py.File(file, "a") as f:
-            for variable, values in data.items():
-                for time_period, value in values.items():
-                    key = f"{variable}/{time_period}"
+        file = self.file_path
+        if self.data_format == Dataset.TABLES:
+            for table_name, dataframe in data.items():
+                self.save(table_name, dataframe)
+        elif self.data_format == Dataset.TIME_PERIOD_ARRAYS:
+            with h5py.File(file, "a" if file.exists() else "w") as f:
+                for variable, values in data.items():
+                    for time_period, value in values.items():
+                        key = f"{variable}/{time_period}"
+                        # Overwrite if existing
+                        if key in f:
+                            del f[key]
+                        f.create_dataset(key, data=value)
+        elif self.data_format == Dataset.ARRAYS:
+            with h5py.File(file, "a" if file.exists() else "w") as f:
+                for variable, value in data.items():
                     # Overwrite if existing
-                    if key in f:
-                        del f[key]
-                    f.create_dataset(key, data=value)
+                    if variable in f:
+                        del f[variable]
+                    f.create_dataset(variable, data=value)
 
-    def keys(self, year: int):
-        """Returns the keys of the dataset for a given year.
-
-        Args:
-            year (int): The year of the dataset to generate.
+    def load_dataset(
+        self,
+    ):
+        """Loads a complete dataset from disk.
 
         Returns:
-            list: The keys of the dataset.
+            Dict[str, Dict[str, Sequence]]: The dataset.
         """
-        if self.data_format in (Dataset.ARRAYS, Dataset.TIME_PERIOD_ARRAYS):
-            with h5py.File(self.file(year), mode="r") as f:
+        file = self.file_path
+        if self.data_format == Dataset.TABLES:
+            with pd.HDFStore(file) as f:
+                data = {table_name: f[table_name] for table_name in f.keys()}
+        elif self.data_format == Dataset.TIME_PERIOD_ARRAYS:
+            with h5py.File(file, "r") as f:
+                data = {}
+                for variable in f.keys():
+                    data[variable] = {}
+                    for time_period in f[variable].keys():
+                        key = f"{variable}/{time_period}"
+                        data[variable][time_period] = np.array(f[key])
+        elif self.data_format == Dataset.ARRAYS:
+            with h5py.File(file, "r") as f:
+                data = {
+                    variable: np.array(f[variable]) for variable in f.keys()
+                }
+        return data
+
+    def generate(self):
+        """Generates the dataset for a given year (all datasets should implement this method).
+
+        Raises:
+            NotImplementedError: If the function has not been overriden.
+        """
+        raise NotImplementedError(
+            f"You tried to generate the dataset for {self.label}, but no dataset generation implementation has been provided for {self.label}."
+        )
+
+    @property
+    def exists(self) -> bool:
+        """Checks whether the dataset exists.
+
+        Returns:
+            bool: Whether the dataset exists.
+        """
+        return self.file_path.exists()
+
+    @property
+    def variables(self) -> List[str]:
+        """Returns the variables in the dataset.
+
+        Returns:
+            List[str]: The variables in the dataset.
+        """
+        if self.data_format == Dataset.TABLES:
+            with pd.HDFStore(self.file_path) as f:
                 return list(f.keys())
-        elif self.data_format == Dataset.TABLES:
-            with pd.HDFStore(self.file(year)) as f:
+        elif self.data_format in (Dataset.ARRAYS, Dataset.TIME_PERIOD_ARRAYS):
+            with h5py.File(self.file_path, "r") as f:
                 return list(f.keys())
         else:
             raise ValueError(
                 f"Invalid data format {self.data_format} for dataset {self.label}."
             )
 
-    def generate(self, year: int):
-        """Generates the dataset for a given year (all datasets should implement this method).
+    def __getattr__(self, name):
+        """Allows the dataset to be accessed like a dictionary.
 
         Args:
-            year (int): The year of the dataset to generate.
+            name (str): The key to access.
 
-        Raises:
-            NotImplementedError: If the function has not been overriden.
+        Returns:
+            Union[np.array, pd.DataFrame]: The dataset.
         """
-        raise NotImplementedError(
-            f"You tried to generate the dataset for year {year} of {self.label}, but no dataset generation implementation has been provided for {self.label}."
-        )
+        return self.load(name)
 
-    def download(self, year: int):
-        """Downloads the dataset for a given year (all datasets should implement this method).
+    def store_file(self, file_path: str):
+        """Moves a file to the dataset's file path.
 
         Args:
-            year (int): The year of the dataset to download.
-
-        Raises:
-            NotImplementedError: If the function has not been overriden.
+            file_path (str): The file path to move.
         """
-        raise NotImplementedError(
-            f"You tried to download the dataset for year {year} of {self.label}, but no dataset download implementation has been provided for {self.label}."
-        )
 
-    def upload(self, year: int):
-        """Uploads the dataset for a given year (all datasets should implement this method).
+        file_path = Path(file_path)
+        if not file_path.exists():
+            raise FileNotFoundError(f"File {file_path} does not exist.")
+        shutil.move(file_path, self.file_path)
+
+    def download(self, url: str = None):
+        """Downloads a file to the dataset's file path.
 
         Args:
-            year (int): The year of the dataset to upload.
-
-        Raises:
-            NotImplementedError: If the function has not been overriden.
+            url (str): The url to download.
         """
-        raise NotImplementedError(
-            f"You tried to upload the dataset for year {year} of {self.label}, but no dataset upload implementation has been provided for {self.label}."
-        )
 
-    def remove(self, year: int = None):
-        """Removes the dataset file for a given year.
+        if url is None:
+            url = self.url
 
-        Args:
-            year (int, optional): The year of the dataset to remove. Defaults to all.
-        """
-        if year is None:
-            filenames = map(self.filename(year), self.years)
+        if "POLICYENGINE_GITHUB_MICRODATA_AUTH_TOKEN" not in os.environ:
+            response = requests.get(url)
         else:
-            filenames = (self.filename(year),)
-        for filename in filenames:
-            filepath = self.folder_path / filename
-            if filepath.exists():
-                os.remove(filepath)
-
-    def remove_all(self):
-        """Removes all dataset files."""
-        for year in self.years:
-            self.remove(year)
-
-    @property
-    def years(self):
-        """Returns the years for which the dataset has been generated."""
-        pattern = re.compile(f"\n{self.name}_([0-9]+).h5")
-        return list(
-            map(
-                int,
-                pattern.findall(
-                    "\n"
-                    + "\n".join(
-                        map(lambda path: path.name, self.folder_path.iterdir())
-                    )
-                ),
+            # Download from GitHub using a personal access token
+            response = requests.get(
+                url,
+                headers={
+                    "Authorization": f"token {os.environ['POLICYENGINE_GITHUB_MICRODATA_AUTH_TOKEN']}",
+                    "Accept": "application/octet-stream",
+                },
             )
-        )
+
+        if response.status_code != 200:
+            raise ValueError(
+                f"Invalid response code {response.status_code} for url {url}."
+            )
+
+        with open(self.file_path, "wb") as f:
+            f.write(response.content)
+
+    def remove(self):
+        """Removes the dataset from disk."""
+        if self.exists:
+            self.file_path.unlink()

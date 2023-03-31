@@ -33,7 +33,7 @@ class Dataset:
 
     _table_cache: Dict[str, pd.DataFrame] = None
 
-    def __init__(self):
+    def __init__(self, regenerate: bool = False):
         # Setup dataset
         if self.file_path is None:
             raise ValueError(
@@ -66,11 +66,10 @@ class Dataset:
                 "You tried to instantiate a Dataset object, but no time_period has been provided."
             )
 
-        if not self.exists:
+        if regenerate:
+            self.generate()
+        elif not self.exists:
             if self.url is not None:
-                self.download()
-            elif "http" in os.environ.get(self.name, ""):
-                self.url = os.environ[self.name]
                 self.download()
             else:
                 self.generate()
@@ -163,14 +162,24 @@ class Dataset:
                         # Overwrite if existing
                         if key in f:
                             del f[key]
-                        f.create_dataset(key, data=value)
+                        try:
+                            f.create_dataset(key, data=value)
+                        except:
+                            raise ValueError(
+                                f"Could not save {key} to {file}. The value is {value}."
+                            )
         elif self.data_format == Dataset.ARRAYS:
             with h5py.File(file, "a" if file.exists() else "w") as f:
                 for variable, value in data.items():
                     # Overwrite if existing
                     if variable in f:
                         del f[variable]
-                    f.create_dataset(variable, data=value)
+                    try:
+                        f.create_dataset(variable, data=value)
+                    except:
+                        raise ValueError(
+                            f"Could not save {variable} to {file}. The value is {value}."
+                        )
 
     def load_dataset(
         self,
@@ -270,19 +279,44 @@ class Dataset:
             url = self.url
 
         if "POLICYENGINE_GITHUB_MICRODATA_AUTH_TOKEN" not in os.environ:
-            response = requests.get(
-                url,
-                headers={"Accept": "application/octet-stream"},
-            )
+            auth_headers = {}
         else:
-            # Download from GitHub using a personal access token
-            response = requests.get(
-                url,
-                headers={
-                    "Authorization": f"token {os.environ['POLICYENGINE_GITHUB_MICRODATA_AUTH_TOKEN']}",
-                    "Accept": "application/octet-stream",
-                },
-            )
+            auth_headers = {
+                "Authorization": f"token {os.environ['POLICYENGINE_GITHUB_MICRODATA_AUTH_TOKEN']}",
+            }
+
+        # "release://" is a special protocol for downloading from GitHub releases
+        # e.g. release://policyengine/policyengine-us/cps-2023/cps_2023.h5
+        # release://org/repo/release_tag/file_path
+        # Use the GitHub API to get the download URL for the release asset
+
+        if url.startswith("release://"):
+            org, repo, release_tag, file_path = url.split("/")[2:]
+            url = f"https://api.github.com/repos/{org}/{repo}/releases/tags/{release_tag}"
+            response = requests.get(url, headers=auth_headers)
+            if response.status_code != 200:
+                raise ValueError(
+                    f"Invalid response code {response.status_code} for url {url}."
+                )
+            assets = response.json()["assets"]
+            for asset in assets:
+                if asset["name"] == file_path:
+                    url = asset["url"]
+                    break
+            else:
+                raise ValueError(
+                    f"File {file_path} not found in release {release_tag} of {org}/{repo}."
+                )
+        else:
+            url = url
+
+        response = requests.get(
+            url,
+            headers={
+                "Accept": "application/octet-stream",
+                **auth_headers,
+            },
+        )
 
         if response.status_code != 200:
             raise ValueError(

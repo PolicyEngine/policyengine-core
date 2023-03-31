@@ -516,9 +516,12 @@ class Simulation:
                             latest_known_period.start
                         )
                         value_in_this_period = uprating_parameter(period.start)
-                        uprating_factor = (
-                            value_in_this_period / value_in_last_period
-                        )
+                        if value_in_last_period == 0:
+                            uprating_factor = 1
+                        else:
+                            uprating_factor = (
+                                value_in_this_period / value_in_last_period
+                            )
 
                         array = (
                             holder.get_array(

@@ -1,3 +1,4 @@
 - bump: patch
-  changed:
+  changes:
+    changed:
     - Added ability to pull datasets from GitHub releases.

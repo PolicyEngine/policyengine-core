@@ -33,7 +33,7 @@ general_requirements = [
 dev_requirements = [
     "jupyter-book<1",
     "furo<2023",
-    "markupsafe==2.0.1",
+    "markupsafe==2.0.2",
     "coverage",
     "furo",
     "mypy==0.991",
@@ -48,7 +48,7 @@ dev_requirements = [
 
 setup(
     name="policyengine-core",
-    version="2.0.1",
+    version="2.0.2",
     author="PolicyEngine",
     author_email="hello@policyengine.org",
     classifiers=[

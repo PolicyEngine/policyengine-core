@@ -33,7 +33,7 @@ general_requirements = [
 dev_requirements = [
     "jupyter-book<1",
     "furo<2023",
-    "markupsafe==2.0.2",
+    "markupsafe==2.0.1",
     "coverage",
     "furo",
     "mypy==0.991",

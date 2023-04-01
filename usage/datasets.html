@@ -287,8 +287,8 @@
 <span class="g g-Whitespace">     </span><span class="mi">35</span> <span class="c1"># Important: we must instantiate datasets. This tests their validity and adds dynamic logic.</span>
 <span class="ne">---&gt; </span><span class="mi">36</span> <span class="n">CountryTemplateDataset</span> <span class="o">=</span> <span class="n">CountryTemplateDataset</span><span class="p">()</span>
 
-<span class="nn">File ~/work/policyengine-core/policyengine-core/policyengine_core/data/dataset.py:39,</span> in <span class="ni">Dataset.__init__</span><span class="nt">(self)</span>
-<span class="g g-Whitespace">     </span><span class="mi">36</span> <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="nn">File ~/work/policyengine-core/policyengine-core/policyengine_core/data/dataset.py:39,</span> in <span class="ni">Dataset.__init__</span><span class="nt">(self, regenerate)</span>
+<span class="g g-Whitespace">     </span><span class="mi">36</span> <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">regenerate</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
 <span class="g g-Whitespace">     </span><span class="mi">37</span>     <span class="c1"># Setup dataset</span>
 <span class="g g-Whitespace">     </span><span class="mi">38</span>     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
 <span class="ne">---&gt; </span><span class="mi">39</span>         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>

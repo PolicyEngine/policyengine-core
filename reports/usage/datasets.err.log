@@ -62,8 +62,8 @@ Cell [0;32mIn[1], line 36[0m
 [1;32m     35[0m [38;5;66;03m# Important: we must instantiate datasets. This tests their validity and adds dynamic logic.[39;00m
 [0;32m---> 36[0m CountryTemplateDataset [38;5;241m=[39m [43mCountryTemplateDataset[49m[43m([49m[43m)[49m
 
-File [0;32m~/work/policyengine-core/policyengine-core/policyengine_core/data/dataset.py:39[0m, in [0;36mDataset.__init__[0;34m(self)[0m
-[1;32m     36[0m [38;5;28;01mdef[39;00m [38;5;21m__init__[39m([38;5;28mself[39m):
+File [0;32m~/work/policyengine-core/policyengine-core/policyengine_core/data/dataset.py:39[0m, in [0;36mDataset.__init__[0;34m(self, regenerate)[0m
+[1;32m     36[0m [38;5;28;01mdef[39;00m [38;5;21m__init__[39m([38;5;28mself[39m, regenerate: [38;5;28mbool[39m [38;5;241m=[39m [38;5;28;01mFalse[39;00m):
 [1;32m     37[0m     [38;5;66;03m# Setup dataset[39;00m
 [1;32m     38[0m     [38;5;28;01mif[39;00m [38;5;28mself[39m[38;5;241m.[39mfile_path [38;5;129;01mis[39;00m [38;5;28;01mNone[39;00m:
 [0;32m---> 39[0m         [38;5;28;01mraise[39;00m [38;5;167;01mValueError[39;00m(

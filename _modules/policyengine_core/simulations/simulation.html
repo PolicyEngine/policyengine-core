@@ -749,9 +749,12 @@
                             <span class="n">latest_known_period</span><span class="o">.</span><span class="n">start</span>
                         <span class="p">)</span>
                         <span class="n">value_in_this_period</span> <span class="o">=</span> <span class="n">uprating_parameter</span><span class="p">(</span><span class="n">period</span><span class="o">.</span><span class="n">start</span><span class="p">)</span>
-                        <span class="n">uprating_factor</span> <span class="o">=</span> <span class="p">(</span>
-                            <span class="n">value_in_this_period</span> <span class="o">/</span> <span class="n">value_in_last_period</span>
-                        <span class="p">)</span>
+                        <span class="k">if</span> <span class="n">value_in_last_period</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="n">uprating_factor</span> <span class="o">=</span> <span class="mi">1</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">uprating_factor</span> <span class="o">=</span> <span class="p">(</span>
+                                <span class="n">value_in_this_period</span> <span class="o">/</span> <span class="n">value_in_last_period</span>
+                            <span class="p">)</span>
 
                         <span class="n">array</span> <span class="o">=</span> <span class="p">(</span>
                             <span class="n">holder</span><span class="o">.</span><span class="n">get_array</span><span class="p">(</span>

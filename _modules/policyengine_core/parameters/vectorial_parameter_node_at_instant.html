@@ -355,6 +355,11 @@
             <span class="p">}</span>
 
         <span class="k">def</span> <span class="nf">check_nodes_homogeneous</span><span class="p">(</span><span class="n">named_nodes</span><span class="p">):</span>
+            <span class="c1"># PolicyEngine models skip this check. The upsides:</span>
+            <span class="c1"># * It cuts runtimes down by about 40%.</span>
+            <span class="c1"># * Developers no longer get a helpful error message when attempting to use fancy</span>
+            <span class="c1">#   indexing on a non-homogeneous parameter.</span>
+            <span class="k">return</span> <span class="kc">True</span>
 <span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">            Check than several nodes (or parameters, or baremes) have the same structure.</span>
 <span class="sd">            &quot;&quot;&quot;</span>

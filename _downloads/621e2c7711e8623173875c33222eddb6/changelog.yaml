@@ -317,3 +317,8 @@
     changed:
     - Added ability to pull datasets from GitHub releases.
   date: 2023-03-31 18:27:52
+- bump: patch
+  changes:
+    changed:
+    - Removed node homogenuity check for speed.
+  date: 2023-04-14 10:06:10

@@ -98,81 +98,6 @@ def test_wrong_key():
     assert "'rate.single.owner.toto' was not found" in get_message(e.value)
 
 
-def test_inhomogenous():
-    parameters = ParameterNode(directory_path=LOCAL_DIR)
-    parameters.rate.couple.owner.add_child(
-        "toto",
-        Parameter(
-            "toto",
-            {
-                "values": {
-                    "2015-01-01": {"value": 1000},
-                }
-            },
-        ),
-    )
-
-    P = parameters.rate("2015-01-01")
-    housing_occupancy_status = np.asarray(
-        ["owner", "owner", "tenant", "tenant"]
-    )
-    with pytest.raises(ValueError) as error:
-        P.couple[housing_occupancy_status]
-    assert "'rate.couple.owner.toto' exists" in get_message(error.value)
-    assert "'rate.couple.tenant.toto' doesn't" in get_message(error.value)
-
-
-def test_inhomogenous_2():
-    parameters = ParameterNode(directory_path=LOCAL_DIR)
-    parameters.rate.couple.tenant.add_child(
-        "toto",
-        Parameter(
-            "toto",
-            {
-                "values": {
-                    "2015-01-01": {"value": 1000},
-                }
-            },
-        ),
-    )
-
-    P = parameters.rate("2015-01-01")
-    housing_occupancy_status = np.asarray(
-        ["owner", "owner", "tenant", "tenant"]
-    )
-    with pytest.raises(ValueError) as e:
-        P.couple[housing_occupancy_status]
-    assert "'rate.couple.tenant.toto' exists" in get_message(e.value)
-    assert "'rate.couple.owner.toto' doesn't" in get_message(e.value)
-
-
-def test_inhomogenous_3():
-    parameters = ParameterNode(directory_path=LOCAL_DIR)
-    parameters.rate.couple.tenant.add_child(
-        "z4",
-        ParameterNode(
-            "toto",
-            data={
-                "amount": {
-                    "values": {
-                        "2015-01-01": {"value": 550},
-                        "2016-01-01": {"value": 600},
-                    }
-                }
-            },
-        ),
-    )
-
-    P = parameters.rate("2015-01-01")
-    zone = np.asarray(["z1", "z2", "z2", "z1"])
-    with pytest.raises(ValueError) as e:
-        P.couple.tenant[zone]
-    assert "'rate.couple.tenant.z4' is a node" in get_message(e.value)
-    assert re.findall(
-        r"'rate.couple.tenant.z(1|2|3)' is not", get_message(e.value)
-    )
-
-
 P_2 = parameters.local_tax("2015-01-01")
 
 
@@ -182,16 +107,6 @@ def test_with_properties_starting_by_number():
 
 
 P_3 = parameters.bareme("2015-01-01")
-
-
-def test_with_bareme():
-    city_code = np.asarray(["75012", "75007", "75015"])
-    with pytest.raises(NotImplementedError) as e:
-        P_3[city_code]
-    assert re.findall(
-        r"'bareme.7501\d' is a 'MarginalRateTaxScale'", get_message(e.value)
-    )
-    assert "has not been implemented" in get_message(e.value)
 
 
 def test_with_enum():

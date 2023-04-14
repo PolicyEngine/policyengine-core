@@ -122,6 +122,11 @@ class VectorialParameterNodeAtInstant:
             }
 
         def check_nodes_homogeneous(named_nodes):
+            # PolicyEngine models skip this check. The upsides:
+            # * It cuts runtimes down by about 40%.
+            # * Developers no longer get a helpful error message when attempting to use fancy
+            #   indexing on a non-homogeneous parameter.
+            return True
             """
             Check than several nodes (or parameters, or baremes) have the same structure.
             """

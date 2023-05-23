@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    fixed:
+    - Bug causing simulations containing multiple group entities and axes to fail to simulate.

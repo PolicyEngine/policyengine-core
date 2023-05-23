@@ -704,8 +704,9 @@ class SimulationBuilder:
             )
             # Adjust ids
             original_ids = self.get_ids(entity_name) * cell_count
-            indices = np.arange(
-                0, cell_count * self.entity_counts[entity_name]
+            # indices should be [0, 0, 0, 1, 1, 1, 2, 2, 2, ...] where each number is repeated axis_entity_count times
+            indices = np.repeat(
+                np.arange(0, cell_count), self.entity_counts[entity_name]
             )
             adjusted_ids = [
                 id + str(ix) for id, ix in zip(original_ids, indices)
@@ -718,7 +719,8 @@ class SimulationBuilder:
             # Adjust memberships, for group entities only
             if entity_name != self.persons_plural:
                 original_memberships = self.get_memberships(entity_name)
-                repeated_memberships = np.repeat(
+                # repeat membership, e.g. [1, 0] -> [1, 0, 1, 0, ...]
+                repeated_memberships = np.tile(
                     original_memberships, cell_count
                 )
                 indices = (

@@ -247,17 +247,17 @@
 <div><p>Example:</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">policyengine_core</span> <span class="kn">import</span> <span class="n">reforms</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">policyengine_core.parameters</span> <span class="kn">import</span> <span class="n">load_parameter_file</span>
-<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">modify_my_parameters</span><span class="p">(</span><span class="n">parameters</span><span class="p">):</span>
 <span class="gp">&gt;&gt;&gt; </span>    <span class="c1"># Add new parameters</span>
 <span class="gp">&gt;&gt;&gt; </span>    <span class="n">new_parameters</span> <span class="o">=</span> <span class="n">load_parameter_file</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;reform_name&#39;</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="s1">&#39;path_to_yaml_file.yaml&#39;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span>    <span class="n">parameters</span><span class="o">.</span><span class="n">add_child</span><span class="p">(</span><span class="s1">&#39;reform_name&#39;</span><span class="p">,</span> <span class="n">new_parameters</span><span class="p">)</span>
-<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt;</span>
 <span class="gp">&gt;&gt;&gt; </span>    <span class="c1"># Update a value</span>
 <span class="gp">&gt;&gt;&gt; </span>    <span class="n">parameters</span><span class="o">.</span><span class="n">taxes</span><span class="o">.</span><span class="n">some_tax</span><span class="o">.</span><span class="n">some_param</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">period</span><span class="o">=</span><span class="n">some_period</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">1000.0</span><span class="p">)</span>
-<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt;</span>
 <span class="gp">&gt;&gt;&gt; </span>   <span class="k">return</span> <span class="n">parameters</span>
-<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">class</span> <span class="nc">MyReform</span><span class="p">(</span><span class="n">reforms</span><span class="o">.</span><span class="n">Reform</span><span class="p">):</span>
 <span class="gp">&gt;&gt;&gt; </span>   <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="gp">&gt;&gt;&gt; </span>       <span class="bp">self</span><span class="o">.</span><span class="n">add_variable</span><span class="p">(</span><span class="n">some_variable</span><span class="p">)</span>

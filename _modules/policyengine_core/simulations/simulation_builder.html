@@ -937,8 +937,9 @@
             <span class="p">)</span>
             <span class="c1"># Adjust ids</span>
             <span class="n">original_ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ids</span><span class="p">(</span><span class="n">entity_name</span><span class="p">)</span> <span class="o">*</span> <span class="n">cell_count</span>
-            <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
-                <span class="mi">0</span><span class="p">,</span> <span class="n">cell_count</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_counts</span><span class="p">[</span><span class="n">entity_name</span><span class="p">]</span>
+            <span class="c1"># indices should be [0, 0, 0, 1, 1, 1, 2, 2, 2, ...] where each number is repeated axis_entity_count times</span>
+            <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">cell_count</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_counts</span><span class="p">[</span><span class="n">entity_name</span><span class="p">]</span>
             <span class="p">)</span>
             <span class="n">adjusted_ids</span> <span class="o">=</span> <span class="p">[</span>
                 <span class="nb">id</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">ix</span><span class="p">)</span> <span class="k">for</span> <span class="nb">id</span><span class="p">,</span> <span class="n">ix</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">original_ids</span><span class="p">,</span> <span class="n">indices</span><span class="p">)</span>
@@ -951,7 +952,8 @@
             <span class="c1"># Adjust memberships, for group entities only</span>
             <span class="k">if</span> <span class="n">entity_name</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">persons_plural</span><span class="p">:</span>
                 <span class="n">original_memberships</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_memberships</span><span class="p">(</span><span class="n">entity_name</span><span class="p">)</span>
-                <span class="n">repeated_memberships</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span>
+                <span class="c1"># repeat membership, e.g. [1, 0] -&gt; [1, 0, 1, 0, ...]</span>
+                <span class="n">repeated_memberships</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span>
                     <span class="n">original_memberships</span><span class="p">,</span> <span class="n">cell_count</span>
                 <span class="p">)</span>
                 <span class="n">indices</span> <span class="o">=</span> <span class="p">(</span>

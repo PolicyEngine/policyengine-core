@@ -22,8 +22,7 @@ from typing import (
     Type,
     Union,
 )
-
-import pkg_resources
+import importlib
 
 from policyengine_core import commons, periods, variables
 from policyengine_core.data_structures.reference import Reference
@@ -592,8 +591,8 @@ class TaxBenefitSystem:
             return fallback_metadata
         package_name = module.__package__.split(".")[0]
         try:
-            distribution = pkg_resources.get_distribution(package_name)
-        except pkg_resources.DistributionNotFound:
+            distribution = importlib.metadata.distribution(package_name)
+        except importlib.metadata.PackageNotFoundError:
             return fallback_metadata
 
         location = (

@@ -98,7 +98,6 @@ def marginal_rate(
     """
 
     marginal_rate: ArrayType[float]
-
     marginal_rate = +1 - (target[:-1] - target[1:]) / (
         varying[:-1] - varying[1:]
     )

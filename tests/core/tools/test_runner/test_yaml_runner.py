@@ -3,6 +3,7 @@ from typing import List
 
 import numpy as np
 import pytest
+from pathlib import Path
 
 from policyengine_core.entities import Entity
 from policyengine_core.errors import VariableNotFoundError
@@ -68,10 +69,15 @@ class TestFile(YamlFile):
         self.session = None
         self._nodeid = "testname"
 
+        # Set path to current Python file
+        self.path = Path(__file__)
+
 
 class TestItem(YamlItem):
-    def __init__(self, test):
-        super().__init__("", TestFile(), TaxBenefitSystem(), test, {})
+    def __init__(self, parent=None, test=None):
+        super().__init__(
+            "", TestFile.from_parent(None), TaxBenefitSystem(), test, {}
+        )
 
         self.tax_benefit_system = self.baseline_tax_benefit_system
         self.simulation = Simulation()
@@ -92,7 +98,7 @@ class TestVariable(Variable):
 def test_variable_not_found():
     test = {"output": {"unknown_variable": 0}}
     with pytest.raises(VariableNotFoundError) as excinfo:
-        test_item = TestItem(test)
+        test_item = TestItem.from_parent(None, test=test)
         test_item.check_output()
     assert excinfo.value.variable_name == "unknown_variable"
 
@@ -164,7 +170,7 @@ def test_performance_graph_option_output():
         "input": {"salary": {"2017-01": 2000}},
         "output": {"salary": {"2017-01": 2000}},
     }
-    test_item = TestItem(test)
+    test_item = TestItem.from_parent(None, test=test)
     test_item.options = {"performance_graph": True}
 
     paths = ["./performance_graph.html"]
@@ -185,7 +191,7 @@ def test_performance_tables_option_output():
         "input": {"salary": {"2017-01": 2000}},
         "output": {"salary": {"2017-01": 2000}},
     }
-    test_item = TestItem(test)
+    test_item = TestItem.from_parent(None, test=test)
     test_item.options = {"performance_tables": True}
 
     paths = ["performance_table.csv", "aggregated_performance_table.csv"]

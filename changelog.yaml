@@ -328,3 +328,10 @@
     - Bug causing simulations containing multiple group entities and axes to fail
       to simulate.
   date: 2023-05-23 07:35:11
+- bump: minor
+  changes:
+    added:
+    - Python 3.10 support.
+    fixed:
+    - PyTest syntax updated.
+  date: 2023-05-23 13:22:04

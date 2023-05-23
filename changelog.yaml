@@ -322,3 +322,9 @@
     changed:
     - Removed node homogenuity check for speed.
   date: 2023-04-14 10:06:10
+- bump: patch
+  changes:
+    fixed:
+    - Bug causing simulations containing multiple group entities and axes to fail
+      to simulate.
+  date: 2023-05-23 07:35:11

@@ -10,7 +10,7 @@ long_description = (this_directory / "README.md").read_text()
 # functional and integration breaks caused by external code updates.
 
 general_requirements = [
-    "pytest>=4,<6",
+    "pytest>=7,<8",
     "numpy>=1.21,<1.22",
     "black",
     "linecheck<1",
@@ -73,6 +73,7 @@ setup(
             "policyengine-core=policyengine_core.scripts.policyengine_command:main",
         ],
     },
+    python_requires=">=3.7",
     extras_require={
         "dev": dev_requirements,
     },

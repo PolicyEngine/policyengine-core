@@ -1,0 +1,6 @@
+- bump: minor
+  changes:
+    fixed:
+    - PyTest syntax updated.
+    added:
+    - Python 3.10 support.

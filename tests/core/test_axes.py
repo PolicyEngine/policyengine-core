@@ -147,9 +147,9 @@ def test_add_axis_with_group(persons):
     assert simulation_builder.get_count("persons") == 4
     assert simulation_builder.get_ids("persons") == [
         "Alicia0",
+        "Javier0",
+        "Alicia1",
         "Javier1",
-        "Alicia2",
-        "Javier3",
     ]
     assert simulation_builder.get_input("salary", "2018-11") == pytest.approx(
         [0, 0, 3000, 3000]
@@ -207,9 +207,9 @@ def test_add_axis_on_households(persons, households):
     assert simulation_builder.get_count("households") == 4
     assert simulation_builder.get_ids("households") == [
         "housea0",
+        "houseb0",
+        "housea1",
         "houseb1",
-        "housea2",
-        "houseb3",
     ]
     assert simulation_builder.get_input("rent", "2018-11") == pytest.approx(
         [0, 0, 3000, 0]

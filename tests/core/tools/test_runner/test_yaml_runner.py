@@ -80,7 +80,7 @@ class TestItem(YamlItem):
             parent=TestFile.from_parent(None),
             baseline_tax_benefit_system=TaxBenefitSystem(),
             test=test,
-            options={}
+            options={},
         )
 
         self.tax_benefit_system = self.baseline_tax_benefit_system

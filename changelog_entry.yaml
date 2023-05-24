@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    fixed:
-    - Fixed pytest deprecated usages since version 7, and fixed a bug that prevented new package from publishing.

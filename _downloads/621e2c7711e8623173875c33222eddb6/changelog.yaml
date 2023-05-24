@@ -335,3 +335,9 @@
     fixed:
     - PyTest syntax updated.
   date: 2023-05-23 13:22:04
+- bump: patch
+  changes:
+    fixed:
+    - Fixed pytest deprecated usages since version 7, and fixed a bug that prevented
+      new package from publishing.
+  date: 2023-05-24 15:11:39

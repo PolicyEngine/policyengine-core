@@ -110,19 +110,19 @@ def run_tests(tax_benefit_system, paths, options=None):
 
 
 class YamlFile(pytest.File):
-    def __init__(self, path, fspath, parent, tax_benefit_system, options):
-        super(YamlFile, self).__init__(path, parent)
+    def __init__(self, *, tax_benefit_system, options, **kwargs):
+        super(YamlFile, self).__init__(**kwargs)
         self.tax_benefit_system = tax_benefit_system
         self.options = options
 
     def collect(self):
         try:
-            tests = yaml.load(self.fspath.open(), Loader=Loader)
+            tests = yaml.load(self.path.open(), Loader=Loader)
         except (yaml.scanner.ScannerError, yaml.parser.ParserError, TypeError):
             message = os.linesep.join(
                 [
                     traceback.format_exc(),
-                    f"'{self.fspath}' is not a valid YAML file. Check the stack trace above for more details.",
+                    f"'{self.path}' is not a valid YAML file. Check the stack trace above for more details.",
                 ]
             )
             raise ValueError(message)
@@ -156,9 +156,9 @@ class YamlItem(pytest.Item):
     """
 
     def __init__(
-        self, name, parent, baseline_tax_benefit_system, test, options
+        self, *, baseline_tax_benefit_system, test, options, **kwargs
     ):
-        super(YamlItem, self).__init__(name, parent)
+        super(YamlItem, self).__init__(**kwargs)
         self.baseline_tax_benefit_system = baseline_tax_benefit_system
         self.options = options
         self.test = test
@@ -378,16 +378,15 @@ class OpenFiscaPlugin(object):
         self.tax_benefit_system = tax_benefit_system
         self.options = options
 
-    def pytest_collect_file(self, parent, path):
+    def pytest_collect_file(self, parent, file_path):
         """
         Called by pytest for all plugins.
         :return: The collector for test methods.
         """
-        if path.ext in [".yaml", ".yml"]:
+        if file_path.suffix in [".yaml", ".yml"]:
             return YamlFile.from_parent(
                 parent,
-                path=path,
-                fspath=path,
+                path=file_path,
                 tax_benefit_system=self.tax_benefit_system,
                 options=self.options,
             )

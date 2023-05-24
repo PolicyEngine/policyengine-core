@@ -76,7 +76,11 @@ class TestFile(YamlFile):
 class TestItem(YamlItem):
     def __init__(self, parent=None, test=None):
         super().__init__(
-            "", TestFile.from_parent(None), TaxBenefitSystem(), test, {}
+            name="",
+            parent=TestFile.from_parent(None),
+            baseline_tax_benefit_system=TaxBenefitSystem(),
+            test=test,
+            options={},
         )
 
         self.tax_benefit_system = self.baseline_tax_benefit_system

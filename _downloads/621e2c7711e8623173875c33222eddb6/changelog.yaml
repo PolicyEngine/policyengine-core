@@ -341,3 +341,8 @@
     - Fixed pytest deprecated usages since version 7, and fixed a bug that prevented
       new package from publishing.
   date: 2023-05-24 15:11:39
+- bump: minor
+  changes:
+    fixed:
+    - Bug causing unhelpful errors when variables are not found.
+  date: 2023-05-31 11:11:09

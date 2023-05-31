@@ -598,12 +598,16 @@ class TaxBenefitSystem:
         location = (
             inspect.getsourcefile(module).split(package_name)[0].rstrip("/")
         )
-
-        home_page_metadatas = [
-            metadata.split(":", 1)[1].strip(" ")
-            for metadata in distribution._get_metadata(distribution.PKG_INFO)
-            if "Home-page" in metadata
-        ]
+        try:
+            home_page_metadatas = [
+                metadata.split(":", 1)[1].strip(" ")
+                for metadata in distribution._get_metadata(
+                    distribution.PKG_INFO
+                )
+                if "Home-page" in metadata
+            ]
+        except:
+            home_page_metadatas = None
         repository_url = home_page_metadatas[0] if home_page_metadatas else ""
         return {
             "name": distribution.key,

@@ -609,12 +609,15 @@ class TaxBenefitSystem:
         except:
             home_page_metadatas = None
         repository_url = home_page_metadatas[0] if home_page_metadatas else ""
-        return {
-            "name": distribution.key,
-            "version": distribution.version,
-            "repository_url": repository_url,
-            "location": location,
-        }
+        try:
+            return {
+                "name": distribution.key,
+                "version": distribution.version,
+                "repository_url": repository_url,
+                "location": location,
+            }
+        except:
+            return fallback_metadata
 
     def get_variables(self, entity: Entity = None) -> dict:
         """

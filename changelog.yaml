@@ -346,3 +346,8 @@
     fixed:
     - Bug causing unhelpful errors when variables are not found.
   date: 2023-05-31 11:11:09
+- bump: patch
+  changes:
+    fixed:
+    - A bug causing variable not found errors to sometimes fail to throw.
+  date: 2023-06-02 15:22:29

@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    fixed:
-    - A bug causing variable not found errors to sometimes fail to throw.

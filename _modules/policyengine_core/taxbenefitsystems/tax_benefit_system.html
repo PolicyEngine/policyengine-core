@@ -842,12 +842,15 @@
         <span class="k">except</span><span class="p">:</span>
             <span class="n">home_page_metadatas</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">repository_url</span> <span class="o">=</span> <span class="n">home_page_metadatas</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">home_page_metadatas</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">distribution</span><span class="o">.</span><span class="n">key</span><span class="p">,</span>
-            <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="n">distribution</span><span class="o">.</span><span class="n">version</span><span class="p">,</span>
-            <span class="s2">&quot;repository_url&quot;</span><span class="p">:</span> <span class="n">repository_url</span><span class="p">,</span>
-            <span class="s2">&quot;location&quot;</span><span class="p">:</span> <span class="n">location</span><span class="p">,</span>
-        <span class="p">}</span></div>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">distribution</span><span class="o">.</span><span class="n">key</span><span class="p">,</span>
+                <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="n">distribution</span><span class="o">.</span><span class="n">version</span><span class="p">,</span>
+                <span class="s2">&quot;repository_url&quot;</span><span class="p">:</span> <span class="n">repository_url</span><span class="p">,</span>
+                <span class="s2">&quot;location&quot;</span><span class="p">:</span> <span class="n">location</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">fallback_metadata</span></div>
 
 <div class="viewcode-block" id="TaxBenefitSystem.get_variables"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.get_variables">[docs]</a>    <span class="k">def</span> <span class="nf">get_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">:</span> <span class="n">Entity</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>

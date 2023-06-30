@@ -1,0 +1,5 @@
+- bump: minor
+  changes:
+    added:
+    - Optional argument for saving datasets to a specific file path.
+    - Safety check for Path objects not being strings.

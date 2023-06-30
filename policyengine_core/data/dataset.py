@@ -137,7 +137,7 @@ class Dataset:
                 f"Invalid data format {self.data_format} for dataset {self.label}."
             )
 
-    def save_dataset(self, data) -> None:
+    def save_dataset(self, data, file_path: str = None) -> None:
         """Writes a complete dataset to disk.
 
         Args:
@@ -150,6 +150,10 @@ class Dataset:
         ... }
         >>> example_data["employment_income"]["2022"] = [25000, 25000, 30000, 30000]
         """
+        if file_path is not None:
+            file = Path(file_path)
+        elif not isinstance(self.file_path, Path):
+            self.file_path = Path(self.file_path)
         file = self.file_path
         if self.data_format == Dataset.TABLES:
             for table_name, dataframe in data.items():

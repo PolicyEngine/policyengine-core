@@ -351,3 +351,9 @@
     fixed:
     - A bug causing variable not found errors to sometimes fail to throw.
   date: 2023-06-02 15:22:29
+- bump: minor
+  changes:
+    added:
+    - Optional argument for saving datasets to a specific file path.
+    - Safety check for Path objects not being strings.
+  date: 2023-06-30 08:22:27

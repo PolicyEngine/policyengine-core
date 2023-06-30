@@ -370,7 +370,7 @@
                 <span class="sa">f</span><span class="s2">&quot;Invalid data format </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">data_format</span><span class="si">}</span><span class="s2"> for dataset </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">label</span><span class="si">}</span><span class="s2">.&quot;</span>
             <span class="p">)</span></div>
 
-<div class="viewcode-block" id="Dataset.save_dataset"><a class="viewcode-back" href="../../../python_api/data.html#policyengine_core.data.Dataset.save_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">save_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<div class="viewcode-block" id="Dataset.save_dataset"><a class="viewcode-back" href="../../../python_api/data.html#policyengine_core.data.Dataset.save_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">save_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Writes a complete dataset to disk.</span>
 
 <span class="sd">        Args:</span>
@@ -383,6 +383,10 @@
 <span class="sd">        ... }</span>
 <span class="sd">        &gt;&gt;&gt; example_data[&quot;employment_income&quot;][&quot;2022&quot;] = [25000, 25000, 30000, 30000]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">file_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_path</span><span class="p">,</span> <span class="n">Path</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">file_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_path</span><span class="p">)</span>
         <span class="n">file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_path</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_format</span> <span class="o">==</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">TABLES</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">dataframe</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>

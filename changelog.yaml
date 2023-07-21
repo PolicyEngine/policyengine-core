@@ -357,3 +357,8 @@
     - Optional argument for saving datasets to a specific file path.
     - Safety check for Path objects not being strings.
   date: 2023-06-30 08:22:27
+- bump: minor
+  changes:
+    added:
+    - Chart formatting utilities.
+  date: 2023-07-21 14:55:15

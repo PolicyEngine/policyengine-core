@@ -3,40 +3,71 @@ from IPython.display import HTML
 
 
 WHITE = "#FFF"
-LIGHTER_BLUE = "#ABCEEB"  # Blue 100.
-LIGHT_BLUE = "#49A6E2"  # Blue 500.
-BLUE = "#1976D2"  # Blue 700.
-DARK_BLUE = "#0F4AA1"  # Blue 900.
+BLUE = "#2C6496"
 GRAY = "#BDBDBD"
+MEDIUM_DARK_GRAY = "#D2D2D2"
 DARK_GRAY = "#616161"
-LIGHT_GRAY = "#F5F5F5"
+GREEN = "#29d40f"
+LIGHT_GRAY = "#F2F2F2"
 LIGHT_GREEN = "#C5E1A5"
 DARK_GREEN = "#558B2F"
+BLACK = "#000"
+
+BLUE_COLOR_SCALE = [BLUE, "#265782", "#20496E", "#1A3C5A"]
 
 
-def format_fig(fig: go.Figure) -> dict:
-    """Formats figure with styling and returns as JSON.
-    :param fig: Plotly figure.
-    :type fig: go.Figure
-    :return: Formatted plotly figure as a JSON dict.
-    :rtype: dict
+def format_fig(fig: go.Figure) -> go.Figure:
+    """Format a plotly figure to match the PolicyEngine style guide.
+
+    Args:
+        fig (go.Figure): A plotly figure.
+
+    Returns:
+        go.Figure: A plotly figure with the PolicyEngine style guide applied.
     """
-    fig.update_xaxes(
-        title_font=dict(size=16, color="black"), tickfont={"size": 14}
+    fig.update_layout(
+        font=dict(
+            family="Roboto Serif",
+            color="black",
+        )
     )
-    fig.update_yaxes(
-        title_font=dict(size=16, color="black"), tickfont={"size": 14}
+    fig.add_layout_image(
+        dict(
+            source="https://raw.githubusercontent.com/PolicyEngine/policyengine-app/master/src/images/logos/policyengine/blue.png",
+            xref="paper",
+            yref="paper",
+            x=1,
+            y=-0.15,
+            sizex=0.2,
+            sizey=0.2,
+            xanchor="right",
+            yanchor="bottom",
+        )
     )
-    return fig.update_layout(
-        hoverlabel_align="right",
-        font_family="Arial, sans-serif",
-        font_color="Black",
-        title_font_size=20,
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        hoverlabel=dict(font_family="Arial, sans-serif"),
+
+    # set template
+    fig.update_layout(
+        template="plotly_white",
+        height=600,
+        width=800,
+        margin=dict(
+            t=100,
+            b=100,
+            l=100,
+            r=100,
+        ),
     )
+    # don't show modebar
+    fig.update_layout(
+        modebar=dict(
+            bgcolor="rgba(0,0,0,0)",
+            color="rgba(0,0,0,0)",
+        )
+    )
+    return fig
 
 
 def display_fig(fig: go.Figure) -> HTML:
-    return HTML(fig.to_html(full_html=False, include_plotlyjs="cdn"))
+    return HTML(
+        format_fig(fig).to_html(full_html=False, include_plotlyjs="cdn")
+    )

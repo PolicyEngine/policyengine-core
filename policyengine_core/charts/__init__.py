@@ -1,8 +1,6 @@
 from .formatting import (
-    DARK_BLUE,
     BLUE,
-    LIGHT_BLUE,
-    LIGHTER_BLUE,
+    BLUE_COLOR_SCALE,
     DARK_GREEN,
     LIGHT_GREEN,
     DARK_GRAY,

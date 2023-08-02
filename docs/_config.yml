@@ -4,7 +4,7 @@ copyright: "2022"
 logo: logo.png
 
 execute:
-  execute_notebooks: "force"
+  execute_notebooks: off
 
 repository:
   url: https://github.com/policyengine/policyengine-core
@@ -14,7 +14,7 @@ repository:
 sphinx:
   config:
     html_js_files:
-      - https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js
+      - https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.js
     html_theme: furo
     pygments_style: default
     html_css_files:

@@ -50,12 +50,6 @@ def format_fig(fig: go.Figure) -> go.Figure:
         template="plotly_white",
         height=600,
         width=800,
-        margin=dict(
-            t=100,
-            b=100,
-            l=100,
-            r=100,
-        ),
     )
     # don't show modebar
     fig.update_layout(
@@ -71,3 +65,16 @@ def display_fig(fig: go.Figure) -> HTML:
     return HTML(
         format_fig(fig).to_html(full_html=False, include_plotlyjs="cdn")
     )
+
+
+def cardinal(n: int) -> int:
+    """Convert an integer to a cardinal string."""
+    ending_number = n % 10
+    if ending_number == 1:
+        return f"{n}st"
+    elif ending_number == 2:
+        return f"{n}nd"
+    elif ending_number == 3:
+        return f"{n}rd"
+    else:
+        return f"{n}th"

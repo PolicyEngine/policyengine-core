@@ -10,3 +10,5 @@ from .formatting import (
     format_fig,
     display_fig,
 )
+
+from .bar import *

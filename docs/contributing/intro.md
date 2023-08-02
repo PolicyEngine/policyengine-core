@@ -5,7 +5,7 @@ Any and all contributions are welcome to this project. You can help by:
 * Filing issues. Tell us about bugs you've found, or features you'd like to see.
 * Fixing issues. File a pull request to fix an issue you or someone else has filed.
 
-If you file an issue or a pull request, one of the maintainers (primarily @nikhilwoodruff) will respond to it within at least a week. If you don't hear back, feel free to ping us on the issue or pull request.
+If you file an issue or a pull request, one of the maintainers (primarily [@nikhilwoodruff](https://github.com/nikhilwoodruff)) will respond to it within at least a week. If you don't hear back, feel free to ping us on the issue or pull request.
 
 ## Changelog Entries
 

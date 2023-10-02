@@ -9,7 +9,6 @@ from numpy.typing import ArrayLike
 from policyengine_core import commons, periods, tools
 from policyengine_core.data_storage import InMemoryStorage, OnDiskStorage
 from policyengine_core.enums import Enum
-from policyengine_core.errors import PeriodMismatchError
 from policyengine_core.periods import Period
 
 if TYPE_CHECKING:
@@ -212,22 +211,6 @@ class Holder:
         """
 
         period = periods.period(period)
-        if (
-            period.unit == periods.ETERNITY
-            and self.variable.definition_period != periods.ETERNITY
-        ):
-            error_message = os.linesep.join(
-                [
-                    "Unable to set a value for variable {0} for periods.ETERNITY.",
-                    "{0} is only defined for {1}s. Please adapt your input.",
-                ]
-            ).format(self.variable.name, self.variable.definition_period)
-            raise PeriodMismatchError(
-                self.variable.name,
-                period,
-                self.variable.definition_period,
-                error_message,
-            )
         if self.variable.is_neutralized:
             warning_message = "You cannot set a value for the variable {}, as it has been neutralized. The value you provided ({}) will be ignored.".format(
                 self.variable.name, array
@@ -235,8 +218,6 @@ class Holder:
             return warnings.warn(warning_message, Warning)
         if self.variable.value_type in (float, int) and isinstance(array, str):
             array = tools.eval_expression(array)
-        if self.variable.set_input:
-            return self.variable.set_input(self, period, array)
         return self._set(period, array, branch_name)
 
     def _to_array(self, value: Any) -> ArrayLike:
@@ -280,36 +261,6 @@ class Holder:
         self, period: Period, value: ArrayLike, branch_name: str = "default"
     ) -> None:
         value = self._to_array(value)
-        if self.variable.definition_period != periods.ETERNITY:
-            if period is None:
-                raise ValueError(
-                    "A period must be specified to set values, except for variables with periods.ETERNITY as as period_definition."
-                )
-            if (
-                self.variable.definition_period != period.unit
-                or period.size > 1
-            ):
-                name = self.variable.name
-                period_size_adj = (
-                    f"{period.unit}"
-                    if (period.size == 1)
-                    else f"{period.size}-{period.unit}s"
-                )
-                error_message = os.linesep.join(
-                    [
-                        f'Unable to set a value for variable "{name}" for {period_size_adj}-long period "{period}".',
-                        f'"{name}" can only be set for one {self.variable.definition_period} at a time. Please adapt your input.',
-                        f'If you are the maintainer of "{name}", you can consider adding it a set_input attribute to enable automatic period casting.',
-                    ]
-                )
-
-                raise PeriodMismatchError(
-                    self.variable.name,
-                    period,
-                    self.variable.definition_period,
-                    error_message,
-                )
-
         should_store_on_disk = (
             self._on_disk_storable
             and self._memory_storage.get(period, branch_name) is None

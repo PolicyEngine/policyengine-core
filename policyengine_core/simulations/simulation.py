@@ -12,7 +12,7 @@ from policyengine_core.entities.entity import Entity
 from policyengine_core.enums import Enum, EnumArray
 from policyengine_core.errors import CycleError, SpiralError
 from policyengine_core.holders.holder import Holder
-from policyengine_core.periods import Period
+from policyengine_core.periods import Period, YEAR, MONTH
 from policyengine_core.periods.config import ETERNITY
 from policyengine_core.periods.helpers import period
 from policyengine_core.tracers import (
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 from policyengine_core.experimental import MemoryConfig
 from policyengine_core.populations import Population
 from policyengine_core.tracers import SimpleTracer
-from policyengine_core.variables import Variable
+from policyengine_core.variables import Variable, QuantityType
 from policyengine_core.reforms.reform import Reform
 from policyengine_core.parameters import get_parameter
 
@@ -466,9 +466,23 @@ class Simulation:
             pass
 
         # First look for a value already cached
-        cached_array = holder.get_array(period, self.branch_name)
-        if cached_array is not None:
-            return cached_array
+
+        periods_with_values = holder.get_known_periods()
+        containing_periods = sorted([known_period for known_period in periods_with_values if known_period.contains(period)])
+        contained_periods = sorted([known_period for known_period in periods_with_values if period.contains(known_period)])
+        
+        if period in periods_with_values:
+            cached_array = holder.get_array(period, self.branch_name)
+            if cached_array is not None:
+                return cached_array
+        elif len(contained_periods) > 0:
+            if variable.quantity_type == QuantityType.FLOW:
+                return sum(self._calculate(variable_name, contained_period) for contained_period in contained_periods)
+            else:
+                return 
+        elif any(known_period.contains(period) for known_period in periods_with_values):
+            pass
+            # Divide
 
         if variable.defined_for is not None:
             mask = (
@@ -741,39 +755,7 @@ class Simulation:
         """
         Check that a period matches the variable definition_period
         """
-        if variable.definition_period == periods.ETERNITY:
-            return  # For variables which values are constant in time, all periods are accepted
-
-        if (
-            variable.definition_period == periods.MONTH
-            and period.unit != periods.MONTH
-        ):
-            raise ValueError(
-                "Unable to compute variable '{0}' for period {1}: '{0}' must be computed for a whole month. You can use the ADD option to sum '{0}' over the requested period, or change the requested period to 'period.first_month'.".format(
-                    variable.name, period
-                )
-            )
-
-        if (
-            variable.definition_period == periods.YEAR
-            and period.unit != periods.YEAR
-        ):
-            raise ValueError(
-                "Unable to compute variable '{0}' for period {1}: '{0}' must be computed for a whole year. You can use the DIVIDE option to get an estimate of {0} by dividing the yearly value by 12, or change the requested period to 'period.this_year'.".format(
-                    variable.name, period
-                )
-            )
-
-        if period.size != 1:
-            raise ValueError(
-                "Unable to compute variable '{0}' for period {1}: '{0}' must be computed for a whole {2}. You can use the ADD option to sum '{0}' over the requested period.".format(
-                    variable.name,
-                    period,
-                    "month"
-                    if variable.definition_period == periods.MONTH
-                    else "year",
-                )
-            )
+        return
 
     def _cast_formula_result(self, value: Any, variable: str) -> ArrayLike:
         if variable.value_type == Enum and not isinstance(value, EnumArray):

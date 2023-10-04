@@ -373,3 +373,10 @@
     - Bump numpy version
     - Fix numpy record compatibility issue
   date: 2023-10-04 14:51:40
+- bump: minor
+  changes:
+    added:
+    - Automatic period adjustment helper functionality.
+    changed:
+    - Default error threshold for tests widened to 1e-3.
+  date: 2023-10-04 19:05:58

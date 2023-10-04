@@ -252,7 +252,7 @@
 <span class="kn">from</span> <span class="nn">policyengine_core.errors</span> <span class="kn">import</span> <span class="n">CycleError</span><span class="p">,</span> <span class="n">SpiralError</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.holders.holder</span> <span class="kn">import</span> <span class="n">Holder</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.periods</span> <span class="kn">import</span> <span class="n">Period</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.periods.config</span> <span class="kn">import</span> <span class="n">ETERNITY</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.periods.config</span> <span class="kn">import</span> <span class="n">ETERNITY</span><span class="p">,</span> <span class="n">MONTH</span><span class="p">,</span> <span class="n">YEAR</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.periods.helpers</span> <span class="kn">import</span> <span class="n">period</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.tracers</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">FullTracer</span><span class="p">,</span>
@@ -266,7 +266,7 @@
 <span class="kn">from</span> <span class="nn">policyengine_core.experimental</span> <span class="kn">import</span> <span class="n">MemoryConfig</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.populations</span> <span class="kn">import</span> <span class="n">Population</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.tracers</span> <span class="kn">import</span> <span class="n">SimpleTracer</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.variables</span> <span class="kn">import</span> <span class="n">Variable</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.variables</span> <span class="kn">import</span> <span class="n">Variable</span><span class="p">,</span> <span class="n">QuantityType</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.reforms.reform</span> <span class="kn">import</span> <span class="n">Reform</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.parameters</span> <span class="kn">import</span> <span class="n">get_parameter</span>
 
@@ -693,13 +693,14 @@
             <span class="n">variable_name</span><span class="p">,</span> <span class="n">check_existence</span><span class="o">=</span><span class="kc">True</span>
         <span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_check_period_consistency</span><span class="p">(</span><span class="n">period</span><span class="p">,</span> <span class="n">variable</span><span class="p">)</span>
-
         <span class="c1"># Check if we&#39;ve neutralized via parameters.</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">parameters</span><span class="p">(</span><span class="n">period</span><span class="p">)</span><span class="o">.</span><span class="n">gov</span><span class="o">.</span><span class="n">abolitions</span><span class="p">[</span>
-                <span class="n">variable</span><span class="o">.</span><span class="n">name</span>
-            <span class="p">]:</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="n">variable</span><span class="o">.</span><span class="n">is_neutralized</span>
+                <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">parameters</span><span class="p">(</span><span class="n">period</span><span class="p">)</span><span class="o">.</span><span class="n">gov</span><span class="o">.</span><span class="n">abolitions</span><span class="p">[</span>
+                    <span class="n">variable</span><span class="o">.</span><span class="n">name</span>
+                <span class="p">]</span>
+            <span class="p">):</span>
                 <span class="k">return</span> <span class="n">holder</span><span class="o">.</span><span class="n">default_array</span><span class="p">()</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="k">pass</span>
@@ -708,6 +709,20 @@
         <span class="n">cached_array</span> <span class="o">=</span> <span class="n">holder</span><span class="o">.</span><span class="n">get_array</span><span class="p">(</span><span class="n">period</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">cached_array</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">cached_array</span>
+
+        <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">definition_period</span> <span class="o">==</span> <span class="n">MONTH</span> <span class="ow">and</span> <span class="n">period</span><span class="o">.</span><span class="n">unit</span> <span class="o">==</span> <span class="n">YEAR</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">quantity_type</span> <span class="o">==</span> <span class="n">QuantityType</span><span class="o">.</span><span class="n">STOCK</span><span class="p">:</span>
+                <span class="n">contained_months</span> <span class="o">=</span> <span class="n">period</span><span class="o">.</span><span class="n">get_subperiods</span><span class="p">(</span><span class="n">MONTH</span><span class="p">)</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">contained_months</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_add</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">variable</span><span class="o">.</span><span class="n">definition_period</span> <span class="o">==</span> <span class="n">YEAR</span> <span class="ow">and</span> <span class="n">period</span><span class="o">.</span><span class="n">unit</span> <span class="o">==</span> <span class="n">MONTH</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">quantity_type</span> <span class="o">==</span> <span class="n">QuantityType</span><span class="o">.</span><span class="n">STOCK</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="o">.</span><span class="n">this_year</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_divide</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_period_consistency</span><span class="p">(</span><span class="n">period</span><span class="p">,</span> <span class="n">variable</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">variable</span><span class="o">.</span><span class="n">defined_for</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span>
@@ -846,10 +861,13 @@
                 <span class="p">)</span>
             <span class="p">)</span>
 
-        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">sub_period</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">sub_period</span> <span class="ow">in</span> <span class="n">period</span><span class="o">.</span><span class="n">get_subperiods</span><span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">definition_period</span><span class="p">)</span>
-        <span class="p">)</span></div>
+        <span class="p">)</span>
+        <span class="n">holder</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_holder</span><span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">holder</span><span class="o">.</span><span class="n">put_in_cache</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span></div>
 
 <div class="viewcode-block" id="Simulation.calculate_divide"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.calculate_divide">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_divide</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -879,9 +897,12 @@
 
         <span class="k">if</span> <span class="n">period</span><span class="o">.</span><span class="n">unit</span> <span class="o">==</span> <span class="n">periods</span><span class="o">.</span><span class="n">MONTH</span><span class="p">:</span>
             <span class="n">computation_period</span> <span class="o">=</span> <span class="n">period</span><span class="o">.</span><span class="n">this_year</span>
-            <span class="k">return</span> <span class="p">(</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="n">computation_period</span><span class="p">)</span> <span class="o">/</span> <span class="mf">12.0</span>
             <span class="p">)</span>
+            <span class="n">holder</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_holder</span><span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="n">holder</span><span class="o">.</span><span class="n">put_in_cache</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">result</span>
         <span class="k">elif</span> <span class="n">period</span><span class="o">.</span><span class="n">unit</span> <span class="o">==</span> <span class="n">periods</span><span class="o">.</span><span class="n">YEAR</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
 

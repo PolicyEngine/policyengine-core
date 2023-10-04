@@ -15,6 +15,7 @@ from policyengine_core.holders import (
     set_input_dispatch_by_period,
     set_input_divide_by_period,
 )
+from policyengine_core.periods import DAY, ETERNITY
 
 from . import config, helpers
 
@@ -195,7 +196,10 @@ class Variable:
             required=False,
             allowed_values=(QuantityType.STOCK, QuantityType.FLOW),
             default=QuantityType.STOCK
-            if (self.value_type in (bool, int, Enum, str) or self.unit == "/1")
+            if (
+                self.value_type in (bool, int, Enum, str, datetime.date)
+                or self.unit == "/1"
+            )
             else QuantityType.FLOW,
         )
         self.documentation = self.set(
@@ -212,6 +216,8 @@ class Variable:
                 else set_input_divide_by_period,
             )
         )
+        if self.definition_period in (DAY, ETERNITY):
+            self.set_input = None
         self.calculate_output = self.set_calculate_output(
             attr.pop("calculate_output", None)
         )

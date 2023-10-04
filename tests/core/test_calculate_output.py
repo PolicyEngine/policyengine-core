@@ -42,11 +42,6 @@ def simulation(tax_benefit_system):
     )
 
 
-def test_calculate_output_default(simulation):
-    with pytest.raises(ValueError):
-        simulation.calculate_output("simple_variable", 2017)
-
-
 def test_calculate_output_add(simulation):
     simulation.set_input("variable_with_calculate_output_add", "2017-01", [10])
     simulation.set_input("variable_with_calculate_output_add", "2017-05", [20])

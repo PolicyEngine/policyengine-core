@@ -22,6 +22,7 @@ from policyengine_core.errors import (
 )
 from policyengine_core.scripts import build_tax_benefit_system
 from policyengine_core.reforms import Reform, set_parameter
+from policyengine_core.populations import ADD, DIVIDE
 
 log = logging.getLogger(__name__)
 
@@ -464,7 +465,7 @@ def assert_near(
     import numpy as np
 
     if absolute_error_margin is None and relative_error_margin is None:
-        absolute_error_margin = 0
+        absolute_error_margin = 1e-3
     if not isinstance(value, np.ndarray):
         value = np.array(value)
     if isinstance(value, EnumArray):

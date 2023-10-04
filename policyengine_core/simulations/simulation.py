@@ -13,7 +13,7 @@ from policyengine_core.enums import Enum, EnumArray
 from policyengine_core.errors import CycleError, SpiralError
 from policyengine_core.holders.holder import Holder
 from policyengine_core.periods import Period
-from policyengine_core.periods.config import ETERNITY
+from policyengine_core.periods.config import ETERNITY, MONTH, YEAR
 from policyengine_core.periods.helpers import period
 from policyengine_core.tracers import (
     FullTracer,
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 from policyengine_core.experimental import MemoryConfig
 from policyengine_core.populations import Population
 from policyengine_core.tracers import SimpleTracer
-from policyengine_core.variables import Variable
+from policyengine_core.variables import Variable, QuantityType
 from policyengine_core.reforms.reform import Reform
 from policyengine_core.parameters import get_parameter
 
@@ -454,13 +454,14 @@ class Simulation:
             variable_name, check_existence=True
         )
 
-        self._check_period_consistency(period, variable)
-
         # Check if we've neutralized via parameters.
         try:
-            if self.tax_benefit_system.parameters(period).gov.abolitions[
-                variable.name
-            ]:
+            if (
+                variable.is_neutralized
+                or self.tax_benefit_system.parameters(period).gov.abolitions[
+                    variable.name
+                ]
+            ):
                 return holder.default_array()
         except Exception as e:
             pass
@@ -469,6 +470,20 @@ class Simulation:
         cached_array = holder.get_array(period, self.branch_name)
         if cached_array is not None:
             return cached_array
+
+        if variable.definition_period == MONTH and period.unit == YEAR:
+            if variable.quantity_type == QuantityType.STOCK:
+                contained_months = period.get_subperiods(MONTH)
+                return self.calculate(variable_name, contained_months[-1])
+            else:
+                return self.calculate_add(variable_name, period)
+        elif variable.definition_period == YEAR and period.unit == MONTH:
+            if variable.quantity_type == QuantityType.STOCK:
+                return self.calculate(variable_name, period.this_year)
+            else:
+                return self.calculate_divide(variable_name, period)
+
+        self._check_period_consistency(period, variable)
 
         if variable.defined_for is not None:
             mask = (
@@ -607,10 +622,13 @@ class Simulation:
                 )
             )
 
-        return sum(
+        result = sum(
             self.calculate(variable_name, sub_period)
             for sub_period in period.get_subperiods(variable.definition_period)
         )
+        holder = self.get_holder(variable.name)
+        holder.put_in_cache(result, period, self.branch_name)
+        return result
 
     def calculate_divide(
         self,
@@ -640,9 +658,12 @@ class Simulation:
 
         if period.unit == periods.MONTH:
             computation_period = period.this_year
-            return (
+            result = (
                 self.calculate(variable_name, period=computation_period) / 12.0
             )
+            holder = self.get_holder(variable.name)
+            holder.put_in_cache(result, period, self.branch_name)
+            return result
         elif period.unit == periods.YEAR:
             return self.calculate(variable_name, period)
 

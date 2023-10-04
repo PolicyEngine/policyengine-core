@@ -11,6 +11,10 @@ from policyengine_core import periods, tools
 from policyengine_core.entities import Entity
 from policyengine_core.enums import Enum, EnumArray
 from policyengine_core.periods import Period
+from policyengine_core.holders import (
+    set_input_dispatch_by_period,
+    set_input_divide_by_period,
+)
 
 from . import config, helpers
 
@@ -176,13 +180,6 @@ class Variable:
                 periods.ETERNITY,
             ),
         )
-        self.quantity_type = self.set(
-            attr,
-            "quantity_type",
-            required=False,
-            allowed_values=(QuantityType.STOCK, QuantityType.FLOW),
-            default=QuantityType.FLOW,
-        )
         self.label = self.set(
             attr, "label", allowed_type=str, setter=self.set_label
         )
@@ -192,13 +189,29 @@ class Variable:
             attr, "cerfa_field", allowed_type=(str, dict)
         )
         self.unit = self.set(attr, "unit", allowed_type=str)
+        self.quantity_type = self.set(
+            attr,
+            "quantity_type",
+            required=False,
+            allowed_values=(QuantityType.STOCK, QuantityType.FLOW),
+            default=QuantityType.STOCK
+            if (self.value_type in (bool, int, Enum, str) or self.unit == "/1")
+            else QuantityType.FLOW,
+        )
         self.documentation = self.set(
             attr,
             "documentation",
             allowed_type=str,
             setter=self.set_documentation,
         )
-        self.set_input = self.set_set_input(attr.pop("set_input", None))
+        self.set_input = self.set_set_input(
+            attr.pop(
+                "set_input",
+                set_input_dispatch_by_period
+                if self.quantity_type == QuantityType.STOCK
+                else set_input_divide_by_period,
+            )
+        )
         self.calculate_output = self.set_calculate_output(
             attr.pop("calculate_output", None)
         )

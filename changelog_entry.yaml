@@ -1,5 +1,0 @@
-- bump: minor
-  changes:
-    fixed:
-    - Bump numpy version
-    - Fix numpy record compatibility issue

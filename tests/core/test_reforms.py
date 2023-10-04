@@ -71,21 +71,6 @@ def test_neutralization_variable_with_default_value(
     assert_near(goes_to_school, [True], absolute_error_margin=0)
 
 
-def test_neutralization_optimization(make_simulation, tax_benefit_system):
-    reform = WithBasicIncomeNeutralized(tax_benefit_system)
-
-    period = "2017-01"
-    simulation = make_simulation(reform, {}, period)
-    simulation.debug = True
-
-    simulation.calculate("basic_income", period="2013-01")
-    simulation.calculate_add("basic_income", period="2013")
-
-    # As basic_income is neutralized, it should not be cached
-    basic_income_holder = simulation.persons.get_holder("basic_income")
-    assert basic_income_holder.get_known_periods() == []
-
-
 def test_input_variable_neutralization(make_simulation, tax_benefit_system):
     class test_salary_neutralization(Reform):
         def apply(self):

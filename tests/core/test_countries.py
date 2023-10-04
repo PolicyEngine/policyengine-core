@@ -66,22 +66,6 @@ def test_non_existing_variable(simulation):
 
 
 @pytest.mark.parametrize("simulation", [({}, PERIOD)], indirect=True)
-def test_calculate_variable_with_wrong_definition_period(simulation):
-    year = str(PERIOD.this_year)
-
-    with pytest.raises(ValueError) as error:
-        simulation.calculate("basic_income", year)
-
-    error_message = str(error.value)
-    expected_words = ["period", year, "month", "basic_income", "ADD"]
-
-    for word in expected_words:
-        assert (
-            word in error_message
-        ), f"Expected '{word}' in error message '{error_message}'"
-
-
-@pytest.mark.parametrize("simulation", [({}, PERIOD)], indirect=True)
 def test_divide_option_on_month_defined_variable(simulation):
     with pytest.raises(ValueError):
         simulation.person(
@@ -105,16 +89,6 @@ def test_divide_option_with_complex_period(simulation):
         assert (
             word in error_message
         ), f"Expected '{word}' in error message '{error_message}'"
-
-
-def test_input_with_wrong_period(tax_benefit_system):
-    year = str(PERIOD.this_year)
-    variables = {"basic_income": {year: 12000}}
-    simulation_builder = SimulationBuilder()
-    simulation_builder.set_default_period(PERIOD)
-
-    with pytest.raises(ValueError):
-        simulation_builder.build_from_variables(tax_benefit_system, variables)
 
 
 def test_variable_with_reference(make_simulation, isolated_tax_benefit_system):

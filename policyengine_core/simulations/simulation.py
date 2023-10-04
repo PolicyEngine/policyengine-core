@@ -456,9 +456,12 @@ class Simulation:
 
         # Check if we've neutralized via parameters.
         try:
-            if self.tax_benefit_system.parameters(period).gov.abolitions[
-                variable.name
-            ]:
+            if (
+                variable.is_neutralized
+                or self.tax_benefit_system.parameters(period).gov.abolitions[
+                    variable.name
+                ]
+            ):
                 return holder.default_array()
         except Exception as e:
             pass

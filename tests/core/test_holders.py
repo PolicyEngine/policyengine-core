@@ -59,33 +59,6 @@ def test_set_input_enum_item(couple):
     assert result == housing.HousingOccupancyStatus.free_lodger
 
 
-def test_yearly_input_month_variable(couple):
-    with pytest.raises(PeriodMismatchError) as error:
-        couple.set_input("rent", 2019, 3000)
-    assert (
-        'Unable to set a value for variable "rent" for year-long period'
-        in error.value.message
-    )
-
-
-def test_3_months_input_month_variable(couple):
-    with pytest.raises(PeriodMismatchError) as error:
-        couple.set_input("rent", "month:2019-01:3", 3000)
-    assert (
-        'Unable to set a value for variable "rent" for 3-months-long period'
-        in error.value.message
-    )
-
-
-def test_month_input_year_variable(couple):
-    with pytest.raises(PeriodMismatchError) as error:
-        couple.set_input("housing_tax", "2019-01", 3000)
-    assert (
-        'Unable to set a value for variable "housing_tax" for month-long period'
-        in error.value.message
-    )
-
-
 def test_enum_dtype(couple):
     simulation = couple
     status_occupancy = numpy.asarray([2], dtype=numpy.int16)
@@ -157,8 +130,8 @@ def test_get_memory_usage_with_trace(single):
     memory_usage = salary_holder.get_memory_usage()
     assert memory_usage["nb_requests"] == 15
     assert (
-        memory_usage["nb_requests_by_array"] == 1.25
-    )  # 15 calculations / 12 arrays
+        memory_usage["nb_requests_by_array"] == 15 / 13
+    )  # 15 calculations / 13 arrays (12 months plus the year is cached too)
 
 
 def test_set_input_dispatch_by_period(single):

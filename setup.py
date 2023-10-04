@@ -11,7 +11,7 @@ long_description = (this_directory / "README.md").read_text()
 
 general_requirements = [
     "pytest>=7,<8",
-    "numpy>=1.21,<1.22",
+    "numpy >=1.24.2, <1.25",
     "black",
     "linecheck<1",
     "yaml-changelog<1",
@@ -48,7 +48,7 @@ dev_requirements = [
 
 setup(
     name="policyengine-core",
-    version="2.5.0",
+    version="2.6.0",
     author="PolicyEngine",
     author_email="hello@policyengine.org",
     classifiers=[

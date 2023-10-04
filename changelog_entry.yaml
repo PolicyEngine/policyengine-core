@@ -1,0 +1,6 @@
+- bump: minor
+  changes:
+    added:
+    - Automatic period adjustment helper functionality.
+    changed:
+    - Default error threshold for tests widened to 1e-3.

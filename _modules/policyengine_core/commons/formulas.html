@@ -249,6 +249,8 @@
 <span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="nb">round</span> <span class="k">as</span> <span class="n">round_</span>
 <span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">select</span><span class="p">,</span> <span class="n">where</span>
 
+<span class="kn">from</span> <span class="nn">warnings</span> <span class="kn">import</span> <span class="n">warn</span>
+
 <span class="kn">from</span> <span class="nn">policyengine_core.parameters.parameter_node</span> <span class="kn">import</span> <span class="n">ParameterNode</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.periods.period_</span> <span class="kn">import</span> <span class="n">Period</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.populations.population</span> <span class="kn">import</span> <span class="n">Population</span>
@@ -633,6 +635,10 @@
 <span class="sd">    Returns:</span>
 <span class="sd">        Callable: A function that sums the values of the variables.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">warn</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Sum-of-variables formulas are deprecated- please use `adds` or `subtracts` instead.&quot;</span>
+    <span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">sum_of_variables</span><span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">variables</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>

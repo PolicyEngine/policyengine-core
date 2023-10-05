@@ -474,12 +474,12 @@ class Simulation:
         if variable.definition_period == MONTH and period.unit == YEAR:
             if variable.quantity_type == QuantityType.STOCK:
                 contained_months = period.get_subperiods(MONTH)
-                return self.calculate(variable_name, contained_months[-1])
+                return self._calculate(variable_name, contained_months[-1])
             else:
                 return self.calculate_add(variable_name, period)
         elif variable.definition_period == YEAR and period.unit == MONTH:
             if variable.quantity_type == QuantityType.STOCK:
-                return self.calculate(variable_name, period.this_year)
+                return self._calculate(variable_name, period.this_year)
             else:
                 return self.calculate_divide(variable_name, period)
 

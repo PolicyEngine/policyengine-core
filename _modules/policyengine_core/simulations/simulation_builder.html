@@ -318,13 +318,22 @@
             <span class="n">key</span> <span class="ow">in</span> <span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">entities_plural</span><span class="p">()</span>
             <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">input_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
         <span class="p">):</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_from_entities</span><span class="p">(</span>
+            <span class="n">simulation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_from_entities</span><span class="p">(</span>
                 <span class="n">tax_benefit_system</span><span class="p">,</span> <span class="n">input_dict</span><span class="p">,</span> <span class="n">simulation</span>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_from_variables</span><span class="p">(</span>
+            <span class="n">simulation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_from_variables</span><span class="p">(</span>
                 <span class="n">tax_benefit_system</span><span class="p">,</span> <span class="n">input_dict</span><span class="p">,</span> <span class="n">simulation</span>
-            <span class="p">)</span></div>
+            <span class="p">)</span>
+
+        <span class="n">simulation</span><span class="o">.</span><span class="n">input_variables</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">variable</span><span class="o">.</span><span class="n">name</span>
+            <span class="k">for</span> <span class="n">variable</span> <span class="ow">in</span> <span class="n">simulation</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">simulation</span><span class="o">.</span><span class="n">get_holder</span><span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">get_known_periods</span><span class="p">())</span>
+            <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">simulation</span></div>
 
 <div class="viewcode-block" id="SimulationBuilder.build_from_entities"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.build_from_entities">[docs]</a>    <span class="k">def</span> <span class="nf">build_from_entities</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>

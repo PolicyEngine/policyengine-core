@@ -699,7 +699,7 @@ class Simulation:
         formula = variable.get_formula(period)
         if formula is None:
             values = None
-            if variable.adds is not None:
+            if variable.adds is not None and len(variable.adds) > 0:
                 if isinstance(variable.adds, str):
                     try:
                         adds_parameter = get_parameter(
@@ -718,7 +718,7 @@ class Simulation:
                     values = values + self.calculate(
                         added_variable, period, map_to=variable.entity.key
                     )
-            if variable.subtracts is not None:
+            if variable.subtracts is not None and len(variable.subtracts) > 0:
                 if isinstance(variable.subtracts, str):
                     try:
                         subtracts_parameter = get_parameter(

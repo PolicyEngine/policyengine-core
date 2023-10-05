@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    fixed:
-    - Bug causing YAML tests to not populate `Simulation.input_variables`.

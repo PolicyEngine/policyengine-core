@@ -394,3 +394,8 @@
     changed:
     - Deprecated sum_of_variables.
   date: 2023-10-05 11:41:53
+- bump: patch
+  changes:
+    fixed:
+    - Bug causing YAML tests to not populate `Simulation.input_variables`.
+  date: 2023-10-05 13:24:20

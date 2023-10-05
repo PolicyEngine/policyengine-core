@@ -699,7 +699,7 @@ class Simulation:
         formula = variable.get_formula(period)
         if formula is None:
             values = None
-            if variable.adds is not None:
+            if variable.adds is not None and len(variable.adds) > 0:
                 if isinstance(variable.adds, str):
                     try:
                         adds_parameter = get_parameter(
@@ -715,10 +715,20 @@ class Simulation:
                     adds_list = variable.adds
                 values = 0
                 for added_variable in adds_list:
-                    values = values + self.calculate(
-                        added_variable, period, map_to=variable.entity.key
-                    )
-            if variable.subtracts is not None:
+                    if added_variable in self.tax_benefit_system.variables:
+                        values = values + self.calculate(
+                            added_variable, period, map_to=variable.entity.key
+                        )
+                    else:
+                        try:
+                            parameter = get_parameter(
+                                self.tax_benefit_system.parameters,
+                                added_variable,
+                            )
+                            values = values + parameter(period.start)
+                        except:
+                            pass
+            if variable.subtracts is not None and len(variable.subtracts) > 0:
                 if isinstance(variable.subtracts, str):
                     try:
                         subtracts_parameter = get_parameter(
@@ -735,9 +745,24 @@ class Simulation:
                 if values is None:
                     values = 0
                 for subtracted_variable in subtracts_list:
-                    values = values - self.calculate(
-                        subtracted_variable, period, map_to=variable.entity.key
-                    )
+                    if (
+                        subtracted_variable
+                        in self.tax_benefit_system.variables
+                    ):
+                        values = values - self.calculate(
+                            subtracted_variable,
+                            period,
+                            map_to=variable.entity.key,
+                        )
+                    else:
+                        try:
+                            parameter = get_parameter(
+                                self.tax_benefit_system.parameters,
+                                subtracted_variable,
+                            )
+                            values = values + parameter(period.start)
+                        except:
+                            pass
             return values
 
         if self.trace and not isinstance(

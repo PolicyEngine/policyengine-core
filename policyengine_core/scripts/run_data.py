@@ -9,11 +9,10 @@ from policyengine_core.scripts import detect_country_package
 
 
 def dataset_summary(datasets: List[Dataset]) -> str:
-    years = list(sorted(list(set(sum([ds.years for ds in datasets], [])))))
     df = pd.DataFrame(
         {
-            year: ["✓" if year in ds.years else "" for ds in datasets]
-            for year in years
+            "Label": [ds.label for ds in datasets],
+            "Stored": ["✓" if ds.exists else "" for ds in datasets],
         },
         index=[ds.name for ds in datasets],
     )

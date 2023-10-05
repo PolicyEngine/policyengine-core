@@ -1,0 +1,7 @@
+- bump: minor
+  changes:
+    added:
+    - Support for adds/subtracts targeting parameters.
+    - Support for adds/subtracts targeting year ranges where no parameters exist.
+    changed:
+    - Deprecated sum_of_variables.

@@ -79,13 +79,22 @@ class SimulationBuilder:
             key in tax_benefit_system.entities_plural()
             for key in input_dict.keys()
         ):
-            return self.build_from_entities(
+            simulation = self.build_from_entities(
                 tax_benefit_system, input_dict, simulation
             )
         else:
-            return self.build_from_variables(
+            simulation = self.build_from_variables(
                 tax_benefit_system, input_dict, simulation
             )
+
+        simulation.input_variables = [
+            variable.name
+            for variable in simulation.tax_benefit_system.variables.values()
+            if len(simulation.get_holder(variable.name).get_known_periods())
+            > 0
+        ]
+
+        return simulation
 
     def build_from_entities(
         self,

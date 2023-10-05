@@ -397,7 +397,9 @@ def sum_of_variables(variables: Union[List[str], str]) -> Callable:
         Callable: A function that sums the values of the variables.
     """
 
-    warn(f"Sum-of-variables formulas are deprecated- please use `adds` or `subtracts` instead.")
+    warn(
+        f"Sum-of-variables formulas are deprecated- please use `adds` or `subtracts` instead."
+    )
 
     def sum_of_variables(entity, period, parameters):
         if isinstance(variables, str):

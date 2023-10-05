@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    fixed:
-    - Fix bug affecting microsimulation runs in countries which use automatic period adjustments.

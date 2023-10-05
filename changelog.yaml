@@ -386,3 +386,11 @@
     - Fix bug affecting microsimulation runs in countries which use automatic period
       adjustments.
   date: 2023-10-05 11:00:40
+- bump: minor
+  changes:
+    added:
+    - Support for adds/subtracts targeting parameters.
+    - Support for adds/subtracts targeting year ranges where no parameters exist.
+    changed:
+    - Deprecated sum_of_variables.
+  date: 2023-10-05 11:41:53

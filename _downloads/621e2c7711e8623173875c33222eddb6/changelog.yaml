@@ -380,3 +380,9 @@
     changed:
     - Default error threshold for tests widened to 1e-3.
   date: 2023-10-04 19:05:58
+- bump: patch
+  changes:
+    fixed:
+    - Fix bug affecting microsimulation runs in countries which use automatic period
+      adjustments.
+  date: 2023-10-05 11:00:40

@@ -10,6 +10,8 @@ from numpy import minimum as min_
 from numpy import round as round_
 from numpy import select, where
 
+from warnings import warn
+
 from policyengine_core.parameters.parameter_node import ParameterNode
 from policyengine_core.periods.period_ import Period
 from policyengine_core.populations.population import Population
@@ -394,6 +396,8 @@ def sum_of_variables(variables: Union[List[str], str]) -> Callable:
     Returns:
         Callable: A function that sums the values of the variables.
     """
+
+    warn(f"Sum-of-variables formulas are deprecated- please use `adds` or `subtracts` instead.")
 
     def sum_of_variables(entity, period, parameters):
         if isinstance(variables, str):

@@ -399,3 +399,8 @@
     fixed:
     - Bug causing YAML tests to not populate `Simulation.input_variables`.
   date: 2023-10-05 13:24:20
+- bump: patch
+  changes:
+    changed:
+    - Unpinned lower NumPy pin.
+  date: 2023-10-09 17:52:02

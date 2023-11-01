@@ -5,6 +5,17 @@ from typing import Callable, Union
 
 from policyengine_core.parameters import ParameterNode, Parameter
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
+from policyengine_core.periods import period as period_
+
+import requests
+
+
+class classproperty(object):
+    def __init__(self, f):
+        self.f = f
+
+    def __get__(self, obj, owner):
+        return self.f(owner)
 
 
 class Reform(TaxBenefitSystem):
@@ -37,6 +48,13 @@ class Reform(TaxBenefitSystem):
     """
 
     name: str = None
+    """The name of the reform. This is used to identify the reform in the UI."""
+
+    country_id: str = None
+    """The country id of the reform. This is used to inform any calls to the PolicyEngine API."""
+
+    parameter_values: dict = None
+    """The parameter values of the reform. This is used to inform any calls to the PolicyEngine API."""
 
     def __init__(self, baseline: TaxBenefitSystem):
         """
@@ -93,6 +111,69 @@ class Reform(TaxBenefitSystem):
             )
         self.parameters = reform_parameters
         self._parameters_at_instant_cache = {}
+
+    @staticmethod
+    def from_dict(
+        parameter_values: dict,
+        country_id: str = None,
+        name: str = None,
+    ) -> Reform:
+        """Create a reform from a dictionary of parameters.
+
+        Args:
+            parameters: A dictionary of parameter -> { period -> value } pairs.
+
+        Returns:
+            A reform.
+        """
+
+        class reform(Reform):
+            def apply(self):
+                for path, period_values in parameter_values.items():
+                    for period, value in period_values.items():
+                        self.modify_parameters(
+                            set_parameter(
+                                path, value, period, return_modifier=True
+                            )
+                        )
+
+        reform.country_id = country_id
+        reform.parameter_values = parameter_values
+        reform.name = name
+
+        return reform
+
+    @classproperty
+    def api_id(self):
+        if self.country_id is None:
+            raise ValueError(
+                "`country_id` is not set. This is required to use the API."
+            )
+        if self.parameter_values is None:
+            raise ValueError(
+                "`parameter_values` is not set. This is required to use the API."
+            )
+
+        sanitised_parameter_values = {}
+
+        for path, period_values in self.parameter_values.items():
+            sanitised_period_values = {}
+            for period, value in period_values.items():
+                period = period_(period)
+                sanitised_period_values[
+                    f"{period.start}.{period.stop}"
+                ] = value
+            sanitised_parameter_values[path] = sanitised_period_values
+
+        response = requests.post(
+            f"https://api.policyengine.org/{self.country_id}/policy",
+            json={
+                "data": sanitised_parameter_values,
+                "name": self.name,
+            },
+        )
+
+        return response.json().get("result", {}).get("policy_id")
 
 
 def set_parameter(

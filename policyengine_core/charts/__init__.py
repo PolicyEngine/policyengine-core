@@ -1,6 +1,6 @@
 from .formatting import (
     BLUE,
-    BLUE_COLOR_SCALE,
+    BLUE_COLOUR_SCALE,
     DARK_GREEN,
     LIGHT_GREEN,
     DARK_GRAY,
@@ -12,3 +12,4 @@ from .formatting import (
 )
 
 from .bar import *
+from .api import *

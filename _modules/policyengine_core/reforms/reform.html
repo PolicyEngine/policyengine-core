@@ -244,6 +244,17 @@
 
 <span class="kn">from</span> <span class="nn">policyengine_core.parameters</span> <span class="kn">import</span> <span class="n">ParameterNode</span><span class="p">,</span> <span class="n">Parameter</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.taxbenefitsystems</span> <span class="kn">import</span> <span class="n">TaxBenefitSystem</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.periods</span> <span class="kn">import</span> <span class="n">period</span> <span class="k">as</span> <span class="n">period_</span>
+
+<span class="kn">import</span> <span class="nn">requests</span>
+
+
+<span class="k">class</span> <span class="nc">classproperty</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">f</span> <span class="o">=</span> <span class="n">f</span>
+
+    <span class="k">def</span> <span class="fm">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">f</span><span class="p">(</span><span class="n">owner</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="Reform"><a class="viewcode-back" href="../../../python_api/reforms.html#policyengine_core.reforms.Reform">[docs]</a><span class="k">class</span> <span class="nc">Reform</span><span class="p">(</span><span class="n">TaxBenefitSystem</span><span class="p">):</span>
@@ -276,6 +287,13 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The name of the reform. This is used to identify the reform in the UI.&quot;&quot;&quot;</span>
+
+    <span class="n">country_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The country id of the reform. This is used to inform any calls to the PolicyEngine API.&quot;&quot;&quot;</span>
+
+    <span class="n">parameter_values</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The parameter values of the reform. This is used to inform any calls to the PolicyEngine API.&quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">baseline</span><span class="p">:</span> <span class="n">TaxBenefitSystem</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -331,7 +349,70 @@
                 <span class="p">)</span>
             <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">reform_parameters</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_parameters_at_instant_cache</span> <span class="o">=</span> <span class="p">{}</span></div></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parameters_at_instant_cache</span> <span class="o">=</span> <span class="p">{}</span></div>
+
+<div class="viewcode-block" id="Reform.from_dict"><a class="viewcode-back" href="../../../python_api/reforms.html#policyengine_core.reforms.Reform.from_dict">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span>
+        <span class="n">parameter_values</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+        <span class="n">country_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Reform</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a reform from a dictionary of parameters.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            parameters: A dictionary of parameter -&gt; { period -&gt; value } pairs.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A reform.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">class</span> <span class="nc">reform</span><span class="p">(</span><span class="n">Reform</span><span class="p">):</span>
+            <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">path</span><span class="p">,</span> <span class="n">period_values</span> <span class="ow">in</span> <span class="n">parameter_values</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">for</span> <span class="n">period</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">period_values</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">modify_parameters</span><span class="p">(</span>
+                            <span class="n">set_parameter</span><span class="p">(</span>
+                                <span class="n">path</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">return_modifier</span><span class="o">=</span><span class="kc">True</span>
+                            <span class="p">)</span>
+                        <span class="p">)</span>
+
+        <span class="n">reform</span><span class="o">.</span><span class="n">country_id</span> <span class="o">=</span> <span class="n">country_id</span>
+        <span class="n">reform</span><span class="o">.</span><span class="n">parameter_values</span> <span class="o">=</span> <span class="n">parameter_values</span>
+        <span class="n">reform</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+
+        <span class="k">return</span> <span class="n">reform</span></div>
+
+    <span class="nd">@classproperty</span>
+    <span class="k">def</span> <span class="nf">api_id</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">country_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;`country_id` is not set. This is required to use the API.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter_values</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;`parameter_values` is not set. This is required to use the API.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">sanitised_parameter_values</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">path</span><span class="p">,</span> <span class="n">period_values</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter_values</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">sanitised_period_values</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">period</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">period_values</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">period</span> <span class="o">=</span> <span class="n">period_</span><span class="p">(</span><span class="n">period</span><span class="p">)</span>
+                <span class="n">sanitised_period_values</span><span class="p">[</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">period</span><span class="o">.</span><span class="n">start</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">period</span><span class="o">.</span><span class="n">stop</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="n">sanitised_parameter_values</span><span class="p">[</span><span class="n">path</span><span class="p">]</span> <span class="o">=</span> <span class="n">sanitised_period_values</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;https://api.policyengine.org/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">country_id</span><span class="si">}</span><span class="s2">/policy&quot;</span><span class="p">,</span>
+            <span class="n">json</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">sanitised_parameter_values</span><span class="p">,</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;result&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;policy_id&quot;</span><span class="p">)</span></div>
 
 
 <span class="k">def</span> <span class="nf">set_parameter</span><span class="p">(</span>

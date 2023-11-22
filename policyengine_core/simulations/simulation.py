@@ -67,19 +67,19 @@ class Simulation:
         reform: Reform = None,
     ):
         if tax_benefit_system is None:
-            if self.default_tax_benefit_system_instance is not None:
+            if (
+                self.default_tax_benefit_system_instance is not None
+                and reform is None
+            ):
                 tax_benefit_system = self.default_tax_benefit_system_instance
-                if reform is not None:
-                    tax_benefit_system = tax_benefit_system.clone()
             else:
-                tax_benefit_system = self.default_tax_benefit_system()
+                tax_benefit_system = self.default_tax_benefit_system(
+                    reform=reform
+                )
             self.tax_benefit_system = tax_benefit_system
 
         self.reform = reform
         self.tax_benefit_system = tax_benefit_system
-
-        if reform is not None:
-            self.apply_reform(reform)
 
         self.branch_name = "default"
 

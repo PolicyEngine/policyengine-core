@@ -66,6 +66,7 @@ class Simulation:
         dataset: Union[str, Type[Dataset]] = None,
         reform: Reform = None,
     ):
+        reform_applied_after = False
         if tax_benefit_system is None:
             if (
                 self.default_tax_benefit_system_instance is not None
@@ -73,14 +74,21 @@ class Simulation:
             ):
                 tax_benefit_system = self.default_tax_benefit_system_instance
             else:
-                tax_benefit_system = self.default_tax_benefit_system(
-                    reform=reform
-                )
+                # If reform is taken as an arg, pass it
+                try:
+                    tax_benefit_system = self.default_tax_benefit_system(
+                        reform=reform
+                    )
+                except:
+                    tax_benefit_system = self.default_tax_benefit_system()
+                    reform_applied_after = True
             self.tax_benefit_system = tax_benefit_system
 
         self.reform = reform
         self.tax_benefit_system = tax_benefit_system
 
+        if reform_applied_after and reform is not None:
+            self.apply_reform(reform)
         self.branch_name = "default"
 
         if dataset is None:

@@ -409,3 +409,8 @@
     added:
     - PolicyEngine API integration for reforms.
   date: 2023-11-12 13:23:23
+- bump: minor
+  changes:
+    fixed:
+    - Reforms always apply before parameter utilities.
+  date: 2023-11-22 15:05:43

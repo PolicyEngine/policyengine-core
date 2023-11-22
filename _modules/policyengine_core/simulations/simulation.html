@@ -306,19 +306,19 @@
         <span class="n">reform</span><span class="p">:</span> <span class="n">Reform</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="k">if</span> <span class="n">tax_benefit_system</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_tax_benefit_system_instance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">default_tax_benefit_system_instance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="n">reform</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="p">):</span>
                 <span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_tax_benefit_system_instance</span>
-                <span class="k">if</span> <span class="n">reform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_tax_benefit_system</span><span class="p">()</span>
+                <span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_tax_benefit_system</span><span class="p">(</span>
+                    <span class="n">reform</span><span class="o">=</span><span class="n">reform</span>
+                <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="n">tax_benefit_system</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">reform</span> <span class="o">=</span> <span class="n">reform</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="n">tax_benefit_system</span>
-
-        <span class="k">if</span> <span class="n">reform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">apply_reform</span><span class="p">(</span><span class="n">reform</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span> <span class="o">=</span> <span class="s2">&quot;default&quot;</span>
 

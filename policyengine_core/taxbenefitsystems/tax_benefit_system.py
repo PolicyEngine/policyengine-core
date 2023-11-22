@@ -89,7 +89,7 @@ class TaxBenefitSystem:
     modelled_policies: str = None
     """A YAML filepath containing metadata describing the modelled policies."""
 
-    def __init__(self, entities: Sequence[Entity] = None) -> None:
+    def __init__(self, entities: Sequence[Entity] = None, reform=None) -> None:
         if entities is None:
             entities = self.entities
 
@@ -123,6 +123,8 @@ class TaxBenefitSystem:
 
         if self.parameters_dir is not None:
             self.load_parameters(self.parameters_dir)
+            if reform:
+                self.apply_reform_set(reform)
             self.parameters = homogenize_parameter_structures(
                 self.parameters, self.variables
             )
@@ -133,6 +135,13 @@ class TaxBenefitSystem:
             self.add_abolition_parameters()
 
         self.add_modelled_policy_metadata()
+
+    def apply_reform_set(self, reform):
+        if isinstance(reform, tuple):
+            for subreform in reform:
+                self.apply_reform_set(subreform)
+        else:
+            reform.apply(self)
 
     def add_abolition_parameters(self):
         if self.parameters is None or "gov" not in self.parameters.children:

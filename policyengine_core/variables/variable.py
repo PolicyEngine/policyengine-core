@@ -256,7 +256,7 @@ class Variable:
         )
 
         self.adds = self.set(attr, "adds")
-        self.subtracts = self.set(attr, "subtracts", allowed_type=list)
+        self.subtracts = self.set(attr, "subtracts")
         self.uprating = self.set(attr, "uprating", allowed_type=str)
         self.hidden_input = self.set(
             attr, "hidden_input", allowed_type=bool, default=False

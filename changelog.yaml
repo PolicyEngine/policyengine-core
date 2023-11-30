@@ -419,3 +419,8 @@
     fixed:
     - Reforms always apply before parameter utilities.
   date: 2023-11-22 15:55:52
+- bump: patch
+  changes:
+    fixed:
+    - Bug causing `subtracts` to not accept strings.
+  date: 2023-11-30 18:45:01

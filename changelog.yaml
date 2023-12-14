@@ -424,3 +424,9 @@
     fixed:
     - Bug causing `subtracts` to not accept strings.
   date: 2023-11-30 18:45:01
+- bump: patch
+  changes:
+    fixed:
+    - Bug causing random behaviour differences between situations with and without
+      axes.
+  date: 2023-12-14 11:38:52

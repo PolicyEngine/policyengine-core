@@ -21,6 +21,8 @@ from policyengine_core.tracers import (
     TracingParameterNodeAtInstant,
 )
 
+import json
+
 if TYPE_CHECKING:
     from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 
@@ -153,6 +155,16 @@ class Simulation:
             for variable in self.tax_benefit_system.variables.values()
             if len(self.get_holder(variable.name).get_known_periods()) > 0
         ]
+
+        self.situation_input = situation
+        if self.situation_input is not None:
+            original_input = json.loads(json.dumps(self.situation_input))
+            if original_input.get("axes") is not None:
+                original_input["axes"] = {}
+            # Hash the situation input to a random number, so situations with axes behave the
+            # same ways as the same situations without axes.
+            hashed_input = hash(json.dumps(original_input)) % 1000000
+            np.random.seed(hashed_input)
 
     def apply_reform(self, reform: Union[tuple, Reform]):
         if isinstance(reform, tuple):

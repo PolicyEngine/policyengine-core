@@ -18,6 +18,8 @@ from policyengine_core.populations.population import Population
 from policyengine_core.types import ArrayLike, ArrayType
 from policyengine_core.variables.variable import Variable
 
+import json
+
 T = TypeVar("T")
 
 
@@ -298,10 +300,11 @@ def amount_between(
     return clip(amount, threshold_1, threshold_2) - threshold_1
 
 
-def random(entity, reset=True):
+def random(entity, reset=False):
     if entity.simulation.has_axes:
-        # Don't simulate randomness in simulations with axes.
-        return 0
+        # Generate the same random number for each entity.
+        random_number = np.random.rand(1)[0]
+        return np.array([random_number] * entity.count)
     if reset:
         np.random.seed(0)
     x = np.random.rand(entity.count)

@@ -110,6 +110,8 @@ class Simulation:
         self.branches: Dict[str, Simulation] = {}
         self.has_axes = False
 
+        np.random.seed(0)
+
         if situation is not None:
             if dataset is not None:
                 raise ValueError(

@@ -430,3 +430,8 @@
     - Bug causing random behaviour differences between situations with and without
       axes.
   date: 2023-12-14 11:38:52
+- bump: patch
+  changes:
+    fixed:
+    - Random seed fixed for each simulation.
+  date: 2023-12-16 15:34:37

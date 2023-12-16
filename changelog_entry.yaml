@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    fixed:
+    - Random seed fixed for each simulation.

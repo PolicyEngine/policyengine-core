@@ -104,7 +104,9 @@ class Simulation:
         self.invalidated_caches = set()
         self.debug: bool = False
         self.trace: bool = trace
-        self.tracer: SimpleTracer = SimpleTracer() if not trace else FullTracer()
+        self.tracer: SimpleTracer = (
+            SimpleTracer() if not trace else FullTracer()
+        )
         self.opt_out_cache: bool = False
         # controls the spirals detection; check for performance impact if > 1
         self.max_spiral_loops: int = 10
@@ -176,10 +178,12 @@ class Simulation:
             self.baseline = self.get_branch("baseline")
             self.baseline.trace = self.trace
             self.baseline.tracer = self.tracer
-            self.baseline.tax_benefit_system = self.default_tax_benefit_system_instance
+            self.baseline.tax_benefit_system = (
+                self.default_tax_benefit_system_instance
+            )
         else:
             self.baseline = None
-        
+
         self.parent_branch = None
 
     def apply_reform(self, reform: Union[tuple, Reform]):

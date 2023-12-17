@@ -1,4 +1,4 @@
 - bump: patch
   changes:
-    fixed:
-    - Random seed fixed for each simulation.
+    added:
+    - Tools for branching

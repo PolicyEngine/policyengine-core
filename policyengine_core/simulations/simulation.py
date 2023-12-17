@@ -60,6 +60,9 @@ class Simulation:
     datasets: List[Dataset] = []
     """The list of datasets available for this simulation."""
 
+    baseline: "Simulation" = None
+    """The baseline simulation, if this simulation is a reform."""
+
     def __init__(
         self,
         tax_benefit_system: "TaxBenefitSystem" = None,
@@ -67,6 +70,7 @@ class Simulation:
         situation: dict = None,
         dataset: Union[str, Type[Dataset]] = None,
         reform: Reform = None,
+        trace: bool = False,
     ):
         reform_applied_after = False
         if tax_benefit_system is None:
@@ -99,8 +103,8 @@ class Simulation:
 
         self.invalidated_caches = set()
         self.debug: bool = False
-        self.trace: bool = False
-        self.tracer: SimpleTracer = SimpleTracer()
+        self.trace: bool = trace
+        self.tracer: SimpleTracer = SimpleTracer() if not trace else FullTracer()
         self.opt_out_cache: bool = False
         # controls the spirals detection; check for performance impact if > 1
         self.max_spiral_loops: int = 10
@@ -167,6 +171,16 @@ class Simulation:
             # same ways as the same situations without axes.
             hashed_input = hash(json.dumps(original_input)) % 1000000
             np.random.seed(hashed_input)
+
+        if reform is not None:
+            self.baseline = self.get_branch("baseline")
+            self.baseline.trace = self.trace
+            self.baseline.tracer = self.tracer
+            self.baseline.tax_benefit_system = self.default_tax_benefit_system_instance
+        else:
+            self.baseline = None
+        
+        self.parent_branch = None
 
     def apply_reform(self, reform: Union[tuple, Reform]):
         if isinstance(reform, tuple):
@@ -348,6 +362,8 @@ class Simulation:
             variable_name, period, self.branch_name
         )
 
+        np.random.seed(hash(variable_name + str(period)) % 1000000)
+
         try:
             result = self._calculate(variable_name, period)
             if isinstance(result, EnumArray) and decode_enums:
@@ -492,6 +508,18 @@ class Simulation:
         cached_array = holder.get_array(period, self.branch_name)
         if cached_array is not None:
             return cached_array
+
+        if variable.requires_computation_after is not None:
+            if variable.requires_computation_after not in [
+                node.get("name") for node in self.tracer.stack
+            ]:
+                raise ValueError(
+                    f"Variable {variable_name} requires {variable.requires_computation_after} to be requested first. The full stack is: "
+                    + "\n".join(
+                        f"  - {node.get('name')} {node.get('period')}, {node.get('branch_name')}"
+                        for node in self.tracer.stack
+                    )
+                )
 
         if variable.definition_period == MONTH and period.unit == YEAR:
             if variable.quantity_type == QuantityType.STOCK:
@@ -1110,6 +1138,7 @@ class Simulation:
         branch = self.clone(clone_tax_benefit_system=clone_system)
         self.branches[name] = branch
         branch.branch_name = name
+        branch.parent_branch = self
         if self.trace:
             branch.trace = True
             branch.tracer = self.tracer

@@ -126,6 +126,9 @@ class Variable:
     hidden_input: bool = False
     """Whether the variable is hidden from the input screen entirely on PolicyEngine."""
 
+    requires_computation_after: str = None
+    """Name of a variable that must be computed before this variable."""
+
     def __init__(self, baseline_variable=None):
         self.name = self.__class__.__name__
         attr = {
@@ -260,6 +263,10 @@ class Variable:
         self.uprating = self.set(attr, "uprating", allowed_type=str)
         self.hidden_input = self.set(
             attr, "hidden_input", allowed_type=bool, default=False
+        )
+
+        self.requires_computation_after = self.set(
+            attr, "requires_computation_after", allowed_type=str
         )
 
         formulas_attr, unexpected_attrs = helpers._partition(

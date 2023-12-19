@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.4] - 2023-12-19 11:12:24
+
+### Added
+
+- Tools for branching
+
 ## [2.11.3] - 2023-12-16 15:34:37
 
 ### Fixed
@@ -524,6 +530,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[2.11.4]: https://github.com/PolicyEngine/policyengine-core/compare/2.11.3...2.11.4
 [2.11.3]: https://github.com/PolicyEngine/policyengine-core/compare/2.11.2...2.11.3
 [2.11.2]: https://github.com/PolicyEngine/policyengine-core/compare/2.11.1...2.11.2
 [2.11.1]: https://github.com/PolicyEngine/policyengine-core/compare/2.11.0...2.11.1

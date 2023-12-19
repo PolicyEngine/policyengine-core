@@ -435,3 +435,8 @@
     fixed:
     - Random seed fixed for each simulation.
   date: 2023-12-16 15:34:37
+- bump: patch
+  changes:
+    added:
+    - Tools for branching
+  date: 2023-12-19 11:12:24

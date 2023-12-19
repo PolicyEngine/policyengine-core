@@ -63,6 +63,9 @@ class Simulation:
     baseline: "Simulation" = None
     """The baseline simulation, if this simulation is a reform."""
 
+    is_over_dataset: bool = False
+    """Whether this simulation is built over a dataset."""
+
     def __init__(
         self,
         tax_benefit_system: "TaxBenefitSystem" = None,
@@ -72,6 +75,7 @@ class Simulation:
         reform: Reform = None,
         trace: bool = False,
     ):
+        self.is_over_dataset = dataset is not None
         reform_applied_after = False
         if tax_benefit_system is None:
             if (

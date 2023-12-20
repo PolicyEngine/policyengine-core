@@ -300,14 +300,14 @@ def amount_between(
     return clip(amount, threshold_1, threshold_2) - threshold_1
 
 
-def random(entity, reset=False):
-    if entity.simulation.has_axes:
-        # Generate the same random number for each entity.
-        random_number = np.random.rand(1)[0]
-        return np.array([random_number] * entity.count)
+def random(entity, reset=True):
     if reset:
         np.random.seed(0)
     x = np.random.rand(entity.count)
+    if entity.simulation.has_axes:
+        # Generate the same random number for each entity.
+        random_number = x[0]
+        return np.array([random_number] * entity.count)
     return x
 
 

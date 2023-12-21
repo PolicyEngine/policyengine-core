@@ -440,3 +440,8 @@
     added:
     - Tools for branching
   date: 2023-12-19 11:12:24
+- bump: patch
+  changes:
+    fixed:
+    - Randomness issue.
+  date: 2023-12-21 10:55:47

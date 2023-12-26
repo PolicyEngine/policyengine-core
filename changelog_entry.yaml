@@ -1,0 +1,4 @@
+- bump: minor
+  changes:
+    added:
+    - API ID to reform object functionality.

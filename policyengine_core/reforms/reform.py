@@ -5,7 +5,7 @@ from typing import Callable, Union
 
 from policyengine_core.parameters import ParameterNode, Parameter
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
-from policyengine_core.periods import period as period_
+from policyengine_core.periods import period as period_, instant as instant_
 
 import requests
 
@@ -143,6 +143,43 @@ class Reform(TaxBenefitSystem):
 
         return reform
 
+    @staticmethod
+    def from_api(
+        api_id: str,
+        country_id: str = None,
+    ) -> Reform:
+        """Create a reform from a dictionary of parameters.
+
+        Args:
+            parameters: A dictionary of parameter -> { period -> value } pairs.
+
+        Returns:
+            A reform.
+        """
+
+        data = requests.get(
+            f"https://api.policyengine.org/{country_id}/policy/{api_id}"
+        ).json()
+
+        parameter_values = data.get("result", {}).get("policy_json", {})
+
+        class reform(Reform):
+            def apply(self):
+                for parameter, schedule in parameter_values.items():
+                    for time_period_string, value in schedule.items():
+                        start, end = time_period_string.split(".")
+                        self.modify_parameters(
+                            set_parameter(
+                                path=parameter,
+                                start=start,
+                                stop=end,
+                                value=value,
+                                return_modifier=True,
+                            )
+                        )
+
+        return reform
+
     @classproperty
     def api_id(self):
         if self.country_id is None:
@@ -179,9 +216,17 @@ class Reform(TaxBenefitSystem):
 def set_parameter(
     path: Union[Parameter, str],
     value: float,
-    period: str = "year:2015:10",
+    period: str = None,
+    start: str = None,
+    stop: str = None,
     return_modifier=False,
 ) -> Reform:
+    if stop is not None:
+        stop = instant_(stop)
+
+    if start is not None:
+        start = instant_(start)
+
     if isinstance(path, Parameter):
         path = path.name
 
@@ -204,7 +249,7 @@ def set_parameter(
                 raise ValueError(
                     f"Could not find the parameter (failed at {name})."
                 )
-        node.update(period=period, value=value)
+        node.update(period=period, value=value, start=start, stop=stop)
         return parameters
 
     if return_modifier:

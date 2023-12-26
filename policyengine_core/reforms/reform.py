@@ -221,7 +221,6 @@ def set_parameter(
     stop: str = None,
     return_modifier=False,
 ) -> Reform:
-
     if stop is not None:
         stop = instant_(stop)
 

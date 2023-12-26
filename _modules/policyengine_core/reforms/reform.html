@@ -244,7 +244,7 @@
 
 <span class="kn">from</span> <span class="nn">policyengine_core.parameters</span> <span class="kn">import</span> <span class="n">ParameterNode</span><span class="p">,</span> <span class="n">Parameter</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.taxbenefitsystems</span> <span class="kn">import</span> <span class="n">TaxBenefitSystem</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.periods</span> <span class="kn">import</span> <span class="n">period</span> <span class="k">as</span> <span class="n">period_</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.periods</span> <span class="kn">import</span> <span class="n">period</span> <span class="k">as</span> <span class="n">period_</span><span class="p">,</span> <span class="n">instant</span> <span class="k">as</span> <span class="n">instant_</span>
 
 <span class="kn">import</span> <span class="nn">requests</span>
 
@@ -382,6 +382,43 @@
 
         <span class="k">return</span> <span class="n">reform</span></div>
 
+<div class="viewcode-block" id="Reform.from_api"><a class="viewcode-back" href="../../../python_api/reforms.html#policyengine_core.reforms.Reform.from_api">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_api</span><span class="p">(</span>
+        <span class="n">api_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">country_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Reform</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a reform from a dictionary of parameters.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            parameters: A dictionary of parameter -&gt; { period -&gt; value } pairs.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A reform.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;https://api.policyengine.org/</span><span class="si">{</span><span class="n">country_id</span><span class="si">}</span><span class="s2">/policy/</span><span class="si">{</span><span class="n">api_id</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+        <span class="n">parameter_values</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;result&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;policy_json&quot;</span><span class="p">,</span> <span class="p">{})</span>
+
+        <span class="k">class</span> <span class="nc">reform</span><span class="p">(</span><span class="n">Reform</span><span class="p">):</span>
+            <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">parameter</span><span class="p">,</span> <span class="n">schedule</span> <span class="ow">in</span> <span class="n">parameter_values</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">for</span> <span class="n">time_period_string</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">schedule</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                        <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">time_period_string</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">modify_parameters</span><span class="p">(</span>
+                            <span class="n">set_parameter</span><span class="p">(</span>
+                                <span class="n">path</span><span class="o">=</span><span class="n">parameter</span><span class="p">,</span>
+                                <span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span>
+                                <span class="n">stop</span><span class="o">=</span><span class="n">end</span><span class="p">,</span>
+                                <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">,</span>
+                                <span class="n">return_modifier</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                            <span class="p">)</span>
+                        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">reform</span></div>
+
     <span class="nd">@classproperty</span>
     <span class="k">def</span> <span class="nf">api_id</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">country_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -418,9 +455,17 @@
 <span class="k">def</span> <span class="nf">set_parameter</span><span class="p">(</span>
     <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Parameter</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
     <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-    <span class="n">period</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;year:2015:10&quot;</span><span class="p">,</span>
+    <span class="n">period</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">start</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">stop</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">return_modifier</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Reform</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">stop</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">stop</span> <span class="o">=</span> <span class="n">instant_</span><span class="p">(</span><span class="n">stop</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">start</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">instant_</span><span class="p">(</span><span class="n">start</span><span class="p">)</span>
+
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">Parameter</span><span class="p">):</span>
         <span class="n">path</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">name</span>
 
@@ -443,7 +488,7 @@
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                     <span class="sa">f</span><span class="s2">&quot;Could not find the parameter (failed at </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">).&quot;</span>
                 <span class="p">)</span>
-        <span class="n">node</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">period</span><span class="o">=</span><span class="n">period</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+        <span class="n">node</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">period</span><span class="o">=</span><span class="n">period</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="n">stop</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">parameters</span>
 
     <span class="k">if</span> <span class="n">return_modifier</span><span class="p">:</span>

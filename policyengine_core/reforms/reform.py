@@ -5,7 +5,11 @@ from typing import Callable, Union
 
 from policyengine_core.parameters import ParameterNode, Parameter
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
-from policyengine_core.periods import period as period_, instant as instant_
+from policyengine_core.periods import (
+    period as period_,
+    instant as instant_,
+    Period,
+)
 
 import requests
 
@@ -163,22 +167,27 @@ class Reform(TaxBenefitSystem):
 
         parameter_values = data.get("result", {}).get("policy_json", {})
 
-        class reform(Reform):
-            def apply(self):
-                for parameter, schedule in parameter_values.items():
-                    for time_period_string, value in schedule.items():
-                        start, end = time_period_string.split(".")
-                        self.modify_parameters(
-                            set_parameter(
-                                path=parameter,
-                                start=start,
-                                stop=end,
-                                value=value,
-                                return_modifier=True,
-                            )
-                        )
+        for path in parameter_values:
+            keys_to_remove = []
+            for start_stop_str in list(parameter_values[path].keys()):
+                start, stop = start_stop_str.split(".")
+                time_period = str(
+                    period_("year:2000:100").intersection(
+                        instant_(start), instant_(stop)
+                    )
+                )
+                parameter_values[path][time_period] = parameter_values[path][
+                    start_stop_str
+                ]
+                keys_to_remove.append(start_stop_str)
+            for key in keys_to_remove:
+                del parameter_values[path][key]
 
-        return reform
+        return Reform.from_dict(
+            parameter_values,
+            country_id,
+            data.get("result", {}).get("label", None),
+        )
 
     @classproperty
     def api_id(self):

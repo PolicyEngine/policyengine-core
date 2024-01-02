@@ -455,3 +455,8 @@
     fixed:
     - API to reform functionality made more editable.
   date: 2023-12-27 13:28:08
+- bump: minor
+  changes:
+    added:
+    - Simulation helper to extract individual households from a microsimulation.
+  date: 2024-01-02 15:26:52

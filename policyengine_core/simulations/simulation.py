@@ -1182,3 +1182,113 @@ class Simulation:
         new_value = alt_sim.calculate(variable, period)
         difference = new_value - original_value
         return difference / delta
+
+    def sample_person(self) -> dict:
+        """
+        Sample a person from the simulation. Returns a situation JSON with their inputs (including their containing entities).
+
+        Returns:
+            dict: A dictionary containing the person's values.
+        """
+        person_count = self.persons.count
+        index = np.random.randint(person_count)
+        return self.extract_person(index)
+
+    def extract_person(
+        self,
+        index: int = 0,
+        exclude_entities: tuple = ("state",),
+    ) -> dict:
+        """
+        Extract a person from the simulation. Returns a situation JSON with their inputs (including their containing entities).
+
+        Args:
+            index (int): The index of the person to extract.
+
+        Returns:
+            dict: A dictionary containing the person's values.
+        """
+        situation = {}
+        people_indices = []
+        people_indices_by_entity = {}
+
+        for population in self.populations.values():
+            entity = population.entity
+            if (
+                not population.entity.is_person
+                and entity.key not in exclude_entities
+            ):
+                situation[entity.plural] = {
+                    entity.key: {
+                        "members": [],
+                    },
+                }
+                group_index = population.members_entity_id[index]
+                other_people_indices = [
+                    index
+                    for index in range(len(population.members_entity_id))
+                    if population.members_entity_id[index] == group_index
+                ]
+
+                people_indices.extend(other_people_indices)
+                people_indices = list(set(people_indices))
+                people_indices_by_entity[entity.key] = other_people_indices
+                for variable in self.input_variables:
+                    if (
+                        self.tax_benefit_system.get_variable(
+                            variable
+                        ).entity.key
+                        == entity.key
+                    ):
+                        known_periods = self.get_holder(
+                            variable
+                        ).get_known_periods()
+                        if len(known_periods) > 0:
+                            value = self.get_holder(variable).get_array(
+                                known_periods[0]
+                            )[group_index]
+                            situation[entity.plural][entity.key][variable] = {
+                                str(known_periods[0]): value
+                            }
+
+        person = self.populations["person"].entity
+        situation[person.plural] = {}
+        for person_index in people_indices:
+            person_name = f"{person.key}_{person_index + 1}"
+            for entity_key in people_indices_by_entity:
+                entity = self.populations[entity_key].entity
+                if person_index in people_indices_by_entity[entity.key]:
+                    situation[entity.plural][entity.key]["members"].append(
+                        person_name
+                    )
+            situation[person.plural][person_name] = {}
+            for variable in self.input_variables:
+                if (
+                    self.tax_benefit_system.get_variable(variable).entity.key
+                    == person.key
+                ):
+                    known_periods = self.get_holder(
+                        variable
+                    ).get_known_periods()
+                    if len(known_periods) > 0:
+                        value = self.get_holder(variable).get_array(
+                            known_periods[0]
+                        )[person_index]
+                        situation[person.plural][person_name][variable] = {
+                            str(known_periods[0]): value
+                        }
+
+        return json.loads(json.dumps(situation, cls=NpEncoder))
+
+
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.bool_):
+            return bool(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return str(obj)

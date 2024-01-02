@@ -7,6 +7,8 @@ import numexpr
 
 from policyengine_core.enums import EnumArray
 
+from .test_from_situation import generate_test_from_situation
+
 
 def assert_near(
     value,

@@ -1,0 +1,4 @@
+- bump: minor
+  changes:
+    added:
+    - Simulation helper to extract individual households from a microsimulation.

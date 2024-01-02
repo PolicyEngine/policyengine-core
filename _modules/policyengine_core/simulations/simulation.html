@@ -1420,7 +1420,117 @@
         <span class="n">original_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
         <span class="n">new_value</span> <span class="o">=</span> <span class="n">alt_sim</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
         <span class="n">difference</span> <span class="o">=</span> <span class="n">new_value</span> <span class="o">-</span> <span class="n">original_value</span>
-        <span class="k">return</span> <span class="n">difference</span> <span class="o">/</span> <span class="n">delta</span></div></div>
+        <span class="k">return</span> <span class="n">difference</span> <span class="o">/</span> <span class="n">delta</span></div>
+
+<div class="viewcode-block" id="Simulation.sample_person"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.sample_person">[docs]</a>    <span class="k">def</span> <span class="nf">sample_person</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sample a person from the simulation. Returns a situation JSON with their inputs (including their containing entities).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            dict: A dictionary containing the person&#39;s values.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">person_count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">persons</span><span class="o">.</span><span class="n">count</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="n">person_count</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">extract_person</span><span class="p">(</span><span class="n">index</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Simulation.extract_person"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.extract_person">[docs]</a>    <span class="k">def</span> <span class="nf">extract_person</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">exclude_entities</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;state&quot;</span><span class="p">,),</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Extract a person from the simulation. Returns a situation JSON with their inputs (including their containing entities).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            index (int): The index of the person to extract.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            dict: A dictionary containing the person&#39;s values.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">situation</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">people_indices</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">people_indices_by_entity</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">population</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">entity</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">entity</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="ow">not</span> <span class="n">population</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">is_person</span>
+                <span class="ow">and</span> <span class="n">entity</span><span class="o">.</span><span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">exclude_entities</span>
+            <span class="p">):</span>
+                <span class="n">situation</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">&quot;members&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                    <span class="p">},</span>
+                <span class="p">}</span>
+                <span class="n">group_index</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">members_entity_id</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+                <span class="n">other_people_indices</span> <span class="o">=</span> <span class="p">[</span>
+                    <span class="n">index</span>
+                    <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">population</span><span class="o">.</span><span class="n">members_entity_id</span><span class="p">))</span>
+                    <span class="k">if</span> <span class="n">population</span><span class="o">.</span><span class="n">members_entity_id</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">==</span> <span class="n">group_index</span>
+                <span class="p">]</span>
+
+                <span class="n">people_indices</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">other_people_indices</span><span class="p">)</span>
+                <span class="n">people_indices</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">people_indices</span><span class="p">))</span>
+                <span class="n">people_indices_by_entity</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">other_people_indices</span>
+                <span class="k">for</span> <span class="n">variable</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_variables</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
+                            <span class="n">variable</span>
+                        <span class="p">)</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span>
+                        <span class="o">==</span> <span class="n">entity</span><span class="o">.</span><span class="n">key</span>
+                    <span class="p">):</span>
+                        <span class="n">known_periods</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_holder</span><span class="p">(</span>
+                            <span class="n">variable</span>
+                        <span class="p">)</span><span class="o">.</span><span class="n">get_known_periods</span><span class="p">()</span>
+                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">known_periods</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_holder</span><span class="p">(</span><span class="n">variable</span><span class="p">)</span><span class="o">.</span><span class="n">get_array</span><span class="p">(</span>
+                                <span class="n">known_periods</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                            <span class="p">)[</span><span class="n">group_index</span><span class="p">]</span>
+                            <span class="n">situation</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">][</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">][</span><span class="n">variable</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                                <span class="nb">str</span><span class="p">(</span><span class="n">known_periods</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span> <span class="n">value</span>
+                            <span class="p">}</span>
+
+        <span class="n">person</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="s2">&quot;person&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">entity</span>
+        <span class="n">situation</span><span class="p">[</span><span class="n">person</span><span class="o">.</span><span class="n">plural</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">person_index</span> <span class="ow">in</span> <span class="n">people_indices</span><span class="p">:</span>
+            <span class="n">person_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">person</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">person_index</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">for</span> <span class="n">entity_key</span> <span class="ow">in</span> <span class="n">people_indices_by_entity</span><span class="p">:</span>
+                <span class="n">entity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">entity_key</span><span class="p">]</span><span class="o">.</span><span class="n">entity</span>
+                <span class="k">if</span> <span class="n">person_index</span> <span class="ow">in</span> <span class="n">people_indices_by_entity</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">]:</span>
+                    <span class="n">situation</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">][</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span><span class="p">][</span><span class="s2">&quot;members&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">person_name</span>
+                    <span class="p">)</span>
+            <span class="n">situation</span><span class="p">[</span><span class="n">person</span><span class="o">.</span><span class="n">plural</span><span class="p">][</span><span class="n">person_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">variable</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_variables</span><span class="p">:</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">variable</span><span class="p">)</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span>
+                    <span class="o">==</span> <span class="n">person</span><span class="o">.</span><span class="n">key</span>
+                <span class="p">):</span>
+                    <span class="n">known_periods</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_holder</span><span class="p">(</span>
+                        <span class="n">variable</span>
+                    <span class="p">)</span><span class="o">.</span><span class="n">get_known_periods</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">known_periods</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_holder</span><span class="p">(</span><span class="n">variable</span><span class="p">)</span><span class="o">.</span><span class="n">get_array</span><span class="p">(</span>
+                            <span class="n">known_periods</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                        <span class="p">)[</span><span class="n">person_index</span><span class="p">]</span>
+                        <span class="n">situation</span><span class="p">[</span><span class="n">person</span><span class="o">.</span><span class="n">plural</span><span class="p">][</span><span class="n">person_name</span><span class="p">][</span><span class="n">variable</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                            <span class="nb">str</span><span class="p">(</span><span class="n">known_periods</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span> <span class="n">value</span>
+                        <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">situation</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="n">NpEncoder</span><span class="p">))</span></div></div>
+
+
+<span class="k">class</span> <span class="nc">NpEncoder</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">JSONEncoder</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">default</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
 </pre></div>
         </article>
       </div>

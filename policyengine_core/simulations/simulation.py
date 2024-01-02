@@ -1183,6 +1183,17 @@ class Simulation:
         difference = new_value - original_value
         return difference / delta
 
+    def sample_person(self) -> dict:
+        """
+        Sample a person from the simulation. Returns a situation JSON with their inputs (including their containing entities).
+
+        Returns:
+            dict: A dictionary containing the person's values.
+        """
+        person_count = self.persons.count
+        index = np.random.randint(person_count)
+        return self.extract_person(index)
+
     def extract_person(
         self,
         index: int = 0,

@@ -10,6 +10,7 @@ class simple_variable(Variable):
     entity = entities.Person
     definition_period = periods.MONTH
     value_type = int
+    label = "simple variable"
 
 
 class variable_with_calculate_output_add(Variable):
@@ -17,6 +18,7 @@ class variable_with_calculate_output_add(Variable):
     definition_period = periods.MONTH
     value_type = int
     calculate_output = simulations.calculate_output_add
+    label = "variable with calculate_output_add"
 
 
 class variable_with_calculate_output_divide(Variable):
@@ -24,6 +26,7 @@ class variable_with_calculate_output_divide(Variable):
     definition_period = periods.YEAR
     value_type = int
     calculate_output = simulations.calculate_output_divide
+    label = "variable with calculate_output_divide"
 
 
 @pytest.fixture(scope="module", autouse=True)

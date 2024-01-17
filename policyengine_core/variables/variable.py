@@ -190,7 +190,7 @@ class Variable:
 
         if self.label is None:
             raise ValueError(
-                'Variable "{}" has no label'.format(self.name)
+                'Variable "{name}" has no label'.format(name=self.name)
             )
         
         self.end = self.set(attr, "end", allowed_type=str, setter=self.set_end)
@@ -294,7 +294,7 @@ class Variable:
         
         if len(self.formulas) != 0 and (self.adds is not None or self.subtracts is not None):
             raise ValueError(
-                'Variable "{}" has a formula and an add or subtract'.format(self.name)
+                'Variable "{name}" has a formula and an add or subtract'.format(name=self.name)
             )
 
         self.is_neutralized = False

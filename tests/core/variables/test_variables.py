@@ -612,3 +612,87 @@ def test_unexpected_attr():
 
     with raises(ValueError):
         tax_benefit_system.add_variable(variable_with_strange_attr)
+
+class variable__one_formula_one_add(Variable):
+    value_type = int
+    entity = Person
+    definition_period = MONTH
+    label = "Variable with one formula and one add."
+    adds = ["pass"]
+
+    def formula():
+        pass
+
+def test_one_formula_one_add():
+    check_error_at_add_variable(
+        tax_benefit_system,
+        variable__one_formula_one_add,
+        'Variable "{name}" has a formula and an add or subtract'.format(name="variable__one_formula_one_add"),
+    )
+
+class variable__one_formula_one_subtract(Variable):
+    value_type = int
+    entity = Person
+    definition_period = MONTH
+    label = "Variable with one formula and one subtract."
+    adds = ["pass"]
+
+    def formula():
+        pass
+
+def test_one_formula_one_subtract():
+    check_error_at_add_variable(
+        tax_benefit_system,
+        variable__one_formula_one_subtract,
+        'Variable "{name}" has a formula and an add or subtract'.format(name="variable__one_formula_one_subtract"),
+    )
+
+class variable__one_formula(Variable):
+    value_type = int
+    entity = Person
+    definition_period = MONTH
+    label = "Variable with one formula."
+
+    def formula():
+        pass
+
+def test_one_formula():
+    tax_benefit_system.add_variable(variable__one_formula)
+    variable = tax_benefit_system.variables["variable__one_formula"]
+    assert len(variable.formulas)
+
+class variable__one_add(Variable):
+    value_type = int
+    entity = Person
+    definition_period = MONTH
+    label = "Variable with one add."
+    adds = ["pass"]
+
+def test_one_add():
+    tax_benefit_system.add_variable(variable__one_add)
+    variable = tax_benefit_system.variables["variable__one_add"]
+    assert len(variable.adds)
+
+class variable__one_subtract(Variable):
+    value_type = int
+    entity = Person
+    definition_period = MONTH
+    label = "Variable with one subtract."
+    subtracts = ["pass"]
+
+def test_one_subtract():
+    tax_benefit_system.add_variable(variable__one_subtract)
+    variable = tax_benefit_system.variables["variable__one_subtract"]
+    assert len(variable.subtracts)
+
+class variable__no_label(Variable):
+    value_type = int
+    entity = Person
+    definition_period = MONTH
+
+def test_no_label():
+    check_error_at_add_variable(
+        tax_benefit_system,
+        variable__no_label,
+        'Variable "{name}" has no label'.format(name="variable__no_label")
+    )

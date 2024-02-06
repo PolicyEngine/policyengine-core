@@ -35,9 +35,9 @@ class Instant(tuple):
         """
         instant_str = config.str_by_instant_cache.get(self)
         if instant_str is None:
-            config.str_by_instant_cache[
-                self
-            ] = instant_str = self.date.isoformat()
+            config.str_by_instant_cache[self] = instant_str = (
+                self.date.isoformat()
+            )
         return instant_str
 
     @property

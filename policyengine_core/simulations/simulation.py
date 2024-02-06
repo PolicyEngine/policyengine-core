@@ -241,8 +241,8 @@ class Simulation:
             entity_id_field in data
         ), f"Missing {entity_id_field} column in the dataset. Each person entity must have an ID array defined for ETERNITY."
 
-        get_eternity_array = (
-            lambda ds: ds[list(ds.keys())[0]]
+        get_eternity_array = lambda ds: (
+            ds[list(ds.keys())[0]]
             if self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS
             else ds
         )
@@ -466,6 +466,11 @@ class Simulation:
             period = periods.period(period)
         elif period is None and self.default_calculation_period is not None:
             period = periods.period(self.default_calculation_period)
+
+        # Check each variable exists
+        for variable_name in variable_names:
+            if variable_name not in self.tax_benefit_system.variables:
+                raise ValueError(f"Variable {variable_name} does not exist.")
         df = pd.DataFrame()
         entities = [
             self.tax_benefit_system.get_variable(variable_name).entity.key
@@ -785,7 +790,9 @@ class Simulation:
                             )
                             values = values + parameter(period.start)
                         except:
-                            pass
+                            raise ValueError(
+                                f"In the variable '{variable.name}', the 'adds' attribute is a list that contains a string '{added_variable}' that does not match any variable or parameter."
+                            )
             if variable.subtracts is not None and len(variable.subtracts) > 0:
                 if isinstance(variable.subtracts, str):
                     try:
@@ -820,7 +827,9 @@ class Simulation:
                             )
                             values = values + parameter(period.start)
                         except:
-                            pass
+                            raise ValueError(
+                                f"In the variable '{variable.name}', the 'subtracts' attribute is a list that contains a string '{subtracted_variable}' that does not match any variable or parameter."
+                            )
             return values
 
         if self.trace and not isinstance(
@@ -873,9 +882,11 @@ class Simulation:
                 "Unable to compute variable '{0}' for period {1}: '{0}' must be computed for a whole {2}. You can use the ADD option to sum '{0}' over the requested period.".format(
                     variable.name,
                     period,
-                    "month"
-                    if variable.definition_period == periods.MONTH
-                    else "year",
+                    (
+                        "month"
+                        if variable.definition_period == periods.MONTH
+                        else "year"
+                    ),
                 )
             )
 
@@ -1244,8 +1255,9 @@ class Simulation:
                             variable
                         ).get_known_periods()
                         if len(known_periods) > 0:
-                            value = self.get_holder(variable).get_array(
-                                known_periods[0]
+                            first_known_period = known_periods[0]
+                            value = self.calculate(
+                                variable, first_known_period
                             )[group_index]
                             situation[entity.plural][entity.key][variable] = {
                                 str(known_periods[0]): value
@@ -1271,9 +1283,10 @@ class Simulation:
                         variable
                     ).get_known_periods()
                     if len(known_periods) > 0:
-                        value = self.get_holder(variable).get_array(
-                            known_periods[0]
-                        )[person_index]
+                        first_known_period = known_periods[0]
+                        value = self.calculate(variable, first_known_period)[
+                            person_index
+                        ]
                         situation[person.plural][person_name][variable] = {
                             str(known_periods[0]): value
                         }

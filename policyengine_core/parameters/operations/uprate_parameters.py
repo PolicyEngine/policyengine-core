@@ -85,6 +85,10 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                         # Apply the uprater and add to the parameter
                         value_at_start = parameter(last_instant)
                         uprater_at_start = uprating_parameter(last_instant)
+                        if uprater_at_start is None:
+                            raise ValueError(
+                                f"Failed to uprate using {uprating_parameter.name} at {last_instant} for {parameter.name} at {entry_instant} because the uprating parameter is not defined at {last_instant}."
+                            )
                         uprater_at_entry = uprating_parameter(entry_instant)
                         uprater_change = uprater_at_entry / uprater_at_start
                         uprated_value = value_at_start * uprater_change

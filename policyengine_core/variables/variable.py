@@ -198,12 +198,14 @@ class Variable:
             "quantity_type",
             required=False,
             allowed_values=(QuantityType.STOCK, QuantityType.FLOW),
-            default=QuantityType.STOCK
-            if (
-                self.value_type in (bool, int, Enum, str, datetime.date)
-                or self.unit == "/1"
-            )
-            else QuantityType.FLOW,
+            default=(
+                QuantityType.STOCK
+                if (
+                    self.value_type in (bool, int, Enum, str, datetime.date)
+                    or self.unit == "/1"
+                )
+                else QuantityType.FLOW
+            ),
         )
         self.documentation = self.set(
             attr,
@@ -214,9 +216,11 @@ class Variable:
         self.set_input = self.set_set_input(
             attr.pop(
                 "set_input",
-                set_input_dispatch_by_period
-                if self.quantity_type == QuantityType.STOCK
-                else set_input_divide_by_period,
+                (
+                    set_input_dispatch_by_period
+                    if self.quantity_type == QuantityType.STOCK
+                    else set_input_divide_by_period
+                ),
             )
         )
         if self.definition_period in (DAY, ETERNITY):

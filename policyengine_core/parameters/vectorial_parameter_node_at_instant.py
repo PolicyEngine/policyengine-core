@@ -27,13 +27,15 @@ class VectorialParameterNodeAtInstant:
         # Recursively vectorize the children of the node
         vectorial_subnodes = tuple(
             [
-                VectorialParameterNodeAtInstant.build_from_node(
-                    node[subnode_name]
-                ).vector
-                if isinstance(
-                    node[subnode_name], parameters.ParameterNodeAtInstant
+                (
+                    VectorialParameterNodeAtInstant.build_from_node(
+                        node[subnode_name]
+                    ).vector
+                    if isinstance(
+                        node[subnode_name], parameters.ParameterNodeAtInstant
+                    )
+                    else node[subnode_name]
                 )
-                else node[subnode_name]
                 for subnode_name in subnodes_name
             ]
         )
@@ -44,9 +46,11 @@ class VectorialParameterNodeAtInstant:
             dtype=[
                 (
                     subnode_name,
-                    subnode.dtype
-                    if isinstance(subnode, numpy.recarray)
-                    else "float",
+                    (
+                        subnode.dtype
+                        if isinstance(subnode, numpy.recarray)
+                        else "float"
+                    ),
                 )
                 for (subnode_name, subnode) in zip(
                     subnodes_name, vectorial_subnodes

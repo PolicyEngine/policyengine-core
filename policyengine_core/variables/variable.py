@@ -187,6 +187,12 @@ class Variable:
         self.label = self.set(
             attr, "label", allowed_type=str, setter=self.set_label
         )
+
+        if self.label is None:
+            raise ValueError(
+                'Variable "{name}" has no label'.format(name=self.name)
+            )
+
         self.end = self.set(attr, "end", allowed_type=str, setter=self.set_end)
         self.reference = self.set(attr, "reference", setter=self.set_reference)
         self.cerfa_field = self.set(
@@ -283,6 +289,15 @@ class Variable:
             raise ValueError(
                 'Unexpected attributes in definition of variable "{}": {!r}'.format(
                     self.name, ", ".join(sorted(unexpected_attrs.keys()))
+                )
+            )
+
+        if len(self.formulas) != 0 and (
+            self.adds is not None or self.subtracts is not None
+        ):
+            raise ValueError(
+                'Variable "{name}" has a formula and an add or subtract'.format(
+                    name=self.name
                 )
             )
 

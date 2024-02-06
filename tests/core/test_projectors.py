@@ -137,6 +137,7 @@ def test_enum_projects_downwards():
         default_value = enum.FIRST_OPTION
         entity = household
         definition_period = ETERNITY
+        label = "household enum variable"
 
     class projected_enum_variable(Variable):
         value_type = Enum
@@ -144,6 +145,7 @@ def test_enum_projects_downwards():
         default_value = enum.FIRST_OPTION
         entity = person
         definition_period = ETERNITY
+        label = "projected enum variable"
 
         def formula(person, period):
             return person.household("household_enum_variable", period)
@@ -210,6 +212,7 @@ def test_enum_projects_upwards():
         default_value = enum.FIRST_OPTION
         entity = household
         definition_period = ETERNITY
+        label = "household projected variable"
 
         def formula(household, period):
             return household.value_from_first_person(
@@ -222,6 +225,7 @@ def test_enum_projects_upwards():
         default_value = enum.FIRST_OPTION
         entity = person
         definition_period = ETERNITY
+        label = "person enum variable"
 
     system.add_variables(household_projected_variable, person_enum_variable)
 
@@ -303,6 +307,7 @@ def test_enum_projects_between_containing_groups():
         default_value = enum.FIRST_OPTION
         entity = household_entity
         definition_period = ETERNITY
+        label = "household level variable"
 
     class projected_family_level_variable(Variable):
         value_type = Enum
@@ -310,6 +315,7 @@ def test_enum_projects_between_containing_groups():
         default_value = enum.FIRST_OPTION
         entity = family_entity
         definition_period = ETERNITY
+        label = "projected family level variable"
 
         def formula(family, period):
             return family.household("household_level_variable", period)
@@ -318,6 +324,7 @@ def test_enum_projects_between_containing_groups():
         value_type = str
         entity = family_entity
         definition_period = ETERNITY
+        label = "decoded projected family level variable"
 
         def formula(family, period):
             return family.household(

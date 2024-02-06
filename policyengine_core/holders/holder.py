@@ -157,10 +157,11 @@ class Holder:
             usage.update(
                 dict(
                     nb_requests=nb_requests,
-                    nb_requests_by_array=nb_requests
-                    / float(usage["nb_arrays"])
-                    if usage["nb_arrays"] > 0
-                    else numpy.nan,
+                    nb_requests_by_array=(
+                        nb_requests / float(usage["nb_arrays"])
+                        if usage["nb_arrays"] > 0
+                        else numpy.nan
+                    ),
                 )
             )
 

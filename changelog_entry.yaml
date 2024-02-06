@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    added:
+    - Improvements to error handling in bad variable declarations.

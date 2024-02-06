@@ -5,6 +5,7 @@ Taxes and benefits can be calculated for different entities: persons, household,
 
 See https://openfisca.org/doc/key-concepts/person,_entities,_role.html
 """
+
 from typing import Any
 
 from policyengine_core.entities import build_entity

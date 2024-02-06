@@ -32,9 +32,11 @@ def bar_chart(
     """
 
     hover_text_labels = [
-        hover_text_function(index, value)
-        if hover_text_function is not None
-        else None
+        (
+            hover_text_function(index, value)
+            if hover_text_function is not None
+            else None
+        )
         for index, value in data.items()
     ]
 
@@ -57,9 +59,11 @@ def bar_chart(
                 positive_colour if v > 0 else negative_colour
                 for v in data.values
             ],
-            hovertemplate="%{customdata[0]}<extra></extra>"
-            if hover_text_labels is not None
-            else None,
+            hovertemplate=(
+                "%{customdata[0]}<extra></extra>"
+                if hover_text_labels is not None
+                else None
+            ),
         )
     )
     return format_fig(fig)
@@ -94,11 +98,11 @@ def cross_section_bar_chart(
                 "Category": category,
                 "Cross section": cross_section_value,
                 "Value": value,
-                "Hover text": hover_text_function(
-                    cross_section_value, category, value
-                )
-                if hover_text_function is not None
-                else None,
+                "Hover text": (
+                    hover_text_function(cross_section_value, category, value)
+                    if hover_text_function is not None
+                    else None
+                ),
             }
             df = df.append(row, ignore_index=True)
 

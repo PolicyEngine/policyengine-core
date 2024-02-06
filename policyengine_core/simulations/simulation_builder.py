@@ -32,8 +32,12 @@ from policyengine_core.variables import Variable
 
 class SimulationBuilder:
     def __init__(self):
-        self.default_period: Period = None  # Simulation period used for variables when no period is defined
-        self.persons_plural: str = None  # Plural name for person entity in current tax and benefits system
+        self.default_period: Period = (
+            None  # Simulation period used for variables when no period is defined
+        )
+        self.persons_plural: str = (
+            None  # Plural name for person entity in current tax and benefits system
+        )
 
         # JSON input - Memory of known input values. Indexed by variable or axis name.
         self.input_buffer: typing.Dict[
@@ -55,9 +59,9 @@ class SimulationBuilder:
         self.has_axes = False
         self.axes_entity_counts: typing.Dict[Entity.plural, int] = {}
         self.axes_entity_ids: typing.Dict[Entity.plural, typing.List[int]] = {}
-        self.axes_memberships: typing.Dict[
-            Entity.plural, typing.List[int]
-        ] = {}
+        self.axes_memberships: typing.Dict[Entity.plural, typing.List[int]] = (
+            {}
+        )
         self.axes_roles: typing.Dict[Entity.plural, typing.List[int]] = {}
 
     def build_from_dict(
@@ -484,12 +488,12 @@ class SimulationBuilder:
             entity_ids = entity_ids + list(persons_to_allocate)
             for person_id in persons_to_allocate:
                 person_index = persons_ids.index(person_id)
-                self.memberships[entity.plural][
-                    person_index
-                ] = entity_ids.index(person_id)
-                self.roles[entity.plural][
-                    person_index
-                ] = entity.flattened_roles[0]
+                self.memberships[entity.plural][person_index] = (
+                    entity_ids.index(person_id)
+                )
+                self.roles[entity.plural][person_index] = (
+                    entity.flattened_roles[0]
+                )
             # Adjust previously computed ids and counts
             self.entity_ids[entity.plural] = entity_ids
             self.entity_counts[entity.plural] = len(entity_ids)

@@ -460,3 +460,8 @@
     added:
     - Simulation helper to extract individual households from a microsimulation.
   date: 2024-01-02 15:26:52
+- bump: patch
+  changes:
+    added:
+    - Improvements to error handling in bad variable declarations.
+  date: 2024-02-06 11:28:22

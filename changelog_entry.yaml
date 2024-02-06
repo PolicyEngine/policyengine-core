@@ -1,5 +1,0 @@
-- bump: minor
-  changes:
-    changed:
-    - A variable must have a label.
-    - If a variable has formulas then it must not have adds/subtracts, and vice versa.

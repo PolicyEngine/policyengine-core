@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.0] - 2024-02-06 17:28:06
+
+### Changed
+
+- A variable must have a label.
+- If a variable has formulas then it must not have adds/subtracts, and vice versa.
+
 ## [2.13.1] - 2024-02-06 11:28:22
 
 ### Added
@@ -560,6 +567,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[2.14.0]: https://github.com/PolicyEngine/policyengine-core/compare/2.13.1...2.14.0
 [2.13.1]: https://github.com/PolicyEngine/policyengine-core/compare/2.13.0...2.13.1
 [2.13.0]: https://github.com/PolicyEngine/policyengine-core/compare/2.12.1...2.13.0
 [2.12.1]: https://github.com/PolicyEngine/policyengine-core/compare/2.12.0...2.12.1

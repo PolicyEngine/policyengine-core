@@ -15,6 +15,7 @@ def monthly_variable():
         value_type = int
         entity = Person
         definition_period = MONTH
+        label = "monthly variable"
 
         def formula(person, period, parameters):
             variable.calculation_count += 1

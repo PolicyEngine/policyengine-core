@@ -39,6 +39,7 @@ def test_parameter_homogenization():
         definition_period = ETERNITY
         possible_values = Country
         default_value = Country.ENGLAND
+        label = "country"
 
     class Region(Enum):
         NORTH_EAST = "North East"
@@ -60,11 +61,13 @@ def test_parameter_homogenization():
         definition_period = ETERNITY
         possible_values = Region
         default_value = Region.NORTH_EAST
+        label = "region"
 
     class family_size(Variable):
         value_type = int
         entity = Person
         definition_period = ETERNITY
+        label = "family size"
 
     from policyengine_core.parameters import homogenize_parameter_structures
     from policyengine_core.taxbenefitsystems import TaxBenefitSystem

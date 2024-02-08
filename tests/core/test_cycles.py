@@ -22,6 +22,7 @@ class variable1(Variable):
     value_type = int
     entity = entities.Person
     definition_period = periods.MONTH
+    label = "variable 1"
 
     def formula(person, period):
         return person("variable2", period)
@@ -31,6 +32,7 @@ class variable2(Variable):
     value_type = int
     entity = entities.Person
     definition_period = periods.MONTH
+    label = "variable 2"
 
     def formula(person, period):
         return person("variable1", period)
@@ -41,6 +43,7 @@ class variable3(Variable):
     value_type = int
     entity = entities.Person
     definition_period = periods.MONTH
+    label = "variable 3"
 
     def formula(person, period):
         return person("variable4", period.last_month)
@@ -50,6 +53,7 @@ class variable4(Variable):
     value_type = int
     entity = entities.Person
     definition_period = periods.MONTH
+    label = "variable 4"
 
     def formula(person, period):
         return person("variable3", period)
@@ -61,6 +65,7 @@ class variable5(Variable):
     value_type = int
     entity = entities.Person
     definition_period = periods.MONTH
+    label = "variable 5"
 
     def formula(person, period):
         variable6 = person("variable6", period.last_month)
@@ -71,6 +76,7 @@ class variable6(Variable):
     value_type = int
     entity = entities.Person
     definition_period = periods.MONTH
+    label = "variable 6"
 
     def formula(person, period):
         variable5 = person("variable5", period)
@@ -81,6 +87,7 @@ class variable7(Variable):
     value_type = int
     entity = entities.Person
     definition_period = periods.MONTH
+    label = "variable 7"
 
     def formula(person, period):
         variable5 = person("variable5", period)
@@ -92,6 +99,7 @@ class cotisation(Variable):
     value_type = int
     entity = entities.Person
     definition_period = periods.MONTH
+    label = "cotisation"
 
     def formula(person, period):
         if period.start.month == 12:

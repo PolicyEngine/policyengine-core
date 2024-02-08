@@ -460,3 +460,14 @@
     added:
     - Simulation helper to extract individual households from a microsimulation.
   date: 2024-01-02 15:26:52
+- bump: patch
+  changes:
+    added:
+    - Improvements to error handling in bad variable declarations.
+  date: 2024-02-06 11:28:22
+- bump: minor
+  changes:
+    changed:
+    - A variable must have a label.
+    - If a variable has formulas then it must not have adds/subtracts, and vice versa.
+  date: 2024-02-06 17:28:06

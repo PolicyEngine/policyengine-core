@@ -11,6 +11,7 @@ class choice(Variable):
     value_type = int
     entity = entities.Person
     definition_period = periods.MONTH
+    label = "choice"
 
 
 class uses_multiplication(Variable):
@@ -18,6 +19,7 @@ class uses_multiplication(Variable):
     entity = entities.Person
     label = "Variable with formula that uses multiplication"
     definition_period = periods.MONTH
+    label = "uses multiplication"
 
     def formula(person, period):
         choice = person("choice", period)
@@ -30,6 +32,7 @@ class returns_scalar(Variable):
     entity = entities.Person
     label = "Variable with formula that returns a scalar value"
     definition_period = periods.MONTH
+    label = "returns scalar"
 
     def formula(person, period):
         return 666
@@ -40,6 +43,7 @@ class uses_switch(Variable):
     entity = entities.Person
     label = "Variable with formula that uses switch"
     definition_period = periods.MONTH
+    label = "uses switch"
 
     def formula(person, period):
         choice = person("choice", period)
@@ -154,11 +158,13 @@ def test_group_encapsulation():
         value_type = int
         entity = household_entity
         definition_period = ETERNITY
+        label = "household level variable"
 
     class projected_family_level_variable(Variable):
         value_type = int
         entity = family_entity
         definition_period = ETERNITY
+        label = "projected family level variable"
 
         def formula(family, period):
             return family.household("household_level_variable", period)

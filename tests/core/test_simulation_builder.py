@@ -19,6 +19,7 @@ def int_variable(persons):
         definition_period = periods.ETERNITY
         value_type = int
         entity = persons
+        label = "int variable"
 
         def __init__(self):
             super().__init__()
@@ -32,6 +33,7 @@ def date_variable(persons):
         definition_period = periods.ETERNITY
         value_type = datetime.date
         entity = persons
+        label = "date variable"
 
         def __init__(self):
             super().__init__()
@@ -50,6 +52,7 @@ def enum_variable():
         set_input = None
         possible_values = Enum("foo", "bar")
         name = "enum"
+        label = "enum variable"
 
         def __init__(self):
             pass

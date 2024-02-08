@@ -471,3 +471,8 @@
     - A variable must have a label.
     - If a variable has formulas then it must not have adds/subtracts, and vice versa.
   date: 2024-02-06 17:28:06
+- bump: minor
+  changes:
+    added:
+    - Variable inheritance in declarations.
+  date: 2024-02-08 14:32:38

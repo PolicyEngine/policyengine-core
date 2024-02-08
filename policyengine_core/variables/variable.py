@@ -136,6 +136,21 @@ class Variable:
             for name, value in self.__class__.__dict__.items()
             if not name.startswith("__")
         }
+
+        # Allow inheritance for some properties
+        INHERITED_ALLOWED_PROPERTIES = (
+            "label",
+            "value_type",
+            "entity",
+            "definition_period",
+        )
+
+        for property_name in INHERITED_ALLOWED_PROPERTIES:
+            if not attr.get(property_name) and property_name in dir(
+                self.__class__
+            ):
+                attr[property_name] = getattr(self, property_name)
+
         self.baseline_variable = baseline_variable
         self.value_type = self.set(
             attr,

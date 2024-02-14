@@ -476,3 +476,8 @@
     added:
     - Variable inheritance in declarations.
   date: 2024-02-08 14:32:38
+- bump: minor
+  changes:
+    removed:
+    - Error raising for adds/subtracts properties plus a formula.
+  date: 2024-02-14 14:49:15

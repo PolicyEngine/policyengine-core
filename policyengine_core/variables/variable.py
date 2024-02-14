@@ -307,15 +307,6 @@ class Variable:
                 )
             )
 
-        if len(self.formulas) != 0 and (
-            self.adds is not None or self.subtracts is not None
-        ):
-            raise ValueError(
-                'Variable "{name}" has a formula and an add or subtract'.format(
-                    name=self.name
-                )
-            )
-
         self.is_neutralized = False
 
     # ----- Setters used to build the variable ----- #

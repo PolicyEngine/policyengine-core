@@ -1,0 +1,4 @@
+- bump: minor
+  changes:
+    removed:
+    - Error raising for adds/subtracts properties plus a formula.

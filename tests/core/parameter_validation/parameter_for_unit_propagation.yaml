@@ -3,6 +3,7 @@ metadata:
   type: single_amount
   threshold_unit: child
   amount_unit: currency-USD
+  rate_unit: /1
   label: Test unit propagation
 
 brackets:

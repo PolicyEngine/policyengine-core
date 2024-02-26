@@ -11,6 +11,10 @@ class ParameterScaleBracket(ParameterNode):
         ["amount", "threshold", "rate", "average_rate", "base"]
     )
 
+    @staticmethod
+    def allowed_unit_keys():
+        return [key + "_unit" for key in ParameterScaleBracket._allowed_keys]
+
     def get_descendants(self) -> Iterable[Parameter]:
         for key in self._allowed_keys:
             if key in self.children:

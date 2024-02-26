@@ -33,7 +33,7 @@ brackets:
         2023-01-01: 21_560
         2024-01-01: 22_720
       metadata:
-        a: b
+        unit: US dollars
   - threshold:
       values:
         1995-01-01: 2

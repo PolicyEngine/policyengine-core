@@ -11,4 +11,6 @@ def test_propagate_units():
     parameter.propagate_units()
     for i in range(4):
         assert parameter.brackets[i].threshold.metadata["unit"] == "child"
-        assert parameter.brackets[i].amount.metadata["unit"] == "currency-USD"
+        assert parameter.brackets[i].amount.metadata["unit"] == (
+            "US dollars" if i == 1 else "currency-USD"
+        )

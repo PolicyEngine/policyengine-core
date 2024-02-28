@@ -33,7 +33,7 @@ class Dataset:
 
     _table_cache: Dict[str, pd.DataFrame] = None
 
-    def __init__(self, regenerate: bool = False):
+    def __init__(self, require: bool = False):
         # Setup dataset
         if self.file_path is None:
             raise ValueError(
@@ -66,9 +66,7 @@ class Dataset:
                 "You tried to instantiate a Dataset object, but no time_period has been provided."
             )
 
-        if regenerate:
-            self.generate()
-        elif not self.exists:
+        if not self.exists and require:
             if self.url is not None:
                 self.download()
             else:

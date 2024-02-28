@@ -153,7 +153,7 @@ class Simulation:
                     )
                 dataset = datasets_by_name[dataset]
             if isinstance(dataset, type):
-                self.dataset: Dataset = dataset()
+                self.dataset: Dataset = dataset(require=True)
             else:
                 self.dataset = dataset
             self.build_from_dataset()
@@ -227,6 +227,7 @@ class Simulation:
 
         builder = SimulationBuilder()
         builder.populations = self.populations
+
         try:
             data = self.dataset.load()
         except FileNotFoundError as e:
@@ -576,6 +577,7 @@ class Simulation:
                     start_instants = [
                         str(known_period.start)
                         for known_period in known_periods
+                        if known_period.unit == variable.definition_period
                     ]
                     latest_known_period = known_periods[
                         np.argmax(start_instants)

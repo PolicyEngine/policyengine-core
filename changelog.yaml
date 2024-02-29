@@ -481,3 +481,8 @@
     removed:
     - Error raising for adds/subtracts properties plus a formula.
   date: 2024-02-14 14:49:15
+- bump: patch
+  changes:
+    fixed:
+    - Fixed a bug in Core monthlyisation.
+  date: 2024-02-29 16:03:09

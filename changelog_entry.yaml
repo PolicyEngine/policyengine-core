@@ -1,0 +1,4 @@
+- bump: minor
+  changes:
+    fixed:
+    - Loaded variables from data can now be uprated.

@@ -33,6 +33,8 @@ from policyengine_core.variables import Variable, QuantityType
 from policyengine_core.reforms.reform import Reform
 from policyengine_core.parameters import get_parameter
 
+import logging
+
 
 class Simulation:
     """
@@ -567,7 +569,12 @@ class Simulation:
         # First, try to run a formula
         try:
             self._check_for_cycle(variable.name, period)
-            array = self._run_formula(variable, population, period)
+            if (
+                variable.name not in self.input_variables
+            ):  # RISKY. Check it doesn't break anything.
+                array = self._run_formula(variable, population, period)
+            else:
+                array = None
 
             # If no result, use the default value and cache it
             if array is None:

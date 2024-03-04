@@ -1,14 +1,14 @@
 <!doctype html>
-<html class="no-js">
+<html class="no-js" lang="en">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Types" href="types.html" /><link rel="prev" title="Tools" href="tools.html" />
 
-    <meta name="generator" content="sphinx-4.5.0, furo 2022.09.29"/>
+    <!-- Generated with Sphinx 5.0.0 and Furo 2022.12.07 -->
         <title>Tracers - PolicyEngine Core</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=d81277517bee4d6b0349d71bb2661d4890b5617c" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
@@ -159,7 +159,7 @@
   <span class="sidebar-brand-text">PolicyEngine Core</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
-  <input class="sidebar-search" placeholder=Search name="q" aria-label="Search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
   <input type="hidden" name="area" value="default">
 </form>
@@ -239,13 +239,13 @@
         </div>
         <article role="main">
           <section class="tex2jax_ignore mathjax_ignore" id="tracers">
-<h1>Tracers<a class="headerlink" href="#tracers" title="Permalink to this headline">#</a></h1>
+<h1>Tracers<a class="headerlink" href="#tracers" title="Permalink to this heading">#</a></h1>
 <p>The <code class="docutils literal notranslate"><span class="pre">policyengine_core.tracers</span></code> module contains classes used to represent tracers, which are used to track the computation involved in calculating variables.</p>
 <section id="computationlog">
-<h2>ComputationLog<a class="headerlink" href="#computationlog" title="Permalink to this headline">#</a></h2>
+<h2>ComputationLog<a class="headerlink" href="#computationlog" title="Permalink to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.tracers.computation_log.ComputationLog">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.tracers.computation_log.</span></span><span class="sig-name descname"><span class="pre">ComputationLog</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">full_tracer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.tracers.full_tracer.FullTracer" title="policyengine_core.tracers.full_tracer.FullTracer"><span class="pre">policyengine_core.tracers.full_tracer.FullTracer</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/tracers/computation_log.html#ComputationLog"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.tracers.computation_log.ComputationLog" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.tracers.computation_log.</span></span><span class="sig-name descname"><span class="pre">ComputationLog</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">full_tracer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.tracers.full_tracer.FullTracer" title="policyengine_core.tracers.full_tracer.FullTracer"><span class="pre">FullTracer</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/tracers/computation_log.html#ComputationLog"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.tracers.computation_log.ComputationLog" title="Permalink to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.tracers.computation_log.ComputationLog.print_log">
@@ -265,16 +265,16 @@ vectors up to a depth of <code class="docutils literal notranslate"><span class=
 
 </section>
 <section id="flattrace">
-<h2>FlatTrace<a class="headerlink" href="#flattrace" title="Permalink to this headline">#</a></h2>
+<h2>FlatTrace<a class="headerlink" href="#flattrace" title="Permalink to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.tracers.flat_trace.FlatTrace">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.tracers.flat_trace.</span></span><span class="sig-name descname"><span class="pre">FlatTrace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">full_tracer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.tracers.full_tracer.FullTracer" title="policyengine_core.tracers.full_tracer.FullTracer"><span class="pre">policyengine_core.tracers.full_tracer.FullTracer</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/tracers/flat_trace.html#FlatTrace"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.tracers.flat_trace.FlatTrace" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.tracers.flat_trace.</span></span><span class="sig-name descname"><span class="pre">FlatTrace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">full_tracer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.tracers.full_tracer.FullTracer" title="policyengine_core.tracers.full_tracer.FullTracer"><span class="pre">FullTracer</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/tracers/flat_trace.html#FlatTrace"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.tracers.flat_trace.FlatTrace" title="Permalink to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 </dd></dl>
 
 </section>
 <section id="fulltracer">
-<h2>FullTracer<a class="headerlink" href="#fulltracer" title="Permalink to this headline">#</a></h2>
+<h2>FullTracer<a class="headerlink" href="#fulltracer" title="Permalink to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.tracers.full_tracer.FullTracer">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.tracers.full_tracer.</span></span><span class="sig-name descname"><span class="pre">FullTracer</span></span><a class="reference internal" href="../_modules/policyengine_core/tracers/full_tracer.html#FullTracer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.tracers.full_tracer.FullTracer" title="Permalink to this definition">#</a></dt>
@@ -283,16 +283,16 @@ vectors up to a depth of <code class="docutils literal notranslate"><span class=
 
 </section>
 <section id="performancelog">
-<h2>PerformanceLog<a class="headerlink" href="#performancelog" title="Permalink to this headline">#</a></h2>
+<h2>PerformanceLog<a class="headerlink" href="#performancelog" title="Permalink to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.tracers.performance_log.PerformanceLog">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.tracers.performance_log.</span></span><span class="sig-name descname"><span class="pre">PerformanceLog</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">full_tracer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.tracers.full_tracer.FullTracer" title="policyengine_core.tracers.full_tracer.FullTracer"><span class="pre">policyengine_core.tracers.full_tracer.FullTracer</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/tracers/performance_log.html#PerformanceLog"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.tracers.performance_log.PerformanceLog" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.tracers.performance_log.</span></span><span class="sig-name descname"><span class="pre">PerformanceLog</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">full_tracer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.tracers.full_tracer.FullTracer" title="policyengine_core.tracers.full_tracer.FullTracer"><span class="pre">FullTracer</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/tracers/performance_log.html#PerformanceLog"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.tracers.performance_log.PerformanceLog" title="Permalink to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 </dd></dl>
 
 </section>
 <section id="simpletracer">
-<h2>SimpleTracer<a class="headerlink" href="#simpletracer" title="Permalink to this headline">#</a></h2>
+<h2>SimpleTracer<a class="headerlink" href="#simpletracer" title="Permalink to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.tracers.simple_tracer.SimpleTracer">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.tracers.simple_tracer.</span></span><span class="sig-name descname"><span class="pre">SimpleTracer</span></span><a class="reference internal" href="../_modules/policyengine_core/tracers/simple_tracer.html#SimpleTracer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.tracers.simple_tracer.SimpleTracer" title="Permalink to this definition">#</a></dt>
@@ -301,7 +301,7 @@ vectors up to a depth of <code class="docutils literal notranslate"><span class=
 
 </section>
 <section id="tracenode">
-<h2>TraceNode<a class="headerlink" href="#tracenode" title="Permalink to this headline">#</a></h2>
+<h2>TraceNode<a class="headerlink" href="#tracenode" title="Permalink to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.tracers.trace_node.TraceNode">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.tracers.trace_node.</span></span><span class="sig-name descname"><span class="pre">TraceNode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name:</span> <span class="pre">'str'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period:</span> <span class="pre">'str'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">branch_name:</span> <span class="pre">'str'</span> <span class="pre">=</span> <span class="pre">'default'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent:</span> <span class="pre">'typing.Optional[TraceNode]'</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">children:</span> <span class="pre">'typing.List[TraceNode]'</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters:</span> <span class="pre">'typing.List[TraceNode]'</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value:</span> <span class="pre">'typing.Optional[Array]'</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start:</span> <span class="pre">'float'</span> <span class="pre">=</span> <span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end:</span> <span class="pre">'float'</span> <span class="pre">=</span> <span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/tracers/trace_node.html#TraceNode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.tracers.trace_node.TraceNode" title="Permalink to this definition">#</a></dt>
@@ -310,7 +310,7 @@ vectors up to a depth of <code class="docutils literal notranslate"><span class=
 
 </section>
 <section id="tracingparameternodeatinstant">
-<h2>TracingParameterNodeAtInstant<a class="headerlink" href="#tracingparameternodeatinstant" title="Permalink to this headline">#</a></h2>
+<h2>TracingParameterNodeAtInstant<a class="headerlink" href="#tracingparameternodeatinstant" title="Permalink to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.tracers.tracing_parameter_node_at_instant.TracingParameterNodeAtInstant">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.tracers.tracing_parameter_node_at_instant.</span></span><span class="sig-name descname"><span class="pre">TracingParameterNodeAtInstant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_node_at_instant</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="parameters.html#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">ParameterNode</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">tracer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tracers.FullTracer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">branch_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/tracers/tracing_parameter_node_at_instant.html#TracingParameterNodeAtInstant"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.tracers.tracing_parameter_node_at_instant.TracingParameterNodeAtInstant" title="Permalink to this definition">#</a></dt>
@@ -376,9 +376,7 @@ vectors up to a depth of <code class="docutils literal notranslate"><span class=
             
           </div>
           <div class="right-details">
-            <div class="icons">
-              
-            </div>
+            
           </div>
         </div>
         
@@ -418,6 +416,7 @@ vectors up to a depth of <code class="docutils literal notranslate"><span class=
 </div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
     <script src="../_static/jquery.js"></script>
     <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../_static/doctools.js"></script>
     <script src="../_static/clipboard.min.js"></script>
     <script src="../_static/copybutton.js"></script>

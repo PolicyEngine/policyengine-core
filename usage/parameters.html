@@ -1,14 +1,14 @@
 <!doctype html>
-<html class="no-js">
+<html class="no-js" lang="en">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Writing datasets" href="datasets.html" /><link rel="prev" title="Using the command-line interface" href="cli.html" />
 
-    <meta name="generator" content="sphinx-4.5.0, furo 2022.09.29"/>
+    <!-- Generated with Sphinx 5.0.0 and Furo 2022.12.07 -->
         <title>Writing parameters - PolicyEngine Core</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=d81277517bee4d6b0349d71bb2661d4890b5617c" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
@@ -159,7 +159,7 @@
   <span class="sidebar-brand-text">PolicyEngine Core</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
-  <input class="sidebar-search" placeholder=Search name="q" aria-label="Search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
   <input type="hidden" name="area" value="default">
 </form>
@@ -239,7 +239,7 @@
         </div>
         <article role="main">
           <section class="tex2jax_ignore mathjax_ignore" id="writing-parameters">
-<h1>Writing parameters<a class="headerlink" href="#writing-parameters" title="Permalink to this headline">#</a></h1>
+<h1>Writing parameters<a class="headerlink" href="#writing-parameters" title="Permalink to this heading">#</a></h1>
 <p><strong>Parameters</strong> are values that can change over time (but are the same for an entire country package, i.e. they can’t be different for different entities). The <code class="docutils literal notranslate"><span class="pre">parameters/</span></code> folder of a country package contains the <strong>parameter tree</strong>, a tree of parameter nodes (objects that hold parameters as children) containing parameters or subnodes. A parameter node can be represented either as a folder, or a YAML file. Parameters are stored in parameter files. For example, a parameter tree might have the following structure in a country repo:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>parameters/
 ├── child_benefit/
@@ -262,7 +262,7 @@
 </pre></div>
 </div>
 <section id="parameter-values">
-<h2>Parameter values<a class="headerlink" href="#parameter-values" title="Permalink to this headline">#</a></h2>
+<h2>Parameter values<a class="headerlink" href="#parameter-values" title="Permalink to this heading">#</a></h2>
 <p>Parameters are defined as a function of time, and are evaluated at a given instant. To achieve this, parameters must be defined with a <strong>value history</strong>: a set of time-dated values (where the value at a given instant is the last-set value before that instant). For example, the <code class="docutils literal notranslate"><span class="pre">child_benefit.basic.amount</span></code> parameter might have the following value history:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">values</span><span class="p">:</span>
 <span class="w">   </span><span class="nt">2019-04-01</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20.00</span>
@@ -274,7 +274,7 @@
 </div>
 </section>
 <section id="metadata">
-<h2>Metadata<a class="headerlink" href="#metadata" title="Permalink to this headline">#</a></h2>
+<h2>Metadata<a class="headerlink" href="#metadata" title="Permalink to this heading">#</a></h2>
 <p>Each parameter (or parameter node) can also set <strong>metadata</strong>: data that describes the parameter, such as its name, description, and units. While the metadata for each parameter and node is freeform, using the schemas defined in <code class="docutils literal notranslate"><span class="pre">policyengine_core.data_structures</span></code> will ensure consistency between country packages, and better maintainability.</p>
 <p>Here’s an example metadata specification for the <code class="docutils literal notranslate"><span class="pre">child_benefit.basic.amount</span></code> parameter:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">metadata</span><span class="p">:</span>
@@ -288,7 +288,7 @@
 </pre></div>
 </div>
 <section id="metadata-for-parameters">
-<h3>Metadata for parameters<a class="headerlink" href="#metadata-for-parameters" title="Permalink to this headline">#</a></h3>
+<h3>Metadata for parameters<a class="headerlink" href="#metadata-for-parameters" title="Permalink to this heading">#</a></h3>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.data_structures.ParameterMetadata">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.data_structures.</span></span><span class="sig-name descname"><span class="pre">ParameterMetadata</span></span><a class="reference internal" href="../_modules/policyengine_core/data_structures/parameter_metadata.html#ParameterMetadata"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data_structures.ParameterMetadata" title="Permalink to this definition">#</a></dt>
@@ -319,7 +319,7 @@
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="policyengine_core.data_structures.ParameterMetadata.reference">
-<span class="sig-name descname"><span class="pre">reference</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#policyengine_core.data_structures.Reference" title="policyengine_core.data_structures.reference.Reference"><span class="pre">policyengine_core.data_structures.reference.Reference</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#policyengine_core.data_structures.ParameterMetadata.reference" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">reference</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#policyengine_core.data_structures.Reference" title="policyengine_core.data_structures.reference.Reference"><span class="pre">Reference</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#policyengine_core.data_structures.ParameterMetadata.reference" title="Permalink to this definition">#</a></dt>
 <dd><p>A list of references to legislation or other documents that define this parameter.</p>
 </dd></dl>
 
@@ -331,7 +331,7 @@
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="policyengine_core.data_structures.ParameterMetadata.uprating">
-<span class="sig-name descname"><span class="pre">uprating</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#policyengine_core.data_structures.parameter_metadata.UpratingIndex" title="policyengine_core.data_structures.parameter_metadata.UpratingIndex"><span class="pre">policyengine_core.data_structures.parameter_metadata.UpratingIndex</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.data_structures.parameter_metadata.UpratingSchema" title="policyengine_core.data_structures.parameter_metadata.UpratingSchema"><span class="pre">policyengine_core.data_structures.parameter_metadata.UpratingSchema</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#policyengine_core.data_structures.ParameterMetadata.uprating" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">uprating</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#policyengine_core.data_structures.parameter_metadata.UpratingIndex" title="policyengine_core.data_structures.parameter_metadata.UpratingIndex"><span class="pre">UpratingIndex</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.data_structures.parameter_metadata.UpratingSchema" title="policyengine_core.data_structures.parameter_metadata.UpratingSchema"><span class="pre">UpratingSchema</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#policyengine_core.data_structures.ParameterMetadata.uprating" title="Permalink to this definition">#</a></dt>
 <dd><p>The schema for uprating this parameter.</p>
 <p>The process for uprating parameter <span class="math notranslate nohighlight">\(X\)</span> based on parameter <span class="math notranslate nohighlight">\(Y\)</span> is as follows:</p>
 <ol class="arabic simple">
@@ -344,14 +344,14 @@
 
 </section>
 <section id="metadata-for-parameter-nodes">
-<h3>Metadata for parameter nodes<a class="headerlink" href="#metadata-for-parameter-nodes" title="Permalink to this headline">#</a></h3>
+<h3>Metadata for parameter nodes<a class="headerlink" href="#metadata-for-parameter-nodes" title="Permalink to this heading">#</a></h3>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.data_structures.ParameterNodeMetadata">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.data_structures.</span></span><span class="sig-name descname"><span class="pre">ParameterNodeMetadata</span></span><a class="reference internal" href="../_modules/policyengine_core/data_structures/parameter_node_metadata.html#ParameterNodeMetadata"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data_structures.ParameterNodeMetadata" title="Permalink to this definition">#</a></dt>
 <dd><p>A collection of related parameters.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="policyengine_core.data_structures.ParameterNodeMetadata.breakdown">
-<span class="sig-name descname"><span class="pre">breakdown</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#policyengine_core.data_structures.parameter_node_metadata.VariableBreakdown" title="policyengine_core.data_structures.parameter_node_metadata.VariableBreakdown"><span class="pre">policyengine_core.data_structures.parameter_node_metadata.VariableBreakdown</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.data_structures.parameter_node_metadata.DynamicBreakdown" title="policyengine_core.data_structures.parameter_node_metadata.DynamicBreakdown"><span class="pre">policyengine_core.data_structures.parameter_node_metadata.DynamicBreakdown</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#policyengine_core.data_structures.ParameterNodeMetadata.breakdown" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">breakdown</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#policyengine_core.data_structures.parameter_node_metadata.VariableBreakdown" title="policyengine_core.data_structures.parameter_node_metadata.VariableBreakdown"><span class="pre">VariableBreakdown</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.data_structures.parameter_node_metadata.DynamicBreakdown" title="policyengine_core.data_structures.parameter_node_metadata.DynamicBreakdown"><span class="pre">DynamicBreakdown</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#policyengine_core.data_structures.ParameterNodeMetadata.breakdown" title="Permalink to this definition">#</a></dt>
 <dd><p>The sets defining the children, grandchildren and further descendants of this node.</p>
 <p>For example:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">metadata</span><span class="p">:</span>
@@ -383,7 +383,7 @@
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="policyengine_core.data_structures.ParameterNodeMetadata.reference">
-<span class="sig-name descname"><span class="pre">reference</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#policyengine_core.data_structures.Reference" title="policyengine_core.data_structures.reference.Reference"><span class="pre">policyengine_core.data_structures.reference.Reference</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#policyengine_core.data_structures.ParameterNodeMetadata.reference" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">reference</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#policyengine_core.data_structures.Reference" title="policyengine_core.data_structures.reference.Reference"><span class="pre">Reference</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#policyengine_core.data_structures.ParameterNodeMetadata.reference" title="Permalink to this definition">#</a></dt>
 <dd><p>A list of references that apply to all descendants of this node.</p>
 </dd></dl>
 
@@ -392,7 +392,7 @@
 </section>
 </section>
 <section id="specifying-references">
-<h2>Specifying references<a class="headerlink" href="#specifying-references" title="Permalink to this headline">#</a></h2>
+<h2>Specifying references<a class="headerlink" href="#specifying-references" title="Permalink to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.data_structures.Reference">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.data_structures.</span></span><span class="sig-name descname"><span class="pre">Reference</span></span><a class="reference internal" href="../_modules/policyengine_core/data_structures/reference.html#Reference"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data_structures.Reference" title="Permalink to this definition">#</a></dt>
@@ -419,7 +419,7 @@
 
 </section>
 <section id="units">
-<h2>Units<a class="headerlink" href="#units" title="Permalink to this headline">#</a></h2>
+<h2>Units<a class="headerlink" href="#units" title="Permalink to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.data_structures.Unit">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.data_structures.</span></span><span class="sig-name descname"><span class="pre">Unit</span></span><a class="reference internal" href="../_modules/policyengine_core/data_structures/unit.html#Unit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data_structures.Unit" title="Permalink to this definition">#</a></dt>
@@ -452,11 +452,11 @@
 
 </section>
 <section id="module-policyengine_core.data_structures.parameter_metadata">
-<span id="other-specifications"></span><h2>Other specifications<a class="headerlink" href="#module-policyengine_core.data_structures.parameter_metadata" title="Permalink to this headline">#</a></h2>
+<span id="other-specifications"></span><h2>Other specifications<a class="headerlink" href="#module-policyengine_core.data_structures.parameter_metadata" title="Permalink to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.data_structures.parameter_metadata.SelfUprating">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.data_structures.parameter_metadata.</span></span><span class="sig-name descname"><span class="pre">SelfUprating</span></span><a class="reference internal" href="../_modules/policyengine_core/data_structures/parameter_metadata.html#SelfUprating"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data_structures.parameter_metadata.SelfUprating" title="Permalink to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#policyengine_core.data_structures.parameter_metadata.UpratingIndex" title="policyengine_core.data_structures.parameter_metadata.UpratingIndex"><code class="xref py py-class docutils literal notranslate"><span class="pre">policyengine_core.data_structures.parameter_metadata.UpratingIndex</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#policyengine_core.data_structures.parameter_metadata.UpratingIndex" title="policyengine_core.data_structures.parameter_metadata.UpratingIndex"><code class="xref py py-class docutils literal notranslate"><span class="pre">UpratingIndex</span></code></a></p>
 <p>A special value (“self”) that indicates that the parameter node should be uprated based on the fixed rate increase between two points in its history.</p>
 </dd></dl>
 
@@ -492,7 +492,7 @@
 <p>A schema for uprating a parameter node.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="policyengine_core.data_structures.parameter_metadata.UpratingSchema.parameter">
-<span class="sig-name descname"><span class="pre">parameter</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.data_structures.parameter_metadata.UpratingIndex" title="policyengine_core.data_structures.parameter_metadata.UpratingIndex"><span class="pre">policyengine_core.data_structures.parameter_metadata.UpratingIndex</span></a></em><a class="headerlink" href="#policyengine_core.data_structures.parameter_metadata.UpratingSchema.parameter" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">parameter</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.data_structures.parameter_metadata.UpratingIndex" title="policyengine_core.data_structures.parameter_metadata.UpratingIndex"><span class="pre">UpratingIndex</span></a></em><a class="headerlink" href="#policyengine_core.data_structures.parameter_metadata.UpratingSchema.parameter" title="Permalink to this definition">#</a></dt>
 <dd><p>The name of the parameter whose values are used to uprate the parameter node.</p>
 </dd></dl>
 
@@ -504,7 +504,7 @@
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="policyengine_core.data_structures.parameter_metadata.UpratingSchema.type">
-<span class="sig-name descname"><span class="pre">type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.data_structures.parameter_metadata.UpratingRoundingConfig" title="policyengine_core.data_structures.parameter_metadata.UpratingRoundingConfig"><span class="pre">policyengine_core.data_structures.parameter_metadata.UpratingRoundingConfig</span></a></em><a class="headerlink" href="#policyengine_core.data_structures.parameter_metadata.UpratingSchema.type" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.data_structures.parameter_metadata.UpratingRoundingConfig" title="policyengine_core.data_structures.parameter_metadata.UpratingRoundingConfig"><span class="pre">UpratingRoundingConfig</span></a></em><a class="headerlink" href="#policyengine_core.data_structures.parameter_metadata.UpratingSchema.type" title="Permalink to this definition">#</a></dt>
 <dd><p>The rounding configuration to use when uprating.</p>
 </dd></dl>
 
@@ -583,9 +583,7 @@
             
           </div>
           <div class="right-details">
-            <div class="icons">
-              
-            </div>
+            
           </div>
         </div>
         
@@ -627,6 +625,7 @@
 </div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
     <script src="../_static/jquery.js"></script>
     <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../_static/doctools.js"></script>
     <script src="../_static/clipboard.min.js"></script>
     <script src="../_static/copybutton.js"></script>

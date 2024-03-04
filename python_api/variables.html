@@ -1,14 +1,14 @@
 <!doctype html>
-<html class="no-js">
+<html class="no-js" lang="en">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Warnings" href="warnings.html" /><link rel="prev" title="Types" href="types.html" />
 
-    <meta name="generator" content="sphinx-4.5.0, furo 2022.09.29"/>
+    <!-- Generated with Sphinx 5.0.0 and Furo 2022.12.07 -->
         <title>Variables - PolicyEngine Core</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=d81277517bee4d6b0349d71bb2661d4890b5617c" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
@@ -159,7 +159,7 @@
   <span class="sidebar-brand-text">PolicyEngine Core</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
-  <input class="sidebar-search" placeholder=Search name="q" aria-label="Search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
   <input type="hidden" name="area" value="default">
 </form>
@@ -239,10 +239,10 @@
         </div>
         <article role="main">
           <section class="tex2jax_ignore mathjax_ignore" id="variables">
-<h1>Variables<a class="headerlink" href="#variables" title="Permalink to this headline">#</a></h1>
+<h1>Variables<a class="headerlink" href="#variables" title="Permalink to this heading">#</a></h1>
 <p>The <code class="docutils literal notranslate"><span class="pre">policyengine_core.variables</span></code> module contains the definition of <code class="docutils literal notranslate"><span class="pre">Variable</span></code>, which can have a value for each entity instance in a simulation, for each period in a simulation, dependent on the parameters in that period, as well as other entity instances.</p>
 <section id="variable">
-<h2>Variable<a class="headerlink" href="#variable" title="Permalink to this headline">#</a></h2>
+<h2>Variable<a class="headerlink" href="#variable" title="Permalink to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.variables.variable.</span></span><span class="sig-name descname"><span class="pre">Variable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">baseline_variable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/variables/variable.html#Variable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.variables.variable.Variable" title="Permalink to this definition">#</a></dt>
@@ -259,7 +259,7 @@
 <span class="sig-name descname"><span class="pre">baseline_variable</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.baseline_variable" title="Permalink to this definition">#</a></dt>
 <dd><p>//openfisca.org/doc/key-concepts/reforms.html&gt;`_ to replace another variable, baseline_variable is the replaced variable.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type</dt>
+<dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>If the variable has been introduced in a <a href="#id1"><span class="problematic" id="id2">`</span></a>reform &lt;https</p>
 </dd>
 </dl>
@@ -270,7 +270,7 @@
 <span class="sig-name descname"><span class="pre">default_value</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">object</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.default_value" title="Permalink to this definition">#</a></dt>
 <dd><p>//openfisca.org/doc/key-concepts/variables.html#default-values&gt;`_ of the variable.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type</dt>
+<dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a href="#id3"><span class="problematic" id="id4">`</span></a>Default value &lt;https</p>
 </dd>
 </dl>
@@ -287,10 +287,10 @@
 <span class="sig-name descname"><span class="pre">definition_period</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.definition_period" title="Permalink to this definition">#</a></dt>
 <dd><p><code class="docutils literal notranslate"><span class="pre">MONTH</span></code>, <code class="docutils literal notranslate"><span class="pre">YEAR</span></code>, <code class="docutils literal notranslate"><span class="pre">ETERNITY</span></code>.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type</dt>
+<dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a href="#id5"><span class="problematic" id="id6">`</span></a>Period &lt;https</p>
 </dd>
-<dt class="field-even">Type</dt>
+<dt class="field-even">Type<span class="colon">:</span></dt>
 <dd class="field-even"><p>//openfisca.org/doc/coding-the-legislation/35_periods.html&gt;`_ the variable is defined for. Possible value</p>
 </dd>
 </dl>
@@ -304,10 +304,10 @@
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.dtype">
-<span class="sig-name descname"><span class="pre">dtype</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">numpy.dtype</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.dtype" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">dtype</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dtype</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.dtype" title="Permalink to this definition">#</a></dt>
 <dd><p>//docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.dtype.html&gt;`_ used under the hood for the variable.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type</dt>
+<dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Numpy <a href="#id7"><span class="problematic" id="id8">`</span></a>dtype &lt;https</p>
 </dd>
 </dl>
@@ -315,10 +315,10 @@
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.end">
-<span class="sig-name descname"><span class="pre">end</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">datetime.date</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.end" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">end</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">date</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.end" title="Permalink to this definition">#</a></dt>
 <dd><p>//openfisca.org/doc/coding-the-legislation/40_legislation_evolutions.html#variable-end&gt;`_  when the variable disappears from the legislation.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type</dt>
+<dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a href="#id9"><span class="problematic" id="id10">`</span></a>Date &lt;https</p>
 </dd>
 </dl>
@@ -326,13 +326,13 @@
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.entity">
-<span class="sig-name descname"><span class="pre">entity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="entities.html#policyengine_core.entities.entity.Entity" title="policyengine_core.entities.entity.Entity"><span class="pre">policyengine_core.entities.entity.Entity</span></a></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.entity" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">entity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="entities.html#policyengine_core.entities.entity.Entity" title="policyengine_core.entities.entity.Entity"><span class="pre">Entity</span></a></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.entity" title="Permalink to this definition">#</a></dt>
 <dd><p><code class="docutils literal notranslate"><span class="pre">Person</span></code>, <code class="docutils literal notranslate"><span class="pre">Household</span></code>.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type</dt>
+<dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a href="#id11"><span class="problematic" id="id12">`</span></a>Entity &lt;https</p>
 </dd>
-<dt class="field-even">Type</dt>
+<dt class="field-even">Type<span class="colon">:</span></dt>
 <dd class="field-even"><p>//openfisca.org/doc/key-concepts/person,_entities,_role.html&gt;`_ the variable is defined for. For instance</p>
 </dd>
 </dl>
@@ -350,7 +350,7 @@
 <dd><p>Returns the formula used to compute the variable at the given period.</p>
 <p>If no period is given and the variable has several formula, return the oldest formula.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Formula used to compute the variable</p>
 </dd>
 </dl>
@@ -361,10 +361,10 @@
 <em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_introspection_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tax_benefit_system</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/variables/variable.html#Variable.get_introspection_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.variables.variable.Variable.get_introspection_data" title="Permalink to this definition">#</a></dt>
 <dd><p>Get instrospection data about the code of the variable.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>(comments, source file path, source code, start line number)</p>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>tuple</p>
 </dd>
 </dl>
@@ -447,7 +447,7 @@
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.possible_values">
-<span class="sig-name descname"><span class="pre">possible_values</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="enums.html#policyengine_core.enums.enum_array.EnumArray" title="policyengine_core.enums.enum_array.EnumArray"><span class="pre">policyengine_core.enums.enum_array.EnumArray</span></a></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.possible_values" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">possible_values</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="enums.html#policyengine_core.enums.enum_array.EnumArray" title="policyengine_core.enums.enum_array.EnumArray"><span class="pre">EnumArray</span></a></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.possible_values" title="Permalink to this definition">#</a></dt>
 <dd><p>If the value type of the variable is <code class="docutils literal notranslate"><span class="pre">Enum</span></code>, contains the values the variable can take.</p>
 </dd></dl>
 
@@ -474,7 +474,7 @@
 <span class="sig-name descname"><span class="pre">set_input</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Callable</span></em><a class="headerlink" href="#policyengine_core.variables.variable.Variable.set_input" title="Permalink to this definition">#</a></dt>
 <dd><p>//openfisca.org/doc/coding-the-legislation/35_periods.html#set-input-automatically-process-variable-inputs-defined-for-periods-not-matching-the-definition-period&gt;`_. Possible values are <code class="docutils literal notranslate"><span class="pre">set_input_dispatch_by_period</span></code>, <code class="docutils literal notranslate"><span class="pre">set_input_divide_by_period</span></code>, or nothing.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type</dt>
+<dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Function used to automatically process variable inputs defined for periods not matching the definition_period of the variable. See more on the <a href="#id13"><span class="problematic" id="id14">`</span></a>documentation &lt;https</p>
 </dd>
 </dl>
@@ -565,9 +565,7 @@
             
           </div>
           <div class="right-details">
-            <div class="icons">
-              
-            </div>
+            
           </div>
         </div>
         
@@ -601,6 +599,7 @@
 </div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
     <script src="../_static/jquery.js"></script>
     <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../_static/doctools.js"></script>
     <script src="../_static/clipboard.min.js"></script>
     <script src="../_static/copybutton.js"></script>

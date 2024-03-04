@@ -1,14 +1,14 @@
 <!doctype html>
-<html class="no-js">
+<html class="no-js" lang="en">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Tax scales" href="taxscales.html" /><link rel="prev" title="Simulations" href="simulations.html" />
 
-    <meta name="generator" content="sphinx-4.5.0, furo 2022.09.29"/>
+    <!-- Generated with Sphinx 5.0.0 and Furo 2022.12.07 -->
         <title>Tax-benefit systems - PolicyEngine Core</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=d81277517bee4d6b0349d71bb2661d4890b5617c" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
@@ -159,7 +159,7 @@
   <span class="sidebar-brand-text">PolicyEngine Core</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
-  <input class="sidebar-search" placeholder=Search name="q" aria-label="Search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
   <input type="hidden" name="area" value="default">
 </form>
@@ -239,13 +239,13 @@
         </div>
         <article role="main">
           <section class="tex2jax_ignore mathjax_ignore" id="tax-benefit-systems">
-<h1>Tax-benefit systems<a class="headerlink" href="#tax-benefit-systems" title="Permalink to this headline">#</a></h1>
+<h1>Tax-benefit systems<a class="headerlink" href="#tax-benefit-systems" title="Permalink to this heading">#</a></h1>
 <p>The <code class="docutils literal notranslate"><span class="pre">policyengine_core.taxbenefitsystems</span></code> module contains the definition of <code class="docutils literal notranslate"><span class="pre">TaxBenefitSystem</span></code>, the class that represents a country’s tax-benefit system: the logic, parameters and entities, not the input data.</p>
 <section id="taxbenefitsystem">
-<h2>TaxBenefitSystem<a class="headerlink" href="#taxbenefitsystem" title="Permalink to this headline">#</a></h2>
+<h2>TaxBenefitSystem<a class="headerlink" href="#taxbenefitsystem" title="Permalink to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.taxbenefitsystems.tax_benefit_system.</span></span><span class="sig-name descname"><span class="pre">TaxBenefitSystem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">entities</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="entities.html#policyengine_core.entities.entity.Entity" title="policyengine_core.entities.entity.Entity"><span class="pre">policyengine_core.entities.entity.Entity</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.taxbenefitsystems.tax_benefit_system.</span></span><span class="sig-name descname"><span class="pre">TaxBenefitSystem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">entities</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="entities.html#policyengine_core.entities.entity.Entity" title="policyengine_core.entities.entity.Entity"><span class="pre">Entity</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem" title="Permalink to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Represents the legislation.</p>
 <p>It stores parameters (values defined for everyone) and variables (values defined for some given entity e.g. a person).</p>
@@ -256,7 +256,7 @@
 </dd></dl>
 
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>entities</strong> – Entities used by the tax benefit system.</p>
 </dd>
 </dl>
@@ -268,13 +268,13 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.add_variable">
-<span class="sig-name descname"><span class="pre">add_variable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">variable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="variables.html#policyengine_core.variables.variable.Variable" title="policyengine_core.variables.variable.Variable"><span class="pre">policyengine_core.variables.variable.Variable</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="variables.html#policyengine_core.variables.variable.Variable" title="policyengine_core.variables.variable.Variable"><span class="pre">policyengine_core.variables.variable.Variable</span></a></span></span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.add_variable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.add_variable" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">add_variable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">variable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="variables.html#policyengine_core.variables.variable.Variable" title="policyengine_core.variables.variable.Variable"><span class="pre">Variable</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="variables.html#policyengine_core.variables.variable.Variable" title="policyengine_core.variables.variable.Variable"><span class="pre">Variable</span></a></span></span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.add_variable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.add_variable" title="Permalink to this definition">#</a></dt>
 <dd><p>Adds an OpenFisca variable to the tax and benefit system.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>variable</strong> – The variable to add. Must be a subclass of Variable.</p>
 </dd>
-<dt class="field-even">Raises</dt>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
 <dd class="field-even"><p><strong>policyengine_core.errors.VariableNameConflictError</strong> – if a variable with the same name have previously been added to the tax and benefit system.</p>
 </dd>
 </dl>
@@ -288,7 +288,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.add_variables">
-<span class="sig-name descname"><span class="pre">add_variables</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">variables</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="variables.html#policyengine_core.variables.variable.Variable" title="policyengine_core.variables.variable.Variable"><span class="pre">policyengine_core.variables.variable.Variable</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.add_variables"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.add_variables" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">add_variables</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">variables</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="variables.html#policyengine_core.variables.variable.Variable" title="policyengine_core.variables.variable.Variable"><span class="pre">Variable</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.add_variables"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.add_variables" title="Permalink to this definition">#</a></dt>
 <dd><p>Adds a list of OpenFisca Variables to the <cite>TaxBenefitSystem</cite>.</p>
 <p>See also <a class="reference internal" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.add_variable" title="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.add_variable"><code class="xref any py py-meth docutils literal notranslate"><span class="pre">add_variable</span></code></a></p>
 </dd></dl>
@@ -307,17 +307,17 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.apply_reform">
-<span class="sig-name descname"><span class="pre">apply_reform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reform_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem" title="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem"><span class="pre">policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem</span></a></span></span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.apply_reform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.apply_reform" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">apply_reform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reform_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem" title="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem"><span class="pre">TaxBenefitSystem</span></a></span></span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.apply_reform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.apply_reform" title="Permalink to this definition">#</a></dt>
 <dd><p>Generates a new tax and benefit system applying a reform to the tax and benefit system.</p>
 <p>The current tax and benefit system is <strong>not</strong> mutated.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>reform_path</strong> – The reform to apply. Must respect the format <em>installed_package.sub_module.reform</em></p>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A reformed tax and benefit system.</p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem" title="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem">TaxBenefitSystem</a></p>
 </dd>
 </dl>
@@ -341,7 +341,7 @@
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.entities">
-<span class="sig-name descname"><span class="pre">entities</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="entities.html#policyengine_core.entities.entity.Entity" title="policyengine_core.entities.entity.Entity"><span class="pre">policyengine_core.entities.entity.Entity</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.entities" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">entities</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="entities.html#policyengine_core.entities.entity.Entity" title="policyengine_core.entities.entity.Entity"><span class="pre">Entity</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.entities" title="Permalink to this definition">#</a></dt>
 <dd><p>The entities of the tax and benefit system.</p>
 </dd></dl>
 
@@ -350,10 +350,10 @@
 <span class="sig-name descname"><span class="pre">get_package_metadata</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.get_package_metadata"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.get_package_metadata" title="Permalink to this definition">#</a></dt>
 <dd><p>Gets metatada relative to the country package the tax and benefit system is built from.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Country package metadata</p>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>dict</p>
 </dd>
 </dl>
@@ -371,16 +371,16 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.get_parameters_at_instant">
-<span class="sig-name descname"><span class="pre">get_parameters_at_instant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instant</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="periods.html#policyengine_core.periods.instant_.Instant" title="policyengine_core.periods.instant_.Instant"><span class="pre">policyengine_core.periods.instant_.Instant</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="parameters.html#policyengine_core.parameters.parameter_node_at_instant.ParameterNodeAtInstant" title="policyengine_core.parameters.parameter_node_at_instant.ParameterNodeAtInstant"><span class="pre">policyengine_core.parameters.parameter_node_at_instant.ParameterNodeAtInstant</span></a></span></span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.get_parameters_at_instant"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.get_parameters_at_instant" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_parameters_at_instant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instant</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="periods.html#policyengine_core.periods.instant_.Instant" title="policyengine_core.periods.instant_.Instant"><span class="pre">Instant</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="parameters.html#policyengine_core.parameters.parameter_node_at_instant.ParameterNodeAtInstant" title="policyengine_core.parameters.parameter_node_at_instant.ParameterNodeAtInstant"><span class="pre">ParameterNodeAtInstant</span></a></span></span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.get_parameters_at_instant"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.get_parameters_at_instant" title="Permalink to this definition">#</a></dt>
 <dd><p>Get the parameters of the legislation at a given instant</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>instant</strong> – <code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code> of the format ‘YYYY-MM-DD’ or <a class="reference internal" href="periods.html#policyengine_core.periods.instant_.Instant" title="policyengine_core.periods.instant_.Instant"><code class="xref py py-class docutils literal notranslate"><span class="pre">Instant</span></code></a> instance.</p>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>The parameters of the legislation at a given instant.</p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="parameters.html#policyengine_core.parameters.parameter_node_at_instant.ParameterNodeAtInstant" title="policyengine_core.parameters.parameter_node_at_instant.ParameterNodeAtInstant"><code class="xref py py-class docutils literal notranslate"><span class="pre">ParameterNodeAtInstant</span></code></a></p>
 </dd>
 </dl>
@@ -388,10 +388,10 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.get_variable">
-<span class="sig-name descname"><span class="pre">get_variable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">variable_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_existence</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="variables.html#policyengine_core.variables.variable.Variable" title="policyengine_core.variables.variable.Variable"><span class="pre">policyengine_core.variables.variable.Variable</span></a></span></span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.get_variable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.get_variable" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_variable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">variable_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_existence</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="variables.html#policyengine_core.variables.variable.Variable" title="policyengine_core.variables.variable.Variable"><span class="pre">Variable</span></a></span></span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.get_variable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.get_variable" title="Permalink to this definition">#</a></dt>
 <dd><p>Get a variable from the tax and benefit system.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>variable_name</strong> – Name of the requested variable.</p></li>
 <li><p><strong>check_existence</strong> – If True, raise an error if the requested variable does not exist.</p></li>
@@ -402,16 +402,16 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.get_variables">
-<span class="sig-name descname"><span class="pre">get_variables</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">entity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="entities.html#policyengine_core.entities.entity.Entity" title="policyengine_core.entities.entity.Entity"><span class="pre">policyengine_core.entities.entity.Entity</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.get_variables"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.get_variables" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_variables</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">entity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="entities.html#policyengine_core.entities.entity.Entity" title="policyengine_core.entities.entity.Entity"><span class="pre">Entity</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.get_variables"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.get_variables" title="Permalink to this definition">#</a></dt>
 <dd><p>Gets all variables contained in a tax and benefit system.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>entity</strong> (<a class="reference internal" href="entities.html#policyengine_core.entities.entity.Entity" title="policyengine_core.entities.entity.Entity"><em>Entity</em></a>) – If set, returns only the variable defined for the given entity.</p>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A dictionary, indexed by variable names.</p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>dict</p>
 </dd>
 </dl>
@@ -422,7 +422,7 @@
 <span class="sig-name descname"><span class="pre">load_extension</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">extension</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.load_extension"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.load_extension" title="Permalink to this definition">#</a></dt>
 <dd><p>Loads an extension to the tax and benefit system.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>extension</strong> (<em>str</em>) – The extension to load. Can be an absolute path pointing to an extension directory, or the name of an OpenFisca extension installed as a pip package.</p>
 </dd>
 </dl>
@@ -433,7 +433,7 @@
 <span class="sig-name descname"><span class="pre">load_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path_to_yaml_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.load_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.load_parameters" title="Permalink to this definition">#</a></dt>
 <dd><p>Loads the legislation parameter for a directory containing YAML parameters files.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>path_to_yaml_dir</strong> – Absolute path towards the YAML parameter directory.</p>
 </dd>
 </dl>
@@ -451,11 +451,11 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.modify_parameters">
-<span class="sig-name descname"><span class="pre">modify_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">modifier_function</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="parameters.html#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">policyengine_core.parameters.parameter_node.ParameterNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="parameters.html#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">policyengine_core.parameters.parameter_node.ParameterNode</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.modify_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.modify_parameters" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">modify_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">modifier_function</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="parameters.html#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">ParameterNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="parameters.html#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">ParameterNode</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.modify_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.modify_parameters" title="Permalink to this definition">#</a></dt>
 <dd><p>Make modifications on the parameters of the legislation.</p>
 <p>Call this function in <cite>apply()</cite> if the reform asks for legislation parameter modifications.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>modifier_function</strong> – A function that takes a <a class="reference internal" href="parameters.html#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ParameterNode</span></code></a> and should return an object of the same type.</p>
 </dd>
 </dl>
@@ -477,12 +477,12 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.replace_variable">
-<span class="sig-name descname"><span class="pre">replace_variable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">variable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="variables.html#policyengine_core.variables.variable.Variable" title="policyengine_core.variables.variable.Variable"><span class="pre">policyengine_core.variables.variable.Variable</span></a></span></span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.replace_variable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.replace_variable" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">replace_variable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">variable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="variables.html#policyengine_core.variables.variable.Variable" title="policyengine_core.variables.variable.Variable"><span class="pre">Variable</span></a></span></span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.replace_variable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.replace_variable" title="Permalink to this definition">#</a></dt>
 <dd><p>Replaces an existing OpenFisca variable in the tax and benefit system by a new one.</p>
 <p>The new variable must have the same name than the replaced one.</p>
 <p>If no variable with the given name exists in the tax and benefit system, no error will be raised and the new variable will be simply added.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>variable</strong> (<a class="reference internal" href="variables.html#policyengine_core.variables.variable.Variable" title="policyengine_core.variables.variable.Variable"><em>Variable</em></a>) – New variable to add. Must be a subclass of Variable.</p>
 </dd>
 </dl>
@@ -490,13 +490,13 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.update_variable">
-<span class="sig-name descname"><span class="pre">update_variable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">variable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="variables.html#policyengine_core.variables.variable.Variable" title="policyengine_core.variables.variable.Variable"><span class="pre">policyengine_core.variables.variable.Variable</span></a></span></span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.update_variable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.update_variable" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">update_variable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">variable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="variables.html#policyengine_core.variables.variable.Variable" title="policyengine_core.variables.variable.Variable"><span class="pre">Variable</span></a></span></span><a class="reference internal" href="../_modules/policyengine_core/taxbenefitsystems/tax_benefit_system.html#TaxBenefitSystem.update_variable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.update_variable" title="Permalink to this definition">#</a></dt>
 <dd><p>Updates an existing OpenFisca variable in the tax and benefit system.</p>
 <p>All attributes of the updated variable that are not explicitely overridden by the new <code class="docutils literal notranslate"><span class="pre">variable</span></code> will stay unchanged.</p>
 <p>The new variable must have the same name than the updated one.</p>
 <p>If no variable with the given name exists in the tax and benefit system, no error will be raised and the new variable will be simply added.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>variable</strong> (<a class="reference internal" href="variables.html#policyengine_core.variables.variable.Variable" title="policyengine_core.variables.variable.Variable"><em>Variable</em></a>) – Variable to add. Must be a subclass of Variable.</p>
 </dd>
 </dl>
@@ -569,9 +569,7 @@
             
           </div>
           <div class="right-details">
-            <div class="icons">
-              
-            </div>
+            
           </div>
         </div>
         
@@ -605,6 +603,7 @@
 </div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
     <script src="../_static/jquery.js"></script>
     <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../_static/doctools.js"></script>
     <script src="../_static/clipboard.min.js"></script>
     <script src="../_static/copybutton.js"></script>

@@ -1,14 +1,14 @@
 <!doctype html>
-<html class="no-js">
+<html class="no-js" lang="en">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Data" href="data.html" /><link rel="prev" title="Commons" href="commons.html" />
 
-    <meta name="generator" content="sphinx-4.5.0, furo 2022.09.29"/>
+    <!-- Generated with Sphinx 5.0.0 and Furo 2022.12.07 -->
         <title>Country template - PolicyEngine Core</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=d81277517bee4d6b0349d71bb2661d4890b5617c" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
@@ -159,7 +159,7 @@
   <span class="sidebar-brand-text">PolicyEngine Core</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
-  <input class="sidebar-search" placeholder=Search name="q" aria-label="Search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
   <input type="hidden" name="area" value="default">
 </form>
@@ -239,14 +239,14 @@
         </div>
         <article role="main">
           <section class="tex2jax_ignore mathjax_ignore" id="country-template">
-<h1>Country template<a class="headerlink" href="#country-template" title="Permalink to this headline">#</a></h1>
+<h1>Country template<a class="headerlink" href="#country-template" title="Permalink to this heading">#</a></h1>
 <p>The <code class="docutils literal notranslate"><span class="pre">policyengine_core.country_template</span></code> module contains a template for a country model. It is intended to be used as a starting point for new country models. To create a new country model, simply copy the contents into a new repo, renaming the <code class="docutils literal notranslate"><span class="pre">country_template</span></code> folder to the name of your country, then remove the starter code at will.</p>
 <section id="countrytaxbenefitsystem">
-<h2>CountryTaxBenefitSystem<a class="headerlink" href="#countrytaxbenefitsystem" title="Permalink to this headline">#</a></h2>
+<h2>CountryTaxBenefitSystem<a class="headerlink" href="#countrytaxbenefitsystem" title="Permalink to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.country_template.CountryTaxBenefitSystem">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.country_template.</span></span><span class="sig-name descname"><span class="pre">CountryTaxBenefitSystem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">entities</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="entities.html#policyengine_core.entities.entity.Entity" title="policyengine_core.entities.entity.Entity"><span class="pre">policyengine_core.entities.entity.Entity</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/country_template.html#CountryTaxBenefitSystem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.country_template.CountryTaxBenefitSystem" title="Permalink to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem" title="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem"><code class="xref py py-class docutils literal notranslate"><span class="pre">policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem</span></code></a></p>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.country_template.</span></span><span class="sig-name descname"><span class="pre">CountryTaxBenefitSystem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">entities</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="entities.html#policyengine_core.entities.entity.Entity" title="policyengine_core.entities.entity.Entity"><span class="pre">Entity</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/country_template.html#CountryTaxBenefitSystem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.country_template.CountryTaxBenefitSystem" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem" title="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem"><code class="xref py py-class docutils literal notranslate"><span class="pre">TaxBenefitSystem</span></code></a></p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="policyengine_core.country_template.CountryTaxBenefitSystem.auto_carry_over_input_variables">
 <span class="sig-name descname"><span class="pre">auto_carry_over_input_variables</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#policyengine_core.country_template.CountryTaxBenefitSystem.auto_carry_over_input_variables" title="Permalink to this definition">#</a></dt>
@@ -338,9 +338,7 @@
             
           </div>
           <div class="right-details">
-            <div class="icons">
-              
-            </div>
+            
           </div>
         </div>
         
@@ -374,6 +372,7 @@
 </div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
     <script src="../_static/jquery.js"></script>
     <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../_static/doctools.js"></script>
     <script src="../_static/clipboard.min.js"></script>
     <script src="../_static/copybutton.js"></script>

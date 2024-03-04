@@ -1,14 +1,14 @@
 <!doctype html>
-<html class="no-js">
+<html class="no-js" lang="en">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Populations" href="populations.html" /><link rel="prev" title="Parameters" href="parameters.html" />
 
-    <meta name="generator" content="sphinx-4.5.0, furo 2022.09.29"/>
+    <!-- Generated with Sphinx 5.0.0 and Furo 2022.12.07 -->
         <title>Periods - PolicyEngine Core</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=d81277517bee4d6b0349d71bb2661d4890b5617c" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
@@ -159,7 +159,7 @@
   <span class="sidebar-brand-text">PolicyEngine Core</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
-  <input class="sidebar-search" placeholder=Search name="q" aria-label="Search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
   <input type="hidden" name="area" value="default">
 </form>
@@ -239,17 +239,17 @@
         </div>
         <article role="main">
           <section class="tex2jax_ignore mathjax_ignore" id="periods">
-<h1>Periods<a class="headerlink" href="#periods" title="Permalink to this headline">#</a></h1>
+<h1>Periods<a class="headerlink" href="#periods" title="Permalink to this heading">#</a></h1>
 <p>The <code class="docutils literal notranslate"><span class="pre">policyengine_core.periods</span></code> module contains classes defining <code class="docutils literal notranslate"><span class="pre">Instant</span></code> (a point in time) and <code class="docutils literal notranslate"><span class="pre">Period</span></code> (an interval of time).</p>
 <section id="instant">
-<h2>Instant<a class="headerlink" href="#instant" title="Permalink to this headline">#</a></h2>
+<h2>Instant<a class="headerlink" href="#instant" title="Permalink to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.periods.instant_.Instant">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.periods.instant_.</span></span><span class="sig-name descname"><span class="pre">Instant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/periods/instant_.html#Instant"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.periods.instant_.Instant" title="Permalink to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></p>
 <dl class="py property">
 <dt class="sig sig-object py" id="policyengine_core.periods.instant_.Instant.date">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">date</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">datetime.date</span></em><a class="headerlink" href="#policyengine_core.periods.instant_.Instant.date" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">date</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">date</span></em><a class="headerlink" href="#policyengine_core.periods.instant_.Instant.date" title="Permalink to this definition">#</a></dt>
 <dd><p>Convert instant to a date.</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">instant</span><span class="p">(</span><span class="mi">2014</span><span class="p">)</span><span class="o">.</span><span class="n">date</span>
 <span class="go">datetime.date(2014, 1, 1)</span>
@@ -291,7 +291,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.periods.instant_.Instant.offset">
-<span class="sig-name descname"><span class="pre">offset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.periods.instant_.Instant" title="policyengine_core.periods.instant_.Instant"><span class="pre">policyengine_core.periods.instant_.Instant</span></a></span></span><a class="reference internal" href="../_modules/policyengine_core/periods/instant_.html#Instant.offset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.periods.instant_.Instant.offset" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">offset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.periods.instant_.Instant" title="policyengine_core.periods.instant_.Instant"><span class="pre">Instant</span></a></span></span><a class="reference internal" href="../_modules/policyengine_core/periods/instant_.html#Instant.offset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.periods.instant_.Instant.offset" title="Permalink to this definition">#</a></dt>
 <dd><p>Increment (or decrement) the given instant with offset units.</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">instant</span><span class="p">(</span><span class="mi">2014</span><span class="p">)</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;day&#39;</span><span class="p">)</span>
 <span class="go">Instant((2014, 1, 2))</span>
@@ -415,7 +415,7 @@
 
 </section>
 <section id="period">
-<h2>Period<a class="headerlink" href="#period" title="Permalink to this headline">#</a></h2>
+<h2>Period<a class="headerlink" href="#period" title="Permalink to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.periods.period_.Period">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.periods.period_.</span></span><span class="sig-name descname"><span class="pre">Period</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/periods/period_.html#Period"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.periods.period_.Period" title="Permalink to this definition">#</a></dt>
@@ -426,13 +426,13 @@
 <p>Since a period is a triple it can be used as a dictionary key.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.periods.period_.Period.contains">
-<span class="sig-name descname"><span class="pre">contains</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">policyengine_core.periods.period_.Period</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../_modules/policyengine_core/periods/period_.html#Period.contains"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.periods.period_.Period.contains" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">contains</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">Period</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../_modules/policyengine_core/periods/period_.html#Period.contains"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.periods.period_.Period.contains" title="Permalink to this definition">#</a></dt>
 <dd><p>Returns <code class="docutils literal notranslate"><span class="pre">True</span></code> if the period contains <code class="docutils literal notranslate"><span class="pre">other</span></code>. For instance, <code class="docutils literal notranslate"><span class="pre">period(2015)</span></code> contains <code class="docutils literal notranslate"><span class="pre">period(2015-01)</span></code></p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="policyengine_core.periods.period_.Period.date">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">date</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">None.datetime.date</span></em><a class="headerlink" href="#policyengine_core.periods.period_.Period.date" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">date</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">date</span></em><a class="headerlink" href="#policyengine_core.periods.period_.Period.date" title="Permalink to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
@@ -467,17 +467,17 @@
 
 <dl class="py property">
 <dt class="sig sig-object py" id="policyengine_core.periods.period_.Period.first_day">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">first_day</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">policyengine_core.periods.period_.Period</span></a></em><a class="headerlink" href="#policyengine_core.periods.period_.Period.first_day" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">first_day</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">Period</span></a></em><a class="headerlink" href="#policyengine_core.periods.period_.Period.first_day" title="Permalink to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="policyengine_core.periods.period_.Period.first_month">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">first_month</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">policyengine_core.periods.period_.Period</span></a></em><a class="headerlink" href="#policyengine_core.periods.period_.Period.first_month" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">first_month</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">Period</span></a></em><a class="headerlink" href="#policyengine_core.periods.period_.Period.first_month" title="Permalink to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.periods.period_.Period.get_subperiods">
-<span class="sig-name descname"><span class="pre">get_subperiods</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">policyengine_core.periods.period_.Period</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/policyengine_core/periods/period_.html#Period.get_subperiods"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.periods.period_.Period.get_subperiods" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_subperiods</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">Period</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/policyengine_core/periods/period_.html#Period.get_subperiods"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.periods.period_.Period.get_subperiods" title="Permalink to this definition">#</a></dt>
 <dd><p>Return the list of all the periods of unit <code class="docutils literal notranslate"><span class="pre">unit</span></code> contained in self.</p>
 <p>Examples:</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">period</span><span class="p">(</span><span class="s1">&#39;2017&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">get_subperiods</span><span class="p">(</span><span class="n">MONTH</span><span class="p">)</span>
@@ -492,32 +492,32 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.periods.period_.Period.intersection">
-<span class="sig-name descname"><span class="pre">intersection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.periods.instant_.Instant" title="policyengine_core.periods.instant_.Instant"><span class="pre">policyengine_core.periods.instant_.Instant</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">stop</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.periods.instant_.Instant" title="policyengine_core.periods.instant_.Instant"><span class="pre">policyengine_core.periods.instant_.Instant</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/periods/period_.html#Period.intersection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.periods.period_.Period.intersection" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">intersection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.periods.instant_.Instant" title="policyengine_core.periods.instant_.Instant"><span class="pre">Instant</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">stop</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.periods.instant_.Instant" title="policyengine_core.periods.instant_.Instant"><span class="pre">Instant</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/periods/period_.html#Period.intersection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.periods.period_.Period.intersection" title="Permalink to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="policyengine_core.periods.period_.Period.last_3_months">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">last_3_months</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">policyengine_core.periods.period_.Period</span></a></em><a class="headerlink" href="#policyengine_core.periods.period_.Period.last_3_months" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">last_3_months</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">Period</span></a></em><a class="headerlink" href="#policyengine_core.periods.period_.Period.last_3_months" title="Permalink to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="policyengine_core.periods.period_.Period.last_month">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">last_month</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">policyengine_core.periods.period_.Period</span></a></em><a class="headerlink" href="#policyengine_core.periods.period_.Period.last_month" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">last_month</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">Period</span></a></em><a class="headerlink" href="#policyengine_core.periods.period_.Period.last_month" title="Permalink to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="policyengine_core.periods.period_.Period.last_year">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">last_year</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">policyengine_core.periods.period_.Period</span></a></em><a class="headerlink" href="#policyengine_core.periods.period_.Period.last_year" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">last_year</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">Period</span></a></em><a class="headerlink" href="#policyengine_core.periods.period_.Period.last_year" title="Permalink to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="policyengine_core.periods.period_.Period.n_2">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_2</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">policyengine_core.periods.period_.Period</span></a></em><a class="headerlink" href="#policyengine_core.periods.period_.Period.n_2" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_2</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">Period</span></a></em><a class="headerlink" href="#policyengine_core.periods.period_.Period.n_2" title="Permalink to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.periods.period_.Period.offset">
-<span class="sig-name descname"><span class="pre">offset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">policyengine_core.periods.period_.Period</span></a></span></span><a class="reference internal" href="../_modules/policyengine_core/periods/period_.html#Period.offset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.periods.period_.Period.offset" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">offset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">Period</span></a></span></span><a class="reference internal" href="../_modules/policyengine_core/periods/period_.html#Period.offset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.periods.period_.Period.offset" title="Permalink to this definition">#</a></dt>
 <dd><p>Increment (or decrement) the given period with offset units.</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">period</span><span class="p">(</span><span class="s1">&#39;day&#39;</span><span class="p">,</span> <span class="mi">2014</span><span class="p">)</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 <span class="go">Period((&#39;day&#39;, Instant((2014, 1, 2)), 365))</span>
@@ -707,7 +707,7 @@
 
 <dl class="py property">
 <dt class="sig sig-object py" id="policyengine_core.periods.period_.Period.start">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">start</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.periods.instant_.Instant" title="policyengine_core.periods.instant_.Instant"><span class="pre">policyengine_core.periods.instant_.Instant</span></a></em><a class="headerlink" href="#policyengine_core.periods.period_.Period.start" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">start</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.periods.instant_.Instant" title="policyengine_core.periods.instant_.Instant"><span class="pre">Instant</span></a></em><a class="headerlink" href="#policyengine_core.periods.period_.Period.start" title="Permalink to this definition">#</a></dt>
 <dd><p>Return the first day of the period as an Instant instance.</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">period</span><span class="p">(</span><span class="s1">&#39;month&#39;</span><span class="p">,</span> <span class="s1">&#39;2012-2-29&#39;</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span><span class="o">.</span><span class="n">start</span>
 <span class="go">Instant((2012, 2, 29))</span>
@@ -717,7 +717,7 @@
 
 <dl class="py property">
 <dt class="sig sig-object py" id="policyengine_core.periods.period_.Period.stop">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">stop</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.periods.instant_.Instant" title="policyengine_core.periods.instant_.Instant"><span class="pre">policyengine_core.periods.instant_.Instant</span></a></em><a class="headerlink" href="#policyengine_core.periods.period_.Period.stop" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">stop</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.periods.instant_.Instant" title="policyengine_core.periods.instant_.Instant"><span class="pre">Instant</span></a></em><a class="headerlink" href="#policyengine_core.periods.period_.Period.stop" title="Permalink to this definition">#</a></dt>
 <dd><p>Return the last day of the period as an Instant instance.</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">period</span><span class="p">(</span><span class="s1">&#39;year&#39;</span><span class="p">,</span> <span class="mi">2014</span><span class="p">)</span><span class="o">.</span><span class="n">stop</span>
 <span class="go">Instant((2014, 12, 31))</span>
@@ -747,7 +747,7 @@
 
 <dl class="py property">
 <dt class="sig sig-object py" id="policyengine_core.periods.period_.Period.this_year">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">this_year</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">policyengine_core.periods.period_.Period</span></a></em><a class="headerlink" href="#policyengine_core.periods.period_.Period.this_year" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">this_year</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">Period</span></a></em><a class="headerlink" href="#policyengine_core.periods.period_.Period.this_year" title="Permalink to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
@@ -759,7 +759,7 @@
 
 </section>
 <section id="id1">
-<h2>instant<a class="headerlink" href="#id1" title="Permalink to this headline">#</a></h2>
+<h2>instant<a class="headerlink" href="#id1" title="Permalink to this heading">#</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="policyengine_core.periods.helpers.instant">
 <span class="sig-prename descclassname"><span class="pre">policyengine_core.periods.helpers.</span></span><span class="sig-name descname"><span class="pre">instant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instant</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/periods/helpers.html#instant"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.periods.helpers.instant" title="Permalink to this definition">#</a></dt>
@@ -785,7 +785,7 @@
 
 </section>
 <section id="id2">
-<h2>period<a class="headerlink" href="#id2" title="Permalink to this headline">#</a></h2>
+<h2>period<a class="headerlink" href="#id2" title="Permalink to this heading">#</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="policyengine_core.periods.helpers.period">
 <span class="sig-prename descclassname"><span class="pre">policyengine_core.periods.helpers.</span></span><span class="sig-name descname"><span class="pre">period</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/periods/helpers.html#period"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.periods.helpers.period" title="Permalink to this definition">#</a></dt>
@@ -869,9 +869,7 @@
             
           </div>
           <div class="right-details">
-            <div class="icons">
-              
-            </div>
+            
           </div>
         </div>
         
@@ -908,6 +906,7 @@
 </div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
     <script src="../_static/jquery.js"></script>
     <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../_static/doctools.js"></script>
     <script src="../_static/clipboard.min.js"></script>
     <script src="../_static/copybutton.js"></script>

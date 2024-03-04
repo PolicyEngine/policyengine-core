@@ -1,13 +1,13 @@
 <!doctype html>
-<html class="no-js">
+<html class="no-js" lang="en">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
-    <meta name="generator" content="sphinx-4.5.0, furo 2022.09.29"/>
+    <!-- Generated with Sphinx 5.0.0 and Furo 2022.12.07 -->
         <title>policyengine_core.taxbenefitsystems.tax_benefit_system - PolicyEngine Core</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?digest=d81277517bee4d6b0349d71bb2661d4890b5617c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
@@ -158,7 +158,7 @@
   <span class="sidebar-brand-text">PolicyEngine Core</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
-  <input class="sidebar-search" placeholder=Search name="q" aria-label="Search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
   <input type="hidden" name="area" value="default">
 </form>
@@ -308,7 +308,9 @@
     <span class="n">_parameters_at_instant_cache</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">person_key_plural</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">preprocess_parameters</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">baseline</span><span class="p">:</span> <span class="s2">&quot;TaxBenefitSystem&quot;</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Baseline tax-benefit system. Used only by reforms. Note: Reforms can be chained.</span>
+    <span class="n">baseline</span><span class="p">:</span> <span class="s2">&quot;TaxBenefitSystem&quot;</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="kc">None</span>  <span class="c1"># Baseline tax-benefit system. Used only by reforms. Note: Reforms can be chained.</span>
+    <span class="p">)</span>
     <span class="n">cache_blacklist</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">decomposition_file_path</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">variable_module_metadata</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span>
@@ -422,9 +424,9 @@
             <span class="n">baseline</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">baseline</span>
             <span class="k">if</span> <span class="n">baseline</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">return</span> <span class="bp">self</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_base_tax_benefit_system</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="n">base_tax_benefit_system</span>
-            <span class="p">)</span> <span class="o">=</span> <span class="n">baseline</span><span class="o">.</span><span class="n">base_tax_benefit_system</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_base_tax_benefit_system</span> <span class="o">=</span> <span class="n">base_tax_benefit_system</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">baseline</span><span class="o">.</span><span class="n">base_tax_benefit_system</span>
+            <span class="p">)</span>
         <span class="k">return</span> <span class="n">base_tax_benefit_system</span>
 
     <span class="k">def</span> <span class="nf">instantiate_entities</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Population</span><span class="p">]:</span>
@@ -973,9 +975,7 @@
             
           </div>
           <div class="right-details">
-            <div class="icons">
-              
-            </div>
+            
           </div>
         </div>
         
@@ -990,6 +990,7 @@
 </div><script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
     <script src="../../../_static/jquery.js"></script>
     <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../../../_static/doctools.js"></script>
     <script src="../../../_static/clipboard.min.js"></script>
     <script src="../../../_static/copybutton.js"></script>

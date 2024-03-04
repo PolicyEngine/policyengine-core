@@ -460,3 +460,34 @@
     added:
     - Simulation helper to extract individual households from a microsimulation.
   date: 2024-01-02 15:26:52
+- bump: patch
+  changes:
+    added:
+    - Improvements to error handling in bad variable declarations.
+  date: 2024-02-06 11:28:22
+- bump: minor
+  changes:
+    changed:
+    - A variable must have a label.
+    - If a variable has formulas then it must not have adds/subtracts, and vice versa.
+  date: 2024-02-06 17:28:06
+- bump: minor
+  changes:
+    added:
+    - Variable inheritance in declarations.
+  date: 2024-02-08 14:32:38
+- bump: minor
+  changes:
+    removed:
+    - Error raising for adds/subtracts properties plus a formula.
+  date: 2024-02-14 14:49:15
+- bump: patch
+  changes:
+    fixed:
+    - Fixed a bug in Core monthlyisation.
+  date: 2024-02-29 16:03:09
+- bump: minor
+  changes:
+    changed:
+    - Add method for propagating units to descendants for ParameterScale objects
+  date: 2024-03-04 11:27:40

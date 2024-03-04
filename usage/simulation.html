@@ -1,14 +1,14 @@
 <!doctype html>
-<html class="no-js">
+<html class="no-js" lang="en">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Creating a country package" href="country.html" /><link rel="prev" title="How to contribute" href="../contributing/intro.html" />
 
-    <meta name="generator" content="sphinx-4.5.0, furo 2022.09.29"/>
+    <!-- Generated with Sphinx 5.0.0 and Furo 2022.12.07 -->
         <title>Simulating policy - PolicyEngine Core</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=d81277517bee4d6b0349d71bb2661d4890b5617c" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
@@ -159,7 +159,7 @@
   <span class="sidebar-brand-text">PolicyEngine Core</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
-  <input class="sidebar-search" placeholder=Search name="q" aria-label="Search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
   <input type="hidden" name="area" value="default">
 </form>
@@ -239,10 +239,10 @@
         </div>
         <article role="main">
           <section class="tex2jax_ignore mathjax_ignore" id="simulating-policy">
-<h1>Simulating policy<a class="headerlink" href="#simulating-policy" title="Permalink to this headline">#</a></h1>
+<h1>Simulating policy<a class="headerlink" href="#simulating-policy" title="Permalink to this heading">#</a></h1>
 <p>The most common use-case of PolicyEngine Core country packages is to compute unknown variables for a given household, under a country’s law. To do this, we need to specify the input household, using the entity and variable definitions as defined in the country code. If you’re not sure what entities to declare or which variables to specify for which time periods, check the repository of the country package you’re using. This page shows examples of how to use an existing country model to simulate policy.</p>
 <section id="simulating-on-individual-households">
-<h2>Simulating on individual households<a class="headerlink" href="#simulating-on-individual-households" title="Permalink to this headline">#</a></h2>
+<h2>Simulating on individual households<a class="headerlink" href="#simulating-on-individual-households" title="Permalink to this heading">#</a></h2>
 <p>Simulating policy on individual households is simple: import <code class="docutils literal notranslate"><span class="pre">Simulation</span></code> from the country package, and pass in the household’s data as a dictionary. Then, use <code class="docutils literal notranslate"><span class="pre">Simulation.calculate(variable_name,</span> <span class="pre">time_period)</span></code> to compute a particular variable at a particular time period. The input data should be a dictionary, under the following format:</p>
 <ul class="simple">
 <li><p>Entity plural (e.g. “people”)</p>
@@ -298,7 +298,7 @@
 </div>
 <p>Our example calculated €1,500 in income taxes for this input household, in three lines of code. We could also have asked for any other variable, at any other time period.</p>
 <section id="simulating-over-axes">
-<h3>Simulating over axes<a class="headerlink" href="#simulating-over-axes" title="Permalink to this headline">#</a></h3>
+<h3>Simulating over axes<a class="headerlink" href="#simulating-over-axes" title="Permalink to this heading">#</a></h3>
 <p>Often, we might want to see how a particular variable changes in response to another variable(s). For this, we can use <code class="docutils literal notranslate"><span class="pre">axes</span></code>. This is a list of lists, with the following structure:</p>
 <ul class="simple">
 <li><p>List of perpendicular axes</p>
@@ -386,7 +386,7 @@
 </section>
 </section>
 <section id="simulating-over-populations">
-<h2>Simulating over populations<a class="headerlink" href="#simulating-over-populations" title="Permalink to this headline">#</a></h2>
+<h2>Simulating over populations<a class="headerlink" href="#simulating-over-populations" title="Permalink to this heading">#</a></h2>
 <p>As well as a general-purpose <code class="docutils literal notranslate"><span class="pre">Simulation</span></code> interface, each country package also includes a <code class="docutils literal notranslate"><span class="pre">Microsimulation</span></code> interface. This inherits from <code class="docutils literal notranslate"><span class="pre">WeightedSimulation</span></code> (so everything that works on the former will work on the latter), handling survey weights and dataset loading.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -464,9 +464,7 @@
             
           </div>
           <div class="right-details">
-            <div class="icons">
-              
-            </div>
+            
           </div>
         </div>
         
@@ -504,6 +502,7 @@
 </div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
     <script src="../_static/jquery.js"></script>
     <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../_static/doctools.js"></script>
     <script src="../_static/clipboard.min.js"></script>
     <script src="../_static/copybutton.js"></script>

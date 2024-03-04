@@ -71,6 +71,22 @@ class ParameterScale(AtInstantLike):
             ]
         )
 
+    def propagate_units(self) -> None:
+        unit_keys = filter(
+            lambda k: k in self.metadata,
+            parameters.ParameterScaleBracket.allowed_unit_keys(),
+        )
+        for unit_key in unit_keys:
+            child_key = unit_key[:-5]
+            for bracket in self.brackets:
+                if (
+                    child_key in bracket.children
+                    and "unit" not in bracket.children[child_key].metadata
+                ):
+                    bracket.children[child_key].metadata["unit"] = (
+                        self.metadata[unit_key]
+                    )
+
     def get_descendants(self) -> Iterable:
         for bracket in self.brackets:
             yield bracket

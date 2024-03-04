@@ -37,7 +37,7 @@ dev_requirements = [
     "coverage",
     "furo",
     "mypy==0.991",
-    "sphinx==4.5.0",
+    "sphinx==5.0.0",
     "sphinx-argparse==0.4.0",
     "sphinx-math-dollar==1.2.1",
     "types-PyYAML==6.0.12.2",

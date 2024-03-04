@@ -486,3 +486,8 @@
     fixed:
     - Fixed a bug in Core monthlyisation.
   date: 2024-02-29 16:03:09
+- bump: minor
+  changes:
+    changed:
+    - Add method for propagating units to descendants for ParameterScale objects
+  date: 2024-03-04 11:27:40

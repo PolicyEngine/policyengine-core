@@ -1,4 +1,0 @@
-- bump: minor
-  changes:
-    changed:
-    - Add method for propagating units to descendants for ParameterScale objects

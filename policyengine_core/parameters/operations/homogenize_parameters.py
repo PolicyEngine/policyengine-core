@@ -79,7 +79,10 @@ def homogenize_parameter_node(
         node = ParameterNode(
             node.name,
             data={
-                child: {"2000-01-01": default_value}
+                child: {
+                    "0000-01-01": default_value,
+                    "2040-01-01": default_value,
+                }
                 for child in possible_values
             },
         )
@@ -91,7 +94,8 @@ def homogenize_parameter_node(
             node.add_child(
                 str(value),
                 Parameter(
-                    node.name + "." + str(value), {"2000-01-01": default_value}
+                    node.name + "." + str(value),
+                    {"0000-01-01": default_value, "2040-01-01": default_value},
                 ),
             )
     for child in node.children:

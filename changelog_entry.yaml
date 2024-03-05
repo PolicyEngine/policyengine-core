@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    fixed:
-    - Breakdown-added parameters no longer precede uprating indices.

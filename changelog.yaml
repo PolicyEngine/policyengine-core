@@ -491,3 +491,8 @@
     changed:
     - Add method for propagating units to descendants for ParameterScale objects
   date: 2024-03-04 11:27:40
+- bump: patch
+  changes:
+    fixed:
+    - Breakdown-added parameters no longer precede uprating indices.
+  date: 2024-03-05 13:01:42

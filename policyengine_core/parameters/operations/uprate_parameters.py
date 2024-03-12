@@ -43,6 +43,20 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                 elif isinstance(meta, str):
                     meta = dict(parameter=meta)
 
+                # If uprating with a set candence, ensure that all 
+                # required values are present, otherwise ensure they're all None
+                cadence_options_test = [
+                    meta.get("application_date"),
+                    meta.get("interval_start"),
+                    meta.get("interval_measurement")
+                ]
+
+                if (any(cadence_options_test) != all(cadence_options_test)):
+                    raise SyntaxError(
+                        f"Failed to uprate {parameter.name}; application_date, interval_start, and interval_measurement must all be provided"
+                    )
+                
+                # If param is "self", construct the uprating table
                 if meta["parameter"] == "self":
                     last_instant = instant(
                         parameter.values_list[0].instant_str
@@ -74,8 +88,10 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                         ] = (value * increase)
                         value *= increase
                     uprating_parameter = Parameter("self", data=data)
+                # Otherwise, pull uprating table from YAML
                 else:
                     uprating_parameter = get_parameter(root, meta["parameter"])
+
                 # Start from the latest value
                 if "start_instant" in meta:
                     last_instant = instant(meta["start_instant"])
@@ -83,6 +99,7 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                     last_instant = instant(
                         parameter.values_list[0].instant_str
                     )
+
                 # For each defined instant in the uprating parameter
                 for entry in uprating_parameter.values_list[::-1]:
                     entry_instant = instant(entry.instant_str)

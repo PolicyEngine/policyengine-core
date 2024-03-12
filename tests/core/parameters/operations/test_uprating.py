@@ -136,9 +136,12 @@ def test_parameter_uprating_with_cadence():
             "uprater": {
                 "description": "Uprater",
                 "values": {
-                    "2015-10-01": 1,
-                    "2016-10-01": 1,
-                    "2017-10-01": 2,
+                    "2015-10-01": 2,
+                    "2015-12-01": 1,
+                    "2016-10-01": 4,
+                    "2016-12-01": 1,
+                    "2017-10-01": 6,
+                    "2017-12-01": 1,
                     "2018-10-01": 3,
                 },
             },
@@ -151,5 +154,5 @@ def test_parameter_uprating_with_cadence():
 
     # Interpolate halfway
 
-    assert uprated.to_be_uprated("2017-04-01") == 4
-    assert uprated.to_be_uprated("2018-04-01") == 8
+    assert uprated.to_be_uprated("2017-04-01") == 8
+    assert uprated.to_be_uprated("2018-04-01") == 6

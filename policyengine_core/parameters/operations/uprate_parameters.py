@@ -32,11 +32,17 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
     for parameter in descendants:
         if isinstance(parameter, Parameter):
             if parameter.metadata.get("uprating") is not None:
+                
+                # Pull the uprating definition dict
                 meta = parameter.metadata["uprating"]
+
+                # If defined in short method (i.e. "uprating: PARAM"),
+                # redefine this as dict with param key
                 if meta == "self":
                     meta = dict(parameter="self")
                 elif isinstance(meta, str):
                     meta = dict(parameter=meta)
+
                 if meta["parameter"] == "self":
                     last_instant = instant(
                         parameter.values_list[0].instant_str

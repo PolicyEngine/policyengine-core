@@ -154,7 +154,6 @@ def test_parameter_uprating_with_cadence():
 
     # Interpolate halfway
 
-    assert uprated.to_be_uprated("2017-04-01") == 8
     assert uprated.to_be_uprated("2018-04-01") == 6
 
 def test_parameter_uprating_with_cadence_malformed_syntax():

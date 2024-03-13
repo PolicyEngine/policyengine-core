@@ -7,7 +7,7 @@ from policyengine_core.parameters.parameter_at_instant import (
 )
 from policyengine_core.parameters.parameter_node import ParameterNode
 from policyengine_core.parameters.parameter_scale import ParameterScale
-from policyengine_core.periods import instant, period
+from policyengine_core.periods import instant, period, Instant
 
 
 def uprate_parameters(root: ParameterNode) -> ParameterNode:
@@ -74,6 +74,16 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                     # Construct cadence options object
                     cadence_options = construct_cadence_options(cadence_settings, parameter)
 
+                    # Determine the first date from which to start uprating - 
+                    # this should be the first application date (month, day)
+                    # following the last defined param value (not including the
+                    # final value)
+                    uprating_start_date = find_cadence_start(cadence_settings, parameter, cadence_options)
+
+                    # Modify uprating parameter table to accord with cadence
+                    uprating_parameter = construct_cadence_uprater(uprating_parameter, cadence_options)
+
+
                 # Start from the latest value
                 if "start_instant" in meta:
                     last_instant = instant(meta["start_instant"])
@@ -129,6 +139,18 @@ def round_uprated_value(meta: dict, uprated_value: float) -> float:
     )
     return uprated_value
 
+def find_cadence_start():
+    
+    # To be implemented 
+
+    pass
+    
+def construct_cadence_uprater():
+    
+    # To be implemented 
+
+    pass
+
 def construct_cadence_options(cadence_settings: dict, parameter: Parameter) -> dict:
     
     CADENCE_KEYS = [
@@ -141,7 +163,7 @@ def construct_cadence_options(cadence_settings: dict, parameter: Parameter) -> d
         date_split = cadence_settings[key].split("-")
         if len(date_split) != 3:
           raise SyntaxError(
-              f"Error while uprating {parameter.name}: cadence date values must be YY-MM-DD"
+              f"Error while uprating {parameter.name}: cadence date values must be YYYY-MM-DD"
           )
         cadence_options[key] = {
             "year": int(date_split[0]),

@@ -91,21 +91,7 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                         uprater_change = uprater_at_entry / uprater_at_start
                         uprated_value = value_at_start * uprater_change
                         if "rounding" in meta:
-                            rounding_config = meta["rounding"]
-                            if isinstance(rounding_config, float):
-                                interval = rounding_config
-                                rounding_fn = round
-                            elif isinstance(rounding_config, dict):
-                                interval = rounding_config["interval"]
-                                rounding_fn = dict(
-                                    nearest=round,
-                                    upwards=ceil,
-                                    downwards=floor,
-                                )[rounding_config["type"]]
-                            uprated_value = (
-                                rounding_fn(uprated_value / interval)
-                                * interval
-                            )
+                            uprated_value = round_uprated_value(meta, uprated_value)
                         parameter.values_list.append(
                             ParameterAtInstant(
                                 parameter.name,
@@ -117,6 +103,24 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                     key=lambda x: x.instant_str, reverse=True
                 )
     return root
+
+def round_uprated_value(meta: dict, uprated_value: float) -> float:
+    rounding_config = meta["rounding"]
+    if isinstance(rounding_config, float):
+        interval = rounding_config
+        rounding_fn = round
+    elif isinstance(rounding_config, dict):
+        interval = rounding_config["interval"]
+        rounding_fn = dict(
+            nearest=round,
+            upwards=ceil,
+            downwards=floor,
+        )[rounding_config["type"]]
+    uprated_value = (
+        rounding_fn(uprated_value / interval)
+        * interval
+    )
+    return uprated_value
 
 def construct_uprater_self(parameter: Parameter, meta: dict) -> Parameter:
     last_instant = instant(

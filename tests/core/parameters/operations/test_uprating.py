@@ -127,9 +127,11 @@ def test_parameter_uprating_with_cadence():
                 "metadata": {
                     "uprating": {
                         "parameter": "uprater",
-                        "application_date": "02-04-01",
-                        "interval_start": "00-10-01",
-                        "interval_measurement": "01-10-01"
+                        "at_defined_interval": {
+                            "enactment": "0002-04-01",
+                            "start": "0000-10-01",
+                            "end": "0001-10-01"
+                        }
                     },
                 },
             },
@@ -177,8 +179,10 @@ def test_parameter_uprating_with_cadence_malformed_syntax():
                 "metadata": {
                     "uprating": {
                         "parameter": "uprater",
-                        "application_date": "02-04-01",
-                        "interval_start": "00-10-01",
+                        "at_defined_interval": {
+                            "enactment": "0002-04-01",
+                            "start": "0000-10-01",
+                        }
                     },
                 },
             },

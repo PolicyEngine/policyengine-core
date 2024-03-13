@@ -58,36 +58,11 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                 
                 # If param is "self", construct the uprating table
                 if meta["parameter"] == "self":
-                    last_instant = instant(
-                        parameter.values_list[0].instant_str
+
+                    uprating_parameter = construct_uprater_self(
+                        parameter,
+                        meta,
                     )
-                    start_instant = instant(
-                        meta.get(
-                            "from",
-                            last_instant.offset(
-                                -1, meta.get("interval", "year")
-                            ),
-                        )
-                    )
-                    start = parameter(start_instant)
-                    end_instant = instant(meta.get("to", last_instant))
-                    end = parameter(end_instant)
-                    increase = end / start
-                    if "from" in meta:
-                        # This won't work for non-year periods, which are more complicated
-                        increase / (end_instant.year - start_instant.year)
-                    data = {}
-                    value = parameter.values_list[0].value
-                    for i in range(meta.get("number", 10)):
-                        data[
-                            str(
-                                last_instant.offset(
-                                    i, meta.get("interval", "year")
-                                )
-                            )
-                        ] = (value * increase)
-                        value *= increase
-                    uprating_parameter = Parameter("self", data=data)
                 # Otherwise, pull uprating table from YAML
                 else:
                     uprating_parameter = get_parameter(root, meta["parameter"])
@@ -142,3 +117,35 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                     key=lambda x: x.instant_str, reverse=True
                 )
     return root
+
+def construct_uprater_self(parameter: Parameter, meta: dict) -> Parameter:
+    last_instant = instant(
+        parameter.values_list[0].instant_str
+    )
+    start_instant = instant(
+        meta.get(
+            "from",
+            last_instant.offset(
+                -1, meta.get("interval", "year")
+            ),
+        )
+    )
+    start = parameter(start_instant)
+    end_instant = instant(meta.get("to", last_instant))
+    end = parameter(end_instant)
+    increase = end / start
+    if "from" in meta:
+        # This won't work for non-year periods, which are more complicated
+        increase / (end_instant.year - start_instant.year)
+    data = {}
+    value = parameter.values_list[0].value
+    for i in range(meta.get("number", 10)):
+        data[
+            str(
+                last_instant.offset(
+                    i, meta.get("interval", "year")
+                )
+            )
+        ] = (value * increase)
+        value *= increase
+    return Parameter("self", data=data)

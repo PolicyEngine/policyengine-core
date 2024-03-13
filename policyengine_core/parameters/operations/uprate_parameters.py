@@ -43,19 +43,6 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                 elif isinstance(meta, str):
                     meta = dict(parameter=meta)
 
-                # If uprating with a set candence, ensure that all 
-                # required values are present, otherwise ensure they're all None
-                cadence_options_test = [
-                    meta.get("application_date"),
-                    meta.get("interval_start"),
-                    meta.get("interval_measurement")
-                ]
-
-                if (any(cadence_options_test) != all(cadence_options_test)):
-                    raise SyntaxError(
-                        f"Failed to uprate {parameter.name}; application_date, interval_start, and interval_measurement must all be provided"
-                    )
-                
                 # If param is "self", construct the uprating table
                 if meta["parameter"] == "self":
 
@@ -66,6 +53,14 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                 # Otherwise, pull uprating table from YAML
                 else:
                     uprating_parameter = get_parameter(root, meta["parameter"])
+
+                # If uprating with a set candence, ensure that all 
+                # required values are present, otherwise ensure they're all None
+                has_cadence_options = test_cadence_options(meta, parameter)
+
+                # Construct cadence options object, if necessary
+                if has_cadence_options:
+                    cadence_options = construct_cadence_options(meta, parameter)
 
                 # Start from the latest value
                 if "start_instant" in meta:
@@ -121,6 +116,49 @@ def round_uprated_value(meta: dict, uprated_value: float) -> float:
         * interval
     )
     return uprated_value
+
+def construct_cadence_options(meta: dict, parameter: Parameter) -> dict:
+    
+    CADENCE_KEYS = [
+        "application_date",
+        "interval_start",
+        "interval_measurement"
+    ]
+    cadence_options = {}
+    for key in CADENCE_KEYS:
+        date_split = meta[key].split("-")
+        if len(date_split) != 3:
+          raise SyntaxError(
+              f"Error while uprating {parameter.name}: cadence date values must be YY-MM-DD"
+          )
+        cadence_options[key] = {
+            "year": date_split[0],
+            "month": date_split[1],
+            "day": date_split[2]
+        }
+
+    print(cadence_options)
+    return cadence_options
+
+def test_cadence_options(meta: dict, parameter: Parameter) -> bool:
+
+    cadence_options_test = [
+        meta.get("application_date"),
+        meta.get("interval_start"),
+        meta.get("interval_measurement")
+    ]                
+    
+    # Ensure that either no options are present, or all are properly defined
+    if (any(cadence_options_test) != all(cadence_options_test)):
+        raise SyntaxError(
+            f"Failed to uprate {parameter.name}; application_date, interval_start, and interval_measurement must all be provided"
+        ) 
+
+    # If all options are None, return false, else return true
+    if not all(cadence_options_test):
+        return False
+    
+    return True
 
 def construct_uprater_self(parameter: Parameter, meta: dict) -> Parameter:
     last_instant = instant(

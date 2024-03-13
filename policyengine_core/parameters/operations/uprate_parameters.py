@@ -45,7 +45,6 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
 
                 # If param is "self", construct the uprating table
                 if meta["parameter"] == "self":
-
                     uprating_parameter = construct_uprater_self(
                         parameter,
                         meta,
@@ -132,12 +131,11 @@ def construct_cadence_options(meta: dict, parameter: Parameter) -> dict:
               f"Error while uprating {parameter.name}: cadence date values must be YY-MM-DD"
           )
         cadence_options[key] = {
-            "year": date_split[0],
-            "month": date_split[1],
-            "day": date_split[2]
+            "year": int(date_split[0]),
+            "month": int(date_split[1]),
+            "day": int(date_split[2])
         }
 
-    print(cadence_options)
     return cadence_options
 
 def test_cadence_options(meta: dict, parameter: Parameter) -> bool:

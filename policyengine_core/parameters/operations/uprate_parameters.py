@@ -84,7 +84,6 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                     # Modify uprating parameter table to accord with cadence
                     uprating_parameter = construct_cadence_uprater(uprating_parameter, cadence_options, uprating_first_date, uprating_last_date)
 
-
                 # Start from the latest value
                 if "start_instant" in meta:
                     last_instant = instant(meta["start_instant"])
@@ -142,15 +141,15 @@ def round_uprated_value(meta: dict, uprated_value: float) -> float:
 
 def find_cadence_first(parameter: Parameter, cadence_options: dict) -> Instant:
     """
-    Determine earliest date to begin uprating. This should be the same (month, day) as 
-    the uprating enactment date, but after the most recent non-uprated value
+    Find last hard value at enactment date. This should be the same (month, day) as 
+    the uprating enactment date, but the last piece of active data in parameter
 
     >>> if enactment: "0002-04-01", last param value: "2022-10-01"
-    "2023-04-01"
-    >>> if enactment: "0002-04-01", last param value: "2022-02-01"
     "2022-04-01"
+    >>> if enactment: "0002-04-01", last param value: "2022-02-01"
+    "2021-04-01"
     >>> if enactment: "0002-04-01", last param value: "2022-04-01"
-    "2023-04-01"
+    "2022-04-01"
     
     """
     
@@ -182,9 +181,9 @@ def find_cadence_first(parameter: Parameter, cadence_options: dict) -> Instant:
             newest_param.day < cadence_options["enactment"]["day"]
         )
     ):
-        cadence_start_year = newest_param.year
+        cadence_start_year = newest_param.year - 1
     else:
-        cadence_start_year = newest_param.year + 1
+        cadence_start_year = newest_param.year
 
     # Must pass date as tuple if not a string
     return instant((

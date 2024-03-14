@@ -55,14 +55,14 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
 
                 # If uprating with a set candence, ensure that all 
                 # required values are present
-                cadence_settings = meta.get("at_defined_interval")
+                cadence_meta = meta.get("at_defined_interval")
                 cadence_options = {}
-                if cadence_settings:
+                if cadence_meta:
 
                     cadence_options_test = [
-                        cadence_settings.get("start"),
-                        cadence_settings.get("end"),
-                        cadence_settings.get("enactment")
+                        cadence_meta.get("start"),
+                        cadence_meta.get("end"),
+                        cadence_meta.get("enactment")
                     ]                
 
                     # Ensure that all options are properly defined
@@ -72,13 +72,13 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                         ) 
 
                     # Construct cadence options object
-                    cadence_options = construct_cadence_options(cadence_settings, parameter)
+                    cadence_options = construct_cadence_options(cadence_meta, parameter)
 
                     # Determine the first date from which to start uprating - 
                     # this should be the first application date (month, day)
                     # following the last defined param value (not including the
                     # final value)
-                    uprating_start_date = find_cadence_start(cadence_settings, parameter, cadence_options)
+                    uprating_start_date = find_cadence_start(parameter, cadence_options)
 
                     # Modify uprating parameter table to accord with cadence
                     uprating_parameter = construct_cadence_uprater(uprating_parameter, cadence_options)
@@ -139,11 +139,58 @@ def round_uprated_value(meta: dict, uprated_value: float) -> float:
     )
     return uprated_value
 
-def find_cadence_start():
-    
-    # To be implemented 
+def find_cadence_start(parameter: Parameter, cadence_options: dict) -> Instant:
+    """
+    Determine earliest date to begin uprating. This should be the same (month, day) as 
+    the uprating enactment date, but after the most recent non-uprated value
 
-    pass
+    >>> if enactment: "0002-04-01", last param value: "2022-10-01"
+    "2023-04-01"
+    >>> if enactment: "0002-04-01", last param value: "2022-02-01"
+    "2022-04-01"
+    >>> if enactment: "0002-04-01", last param value: "2022-04-01"
+    "2023-04-01"
+    
+    """
+    
+    # Clone parameter's value list
+    # param_values: ParameterNode = parameter.values_list.clone()
+    param_values = []
+    for i in range(len(parameter.values_list)):
+        param_values.append(parameter.values_list[i].clone())
+
+    # There's no guarantee of a particular order for the value list's items;
+    # sort the list to ensure newest item is first, akin to defined order elsewhere in repo
+    param_values.sort(
+        key=lambda x: x.instant_str, reverse=True
+    )
+
+    # Pull off the first (newest) value and turn into Instant
+    newest_param: Instant = instant(param_values[0].instant_str)
+
+    # If month, day of most recent param occurs before enactment date, then
+    # first uprated date exists in same year, otherwise it must be in next year;
+    # in this case, add 1
+    cadence_start_year = None
+    if (
+        # e.g., If newest_param is 2-1 and enactment is 4-1
+        newest_param.month < cadence_options["enactment"]["month"] or
+        (
+            # e.g., If newest_param is 4-1 and enactment is 4-15
+            newest_param.month == cadence_options["enactment"]["month"] and
+            newest_param.day < cadence_options["enactment"]["day"]
+        )
+    ):
+        cadence_start_year = newest_param.year
+    else:
+        cadence_start_year = newest_param.year + 1
+
+    # Must pass date as tuple if not a string
+    return instant((
+        cadence_start_year,
+        cadence_options["enactment"]["month"],
+        cadence_options["enactment"]["day"]
+    ))
     
 def construct_cadence_uprater():
     

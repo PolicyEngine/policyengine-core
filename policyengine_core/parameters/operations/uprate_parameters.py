@@ -78,10 +78,11 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                     # this should be the first application date (month, day)
                     # following the last defined param value (not including the
                     # final value)
-                    uprating_start_date = find_cadence_start(parameter, cadence_options)
+                    uprating_first_date = find_cadence_first(parameter, cadence_options)
+                    uprating_last_date = find_cadence_last(uprating_parameter, cadence_options)
 
                     # Modify uprating parameter table to accord with cadence
-                    uprating_parameter = construct_cadence_uprater(uprating_parameter, cadence_options)
+                    uprating_parameter = construct_cadence_uprater(uprating_parameter, cadence_options, uprating_first_date, uprating_last_date)
 
 
                 # Start from the latest value
@@ -139,7 +140,7 @@ def round_uprated_value(meta: dict, uprated_value: float) -> float:
     )
     return uprated_value
 
-def find_cadence_start(parameter: Parameter, cadence_options: dict) -> Instant:
+def find_cadence_first(parameter: Parameter, cadence_options: dict) -> Instant:
     """
     Determine earliest date to begin uprating. This should be the same (month, day) as 
     the uprating enactment date, but after the most recent non-uprated value
@@ -191,10 +192,83 @@ def find_cadence_start(parameter: Parameter, cadence_options: dict) -> Instant:
         cadence_options["enactment"]["month"],
         cadence_options["enactment"]["day"]
     ))
+
+def find_cadence_last(uprater: Parameter, cadence_options: dict) -> Instant:
+    """
+    Determine latest date to uprate until. This should be first (month, day) to
+    occur after the last defined uprating end value
+
+    >>> if enactment: "0002-04-01", end: "0001-10-01", last uprating value: "2022-10-01"
+    "2023-04-01"
+    >>> if enactment: "0003-04-01", end: "0001-10-01", last uprating value: "2022-10-01"
+    "2024-04-01"
+    """ 
+
+    # Clone parameter's value list
+    # param_values: ParameterNode = parameter.values_list.clone()
+    uprater_values = []
+    for i in range(len(uprater.values_list)):
+        uprater_values.append(uprater.values_list[i].clone())
+
+    # There's no guarantee of a particular order for the value list's items;
+    # sort the list to ensure newest item is first, akin to defined order elsewhere in repo
+    uprater_values.sort(
+        key=lambda x: x.instant_str, reverse=True
+    )
+
+    # Pull off the first (newest) value and turn into Instant
+    last_param: Instant = instant(uprater_values[0].instant_str)
+
+    # If month, day of most recent uprater value occurs after or on uprater end
+    # date, then last uprater year is last year, otherwise it's current year; in
+    # former case, subtract 1
+    cadence_end_year = None
+    if (
+        # e.g., If last_param is 10-1 and uprater end date is 4-1
+        last_param.month > cadence_options["enactment"]["month"] or
+        (
+            # e.g., If last_param is 4-15 and uprater end date is 4-1
+            last_param.month == cadence_options["enactment"]["month"] or
+            last_param.day > cadence_options["enactment"]["day"]
+        )
+    ):
+        cadence_end_year = last_param.year - 1
+    else:
+        cadence_end_year = last_param.year
+
+    # We're seeking the last uprating enactment date, not measurement date;
+    # thus, we now increment the year by the difference between the uprater measurement
+    # end year and the enactment year
+    cadence_end_year += (cadence_options["enactment"]["year"] - cadence_options["end"]["year"])
+
+    # Must pass date as tuple if not a string
+    return instant((
+        cadence_end_year,
+        cadence_options["enactment"]["month"],
+        cadence_options["enactment"]["day"]
+    ))
     
-def construct_cadence_uprater():
-    
-    # To be implemented 
+def construct_cadence_uprater(uprating_parameter: Parameter, cadence_options: dict, first_date: Instant, last_date: Instant) -> Parameter:
+
+    # Find uprating last date, corresponding to first date on or after
+    # last cadence "end" date defined within uprating_parameter
+
+    # Measure expected output size
+
+    # Within the range of this output size...
+        # 
+
+    # Clone parameter's value list
+    # param_values: ParameterNode = parameter.values_list.clone()
+    uprater_values = []
+    for i in range(len(uprating_parameter.values_list)):
+        uprater_values.append(uprating_parameter.values_list[i].clone())
+
+    # There's no guarantee of a particular order for the value list's items;
+    # sort the list to ensure newest item is first, akin to defined order elsewhere in repo
+    uprater_values.sort(
+        key=lambda x: x.instant_str, reverse=True
+    )
 
     pass
 

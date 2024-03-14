@@ -81,41 +81,48 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                     uprating_first_date = find_cadence_first(parameter, cadence_options)
                     uprating_last_date = find_cadence_last(uprating_parameter, cadence_options)
 
-                    # Modify uprating parameter table to accord with cadence
-                    uprating_parameter = construct_cadence_uprater(uprating_parameter, cadence_options, uprating_first_date, uprating_last_date)
-                
-                # Start from the latest value
-                if "start_instant" in meta:
-                    last_instant = instant(meta["start_instant"])
-                else:
-                    last_instant = instant(
-                        parameter.values_list[0].instant_str
-                    )
+                    # Use existing uprating parameter to construct cadence-based uprater, where
+                    # each resulting uprating option is a multiplication factor to be applied to
+                    # the preceding value
+                    cadence_uprater = construct_cadence_uprater(uprating_parameter, cadence_options, uprating_first_date, uprating_last_date)
 
-                # For each defined instant in the uprating parameter
-                for entry in uprating_parameter.values_list[::-1]:
-                    entry_instant = instant(entry.instant_str)
-                    # If the uprater instant is defined after the last parameter instant
-                    if entry_instant > last_instant:
-                        # Apply the uprater and add to the parameter
-                        value_at_start = parameter(last_instant)
-                        uprater_at_start = uprating_parameter(last_instant)
-                        if uprater_at_start is None:
-                            raise ValueError(
-                                f"Failed to uprate using {uprating_parameter.name} at {last_instant} for {parameter.name} at {entry_instant} because the uprating parameter is not defined at {last_instant}."
-                            )
-                        uprater_at_entry = uprating_parameter(entry_instant)
-                        uprater_change = uprater_at_entry / uprater_at_start
-                        uprated_value = value_at_start * uprater_change
-                        if "rounding" in meta:
-                            uprated_value = round_uprated_value(meta, uprated_value)
-                        parameter.values_list.append(
-                            ParameterAtInstant(
-                                parameter.name,
-                                entry.instant_str,
-                                data=uprated_value,
-                            )
+                    uprated_data = uprate_by_cadence(parameter, cadence_uprater, uprating_first_date)
+                    parameter.values_list.extend(uprated_data)
+
+                else:
+                    # Start from the latest value
+                    if "start_instant" in meta:
+                        last_instant = instant(meta["start_instant"])
+                    else:
+                        last_instant = instant(
+                            parameter.values_list[0].instant_str
                         )
+
+                    # For each defined instant in the uprating parameter
+                    for entry in uprating_parameter.values_list[::-1]:
+                        entry_instant = instant(entry.instant_str)
+                        # If the uprater instant is defined after the last parameter instant
+                        if entry_instant > last_instant:
+                            # Apply the uprater and add to the parameter
+                            value_at_start = parameter(last_instant)
+                            uprater_at_start = uprating_parameter(last_instant)
+                            if uprater_at_start is None:
+                                raise ValueError(
+                                    f"Failed to uprate using {uprating_parameter.name} at {last_instant} for {parameter.name} at {entry_instant} because the uprating parameter is not defined at {last_instant}."
+                                )
+                            uprater_at_entry = uprating_parameter(entry_instant)
+                            uprater_change = uprater_at_entry / uprater_at_start
+                            uprated_value = value_at_start * uprater_change
+                            if "rounding" in meta:
+                                uprated_value = round_uprated_value(meta, uprated_value)
+                            parameter.values_list.append(
+                                ParameterAtInstant(
+                                    parameter.name,
+                                    entry.instant_str,
+                                    data=uprated_value,
+                                )
+                            )
+                # Whether using cadence or not, sort the parameter values_list
                 parameter.values_list.sort(
                     key=lambda x: x.instant_str, reverse=True
                 )
@@ -138,6 +145,32 @@ def round_uprated_value(meta: dict, uprated_value: float) -> float:
         * interval
     )
     return uprated_value
+
+def uprate_by_cadence(parameter: Parameter, cadence_uprater: Parameter, uprating_first_date: Instant) -> list[ParameterAtInstant]:
+    
+    # Pull out the value that occurred most recently in the parameter
+    # at the enactment month, date; this will be changed in future to support
+    # different periods than yearly
+    reference_value = parameter.get_at_instant(uprating_first_date.offset(-1, "year"))
+
+    uprated_data = []
+    for uprater_entry in reversed(cadence_uprater.values_list):
+
+        # Calculate uprated value
+        uprated_value = uprater_entry.value * reference_value
+
+        # Add uprated value to data list
+        uprated_data.append(
+            ParameterAtInstant(
+                parameter.name,
+                uprater_entry.instant_str,
+                data=uprated_value
+            )
+        )
+
+        # Swap reference_value with new value
+        reference_value = uprated_value
+    return uprated_data
 
 def find_cadence_first(parameter: Parameter, cadence_options: dict) -> Instant:
     """

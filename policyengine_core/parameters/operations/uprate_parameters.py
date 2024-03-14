@@ -86,7 +86,7 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                     # the preceding value
                     cadence_uprater = construct_cadence_uprater(uprating_parameter, cadence_options, uprating_first_date, uprating_last_date)
 
-                    uprated_data = uprate_by_cadence(parameter, cadence_uprater, uprating_first_date)
+                    uprated_data = uprate_by_cadence(parameter, cadence_uprater, uprating_first_date, meta)
                     parameter.values_list.extend(uprated_data)
 
                 else:
@@ -146,7 +146,7 @@ def round_uprated_value(meta: dict, uprated_value: float) -> float:
     )
     return uprated_value
 
-def uprate_by_cadence(parameter: Parameter, cadence_uprater: Parameter, uprating_first_date: Instant) -> list[ParameterAtInstant]:
+def uprate_by_cadence(parameter: Parameter, cadence_uprater: Parameter, uprating_first_date: Instant, meta: dict) -> list[ParameterAtInstant]:
     
     # Pull out the value that occurred most recently in the parameter
     # at the enactment month, date; this will be changed in future to support
@@ -158,6 +158,8 @@ def uprate_by_cadence(parameter: Parameter, cadence_uprater: Parameter, uprating
 
         # Calculate uprated value
         uprated_value = uprater_entry.value * reference_value
+        if "rounding" in meta:
+            uprated_value = round_uprated_value(meta, uprated_value)
 
         # Add uprated value to data list
         uprated_data.append(

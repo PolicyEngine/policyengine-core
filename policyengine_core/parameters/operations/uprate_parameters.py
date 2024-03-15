@@ -336,7 +336,17 @@ def construct_cadence_uprater(parameter: Parameter, uprating_parameter: Paramete
     return Parameter(uprating_parameter.name, edited_uprater_data)
 
 def construct_cadence_options(cadence_settings: dict, parameter: Parameter) -> dict:
-    
+
+    # Define all settings with fixed input options
+    # so as to test that input is valid 
+    FIXED_OPTIONS = {
+        "interval": [
+            "year",
+            "month",
+            "day"
+        ]
+    }
+
     # All of these will be split into a dict of (year: int, month: int, day: int)
     MATHEMATICAL_KEYS = [
         "start",
@@ -347,6 +357,11 @@ def construct_cadence_options(cadence_settings: dict, parameter: Parameter) -> d
     # All of these will be converted to Instant
     INSTANT_KEYS = [
         "effective"
+    ]
+
+    # All of these will remain strings
+    STRING_KEYS = [
+        "interval"
     ]
 
     cadence_options = {}
@@ -372,6 +387,21 @@ def construct_cadence_options(cadence_settings: dict, parameter: Parameter) -> d
             continue
         
         cadence_options[key] = instant(cadence_settings[key])
+
+    for key in STRING_KEYS:
+        
+        if cadence_settings.get(key) is None:
+            continue
+        
+        if FIXED_OPTIONS.get(key):
+            value = cadence_settings.get(key)
+            if str(value).lower() not in FIXED_OPTIONS[key]:
+                valid_options = ", ".join(str(x) for x in FIXED_OPTIONS[key])
+                raise SyntaxError(
+                    f"Unable to uprate {parameter.name}: {key} in cadence settings contains invalid value; valid options are ({valid_options})"
+                )
+        
+        cadence_options[key] = str(cadence_settings[key])
 
     return cadence_options
 

@@ -273,7 +273,7 @@ def test_parameter_uprating_two_year_offset():
     assert uprated.to_be_uprated("2020-04-01") == 32
     assert uprated.to_be_uprated("2021-04-01") == 64
 
-def test_parameter_uprating_cadence_custom_start():
+def test_parameter_uprating_cadence_custom_effective():
     """
     Test custom start date for uprating
     """
@@ -328,6 +328,59 @@ def test_parameter_uprating_cadence_custom_start():
     assert uprated.to_be_uprated("2019-04-01") == 4
     assert uprated.to_be_uprated("2020-04-01") == 8
     assert uprated.to_be_uprated("2021-04-01") == 16 
+
+def test_parameter_uprating_cadence_custom_effective_malformed():
+    """
+    Test that malformed custom effective date for uprating raises error
+    """
+    
+    from policyengine_core.parameters import ParameterNode
+
+    # Create the parameter
+
+    root = ParameterNode(
+        data={
+            "to_be_uprated": {
+                "description": "Example parameter",
+                "values": {
+                    "2015-04-01": 1,
+                    "2016-04-01": 2,
+                    "2017-04-01": 4
+                },
+                "metadata": {
+                    "uprating": {
+                        "parameter": "uprater",
+                        "at_defined_interval": {
+                            "enactment": "0002-04-01",
+                            "start": "0000-10-01",
+                            "end": "0001-10-01",
+                            "effective": "dworkin"
+                        }
+                    },
+                },
+            },
+            "uprater": {
+                "description": "Uprater",
+                "values": {
+                    "2015-10-01": 1,
+                    "2015-12-01": 1,
+                    "2016-10-01": 2,
+                    "2016-12-01": 1,
+                    "2017-10-01": 4,
+                    "2017-12-01": 1,
+                    "2018-10-01": 8,
+                    "2019-10-01": 16,
+                    "2020-10-01": 32
+                },
+            },
+        }
+    )
+
+    from policyengine_core.parameters import uprate_parameters
+
+    with pytest.raises(ValueError):
+        uprated = uprate_parameters(root)
+
 
 def test_parameter_uprating_missing_data():
     """

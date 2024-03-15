@@ -84,7 +84,7 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                     # Use existing uprating parameter to construct cadence-based uprater, where
                     # each resulting uprating option is a multiplication factor to be applied to
                     # the preceding value
-                    cadence_uprater = construct_cadence_uprater(uprating_parameter, cadence_options, uprating_first_date, uprating_last_date)
+                    cadence_uprater = construct_cadence_uprater(parameter, uprating_parameter, cadence_options, uprating_first_date, uprating_last_date)
 
                     uprated_data = uprate_by_cadence(parameter, cadence_uprater, uprating_first_date, meta)
                     parameter.values_list.extend(uprated_data)
@@ -283,7 +283,7 @@ def find_cadence_last(uprater: Parameter, cadence_options: dict) -> Instant:
         cadence_options["enactment"]["day"]
     ))
     
-def construct_cadence_uprater(uprating_parameter: Parameter, cadence_options: dict, first_date: Instant, last_date: Instant) -> Parameter:
+def construct_cadence_uprater(parameter: Parameter, uprating_parameter: Parameter, cadence_options: dict, first_date: Instant, last_date: Instant) -> Parameter:
 
     # Measure expected output size - in future, this will depend upon
     # "interval" from cadence_options, but for now, it's number of individual
@@ -296,20 +296,30 @@ def construct_cadence_uprater(uprating_parameter: Parameter, cadence_options: di
 
     # Within the range of this output size...
     for i in range(ITERATIONS):
-
-        # Find uprater value at cadence start
-        start_value = uprating_parameter(instant((
+        
+        start_date = instant((
           first_date.year + i - start_offset,
           cadence_options["start"]["month"],
           cadence_options["start"]["day"]
-        )))
+        ))
 
-        # Find uprater value at cadence end
-        end_value = uprating_parameter(instant((
+        end_date = instant((
           first_date.year + i - end_offset,
           cadence_options["end"]["month"],
           cadence_options["end"]["day"]
-        )))
+        ))
+
+        # Find uprater value at cadence start
+        start_value = uprating_parameter(start_date)
+
+        # Find uprater value at cadence end
+        end_value = uprating_parameter(end_date)
+
+        # Ensure that earliest date exists within uprater
+        if not start_value:
+            raise ValueError(
+                f"Failed to uprate {parameter.name} using {uprating_parameter.name}: uprater missing values at date {str(start_date)}"
+            )
 
         # Find difference of these values
         difference = end_value / start_value

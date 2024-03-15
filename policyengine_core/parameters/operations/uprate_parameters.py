@@ -1,4 +1,5 @@
 from numpy import ceil, floor
+from dateutil import parser, rrule
 
 from policyengine_core.parameters.operations.get_parameter import get_parameter
 from policyengine_core.parameters.parameter import Parameter
@@ -7,7 +8,7 @@ from policyengine_core.parameters.parameter_at_instant import (
 )
 from policyengine_core.parameters.parameter_node import ParameterNode
 from policyengine_core.parameters.parameter_scale import ParameterScale
-from policyengine_core.periods import instant, period, Instant
+from policyengine_core.periods import instant, Instant
 
 
 def uprate_parameters(root: ParameterNode) -> ParameterNode:
@@ -32,7 +33,7 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
     for parameter in descendants:
         if isinstance(parameter, Parameter):
             if parameter.metadata.get("uprating") is not None:
-                
+
                 # Pull the uprating definition dict
                 meta = parameter.metadata["uprating"]
 
@@ -53,7 +54,7 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                 else:
                     uprating_parameter = get_parameter(root, meta["parameter"])
 
-                # If uprating with a set candence, ensure that all 
+                # If uprating with a set candence, ensure that all
                 # required values are present
                 cadence_meta = meta.get("at_defined_interval")
                 cadence_options = {}
@@ -62,31 +63,45 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                     cadence_options_test = [
                         cadence_meta.get("start"),
                         cadence_meta.get("end"),
-                        cadence_meta.get("enactment")
-                    ]                
+                        cadence_meta.get("enactment"),
+                    ]
 
                     # Ensure that all options are properly defined
                     if not all(cadence_options_test):
                         raise SyntaxError(
                             f"Failed to uprate {parameter.name} using cadence; start, end, and enactment must all be provided"
-                        ) 
+                        )
 
                     # Construct cadence options object
-                    cadence_options = construct_cadence_options(cadence_meta, parameter)
+                    cadence_options = construct_cadence_options(
+                        cadence_meta, parameter
+                    )
 
-                    # Determine the first date from which to start uprating - 
+                    # Determine the first date from which to start uprating -
                     # this should be the first application date (month, day)
                     # following the last defined param value (not including the
                     # final value)
-                    uprating_first_date = find_cadence_first(parameter, cadence_options)
-                    uprating_last_date = find_cadence_last(uprating_parameter, cadence_options)
+                    uprating_first_date = find_cadence_first(
+                        parameter, cadence_options
+                    )
+                    uprating_last_date = find_cadence_last(
+                        uprating_parameter, cadence_options
+                    )
 
                     # Use existing uprating parameter to construct cadence-based uprater, where
                     # each resulting uprating option is a multiplication factor to be applied to
                     # the preceding value
-                    cadence_uprater = construct_cadence_uprater(parameter, uprating_parameter, cadence_options, uprating_first_date, uprating_last_date)
+                    cadence_uprater = construct_cadence_uprater(
+                        parameter,
+                        uprating_parameter,
+                        cadence_options,
+                        uprating_first_date,
+                        uprating_last_date,
+                    )
 
-                    uprated_data = uprate_by_cadence(parameter, cadence_uprater, uprating_first_date, meta)
+                    uprated_data = uprate_by_cadence(
+                        parameter, cadence_uprater, uprating_first_date, meta
+                    )
                     parameter.values_list.extend(uprated_data)
 
                 else:
@@ -110,11 +125,17 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                                 raise ValueError(
                                     f"Failed to uprate using {uprating_parameter.name} at {last_instant} for {parameter.name} at {entry_instant} because the uprating parameter is not defined at {last_instant}."
                                 )
-                            uprater_at_entry = uprating_parameter(entry_instant)
-                            uprater_change = uprater_at_entry / uprater_at_start
+                            uprater_at_entry = uprating_parameter(
+                                entry_instant
+                            )
+                            uprater_change = (
+                                uprater_at_entry / uprater_at_start
+                            )
                             uprated_value = value_at_start * uprater_change
                             if "rounding" in meta:
-                                uprated_value = round_uprated_value(meta, uprated_value)
+                                uprated_value = round_uprated_value(
+                                    meta, uprated_value
+                                )
                             parameter.values_list.append(
                                 ParameterAtInstant(
                                     parameter.name,
@@ -128,6 +149,7 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                 )
     return root
 
+
 def round_uprated_value(meta: dict, uprated_value: float) -> float:
     rounding_config = meta["rounding"]
     if isinstance(rounding_config, float):
@@ -140,18 +162,23 @@ def round_uprated_value(meta: dict, uprated_value: float) -> float:
             upwards=ceil,
             downwards=floor,
         )[rounding_config["type"]]
-    uprated_value = (
-        rounding_fn(uprated_value / interval)
-        * interval
-    )
+    uprated_value = rounding_fn(uprated_value / interval) * interval
     return uprated_value
 
-def uprate_by_cadence(parameter: Parameter, cadence_uprater: Parameter, uprating_first_date: Instant, meta: dict) -> list[ParameterAtInstant]:
-    
+
+def uprate_by_cadence(
+    parameter: Parameter,
+    cadence_uprater: Parameter,
+    uprating_first_date: Instant,
+    meta: dict,
+) -> list[ParameterAtInstant]:
+
     # Pull out the value that occurred most recently in the parameter
     # at the enactment month, date; this will be changed in future to support
     # different periods than yearly
-    reference_value = parameter.get_at_instant(uprating_first_date.offset(-1, "year"))
+    reference_value = parameter.get_at_instant(
+        uprating_first_date.offset(-1, "year")
+    )
 
     uprated_data = []
     for uprater_entry in reversed(cadence_uprater.values_list):
@@ -164,9 +191,7 @@ def uprate_by_cadence(parameter: Parameter, cadence_uprater: Parameter, uprating
         # Add uprated value to data list
         uprated_data.append(
             ParameterAtInstant(
-                parameter.name,
-                uprater_entry.instant_str,
-                data=uprated_value
+                parameter.name, uprater_entry.instant_str, data=uprated_value
             )
         )
 
@@ -174,9 +199,10 @@ def uprate_by_cadence(parameter: Parameter, cadence_uprater: Parameter, uprating
         reference_value = uprated_value
     return uprated_data
 
+
 def find_cadence_first(parameter: Parameter, cadence_options: dict) -> Instant:
     """
-    Find first value to uprate. This should be the same (month, day) as 
+    Find first value to uprate. This should be the same (month, day) as
     the uprating enactment date, but occurring after the last value within
     the default parameter. This is overriden by the "effective" date option
 
@@ -186,9 +212,9 @@ def find_cadence_first(parameter: Parameter, cadence_options: dict) -> Instant:
     "2022-04-01"
     >>> if enactment: "0002-04-01", last value: "2022-04-01"
     "2023-04-01"
-    
+
     """
-    
+
     # Clone parameter's value list
     # param_values: ParameterNode = parameter.values_list.clone()
     param_values = []
@@ -197,9 +223,7 @@ def find_cadence_first(parameter: Parameter, cadence_options: dict) -> Instant:
 
     # There's no guarantee of a particular order for the value list's items;
     # sort the list to ensure newest item is first, akin to defined order elsewhere in repo
-    param_values.sort(
-        key=lambda x: x.instant_str, reverse=True
-    )
+    param_values.sort(key=lambda x: x.instant_str, reverse=True)
 
     # If an "effective" date is provided, return that;
     # note that cadence_options["effective"] is already of type
@@ -216,11 +240,11 @@ def find_cadence_first(parameter: Parameter, cadence_options: dict) -> Instant:
     cadence_start_year = None
     if (
         # e.g., If newest_param is 2-1 and enactment is 4-1
-        newest_param.month < cadence_options["enactment"]["month"] or
-        (
+        newest_param.month < cadence_options["enactment"]["month"]
+        or (
             # e.g., If newest_param is 4-1 and enactment is 4-15
-            newest_param.month == cadence_options["enactment"]["month"] and
-            newest_param.day < cadence_options["enactment"]["day"]
+            newest_param.month == cadence_options["enactment"]["month"]
+            and newest_param.day < cadence_options["enactment"]["day"]
         )
     ):
         cadence_start_year = newest_param.year
@@ -228,11 +252,14 @@ def find_cadence_first(parameter: Parameter, cadence_options: dict) -> Instant:
         cadence_start_year = newest_param.year + 1
 
     # Must pass date as tuple if not a string
-    return instant((
-        cadence_start_year,
-        cadence_options["enactment"]["month"],
-        cadence_options["enactment"]["day"]
-    ))
+    return instant(
+        (
+            cadence_start_year,
+            cadence_options["enactment"]["month"],
+            cadence_options["enactment"]["day"],
+        )
+    )
+
 
 def find_cadence_last(uprater: Parameter, cadence_options: dict) -> Instant:
     """
@@ -243,7 +270,7 @@ def find_cadence_last(uprater: Parameter, cadence_options: dict) -> Instant:
     "2023-04-01"
     >>> if enactment: "0003-04-01", end: "0001-10-01", last uprating value: "2022-10-01"
     "2024-04-01"
-    """ 
+    """
 
     # Clone parameter's value list
     # param_values: ParameterNode = parameter.values_list.clone()
@@ -253,9 +280,7 @@ def find_cadence_last(uprater: Parameter, cadence_options: dict) -> Instant:
 
     # There's no guarantee of a particular order for the value list's items;
     # sort the list to ensure newest item is first, akin to defined order elsewhere in repo
-    uprater_values.sort(
-        key=lambda x: x.instant_str, reverse=True
-    )
+    uprater_values.sort(key=lambda x: x.instant_str, reverse=True)
 
     # Pull off the first (newest) value and turn into Instant
     last_param: Instant = instant(uprater_values[0].instant_str)
@@ -266,11 +291,11 @@ def find_cadence_last(uprater: Parameter, cadence_options: dict) -> Instant:
     cadence_end_year = None
     if (
         # e.g., If last_param is 10-1 and uprater end date is 4-1
-        last_param.month > cadence_options["end"]["month"] or
-        (
+        last_param.month > cadence_options["end"]["month"]
+        or (
             # e.g., If last_param is 4-15 and uprater end date is 4-1
-            last_param.month == cadence_options["end"]["month"] and
-            last_param.day > cadence_options["end"]["day"]
+            last_param.month == cadence_options["end"]["month"]
+            and last_param.day > cadence_options["end"]["day"]
         )
     ):
         cadence_end_year = last_param.year - 1
@@ -280,89 +305,119 @@ def find_cadence_last(uprater: Parameter, cadence_options: dict) -> Instant:
     # We're seeking the last uprating enactment date, not measurement date;
     # thus, we now increment the year by the difference between the uprater measurement
     # end year and the enactment year
-    cadence_end_year += (cadence_options["enactment"]["year"] - cadence_options["end"]["year"])
+    cadence_end_year += (
+        cadence_options["enactment"]["year"] - cadence_options["end"]["year"]
+    )
 
     # Must pass date as tuple if not a string
-    return instant((
-        cadence_end_year,
-        cadence_options["enactment"]["month"],
-        cadence_options["enactment"]["day"]
-    ))
-    
-def construct_cadence_uprater(parameter: Parameter, uprating_parameter: Parameter, cadence_options: dict, first_date: Instant, last_date: Instant) -> Parameter:
+    return instant(
+        (
+            cadence_end_year,
+            cadence_options["enactment"]["month"],
+            cadence_options["enactment"]["day"],
+        )
+    )
 
-    # Measure expected output size - in future, this will depend upon
-    # "interval" from cadence_options, but for now, it's number of individual
-    # years from start to end
-    ITERATIONS = last_date.year - first_date.year + 1
 
+def construct_cadence_uprater(
+    parameter: Parameter,
+    uprating_parameter: Parameter,
+    cadence_options: dict,
+    first_date: Instant,
+    last_date: Instant,
+) -> Parameter:
+
+    # Parse first_date and last_date into datetime objects
+    start_date = parser.parse(str(first_date))
+    end_date = parser.parse(str(last_date))
+
+    # Determine the frequency module to utilize within rrule
+    interval = ""
+    rrule_interval = ""
+    if cadence_options.get("interval"):
+        interval = cadence_options["interval"]
+        rrule_interval = getattr(rrule, ((interval + "LY").upper()))
+    else:
+        interval = "year"
+        rrule_interval = rrule.YEARLY
+
+    # Generate a list of iterations
+    iterations = rrule.rrule(
+        freq=rrule_interval, dtstart=start_date, until=end_date
+    )
+    # and count entries in list
+    iteration_count = rrule.rrule.count(iterations)
+
+    # Determine the offset between the first enactment
+    # date and the first start and end date
     edited_uprater_data = {}
-    start_offset = cadence_options["enactment"]["year"] - cadence_options["start"]["year"]
-    end_offset = cadence_options["enactment"]["year"] - cadence_options["end"]["year"]
+    start_year_offset = (
+        cadence_options["enactment"]["year"] - cadence_options["start"]["year"]
+    )
+    end_year_offset = (
+        cadence_options["enactment"]["year"] - cadence_options["end"]["year"]
+    )
 
-    # Within the range of this output size...
-    for i in range(ITERATIONS):
-        
-        start_date = instant((
-          first_date.year + i - start_offset,
-          cadence_options["start"]["month"],
-          cadence_options["start"]["day"]
-        ))
+    # Convert these to instants to be offset in the loop below
+    period_start = instant(
+        (
+            first_date.year - start_year_offset,
+            cadence_options["start"]["month"],
+            cadence_options["start"]["day"],
+        )
+    )
 
-        end_date = instant((
-          first_date.year + i - end_offset,
-          cadence_options["end"]["month"],
-          cadence_options["end"]["day"]
-        ))
+    period_end = instant(
+        (
+            first_date.year - end_year_offset,
+            cadence_options["end"]["month"],
+            cadence_options["end"]["day"],
+        )
+    )
+
+    # Within the iteration list...
+    for i in range(iteration_count):
+
+        start_calc_date = period_start.offset(i, interval)
+        end_calc_date = period_end.offset(i, interval)
 
         # Find uprater value at cadence start
-        start_value = uprating_parameter(start_date)
+        start_value = uprating_parameter(start_calc_date)
 
         # Find uprater value at cadence end
-        end_value = uprating_parameter(end_date)
+        end_value = uprating_parameter(end_calc_date)
 
         # Ensure that earliest date exists within uprater
         if not start_value:
             raise ValueError(
-                f"Failed to uprate {parameter.name} using {uprating_parameter.name}: uprater missing values at date {str(start_date)}"
+                f"Failed to uprate {parameter.name} using {uprating_parameter.name}: uprater missing values at date {str(start_calc_date)}"
             )
 
         # Find difference of these values
         difference = end_value / start_value
 
         # Apply that at enactment date for this iteration
-        edited_uprater_data[str(first_date.offset(i, "year"))] = difference
+        edited_uprater_data[str(first_date.offset(i, interval))] = difference
 
     return Parameter(uprating_parameter.name, edited_uprater_data)
 
-def construct_cadence_options(cadence_settings: dict, parameter: Parameter) -> dict:
+
+def construct_cadence_options(
+    cadence_settings: dict, parameter: Parameter
+) -> dict:
 
     # Define all settings with fixed input options
-    # so as to test that input is valid 
-    FIXED_OPTIONS = {
-        "interval": [
-            "year",
-            "month",
-            "day"
-        ]
-    }
+    # so as to test that input is valid
+    FIXED_OPTIONS = {"interval": ["year", "month", "day"]}
 
     # All of these will be split into a dict of (year: int, month: int, day: int)
-    MATHEMATICAL_KEYS = [
-        "start",
-        "end",
-        "enactment"
-    ]
+    MATHEMATICAL_KEYS = ["start", "end", "enactment"]
 
     # All of these will be converted to Instant
-    INSTANT_KEYS = [
-        "effective"
-    ]
+    INSTANT_KEYS = ["effective"]
 
     # All of these will remain strings
-    STRING_KEYS = [
-        "interval"
-    ]
+    STRING_KEYS = ["interval"]
 
     cadence_options = {}
     for key in MATHEMATICAL_KEYS:
@@ -372,27 +427,27 @@ def construct_cadence_options(cadence_settings: dict, parameter: Parameter) -> d
 
         date_split = cadence_settings[key].split("-")
         if len(date_split) != 3:
-          raise SyntaxError(
-              f"Error while uprating {parameter.name}: cadence date values must be YYYY-MM-DD"
-          )
+            raise SyntaxError(
+                f"Error while uprating {parameter.name}: cadence date values must be YYYY-MM-DD"
+            )
         cadence_options[key] = {
             "year": int(date_split[0]),
             "month": int(date_split[1]),
-            "day": int(date_split[2])
+            "day": int(date_split[2]),
         }
-    
+
     for key in INSTANT_KEYS:
-        
+
         if cadence_settings.get(key) is None:
             continue
-        
+
         cadence_options[key] = instant(cadence_settings[key])
 
     for key in STRING_KEYS:
-        
+
         if cadence_settings.get(key) is None:
             continue
-        
+
         if FIXED_OPTIONS.get(key):
             value = cadence_settings.get(key)
             if str(value).lower() not in FIXED_OPTIONS[key]:
@@ -400,21 +455,18 @@ def construct_cadence_options(cadence_settings: dict, parameter: Parameter) -> d
                 raise SyntaxError(
                     f"Unable to uprate {parameter.name}: {key} in cadence settings contains invalid value; valid options are ({valid_options})"
                 )
-        
+
         cadence_options[key] = str(cadence_settings[key])
 
     return cadence_options
 
+
 def construct_uprater_self(parameter: Parameter, meta: dict) -> Parameter:
-    last_instant = instant(
-        parameter.values_list[0].instant_str
-    )
+    last_instant = instant(parameter.values_list[0].instant_str)
     start_instant = instant(
         meta.get(
             "from",
-            last_instant.offset(
-                -1, meta.get("interval", "year")
-            ),
+            last_instant.offset(-1, meta.get("interval", "year")),
         )
     )
     start = parameter(start_instant)
@@ -427,12 +479,8 @@ def construct_uprater_self(parameter: Parameter, meta: dict) -> Parameter:
     data = {}
     value = parameter.values_list[0].value
     for i in range(meta.get("number", 10)):
-        data[
-            str(
-                last_instant.offset(
-                    i, meta.get("interval", "year")
-                )
-            )
-        ] = (value * increase)
+        data[str(last_instant.offset(i, meta.get("interval", "year")))] = (
+            value * increase
+        )
         value *= increase
     return Parameter("self", data=data)

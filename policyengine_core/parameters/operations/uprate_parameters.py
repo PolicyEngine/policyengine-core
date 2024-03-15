@@ -178,7 +178,7 @@ def find_cadence_first(parameter: Parameter, cadence_options: dict) -> Instant:
     """
     Find first value to uprate. This should be the same (month, day) as 
     the uprating enactment date, but occurring after the last value within
-    the default parameter
+    the default parameter. This is overriden by the "effective" date option
 
     >>> if enactment: "0002-04-01", last value: "2022-10-01"
     "2023-04-01"
@@ -200,6 +200,12 @@ def find_cadence_first(parameter: Parameter, cadence_options: dict) -> Instant:
     param_values.sort(
         key=lambda x: x.instant_str, reverse=True
     )
+
+    # If an "effective" date is provided, return that;
+    # note that cadence_options["effective"] is already of type
+    # Instant within the options object
+    if cadence_options.get("effective") is not None:
+        return cadence_options["effective"]
 
     # Pull off the first (newest) value and turn into Instant
     newest_param: Instant = instant(param_values[0].instant_str)
@@ -331,13 +337,24 @@ def construct_cadence_uprater(parameter: Parameter, uprating_parameter: Paramete
 
 def construct_cadence_options(cadence_settings: dict, parameter: Parameter) -> dict:
     
-    CADENCE_KEYS = [
+    # All of these will be split into a dict of (year: int, month: int, day: int)
+    MATHEMATICAL_KEYS = [
         "start",
         "end",
         "enactment"
     ]
+
+    # All of these will be converted to Instant
+    INSTANT_KEYS = [
+        "effective"
+    ]
+
     cadence_options = {}
-    for key in CADENCE_KEYS:
+    for key in MATHEMATICAL_KEYS:
+
+        if cadence_settings.get(key) is None:
+            continue
+
         date_split = cadence_settings[key].split("-")
         if len(date_split) != 3:
           raise SyntaxError(
@@ -348,6 +365,13 @@ def construct_cadence_options(cadence_settings: dict, parameter: Parameter) -> d
             "month": int(date_split[1]),
             "day": int(date_split[2])
         }
+    
+    for key in INSTANT_KEYS:
+        
+        if cadence_settings.get(key) is None:
+            continue
+        
+        cadence_options[key] = instant(cadence_settings[key])
 
     return cadence_options
 

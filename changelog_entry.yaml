@@ -1,4 +1,4 @@
-- bump: minor
+- bump: patch
   changes:
-    added:
-    - Parameters can now be uprated based upon fixed cadences
+    fixed:
+    - Warning ignore in enum.py.

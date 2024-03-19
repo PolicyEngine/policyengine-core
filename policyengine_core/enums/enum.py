@@ -70,9 +70,10 @@ class Enum(enum.Enum):
         """
         if isinstance(array, EnumArray):
             return array
-
-        if isinstance(array == 0, bool):
-            array = array.astype(str)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            if isinstance(array == 0, bool):
+                array = array.astype(str)
 
         # String array
         if isinstance(array, numpy.ndarray) and array.dtype.kind in {"U", "S"}:

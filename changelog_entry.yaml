@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    fixed:
+    - Warning ignore in enum.py.

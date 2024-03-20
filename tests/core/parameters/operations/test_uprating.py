@@ -370,6 +370,60 @@ def test_parameter_uprating_cadence_custom_interval():
     assert uprated.to_be_uprated("2018-06-01") == 32
     assert uprated.to_be_uprated("2018-07-01") == 64
 
+def test_paramter_uprating_custom_cadence_tight():
+    """
+    Test custom monthly uprating when applied within a
+    tighter timeframe
+    """
+    from policyengine_core.parameters import ParameterNode
+
+    # Create the parameter
+
+    root = ParameterNode(
+        data={
+            "to_be_uprated": {
+                "description": "Example parameter",
+                "values": {
+                    "2015-01-01": 1, 
+                    "2015-02-01": 2, 
+                },
+                "metadata": {
+                    "uprating": {
+                        "parameter": "uprater",
+                        "at_defined_interval": {
+                            "enactment": "0001-03-01",
+                            "start": "0000-01-01",
+                            "end": "0000-02-01",
+                            "interval": "month",
+                        },
+                    },
+                },
+            },
+            "uprater": {
+                "description": "Uprater",
+                "values": {
+                    "2014-01-01": 1,
+                    "2015-01-01": 1,
+                    "2015-02-01": 2,
+                    "2015-03-01": 4,
+                    "2015-04-01": 8,
+                    "2015-05-01": 16,
+                    "2015-06-01": 32,
+                    "2015-07-01": 64,
+                    "2015-08-01": 128,
+                },
+            },
+        }
+    )
+
+    from policyengine_core.parameters import uprate_parameters
+
+    uprated = uprate_parameters(root)
+
+    assert uprated.to_be_uprated("2015-01-01") == 1
+    assert uprated.to_be_uprated("2015-04-01") == 8
+    assert uprated.to_be_uprated("2015-07-01") == 64
+    assert uprated.to_be_uprated("2016-04-01") == 256
 
 def test_parameter_uprating_cadence_custom_effective_malformed():
     """
@@ -605,3 +659,45 @@ def test_parameter_uprating_with_cadence_malformed_syntax():
 
     with pytest.raises(SyntaxError):
         uprated = uprate_parameters(root)
+
+def test_parameter_uprating_cadence_minimal_data():
+    """
+    Test that cadence-based uprating works when:
+    1. There are only two uprating values
+    2. There is only one value given against which to uprate
+    """
+    from policyengine_core.parameters import ParameterNode
+
+    root = ParameterNode(
+        data={
+            "to_be_uprated": {
+                "description": "Example parameter based off UK CPI uprating",
+                "values": {
+                    "2023-01-01": 1
+                },
+                "metadata": {
+                    "uprating": {
+                        "parameter": "uprater",
+                        "at_defined_interval": {
+                            "start": "0000-09-01",
+                            "end": "0001-09-01",
+                            "enactment": "0002-04-01",
+                        },
+                    },
+                },
+            },
+            "uprater": {
+                "description": "Uprater",
+                "values": {
+                    "2021-09-01": 112.4,
+                    "2022-09-01": 123.8,
+                },
+            },
+        }
+    )
+
+    from policyengine_core.parameters import uprate_parameters
+
+    uprated = uprate_parameters(root)
+
+    assert round(uprated.to_be_uprated("2023-04-01"), 3) == 1.101

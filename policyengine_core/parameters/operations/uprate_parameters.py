@@ -1,5 +1,6 @@
 from numpy import ceil, floor
 from dateutil import parser, rrule
+from datetime import datetime, timedelta
 
 from policyengine_core.parameters.operations.get_parameter import get_parameter
 from policyengine_core.parameters.parameter import Parameter
@@ -87,6 +88,10 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                     uprating_last_date = find_cadence_last(
                         uprating_parameter, cadence_options
                     )
+
+                    print("\nNew entry")
+                    print(uprating_first_date)
+                    print(uprating_last_date)
 
                     # Use existing uprating parameter to construct cadence-based uprater, where
                     # each resulting uprating option is a multiplication factor to be applied to
@@ -200,7 +205,7 @@ def uprate_by_cadence(
     return uprated_data
 
 
-def find_cadence_first(parameter: Parameter, cadence_options: dict) -> Instant:
+def find_cadence_first(parameter: Parameter, cadence_options: dict) -> datetime:
     """
     Find first value to uprate. This should be the same (month, day) as
     the uprating enactment date, but occurring after the last value within
@@ -229,36 +234,86 @@ def find_cadence_first(parameter: Parameter, cadence_options: dict) -> Instant:
     # note that cadence_options["effective"] is already of type
     # Instant within the options object
     if cadence_options.get("effective") is not None:
-        return cadence_options["effective"]
-
-    # Pull off the first (newest) value and turn into Instant
-    newest_param: Instant = instant(param_values[0].instant_str)
-
-    # If month, day of most recent param occurs before enactment date, then
-    # first uprated date exists in same year, otherwise it must be in next year;
-    # in this case, add 1
-    cadence_start_year = None
-    if (
-        # e.g., If newest_param is 2-1 and enactment is 4-1
-        newest_param.month < cadence_options["enactment"]["month"]
-        or (
-            # e.g., If newest_param is 4-1 and enactment is 4-15
-            newest_param.month == cadence_options["enactment"]["month"]
-            and newest_param.day < cadence_options["enactment"]["day"]
-        )
-    ):
-        cadence_start_year = newest_param.year
+        return parser.parse(cadence_options["effective"])
+    
+    # Save the "interval", if provided, else set to "year"
+    interval = None
+    if cadence_options.get("interval") is not None:
+        interval = cadence_options["interval"]
     else:
-        cadence_start_year = newest_param.year + 1
+        interval = "year"
 
-    # Must pass date as tuple if not a string
-    return instant(
-        (
-            cadence_start_year,
-            cadence_options["enactment"]["month"],
-            cadence_options["enactment"]["day"],
-        )
+    # Pull of the first (newest) value and parse into datetime object
+    newest_param: datetime = parser.parse(param_values[0].instant_str)
+    
+    # Create an offset of one day; if the newest param date is the same as our
+    # enactment date, (e.g., newest param is 2022-04-01 and enactment is 04-01),
+    # we don't want to include 2022-04-01, but rrule inclusively applies the
+    # dtstart arg, so we need to offset by one day when evaluating
+    offset: timedelta = timedelta(days=1)
+    offset_param = newest_param + offset
+
+    print(offset_param)
+
+    # Conditionally determine settings to utilize
+    # Set the month only if the interval is "year"
+    month_option = cadence_options["enactment"]["month"] if interval == "year" else None
+    # Set the day if interval is "year" or "month", just not "day"
+    day_option = cadence_options["enactment"]["day"] if interval != "day" else None
+
+    rrule_array = rrule.rrule(
+        freq=rrule.YEARLY, dtstart=offset_param, bymonth=month_option, bymonthday=day_option, count=1
     )
+
+    return(rrule_array[0])
+
+#     # Parse first_date and last_date into datetime objects
+#     start_date = parser.parse(str(first_date))
+#     end_date = parser.parse(str(last_date))
+#     # Determine the frequency module to utilize within rrule
+#     interval = ""
+#     rrule_interval = ""
+#     if cadence_options.get("interval"):
+#         interval = cadence_options["interval"]
+#         rrule_interval = getattr(rrule, ((interval + "LY").upper()))
+#     else:
+#         interval = "year"
+#         rrule_interval = rrule.YEARLY
+# 
+#     # Generate a list of iterations
+#     iterations = rrule.rrule(
+#         freq=rrule_interval, dtstart=start_date, until=end_date
+#     )
+# 
+# 
+    # # Pull off the first (newest) value and turn into Instant
+    # newest_param: Instant = instant(param_values[0].instant_str)
+
+    # # If month, day of most recent param occurs before enactment date, then
+    # # first uprated date exists in same year, otherwise it must be in next year;
+    # # in this case, add 1
+    # cadence_start_year = None
+    # if (
+    #     # e.g., If newest_param is 2-1 and enactment is 4-1
+    #     newest_param.month < cadence_options["enactment"]["month"]
+    #     or (
+    #         # e.g., If newest_param is 4-1 and enactment is 4-15
+    #         newest_param.month == cadence_options["enactment"]["month"]
+    #         and newest_param.day < cadence_options["enactment"]["day"]
+    #     )
+    # ):
+    #     cadence_start_year = newest_param.year
+    # else:
+    #     cadence_start_year = newest_param.year + 1
+
+    # # Must pass date as tuple if not a string
+    # return instant(
+    #     (
+    #         cadence_start_year,
+    #         cadence_options["enactment"]["month"],
+    #         cadence_options["enactment"]["day"],
+    #     )
+    # )
 
 
 def find_cadence_last(uprater: Parameter, cadence_options: dict) -> Instant:

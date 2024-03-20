@@ -177,7 +177,7 @@ def uprate_by_cadence(
     # at the enactment month, date; this will be changed in future to support
     # different periods than yearly
     reference_value = parameter.get_at_instant(
-        uprating_first_date.offset(-1, "year")
+        uprating_first_date
     )
 
     uprated_data = []

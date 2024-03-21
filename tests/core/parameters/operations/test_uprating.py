@@ -370,7 +370,7 @@ def test_parameter_uprating_cadence_custom_interval():
     assert uprated.to_be_uprated("2018-06-01") == 32
     assert uprated.to_be_uprated("2018-07-01") == 64
 
-def test_paramter_uprating_custom_cadence_tight():
+def test_parameter_uprating_custom_cadence_tight():
     """
     Test custom monthly uprating when applied within a
     tighter timeframe

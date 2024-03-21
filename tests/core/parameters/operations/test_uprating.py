@@ -128,9 +128,9 @@ def test_parameter_uprating_with_cadence():
                     "uprating": {
                         "parameter": "uprater",
                         "at_defined_interval": {
-                            "enactment": "0002-04-01",
-                            "start": "0000-10-01",
-                            "end": "0001-10-01",
+                            "enactment": "2002-04-01",
+                            "start": "2000-10-01",
+                            "end": "2001-10-01",
                         },
                     },
                 },
@@ -179,9 +179,9 @@ def test_parameter_uprating_two_year_cadence():
                     "uprating": {
                         "parameter": "uprater",
                         "at_defined_interval": {
-                            "enactment": "0003-04-01",
-                            "start": "0000-10-01",
-                            "end": "0002-10-01",
+                            "enactment": "2003-04-01",
+                            "start": "2000-10-01",
+                            "end": "2002-10-01",
                         },
                     },
                 },
@@ -232,9 +232,9 @@ def test_parameter_uprating_two_year_offset():
                     "uprating": {
                         "parameter": "uprater",
                         "at_defined_interval": {
-                            "enactment": "0003-04-01",
-                            "start": "0000-10-01",
-                            "end": "0001-10-01",
+                            "enactment": "2003-04-01",
+                            "start": "2000-10-01",
+                            "end": "2001-10-01",
                         },
                     },
                 },
@@ -284,9 +284,9 @@ def test_parameter_uprating_cadence_custom_effective():
                     "uprating": {
                         "parameter": "uprater",
                         "at_defined_interval": {
-                            "enactment": "0002-04-01",
-                            "start": "0000-10-01",
-                            "end": "0001-10-01",
+                            "enactment": "2002-04-01",
+                            "start": "2000-10-01",
+                            "end": "2001-10-01",
                             "effective": "2020-04-01",
                         },
                     },
@@ -337,9 +337,9 @@ def test_parameter_uprating_cadence_custom_interval():
                     "uprating": {
                         "parameter": "uprater",
                         "at_defined_interval": {
-                            "enactment": "0002-04-01",
-                            "start": "0000-10-01",
-                            "end": "0001-10-01",
+                            "enactment": "2002-04-01",
+                            "start": "2000-10-01",
+                            "end": "2001-10-01",
                             "interval": "month",
                         },
                     },
@@ -391,9 +391,9 @@ def test_paramter_uprating_custom_cadence_tight():
                     "uprating": {
                         "parameter": "uprater",
                         "at_defined_interval": {
-                            "enactment": "0001-03-01",
-                            "start": "0000-01-01",
-                            "end": "0000-02-01",
+                            "enactment": "2000-03-01",
+                            "start": "2000-01-01",
+                            "end": "2000-02-01",
                             "interval": "month",
                         },
                     },
@@ -443,9 +443,9 @@ def test_parameter_uprating_cadence_custom_effective_malformed():
                     "uprating": {
                         "parameter": "uprater",
                         "at_defined_interval": {
-                            "enactment": "0002-04-01",
-                            "start": "0000-10-01",
-                            "end": "0001-10-01",
+                            "enactment": "2002-04-01",
+                            "start": "2000-10-01",
+                            "end": "2001-10-01",
                             "effective": "dworkin",
                         },
                     },
@@ -492,9 +492,9 @@ def test_parameter_uprating_cadence_date_malformed():
                     "uprating": {
                         "parameter": "uprater",
                         "at_defined_interval": {
-                            "enactment": "0002-04-01",
-                            "start": "0000-10",
-                            "end": "0001-10-01",
+                            "enactment": "2002-04-01",
+                            "start": "2000-10",
+                            "end": "2001-10-01",
                         },
                     },
                 },
@@ -540,9 +540,9 @@ def test_parameter_uprating_cadence_interval_malformed():
                     "uprating": {
                         "parameter": "uprater",
                         "at_defined_interval": {
-                            "enactment": "0002-04-01",
-                            "start": "0000-10-01",
-                            "end": "0001-10-01",
+                            "enactment": "2002-04-01",
+                            "start": "2000-10-01",
+                            "end": "2001-10-01",
                             "interval": "dworkin",
                         },
                     },
@@ -591,9 +591,9 @@ def test_parameter_uprating_missing_data():
                     "uprating": {
                         "parameter": "uprater",
                         "at_defined_interval": {
-                            "enactment": "0002-04-01",
-                            "start": "0000-10-01",
-                            "end": "0001-10-01",
+                            "enactment": "2002-04-01",
+                            "start": "2000-10-01",
+                            "end": "2001-10-01",
                         },
                     },
                 },
@@ -634,8 +634,8 @@ def test_parameter_uprating_with_cadence_malformed_syntax():
                     "uprating": {
                         "parameter": "uprater",
                         "at_defined_interval": {
-                            "enactment": "0002-04-01",
-                            "start": "0000-10-01",
+                            "enactment": "2002-04-01",
+                            "start": "2000-10-01",
                         },
                     },
                 },
@@ -679,9 +679,9 @@ def test_parameter_uprating_cadence_minimal_data():
                     "uprating": {
                         "parameter": "uprater",
                         "at_defined_interval": {
-                            "start": "0000-09-01",
-                            "end": "0001-09-01",
-                            "enactment": "0002-04-01",
+                            "start": "2000-09-01",
+                            "end": "2001-09-01",
+                            "enactment": "2002-04-01",
                         },
                     },
                 },

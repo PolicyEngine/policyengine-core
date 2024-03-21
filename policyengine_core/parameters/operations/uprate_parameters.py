@@ -401,6 +401,20 @@ def construct_cadence_options(
         if cadence_settings.get(key) is None:
             continue
         
+        # Ensure that date is YYYY-MM-DD
+        date_test = cadence_settings[key].split("-")
+        if (
+            len(date_test) != 3 or
+            len(date_test[0]) != 4 or
+            len(date_test[1]) != 2 or
+            len(date_test[2]) != 2 or
+            int(date_test[1]) > 12 or
+            int(date_test[2]) > 31
+        ):
+            raise SyntaxError(
+                f"Unable to uprate {parameter.name} using setting '{key}': '{key}' must be in format 'YYYY-MM-DD'"
+            )
+        
         cadence_options[key] = parse(cadence_settings[key])
 
     for key in STRING_KEYS:

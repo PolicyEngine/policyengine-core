@@ -470,7 +470,7 @@ def test_parameter_uprating_cadence_custom_effective_malformed():
 
     from policyengine_core.parameters import uprate_parameters
 
-    with pytest.raises(ValueError):
+    with pytest.raises(SyntaxError):
         uprated = uprate_parameters(root)
 
 

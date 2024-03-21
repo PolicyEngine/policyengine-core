@@ -206,9 +206,9 @@ class Reform(TaxBenefitSystem):
             sanitised_period_values = {}
             for period, value in period_values.items():
                 period = period_(period)
-                sanitised_period_values[f"{period.start}.{period.stop}"] = (
-                    value
-                )
+                sanitised_period_values[
+                    f"{period.start}.{period.stop}"
+                ] = value
             sanitised_parameter_values[path] = sanitised_period_values
 
         response = requests.post(

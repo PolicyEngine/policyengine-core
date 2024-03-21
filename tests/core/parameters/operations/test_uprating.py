@@ -348,14 +348,10 @@ def test_parameter_uprating_cadence_custom_interval():
             "uprater": {
                 "description": "Uprater",
                 "values": {
+                    "2015-10-01": 1,
                     "2016-10-01": 2,
-                    "2016-11-01": 4,
-                    "2016-12-01": 8,
-                    "2017-01-01": 16,
                     "2017-10-01": 4,
-                    "2017-11-01": 8,
-                    "2017-12-01": 16,
-                    "2018-01-01": 32,
+                    "2018-10-01": 8,
                 },
             },
         }
@@ -365,10 +361,16 @@ def test_parameter_uprating_cadence_custom_interval():
 
     uprated = uprate_parameters(root)
 
-    assert uprated.to_be_uprated("2018-04-01") == 8
-    assert uprated.to_be_uprated("2018-05-01") == 16
-    assert uprated.to_be_uprated("2018-06-01") == 32
-    assert uprated.to_be_uprated("2018-07-01") == 64
+    assert uprated.to_be_uprated("2017-05-01") == 8
+    assert uprated.to_be_uprated("2017-06-01") == 16
+    assert uprated.to_be_uprated("2017-07-01") == 32
+    assert uprated.to_be_uprated("2017-08-01") == 64
+    assert uprated.to_be_uprated("2017-09-01") == 128
+    assert uprated.to_be_uprated("2017-10-01") == 256
+    assert uprated.to_be_uprated("2017-11-01") == 512
+    assert uprated.to_be_uprated("2017-12-01") == 1024
+    assert uprated.to_be_uprated("2018-01-01") == 2048
+
 
 def test_parameter_uprating_custom_cadence_tight():
     """
@@ -384,8 +386,8 @@ def test_parameter_uprating_custom_cadence_tight():
             "to_be_uprated": {
                 "description": "Example parameter",
                 "values": {
-                    "2015-01-01": 1, 
-                    "2015-02-01": 2, 
+                    "2015-01-01": 1,
+                    "2015-02-01": 2,
                 },
                 "metadata": {
                     "uprating": {
@@ -424,6 +426,7 @@ def test_parameter_uprating_custom_cadence_tight():
     assert uprated.to_be_uprated("2015-04-01") == 8
     assert uprated.to_be_uprated("2015-07-01") == 64
     assert uprated.to_be_uprated("2016-04-01") == 256
+
 
 def test_parameter_uprating_cadence_custom_effective_malformed():
     """
@@ -660,6 +663,7 @@ def test_parameter_uprating_with_cadence_malformed_syntax():
     with pytest.raises(SyntaxError):
         uprated = uprate_parameters(root)
 
+
 def test_parameter_uprating_cadence_minimal_data():
     """
     Test that cadence-based uprating works when:
@@ -672,9 +676,7 @@ def test_parameter_uprating_cadence_minimal_data():
         data={
             "to_be_uprated": {
                 "description": "Example parameter based off UK CPI uprating",
-                "values": {
-                    "2023-01-01": 1
-                },
+                "values": {"2023-01-01": 1},
                 "metadata": {
                     "uprating": {
                         "parameter": "uprater",

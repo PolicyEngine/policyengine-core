@@ -1,4 +1,5 @@
 from numpy import ceil, floor
+
 # rrule is purposely imported this way to allow for programmatic
 # calling of rrule.YEARLY, rrule.MONTHLY, and rrule.DAILY
 from dateutil import rrule
@@ -38,7 +39,6 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
     for parameter in descendants:
         if isinstance(parameter, Parameter):
             if parameter.metadata.get("uprating") is not None:
-
                 # Pull the uprating definition dict
                 meta = parameter.metadata["uprating"]
 
@@ -64,7 +64,6 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                 cadence_meta = meta.get("at_defined_interval")
                 cadence_options = {}
                 if cadence_meta:
-
                     cadence_options_test = [
                         cadence_meta.get("start"),
                         cadence_meta.get("end"),
@@ -83,11 +82,11 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                     )
 
                     # Ensure that end comes after start and enactment comes after end
-                    if (cadence_options["end"] <= cadence_options["start"]):
+                    if cadence_options["end"] <= cadence_options["start"]:
                         raise ValueError(
                             f"Failed to uprate {parameter.name} using {uprating_parameter.name}: end must come after start"
                         )
-                    if (cadence_options["enactment"] <= cadence_options["end"]):
+                    if cadence_options["enactment"] <= cadence_options["end"]:
                         raise ValueError(
                             f"Failed to uprate {parameter.name} using {uprating_parameter.name}: enactment must come after end"
                         )
@@ -110,7 +109,7 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                         cadence_options,
                         uprating_first_date,
                         uprating_last_date,
-                        meta
+                        meta,
                     )
 
                     # Append uprated data to parameter values list
@@ -177,7 +176,10 @@ def round_uprated_value(meta: dict, uprated_value: float) -> float:
     uprated_value = rounding_fn(uprated_value / interval) * interval
     return uprated_value
 
-def find_cadence_first(parameter: Parameter, cadence_options: dict) -> datetime:
+
+def find_cadence_first(
+    parameter: Parameter, cadence_options: dict
+) -> datetime:
     """
     Find first value to uprate. This should be the same (month, day) as
     the uprating enactment date, but occurring after the last value within
@@ -207,7 +209,7 @@ def find_cadence_first(parameter: Parameter, cadence_options: dict) -> datetime:
     # Instant within the options object
     if cadence_options.get("effective") is not None:
         return cadence_options["effective"]
-    
+
     # Save the "interval", if provided, else set to "year"
     interval = None
     if cadence_options.get("interval") is not None:
@@ -217,7 +219,7 @@ def find_cadence_first(parameter: Parameter, cadence_options: dict) -> datetime:
 
     # Pull of the first (newest) value and parse into datetime object
     newest_param: datetime = parse(param_values[0].instant_str)
-    
+
     # Create an offset of one day; if the newest param date is the same as our
     # enactment date, (e.g., newest param is 2022-04-01 and enactment is 04-01),
     # we don't want to include 2022-04-01, but rrule inclusively applies the
@@ -227,15 +229,24 @@ def find_cadence_first(parameter: Parameter, cadence_options: dict) -> datetime:
 
     # Conditionally determine settings to utilize
     # Set the month only if the interval is "year"
-    month_option = cadence_options["enactment"].month if interval == "year" else None
+    month_option = (
+        cadence_options["enactment"].month if interval == "year" else None
+    )
     # Set the day if interval is "year" or "month", just not "day"
-    day_option = cadence_options["enactment"].day if interval != "day" else None
-
-    rrule_obj = rrule.rrule(
-        freq=rrule.YEARLY, dtstart=offset_param, bymonth=month_option, bymonthday=day_option, count=1
+    day_option = (
+        cadence_options["enactment"].day if interval != "day" else None
     )
 
-    return(rrule_obj[0])
+    rrule_obj = rrule.rrule(
+        freq=rrule.YEARLY,
+        dtstart=offset_param,
+        bymonth=month_option,
+        bymonthday=day_option,
+        count=1,
+    )
+
+    return rrule_obj[0]
+
 
 def find_cadence_last(uprater: Parameter, cadence_options: dict) -> datetime:
     """
@@ -267,16 +278,18 @@ def find_cadence_last(uprater: Parameter, cadence_options: dict) -> datetime:
 
     # Pull of the first (newest) value and parse into datetime object
     last_param: datetime = parse(uprater_values[0].instant_str)
-    
-    # Create an offset to allow us to search for one year, from one year 
-    # minus 1 day before the last uprater param, to the last uprater param; 
-    # this must be 1 year, minus 1 day, because rrule is inclusive of its 
+
+    # Create an offset to allow us to search for one year, from one year
+    # minus 1 day before the last uprater param, to the last uprater param;
+    # this must be 1 year, minus 1 day, because rrule is inclusive of its
     # start date. This must also be done as 1 year, then 1 day, because
     # leap years are not handled differently when specifying a day-based offset,
     # resulting in 25% of offsets being one day short if calculated
     # using days only; further, this must be done with relativedelta and not
     # datetime's timedelta, which doesn't handle year-based offsets
-    start_date: datetime = last_param - relativedelta(years=1) + relativedelta(days=1)
+    start_date: datetime = (
+        last_param - relativedelta(years=1) + relativedelta(days=1)
+    )
 
     # Conditionally determine settings to utilize
     # Set the month only if the interval is "year"
@@ -285,7 +298,11 @@ def find_cadence_last(uprater: Parameter, cadence_options: dict) -> datetime:
     day_option = cadence_options["end"].day if interval != "day" else None
 
     rrule_obj = rrule.rrule(
-        freq=rrule.YEARLY, dtstart=start_date, until=last_param, bymonth=month_option, bymonthday=day_option
+        freq=rrule.YEARLY,
+        dtstart=start_date,
+        until=last_param,
+        bymonth=month_option,
+        bymonthday=day_option,
     )
 
     # rrule can't look backward, so we generated an entire array of options
@@ -295,19 +312,24 @@ def find_cadence_last(uprater: Parameter, cadence_options: dict) -> datetime:
 
     # Ensure that data exists for the "start" parameter for this "end,"
     # otherwise raise error
-    end_start_diff: relativedelta = relativedelta(cadence_options["end"], cadence_options["start"])
+    end_start_diff: relativedelta = relativedelta(
+        cadence_options["end"], cadence_options["start"]
+    )
     last_start = last_end - end_start_diff
     if (uprater(instant(last_start.date()))) is None:
         raise ValueError(
-            f"Error while uprating using {uprater.name}: no valid start, end pair found; did " +
-            "you forget to add earlier values, or is there a long gap between start and end year?"
+            f"Error while uprating using {uprater.name}: no valid start, end pair found; did "
+            + "you forget to add earlier values, or is there a long gap between start and end year?"
         )
 
     # We're seeking the last uprating enactment date, not end date; find gap between
     # end and enactment, find the date corresponding to that gap, then return that
-    enactment_end_diff: relativedelta = relativedelta(cadence_options["enactment"], cadence_options["end"])
+    enactment_end_diff: relativedelta = relativedelta(
+        cadence_options["enactment"], cadence_options["end"]
+    )
     last_enactment: datetime = last_end + enactment_end_diff
     return last_enactment
+
 
 def uprate_by_cadence(
     parameter: Parameter,
@@ -315,9 +337,8 @@ def uprate_by_cadence(
     cadence_options: dict,
     first_date: datetime,
     last_date: datetime,
-    meta: dict
+    meta: dict,
 ) -> list[ParameterAtInstant]:
-
     # Determine the frequency module to utilize within rrule
     interval = ""
     rrule_interval = ""
@@ -336,13 +357,15 @@ def uprate_by_cadence(
     # Determine the offset between the first enactment
     # date and the first start and end date
     uprated_data: list[ParameterAtInstant] = []
-    enactment_start_offset: relativedelta = relativedelta(cadence_options["enactment"], cadence_options["start"])
-    enactment_end_offset: relativedelta = relativedelta(cadence_options["enactment"], cadence_options["end"])
+    enactment_start_offset: relativedelta = relativedelta(
+        cadence_options["enactment"], cadence_options["start"]
+    )
+    enactment_end_offset: relativedelta = relativedelta(
+        cadence_options["enactment"], cadence_options["end"]
+    )
 
     # Set a starting reference value to calculate against
-    reference_value = parameter.get_at_instant(
-        instant(first_date.date())
-    )
+    reference_value = parameter.get_at_instant(instant(first_date.date()))
 
     # For each entry (corresponding to an enactment date) in the iteration list...
     for enactment_date in iterations:
@@ -351,17 +374,21 @@ def uprate_by_cadence(
         end_calc_date: datetime = enactment_date - enactment_end_offset
 
         # Find uprater value at cadence start
-        start_val = uprating_parameter.get_at_instant(instant(start_calc_date.date()))
-        
+        start_val = uprating_parameter.get_at_instant(
+            instant(start_calc_date.date())
+        )
+
         # Find uprater value at cadence end
-        end_val = uprating_parameter.get_at_instant(instant(end_calc_date.date()))
+        end_val = uprating_parameter.get_at_instant(
+            instant(end_calc_date.date())
+        )
 
         # Ensure that earliest date exists within uprater
         if not start_val:
             raise ValueError(
                 f"Failed to uprate {parameter.name} using {uprating_parameter.name}: uprater missing values at date {start_calc_date.date()}"
             )
-    
+
         # Find difference of these values
         difference = end_val / start_val
 
@@ -382,10 +409,10 @@ def uprate_by_cadence(
 
     return uprated_data
 
+
 def construct_cadence_options(
     cadence_settings: dict, parameter: Parameter
 ) -> dict:
-
     # Define all settings with fixed input options
     # so as to test that input is valid
     FIXED_OPTIONS = {"interval": ["year", "month", "day"]}
@@ -400,25 +427,24 @@ def construct_cadence_options(
     for key in DATE_KEYS:
         if cadence_settings.get(key) is None:
             continue
-        
+
         # Ensure that date is YYYY-MM-DD
         date_test = cadence_settings[key].split("-")
         if (
-            len(date_test) != 3 or
-            len(date_test[0]) != 4 or
-            len(date_test[1]) != 2 or
-            len(date_test[2]) != 2 or
-            int(date_test[1]) > 12 or
-            int(date_test[2]) > 31
+            len(date_test) != 3
+            or len(date_test[0]) != 4
+            or len(date_test[1]) != 2
+            or len(date_test[2]) != 2
+            or int(date_test[1]) > 12
+            or int(date_test[2]) > 31
         ):
             raise SyntaxError(
                 f"Unable to uprate {parameter.name} using setting '{key}': '{key}' must be in format 'YYYY-MM-DD'"
             )
-        
+
         cadence_options[key] = parse(cadence_settings[key])
 
     for key in STRING_KEYS:
-
         if cadence_settings.get(key) is None:
             continue
 

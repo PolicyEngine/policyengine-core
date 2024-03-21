@@ -69,9 +69,7 @@ class TaxBenefitSystem:
     _parameters_at_instant_cache: Optional[Dict[Any, Any]] = None
     person_key_plural: str = None
     preprocess_parameters: str = None
-    baseline: "TaxBenefitSystem" = (
-        None  # Baseline tax-benefit system. Used only by reforms. Note: Reforms can be chained.
-    )
+    baseline: "TaxBenefitSystem" = None  # Baseline tax-benefit system. Used only by reforms. Note: Reforms can be chained.
     cache_blacklist = None
     decomposition_file_path = None
     variable_module_metadata: dict = None
@@ -185,9 +183,9 @@ class TaxBenefitSystem:
             baseline = self.baseline
             if baseline is None:
                 return self
-            self._base_tax_benefit_system = base_tax_benefit_system = (
-                baseline.base_tax_benefit_system
-            )
+            self._base_tax_benefit_system = (
+                base_tax_benefit_system
+            ) = baseline.base_tax_benefit_system
         return base_tax_benefit_system
 
     def instantiate_entities(self) -> Dict[str, Population]:

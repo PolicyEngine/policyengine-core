@@ -83,9 +83,9 @@ class ParameterScale(AtInstantLike):
                     child_key in bracket.children
                     and "unit" not in bracket.children[child_key].metadata
                 ):
-                    bracket.children[child_key].metadata[
-                        "unit"
-                    ] = self.metadata[unit_key]
+                    bracket.children[child_key].metadata["unit"] = (
+                        self.metadata[unit_key]
+                    )
 
     def get_descendants(self) -> Iterable:
         for bracket in self.brackets:

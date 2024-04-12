@@ -496,3 +496,8 @@
     fixed:
     - Breakdown-added parameters no longer precede uprating indices.
   date: 2024-03-05 13:01:42
+- bump: minor
+  changes:
+    added:
+    - Parameters can now be uprated based upon fixed cadences
+  date: 2024-03-22 10:42:19

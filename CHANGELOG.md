@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.18.0] - 2024-03-22 10:42:19
+
+### Added
+
+- Parameters can now be uprated based upon fixed cadences
+
 ## [2.17.1] - 2024-03-05 13:01:42
 
 ### Fixed
@@ -593,6 +599,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[2.18.0]: https://github.com/PolicyEngine/policyengine-core/compare/2.17.1...2.18.0
 [2.17.1]: https://github.com/PolicyEngine/policyengine-core/compare/2.17.0...2.17.1
 [2.17.0]: https://github.com/PolicyEngine/policyengine-core/compare/2.16.1...2.17.0
 [2.16.1]: https://github.com/PolicyEngine/policyengine-core/compare/2.16.0...2.16.1

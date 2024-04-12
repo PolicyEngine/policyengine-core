@@ -48,10 +48,10 @@ def format_fig(fig: go.Figure) -> go.Figure:
             source="https://raw.githubusercontent.com/PolicyEngine/policyengine-app/master/src/images/logos/policyengine/blue.png",
             xref="paper",
             yref="paper",
-            x=1,
+            x=1.1,
             y=-0.15,
-            sizex=0.2,
-            sizey=0.2,
+            sizex=0.15,
+            sizey=0.15,
             xanchor="right",
             yanchor="bottom",
         )

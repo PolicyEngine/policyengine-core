@@ -55,6 +55,8 @@ class ParameterScale(AtInstantLike):
             )
             brackets.append(bracket)
         self.brackets: typing.List[parameters.ParameterScaleBracket] = brackets
+        self.propagate_uprating()
+        self.propagate_units()
 
     def __getitem__(self, key: str) -> Any:
         if isinstance(key, int) and key < len(self.brackets):
@@ -86,6 +88,13 @@ class ParameterScale(AtInstantLike):
                     bracket.children[child_key].metadata["unit"] = (
                         self.metadata[unit_key]
                     )
+
+    def propagate_uprating(self) -> None:
+        for bracket in self.brackets:
+            bracket.propagate_uprating(
+                self.metadata.get("uprating"),
+                threshold=self.metadata.get("uprate_thresholds", False),
+            )
 
     def get_descendants(self) -> Iterable:
         for bracket in self.brackets:

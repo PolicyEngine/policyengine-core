@@ -19,3 +19,14 @@ class ParameterScaleBracket(ParameterNode):
         for key in self._allowed_keys:
             if key in self.children:
                 yield self.children[key]
+
+    def propagate_uprating(
+        self, uprating: str, threshold: bool = False
+    ) -> None:
+        for key in self._allowed_keys:
+            if key in self.children:
+                if key == "threshold" and not threshold:
+                    continue
+                self.children[key].metadata["uprating"] = (
+                    uprating or self.children[key].metadata.get("uprating")
+                )

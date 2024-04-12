@@ -108,6 +108,8 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                                 rounding_fn(uprated_value / interval)
                                 * interval
                             )
+                        else:
+                            uprated_value = round(uprated_value * 1e2) / 1e2
                         parameter.values_list.append(
                             ParameterAtInstant(
                                 parameter.name,

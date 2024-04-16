@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.19.0] - 2024-04-16 12:51:42
+
+### Added
+
+- Baseline parameter node.
+
 ## [2.18.0] - 2024-03-22 10:42:19
 
 ### Added
@@ -599,6 +605,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[2.19.0]: https://github.com/PolicyEngine/policyengine-core/compare/2.18.0...2.19.0
 [2.18.0]: https://github.com/PolicyEngine/policyengine-core/compare/2.17.1...2.18.0
 [2.17.1]: https://github.com/PolicyEngine/policyengine-core/compare/2.17.0...2.17.1
 [2.17.0]: https://github.com/PolicyEngine/policyengine-core/compare/2.16.1...2.17.0

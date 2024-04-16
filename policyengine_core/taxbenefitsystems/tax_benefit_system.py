@@ -125,6 +125,7 @@ class TaxBenefitSystem:
 
         if self.parameters_dir is not None:
             self.load_parameters(self.parameters_dir)
+            self.parameters.add_child("baseline", self.parameters.clone())
             if reform:
                 self.apply_reform_set(reform)
             self.parameters = homogenize_parameter_structures(

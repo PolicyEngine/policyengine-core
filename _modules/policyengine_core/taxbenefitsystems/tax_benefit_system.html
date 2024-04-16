@@ -364,6 +364,7 @@
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">load_parameters</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters_dir</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">add_child</span><span class="p">(</span><span class="s2">&quot;baseline&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">clone</span><span class="p">())</span>
             <span class="k">if</span> <span class="n">reform</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">apply_reform_set</span><span class="p">(</span><span class="n">reform</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">homogenize_parameter_structures</span><span class="p">(</span>

@@ -294,6 +294,8 @@
             <span class="p">)</span>
             <span class="n">brackets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bracket</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">brackets</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">parameters</span><span class="o">.</span><span class="n">ParameterScaleBracket</span><span class="p">]</span> <span class="o">=</span> <span class="n">brackets</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">propagate_uprating</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">propagate_units</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="n">key</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">brackets</span><span class="p">):</span>
@@ -325,6 +327,13 @@
                     <span class="n">bracket</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="n">child_key</span><span class="p">]</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;unit&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="n">unit_key</span><span class="p">]</span>
                     <span class="p">)</span></div>
+
+<div class="viewcode-block" id="ParameterScale.propagate_uprating"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_scale.ParameterScale.propagate_uprating">[docs]</a>    <span class="k">def</span> <span class="nf">propagate_uprating</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">bracket</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">brackets</span><span class="p">:</span>
+            <span class="n">bracket</span><span class="o">.</span><span class="n">propagate_uprating</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;uprating&quot;</span><span class="p">),</span>
+                <span class="n">threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;uprate_thresholds&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+            <span class="p">)</span></div>
 
 <div class="viewcode-block" id="ParameterScale.get_descendants"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_scale.ParameterScale.get_descendants">[docs]</a>    <span class="k">def</span> <span class="nf">get_descendants</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">:</span>
         <span class="k">for</span> <span class="n">bracket</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">brackets</span><span class="p">:</span>

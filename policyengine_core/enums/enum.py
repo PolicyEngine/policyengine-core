@@ -3,7 +3,7 @@ from __future__ import annotations
 import enum
 from typing import Union
 
-import numpy
+import numpy as np
 
 from .config import ENUM_ARRAY_DTYPE
 from .enum_array import EnumArray
@@ -38,9 +38,9 @@ class Enum(enum.Enum):
         cls,
         array: Union[
             EnumArray,
-            numpy.int_,
-            numpy.float_,
-            numpy.object_,
+            np.int_,
+            np.float_,
+            np.object_,
         ],
     ) -> EnumArray:
         """
@@ -75,14 +75,14 @@ class Enum(enum.Enum):
             array = array.astype(str)
 
         # String array
-        if isinstance(array, numpy.ndarray) and array.dtype.kind in {"U", "S"}:
-            array = numpy.select(
+        if isinstance(array, np.ndarray) and array.dtype.kind in {"U", "S"}:
+            array = np.select(
                 [array == item.name for item in cls],
                 [item.index for item in cls],
             ).astype(ENUM_ARRAY_DTYPE)
 
         # Enum items arrays
-        elif isinstance(array, numpy.ndarray) and array.dtype.kind == "O":
+        elif isinstance(array, np.ndarray) and array.dtype.kind == "O":
             # Ensure we are comparing the comparable. The problem this fixes:
             # On entering this method "cls" will generally come from
             # variable.possible_values, while the array values may come from
@@ -97,12 +97,12 @@ class Enum(enum.Enum):
             if len(array) > 0 and cls.__name__ is array[0].__class__.__name__:
                 cls = array[0].__class__
             if array[0].__class__.__name__ != "bytes":
-                array = numpy.select(
+                array = np.select(
                     [array == item for item in cls],
                     [item.index for item in cls],
                 ).astype(ENUM_ARRAY_DTYPE)
             else:
-                array = numpy.select(
+                array = np.select(
                     [array.astype(str) == item.name for item in cls],
                     [item.index for item in cls],
                 ).astype(ENUM_ARRAY_DTYPE)

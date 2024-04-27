@@ -70,6 +70,9 @@ class Enum(enum.Enum):
                 [array == item for item in cls],
                 [item.index for item in cls],
             )
+        elif array.dtype.kind in {"i", "u"}:
+            # Integer array
+            indices = array
         else:
             raise ValueError(f"Unsupported array dtype: {array.dtype}")
 

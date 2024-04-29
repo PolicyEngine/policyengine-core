@@ -251,35 +251,28 @@
 have an index.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.enums.enum.Enum.encode">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">encode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#policyengine_core.enums.enum_array.EnumArray" title="policyengine_core.enums.enum_array.EnumArray"><span class="pre">EnumArray</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int64</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float64</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">object_</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.enums.enum_array.EnumArray" title="policyengine_core.enums.enum_array.EnumArray"><span class="pre">EnumArray</span></a></span></span><a class="reference internal" href="../_modules/policyengine_core/enums/enum.html#Enum.encode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.enums.enum.Enum.encode" title="Permalink to this definition">#</a></dt>
-<dd><p>Encode a string numpy array, an enum item numpy array, or an int numpy
-array into an <a class="reference internal" href="#policyengine_core.enums.enum_array.EnumArray" title="policyengine_core.enums.enum_array.EnumArray"><code class="xref any py py-class docutils literal notranslate"><span class="pre">EnumArray</span></code></a>. See <a class="reference internal" href="#policyengine_core.enums.enum_array.EnumArray.decode" title="policyengine_core.enums.enum_array.EnumArray.decode"><code class="xref any py py-meth docutils literal notranslate"><span class="pre">EnumArray.decode</span></code></a> for
-decoding.</p>
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">encode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#policyengine_core.enums.enum_array.EnumArray" title="policyengine_core.enums.enum_array.EnumArray"><span class="pre">EnumArray</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.enums.enum_array.EnumArray" title="policyengine_core.enums.enum_array.EnumArray"><span class="pre">EnumArray</span></a></span></span><a class="reference internal" href="../_modules/policyengine_core/enums/enum.html#Enum.encode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.enums.enum.Enum.encode" title="Permalink to this definition">#</a></dt>
+<dd><p>Encode an array of enum items or string identifiers into an EnumArray.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>array</strong> (<em>numpy.ndarray</em>) – Array of string identifiers, or of enum
-items, to encode.</p>
+<dd class="field-odd"><p><strong>array</strong> – The input array to encode. Can be an EnumArray, a NumPy array
+of enum items, or a NumPy array of string identifiers.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>An <a class="reference internal" href="#policyengine_core.enums.enum_array.EnumArray" title="policyengine_core.enums.enum_array.EnumArray"><code class="xref any py py-class docutils literal notranslate"><span class="pre">EnumArray</span></code></a> encoding the input array values.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="#policyengine_core.enums.enum_array.EnumArray" title="policyengine_core.enums.enum_array.EnumArray"><code class="xref any py py-class docutils literal notranslate"><span class="pre">EnumArray</span></code></a></p>
+<dd class="field-even"><p>An EnumArray containing the encoded values.</p>
 </dd>
 </dl>
-<p>For instance:</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">string_identifier_array</span> <span class="o">=</span> <span class="n">asarray</span><span class="p">([</span><span class="s1">&#39;free_lodger&#39;</span><span class="p">,</span> <span class="s1">&#39;owner&#39;</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">encoded_array</span> <span class="o">=</span> <span class="n">HousingOccupancyStatus</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">string_identifier_array</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">encoded_array</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-<span class="go">2  # Encoded value</span>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">string_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="s2">&quot;ITEM_1&quot;</span><span class="p">,</span> <span class="s2">&quot;ITEM_2&quot;</span><span class="p">,</span> <span class="s2">&quot;ITEM_3&quot;</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">encoded_array</span> <span class="o">=</span> <span class="n">MyEnum</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">string_array</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">encoded_array</span>
+<span class="go">EnumArray([1, 2, 3], dtype=int8)</span>
 </pre></div>
 </div>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">free_lodger</span> <span class="o">=</span> <span class="n">HousingOccupancyStatus</span><span class="o">.</span><span class="n">free_lodger</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">owner</span> <span class="o">=</span> <span class="n">HousingOccupancyStatus</span><span class="o">.</span><span class="n">owner</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">enum_item_array</span> <span class="o">=</span> <span class="n">asarray</span><span class="p">([</span><span class="n">free_lodger</span><span class="p">,</span> <span class="n">owner</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">encoded_array</span> <span class="o">=</span> <span class="n">HousingOccupancyStatus</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">enum_item_array</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">encoded_array</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-<span class="go">2  # Encoded value</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">item_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">MyEnum</span><span class="o">.</span><span class="n">ITEM_1</span><span class="p">,</span> <span class="n">MyEnum</span><span class="o">.</span><span class="n">ITEM_2</span><span class="p">,</span> <span class="n">MyEnum</span><span class="o">.</span><span class="n">ITEM_3</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">encoded_array</span> <span class="o">=</span> <span class="n">MyEnum</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">item_array</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">encoded_array</span>
+<span class="go">EnumArray([1, 2, 3], dtype=int8)</span>
 </pre></div>
 </div>
 </dd></dl>

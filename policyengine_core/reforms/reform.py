@@ -135,11 +135,24 @@ class Reform(TaxBenefitSystem):
             def apply(self):
                 for path, period_values in parameter_values.items():
                     for period, value in period_values.items():
-                        self.modify_parameters(
-                            set_parameter(
-                                path, value, period, return_modifier=True
+                        if "." in period:
+                            start, stop = period.split(".")
+                            self.modify_parameters(
+                                set_parameter(
+                                    path,
+                                    value,
+                                    period=None,
+                                    start=start,
+                                    stop=stop,
+                                    return_modifier=True,
+                                )
                             )
-                        )
+                        else:
+                            self.modify_parameters(
+                                set_parameter(
+                                    path, value, period, return_modifier=True
+                                )
+                            )
 
         reform.country_id = country_id
         reform.parameter_values = parameter_values

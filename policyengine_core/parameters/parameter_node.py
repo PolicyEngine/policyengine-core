@@ -159,6 +159,8 @@ class ParameterNode(AtInstantLike):
                 child = _parse_child(child_name_expanded, child, file_path)
                 self.add_child(child_name, child)
 
+        self.modified: bool = False
+
     def merge(self, other: "ParameterNode") -> None:
         """
         Merges another ParameterNode into the current node.
@@ -246,3 +248,8 @@ class ParameterNode(AtInstantLike):
         if self.parent is not None:
             self.parent.clear_parent_cache()
             self._at_instant_cache.clear()
+
+    def mark_as_modified(self):
+        self.modified = True
+        if self.parent is not None:
+            self.parent.mark_as_modified()

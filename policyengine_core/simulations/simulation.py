@@ -20,6 +20,9 @@ from policyengine_core.tracers import (
     SimpleTracer,
     TracingParameterNodeAtInstant,
 )
+import h5py
+from pathlib import Path
+import shutil
 
 import json
 
@@ -75,7 +78,6 @@ class Simulation:
         reform: Reform = None,
         trace: bool = False,
     ):
-        self.is_over_dataset = dataset is not None
         reform_applied_after = False
         if tax_benefit_system is None:
             if (
@@ -104,6 +106,7 @@ class Simulation:
         if dataset is None:
             if self.default_dataset is not None:
                 dataset = self.default_dataset
+        self.is_over_dataset = dataset is not None
 
         self.invalidated_caches = set()
         self.debug: bool = False
@@ -523,6 +526,10 @@ class Simulation:
         if cached_array is not None:
             return cached_array
 
+        cache_path = self._get_macro_cache(variable_name, str(period))
+        if cache_path and cache_path.exists():
+            return self._get_macro_cache_value(cache_path)
+
         if variable.requires_computation_after is not None:
             if variable.requires_computation_after not in [
                 node.get("name") for node in self.tracer.stack
@@ -534,18 +541,25 @@ class Simulation:
                         for node in self.tracer.stack
                     )
                 )
-
+        alternate_period_handling = False
         if variable.definition_period == MONTH and period.unit == YEAR:
             if variable.quantity_type == QuantityType.STOCK:
                 contained_months = period.get_subperiods(MONTH)
-                return self._calculate(variable_name, contained_months[-1])
+                values = self._calculate(variable_name, contained_months[-1])
             else:
-                return self.calculate_add(variable_name, period)
+                values = self.calculate_add(variable_name, period)
+            alternate_period_handling = True
         elif variable.definition_period == YEAR and period.unit == MONTH:
+            alternate_period_handling = True
             if variable.quantity_type == QuantityType.STOCK:
-                return self._calculate(variable_name, period.this_year)
+                values = self._calculate(variable_name, period.this_year)
             else:
-                return self.calculate_divide(variable_name, period)
+                values = self.calculate_divide(variable_name, period)
+
+        if alternate_period_handling:
+            if cache_path is not None:
+                self._set_macro_cache_value(cache_path, values)
+            return values
 
         self._check_period_consistency(period, variable)
 
@@ -642,6 +656,9 @@ class Simulation:
             raise Exception(
                 f"RecursionError while calculating {variable_name} for period {period}. The full computation stack is:\n{stack_formatted}"
             )
+
+        if cache_path is not None:
+            self._set_macro_cache_value(cache_path, array)
 
         return array
 
@@ -1295,6 +1312,74 @@ class Simulation:
                         }
 
         return json.loads(json.dumps(situation, cls=NpEncoder))
+
+    def _get_macro_cache(
+        self,
+        variable_name: str,
+        period: str,
+    ):
+        """
+        Get the cache location of a variable for a given period, if it exists.
+        """
+        if not self.is_over_dataset:
+            return None
+
+        variable = self.tax_benefit_system.get_variable(variable_name)
+        parameter_deps = variable.exhaustive_parameter_dependencies
+
+        if parameter_deps is None:
+            return None
+
+        for parameter in parameter_deps:
+            param = get_parameter(
+                self.tax_benefit_system.parameters, parameter
+            )
+            if param.modified:
+                return None
+
+        storage_folder = (
+            self.dataset.file_path.parent
+            / f"{self.dataset.name}_variable_cache"
+        )
+        storage_folder.mkdir(exist_ok=True)
+
+        cache_file_path = (
+            storage_folder / f"{variable_name}_{period}_{self.branch_name}.h5"
+        )
+
+        return cache_file_path
+
+    def clear_macro_cache(self):
+        """
+        Clear the cache of all variables.
+        """
+        storage_folder = (
+            self.dataset.file_path.parent
+            / f"{self.dataset.name}_variable_cache"
+        )
+        if storage_folder.exists():
+            shutil.rmtree(storage_folder)
+
+    def _get_macro_cache_value(
+        self,
+        cache_file_path: Path,
+    ):
+        """
+        Get the value of a variable from a cache file.
+        """
+        with h5py.File(cache_file_path, "r") as f:
+            return f["values"][()]
+
+    def _set_macro_cache_value(
+        self,
+        cache_file_path: Path,
+        value: ArrayLike,
+    ):
+        """
+        Set the value of a variable in a cache file.
+        """
+        with h5py.File(cache_file_path, "w") as f:
+            f.create_dataset("values", data=value)
 
 
 class NpEncoder(json.JSONEncoder):

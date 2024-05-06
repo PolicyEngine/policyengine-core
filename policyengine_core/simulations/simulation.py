@@ -578,11 +578,12 @@ class Simulation:
                         str(known_period.start)
                         for known_period in known_periods
                         if known_period.unit == variable.definition_period
+                        and known_period.start < period.start
                     ]
-                    latest_known_period = known_periods[
-                        np.argmax(start_instants)
-                    ]
-                    if latest_known_period.start < period.start:
+                    if len(start_instants) > 0:
+                        latest_known_period = known_periods[
+                            np.argmax(start_instants)
+                        ]
                         try:
                             uprating_parameter = get_parameter(
                                 self.tax_benefit_system.parameters,

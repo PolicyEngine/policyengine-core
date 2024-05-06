@@ -1,7 +1,0 @@
-- bump: minor
-  changes:
-    added:
-    - Macro impact caching.
-    - Dictionary-input start-stop date reform handling.
-    fixed:
-    - Uprating bugs.

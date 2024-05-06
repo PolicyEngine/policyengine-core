@@ -511,3 +511,8 @@
     fixed:
     - FutureWarning issue with bools and enums.
   date: 2024-04-29 15:06:58
+- bump: patch
+  changes:
+    added:
+    - IPython to dependencies
+  date: 2024-05-06 12:47:34

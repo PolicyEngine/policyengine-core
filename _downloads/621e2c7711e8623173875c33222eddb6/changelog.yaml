@@ -516,3 +516,11 @@
     added:
     - IPython to dependencies
   date: 2024-05-06 12:47:34
+- bump: minor
+  changes:
+    added:
+    - Macro impact caching.
+    - Dictionary-input start-stop date reform handling.
+    fixed:
+    - Uprating bugs.
+  date: 2024-05-06 14:24:08

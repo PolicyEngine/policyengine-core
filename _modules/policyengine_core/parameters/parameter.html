@@ -347,6 +347,8 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">values_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ParameterAtInstant</span><span class="p">]</span> <span class="o">=</span> <span class="n">values_list</span>
 
+        <span class="bp">self</span><span class="o">.</span><span class="n">modified</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">linesep</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
             <span class="p">[</span>
@@ -446,6 +448,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">values_list</span> <span class="o">=</span> <span class="n">new_values</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">clear_parent_cache</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Parameter.mark_as_modified"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter.Parameter.mark_as_modified">[docs]</a>    <span class="k">def</span> <span class="nf">mark_as_modified</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">modified</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mark_as_modified</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="Parameter.get_descendants"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter.Parameter.get_descendants">[docs]</a>    <span class="k">def</span> <span class="nf">get_descendants</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">iter</span><span class="p">(())</span></div>

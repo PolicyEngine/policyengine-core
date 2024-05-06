@@ -398,6 +398,8 @@
                 <span class="n">child</span> <span class="o">=</span> <span class="n">_parse_child</span><span class="p">(</span><span class="n">child_name_expanded</span><span class="p">,</span> <span class="n">child</span><span class="p">,</span> <span class="n">file_path</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">add_child</span><span class="p">(</span><span class="n">child_name</span><span class="p">,</span> <span class="n">child</span><span class="p">)</span>
 
+        <span class="bp">self</span><span class="o">.</span><span class="n">modified</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+
 <div class="viewcode-block" id="ParameterNode.merge"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_node.ParameterNode.merge">[docs]</a>    <span class="k">def</span> <span class="nf">merge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="s2">&quot;ParameterNode&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Merges another ParameterNode into the current node.</span>
@@ -484,7 +486,12 @@
 <div class="viewcode-block" id="ParameterNode.clear_parent_cache"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_node.ParameterNode.clear_parent_cache">[docs]</a>    <span class="k">def</span> <span class="nf">clear_parent_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">clear_parent_cache</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_at_instant_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span></div></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_at_instant_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="ParameterNode.mark_as_modified"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter_node.ParameterNode.mark_as_modified">[docs]</a>    <span class="k">def</span> <span class="nf">mark_as_modified</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">modified</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mark_as_modified</span><span class="p">()</span></div></div>
 </pre></div>
         </article>
       </div>

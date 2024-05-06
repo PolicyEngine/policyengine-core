@@ -129,6 +129,9 @@ class Variable:
     requires_computation_after: str = None
     """Name of a variable that must be computed before this variable."""
 
+    exhaustive_parameter_dependencies: List[str] = None
+    """If these parameters (plus the dataset, branch and period) haven't changed, Core will use caching on this variable."""
+
     def __init__(self, baseline_variable=None):
         self.name = self.__class__.__name__
         attr = {
@@ -293,6 +296,14 @@ class Variable:
         self.requires_computation_after = self.set(
             attr, "requires_computation_after", allowed_type=str
         )
+
+        self.exhaustive_parameter_dependencies = self.set(
+            attr, "exhaustive_parameter_dependencies"
+        )
+        if isinstance(self.exhaustive_parameter_dependencies, str):
+            self.exhaustive_parameter_dependencies = [
+                self.exhaustive_parameter_dependencies
+            ]
 
         formulas_attr, unexpected_attrs = helpers._partition(
             attr,

@@ -108,6 +108,8 @@ class Parameter(AtInstantLike):
 
         self.values_list: List[ParameterAtInstant] = values_list
 
+        self.modified: bool = False
+
     def __repr__(self):
         return os.linesep.join(
             [
@@ -207,6 +209,10 @@ class Parameter(AtInstantLike):
         self.values_list = new_values
 
         self.parent.clear_parent_cache()
+
+    def mark_as_modified(self):
+        self.modified = True
+        self.parent.mark_as_modified()
 
     def get_descendants(self):
         return iter(())

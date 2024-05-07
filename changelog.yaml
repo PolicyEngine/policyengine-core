@@ -524,3 +524,8 @@
     fixed:
     - Uprating bugs.
   date: 2024-05-06 14:24:08
+- bump: minor
+  changes:
+    added:
+    - Ability to turn off read and write features in the macro cache.
+  date: 2024-05-07 12:16:05

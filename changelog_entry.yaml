@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    added:
+    - upgraded pytest version to 8

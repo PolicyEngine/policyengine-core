@@ -9,3 +9,5 @@ docs/_build/
 **/*.h5
 **/iframe_figures/
 .idea
+.vscode
+venv

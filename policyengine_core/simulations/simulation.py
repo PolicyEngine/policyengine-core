@@ -69,6 +69,12 @@ class Simulation:
     is_over_dataset: bool = False
     """Whether this simulation is built over a dataset."""
 
+    macro_cache_read: bool = True
+    """Whether to read from the macro cache."""
+
+    macro_cache_write: bool = True
+    """Whether to write to the macro cache."""
+
     def __init__(
         self,
         tax_benefit_system: "TaxBenefitSystem" = None,
@@ -1367,6 +1373,8 @@ class Simulation:
         """
         Get the value of a variable from a cache file.
         """
+        if not self.macro_cache_read:
+            return None
         with h5py.File(cache_file_path, "r") as f:
             return f["values"][()]
 
@@ -1378,6 +1386,8 @@ class Simulation:
         """
         Set the value of a variable in a cache file.
         """
+        if not self.macro_cache_write:
+            return None
         with h5py.File(cache_file_path, "w") as f:
             f.create_dataset("values", data=value)
 

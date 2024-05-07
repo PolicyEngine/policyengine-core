@@ -1,0 +1,4 @@
+- bump: minor
+  changes:
+    added:
+    - Ability to turn off read and write features in the macro cache.

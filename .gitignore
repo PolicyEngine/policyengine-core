@@ -11,3 +11,5 @@ docs/_build/
 .idea
 .env
 .venv
+.vscode
+venv

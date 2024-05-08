@@ -539,3 +539,8 @@
     fixed:
     - Generation of enum-typed variables
   date: 2024-05-08 08:44:48
+- bump: patch
+  changes:
+    added:
+    - Dependency upgrade for pytest, from 7 to 8.
+  date: 2024-05-08 13:36:00

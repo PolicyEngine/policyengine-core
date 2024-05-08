@@ -15,7 +15,7 @@ general_requirements = [
     "black",
     "linecheck<1",
     "yaml-changelog<1",
-    "coverage<7",
+    "coverage",
     "sortedcontainers<3",
     "numexpr<3",
     "dpath<3",

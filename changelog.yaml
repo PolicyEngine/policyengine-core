@@ -534,3 +534,8 @@
     fixed:
     - Bug in macro caching logic.
   date: 2024-05-07 15:44:58
+- bump: patch
+  changes:
+    fixed:
+    - Generation of enum-typed variables
+  date: 2024-05-08 08:44:48

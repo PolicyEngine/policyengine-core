@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    fixed:
-    - Generation of enum-typed variables

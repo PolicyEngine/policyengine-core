@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    changed:
+    - Replaced unsafe numpy-Python comparison with use of numpy dtype to convert byte-string arrays to Unicode ones within enums

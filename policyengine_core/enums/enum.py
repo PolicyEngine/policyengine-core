@@ -49,8 +49,11 @@ class Enum(enum.Enum):
         if isinstance(array, EnumArray):
             return array
 
-        # if array.dtype.kind == "b":
-        if isinstance(array == 0, bool):
+        # First, convert byte-string arrays to Unicode-string arrays
+        # Confusingly, Numpy uses "S" to refer to byte-string arrays
+        # and "U" to refer to Unicode-string arrays, which are also
+        # referred to as the "str" type
+        if array.dtype.kind == "S":
             # Convert boolean array to string array
             array = array.astype(str)
 

@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    added:
+    - Dependency upgrade for pytest, from 7 to 8.

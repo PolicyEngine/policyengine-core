@@ -9,5 +9,7 @@ docs/_build/
 **/*.h5
 **/iframe_figures/
 .idea
+.env
+.venv
 .vscode
 venv

@@ -524,3 +524,18 @@
     fixed:
     - Uprating bugs.
   date: 2024-05-06 14:24:08
+- bump: minor
+  changes:
+    added:
+    - Ability to turn off read and write features in the macro cache.
+  date: 2024-05-07 12:16:05
+- bump: patch
+  changes:
+    fixed:
+    - Bug in macro caching logic.
+  date: 2024-05-07 15:44:58
+- bump: patch
+  changes:
+    fixed:
+    - Generation of enum-typed variables
+  date: 2024-05-08 08:44:48

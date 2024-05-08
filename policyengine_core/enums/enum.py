@@ -49,17 +49,18 @@ class Enum(enum.Enum):
         if isinstance(array, EnumArray):
             return array
 
-        if array.dtype.kind == "b":
+        # if array.dtype.kind == "b":
+        if isinstance(array == 0, bool):
             # Convert boolean array to string array
             array = array.astype(str)
 
-        if array.dtype.kind in {"U", "S"}:
+        if isinstance(array, np.ndarray) and array.dtype.kind in {"U", "S"}:
             # String array
             indices = np.select(
                 [array == item.name for item in cls],
                 [item.index for item in cls],
             )
-        elif array.dtype.kind == "O":
+        elif isinstance(array, np.ndarray) and array.dtype.kind == "O":
             # Enum items array
             if len(array) > 0:
                 first_item = array[0]

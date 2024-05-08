@@ -534,7 +534,9 @@ class Simulation:
 
         cache_path = self._get_macro_cache(variable_name, str(period))
         if cache_path and cache_path.exists():
-            return self._get_macro_cache_value(cache_path)
+            value = self._get_macro_cache_value(cache_path)
+            if value is not None:
+                return self._get_macro_cache_value(cache_path)
 
         if variable.requires_computation_after is not None:
             if variable.requires_computation_after not in [

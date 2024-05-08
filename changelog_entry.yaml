@@ -1,6 +1,0 @@
-- bump: patch
-  changes:
-    added:
-      - Added `.vscode` and `venv` to `.gitignore` file.
-    removed:
-      - Removed `.vscode` folder from the repository.

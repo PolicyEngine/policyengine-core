@@ -544,3 +544,10 @@
     added:
     - Dependency upgrade for pytest, from 7 to 8.
   date: 2024-05-08 13:36:00
+- bump: patch
+  changes:
+    added:
+    - Added `.vscode` and `venv` to `.gitignore` file.
+    removed:
+    - Removed `.vscode` folder from the repository.
+  date: 2024-05-08 13:39:53

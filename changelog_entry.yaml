@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    fixed:
-    - Remove name metadata tag in docs.

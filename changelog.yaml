@@ -562,3 +562,8 @@
     - Replaced unsafe numpy-Python comparison with use of numpy dtype to convert byte-string
       arrays to Unicode ones within enums
   date: 2024-05-13 16:26:53
+- bump: patch
+  changes:
+    fixed:
+    - Remove name metadata tag in docs.
+  date: 2024-05-14 15:27:27

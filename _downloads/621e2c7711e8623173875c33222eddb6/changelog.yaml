@@ -567,3 +567,8 @@
     fixed:
     - Remove name metadata tag in docs.
   date: 2024-05-14 15:27:27
+- bump: patch
+  changes:
+    fixed:
+    - Uncap coverage.
+  date: 2024-05-14 15:33:07

@@ -277,10 +277,11 @@
 <h2>Metadata<a class="headerlink" href="#metadata" title="Permalink to this heading">#</a></h2>
 <p>Each parameter (or parameter node) can also set <strong>metadata</strong>: data that describes the parameter, such as its name, description, and units. While the metadata for each parameter and node is freeform, using the schemas defined in <code class="docutils literal notranslate"><span class="pre">policyengine_core.data_structures</span></code> will ensure consistency between country packages, and better maintainability.</p>
 <p>Here’s an example metadata specification for the <code class="docutils literal notranslate"><span class="pre">child_benefit.basic.amount</span></code> parameter:</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">metadata</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">child_benefit</span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">The UK provides this Child Benefit per child.</span>
+
+<span class="nt">metadata</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Child Benefit</span>
-<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">The amount of Child Benefit paid per child.</span>
+<span class="w">    </span><span class="nt">period</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">year</span>
 <span class="w">    </span><span class="nt">unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">currency-GBP</span>
 <span class="w">    </span><span class="nt">reference</span><span class="p">:</span><span class="w"> </span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GOV.UK | Child Benefit</span>

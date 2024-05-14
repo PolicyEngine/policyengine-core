@@ -46,10 +46,11 @@ Each parameter (or parameter node) can also set **metadata**: data that describe
 Here's an example metadata specification for the `child_benefit.basic.amount` parameter:
 
 ```yaml
+description: The UK provides this Child Benefit per child.
+
 metadata:
-    name: child_benefit
     label: Child Benefit
-    description: The amount of Child Benefit paid per child.
+    period: year
     unit: currency-GBP
     reference: 
         - label: GOV.UK | Child Benefit

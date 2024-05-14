@@ -1,4 +1,4 @@
 - bump: patch
   changes:
     fixed:
-    - Uncap coverage and nptyping.
+    - Uncap coverage.

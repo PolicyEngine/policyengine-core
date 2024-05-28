@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-import webbrowser
+import sys
 import typing
 from typing import Optional, Union
 
@@ -46,12 +46,13 @@ class VariableGraph:
         self,
         aggregate: bool = False,
         max_depth: Optional[int] = None,
+        output_vars: list[str] = [],
     ) -> VisualizeNode:
         depth = 1
         is_root = True
 
         node_by_tree = [
-            self._get_node(node, depth, aggregate, max_depth, is_root)
+            self._get_node(node, depth, aggregate, max_depth, output_vars)
             for node in self._full_tracer.trees
         ]
 
@@ -59,9 +60,10 @@ class VariableGraph:
 
     def visualize(
         self,
+        name: str,
+        output_vars: list[str] = [],
         aggregate=False,
         max_depth: Optional[int] = None,
-        dir="_variable_graphs",
     ) -> None:
         """
         Visualize the computation log of a simulation as a relationship graph in the web browser.
@@ -80,13 +82,21 @@ class VariableGraph:
         vectors up to a depth of ``max_depth``.
         """
 
-        for root_node in self.tree(aggregate, max_depth):
+        i = 0
+        for root_node in self.tree(aggregate, max_depth, output_vars):
             net = self._network()
             self._add_nodes_and_edges(net, root_node)
 
-            file_name = "nx.html"
+            file_name = f"{self._to_snake_case(name)}.{i}.html"
+            i += 1
+
+            # redirect stdout to prevent net.show from printing the file name
+            old_stdout = sys.stdout  # backup current stdout
+            sys.stdout = open(os.devnull, "w")
 
             net.show(file_name, notebook=False)
+
+            sys.stdout = old_stdout
 
     def _network(self) -> Network:
         net = Network(
@@ -119,22 +129,29 @@ class VariableGraph:
         depth: int,
         aggregate: bool,
         max_depth: Optional[int],
-        is_root: bool,
+        output_vars: list[str],
     ) -> VisualizeNode:
         if max_depth is not None and depth > max_depth:
             return []
 
         children = [
-            self._get_node(child, depth + 1, aggregate, max_depth, False)
+            self._get_node(child, depth + 1, aggregate, max_depth, output_vars)
             for child in node.children
         ]
 
         is_leaf = len(node.children) == 0
         visualization_node = VisualizeNode(
-            node, children, is_leaf=is_leaf, aggregate=aggregate, is_root=is_root
+            node,
+            children,
+            is_leaf=is_leaf,
+            aggregate=aggregate,
+            output_vars=output_vars,
         )
 
         return visualization_node
+
+    def _to_snake_case(self, string: str):
+        return string.replace(" ", "_").lower()
 
 
 class VisualizeNode:
@@ -148,13 +165,13 @@ class VisualizeNode:
         children: list[VisualizeNode],
         is_leaf=False,
         aggregate=False,
-        is_root=False,
+        output_vars: list[str] = [],
     ):
         self.node = node
         self.name = node.name
         self.children = children
         self.is_leaf = is_leaf
-        self.is_root = is_root
+        self.is_root = self.name in output_vars
         self.value = self._value(aggregate)
 
     def _display(

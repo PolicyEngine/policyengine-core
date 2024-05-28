@@ -141,8 +141,10 @@ class FullTracer:
     def generate_performance_tables(self, dir_path: str) -> None:
         self.performance_log.generate_performance_tables(dir_path)
 
-    def generate_variable_graph(self, dir_path: str) -> None:
-        self.variable_graph.visualize(False, max_depth=None)
+    def generate_variable_graph(self, name: str, output_vars: list[str]) -> None:
+        self.variable_graph.visualize(
+            name, aggregate=False, max_depth=None, output_vars=output_vars
+        )
 
     def _get_nb_requests(self, tree: tracers.TraceNode, variable: str) -> int:
         tree_call = tree.name == variable

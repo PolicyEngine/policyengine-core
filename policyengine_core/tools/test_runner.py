@@ -156,9 +156,7 @@ class YamlItem(pytest.Item):
     Terminal nodes of the test collection tree.
     """
 
-    def __init__(
-        self, *, baseline_tax_benefit_system, test, options, **kwargs
-    ):
+    def __init__(self, *, baseline_tax_benefit_system, test, options, **kwargs):
         super(YamlItem, self).__init__(**kwargs)
         self.baseline_tax_benefit_system = baseline_tax_benefit_system
         self.options = options
@@ -238,9 +236,7 @@ class YamlItem(pytest.Item):
 
         try:
             builder.set_default_period(period)
-            self.simulation = builder.build_from_dict(
-                self.tax_benefit_system, input
-            )
+            self.simulation = builder.build_from_dict(self.tax_benefit_system, input)
         except (VariableNotFoundError, SituationParsingError):
             raise
         except Exception as e:
@@ -282,7 +278,20 @@ class YamlItem(pytest.Item):
         tracer.generate_performance_tables(".")
 
     def generate_variable_graph(self, tracer):
-        tracer.generate_variable_graph(".")
+        tracer.generate_variable_graph(self.test.get("name"), self._all_output_vars())
+
+    def _all_output_vars(self):
+        return self._get_leaf_keys(self.test["output"])
+
+    def _get_leaf_keys(self, dictionary: dict):
+        keys = []
+        for key, value in dictionary.items():
+            if type(value) is dict:
+                keys.extend(self._get_leaf_keys(value))
+            else:
+                keys.append(key)
+
+        return keys
 
     def check_output(self):
         output = self.test.get("output")
@@ -290,19 +299,11 @@ class YamlItem(pytest.Item):
         if output is None:
             return
         for key, expected_value in output.items():
-            if self.tax_benefit_system.get_variable(
-                key
-            ):  # If key is a variable
-                self.check_variable(
-                    key, expected_value, self.test.get("period")
-                )
-            elif self.simulation.populations.get(
-                key
-            ):  # If key is an entity singular
+            if self.tax_benefit_system.get_variable(key):  # If key is a variable
+                self.check_variable(key, expected_value, self.test.get("period"))
+            elif self.simulation.populations.get(key):  # If key is an entity singular
                 for variable_name, value in expected_value.items():
-                    self.check_variable(
-                        variable_name, value, self.test.get("period")
-                    )
+                    self.check_variable(variable_name, value, self.test.get("period"))
             else:
                 population = self.simulation.get_population(plural=key)
                 if population is not None:  # If key is an entity plural
@@ -318,9 +319,7 @@ class YamlItem(pytest.Item):
                 else:
                     raise VariableNotFoundError(key, self.tax_benefit_system)
 
-    def check_variable(
-        self, variable_name, expected_value, period, entity_index=None
-    ):
+    def check_variable(self, variable_name, expected_value, period, entity_index=None):
         if self.should_ignore_variable(variable_name):
             return
         if isinstance(expected_value, dict):
@@ -414,12 +413,7 @@ def _get_tax_benefit_system(
     key = hash(
         (
             id(baseline),
-            ":".join(
-                [
-                    reform if isinstance(reform, str) else ""
-                    for reform in reforms
-                ]
-            ),
+            ":".join([reform if isinstance(reform, str) else "" for reform in reforms]),
             reform_key,
             frozenset(extensions),
         )
@@ -431,13 +425,11 @@ def _get_tax_benefit_system(
 
     for reform_path in reforms:
         if isinstance(reform_path, str):
-            current_tax_benefit_system = (
-                current_tax_benefit_system.apply_reform(reform_path)
+            current_tax_benefit_system = current_tax_benefit_system.apply_reform(
+                reform_path
             )
         else:
-            current_tax_benefit_system = reform_path(
-                current_tax_benefit_system
-            )
+            current_tax_benefit_system = reform_path(current_tax_benefit_system)
         current_tax_benefit_system._parameters_at_instant_cache = {}
 
     for extension in extensions:
@@ -487,9 +479,9 @@ def assert_near(
         value = np.array(value).astype(np.float32)
     except ValueError:
         # Data type not translatable to floating point, assert complete equality
-        assert np.array(value) == np.array(
-            target_value
-        ), "{}{} differs from {}".format(message, value, target_value)
+        assert np.array(value) == np.array(target_value), "{}{} differs from {}".format(
+            message, value, target_value
+        )
         return
 
     diff = abs(target_value - value)

@@ -64,6 +64,7 @@ class VariableGraph:
         output_vars: list[str] = [],
         aggregate=False,
         max_depth: Optional[int] = None,
+        dir="_variable_graphs",
     ) -> None:
         """
         Visualize the computation log of a simulation as a relationship graph in the web browser.
@@ -81,22 +82,32 @@ class VariableGraph:
         If ``max_depth`` is set, for example to ``3``, only visualize computed
         vectors up to a depth of ``max_depth``.
         """
+        
+        try:
+            os.mkdir(dir)
+        except FileExistsError:
+            pass
+        os.chdir(dir)
 
         i = 0
-        for root_node in self.tree(aggregate, max_depth, output_vars):
-            net = self._network()
-            self._add_nodes_and_edges(net, root_node)
 
-            file_name = f"{self._to_snake_case(name)}.{i}.html"
-            i += 1
+        try:
+            for root_node in self.tree(aggregate, max_depth, output_vars):
+                net = self._network()
+                self._add_nodes_and_edges(net, root_node)
 
-            # redirect stdout to prevent net.show from printing the file name
-            old_stdout = sys.stdout  # backup current stdout
-            sys.stdout = open(os.devnull, "w")
+                file_name = f"{self._to_snake_case(name)}.{i}.html"
+                i += 1
 
-            net.show(file_name, notebook=False)
+                # redirect stdout to prevent net.show from printing the file name
+                old_stdout = sys.stdout  # backup current stdout
+                sys.stdout = open(os.devnull, "w")
 
-            sys.stdout = old_stdout
+                net.show(file_name, notebook=False)
+
+                sys.stdout = old_stdout
+        finally:
+            os.chdir('..')
 
     def _network(self) -> Network:
         net = Network(

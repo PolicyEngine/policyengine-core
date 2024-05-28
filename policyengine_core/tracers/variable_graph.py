@@ -68,19 +68,6 @@ class VariableGraph:
     ) -> None:
         """
         Visualize the computation log of a simulation as a relationship graph in the web browser.
-
-        If ``aggregate`` is ``False`` (default), visualize the value of each
-        computed vector.
-
-        If ``aggregate`` is ``True``, only the minimum, maximum, and
-        average value will be used of each computed vector.
-
-        This mode is more suited for simulations on a large population.
-
-        If ``max_depth`` is ``None`` (default), visualize the entire computation.
-
-        If ``max_depth`` is set, for example to ``3``, only visualize computed
-        vectors up to a depth of ``max_depth``.
         """
 
         try:

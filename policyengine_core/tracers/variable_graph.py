@@ -82,16 +82,16 @@ class VariableGraph:
         If ``max_depth`` is set, for example to ``3``, only visualize computed
         vectors up to a depth of ``max_depth``.
         """
-        
+
         try:
             os.mkdir(dir)
         except FileExistsError:
             pass
         os.chdir(dir)
 
-        i = 0
-
         try:
+            i = 0
+
             for root_node in self.tree(aggregate, max_depth, output_vars):
                 net = self._network()
                 self._add_nodes_and_edges(net, root_node)
@@ -107,11 +107,14 @@ class VariableGraph:
 
                 sys.stdout = old_stdout
         finally:
-            os.chdir('..')
+            os.chdir("..")
 
     def _network(self) -> Network:
         net = Network(
-            height="100vh", directed=True, select_menu=True, neighborhood_highlight=True
+            height="100vh",
+            directed=True,
+            select_menu=True,
+            neighborhood_highlight=True,
         )
         Network.set_options(net, self.NETWORK_OPTIONS)
 

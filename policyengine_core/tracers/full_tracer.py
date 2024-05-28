@@ -30,7 +30,9 @@ class FullTracer:
         period: str,
         branch_name: str = "default",
     ) -> None:
-        self._simple_tracer.record_calculation_start(variable, period, branch_name)
+        self._simple_tracer.record_calculation_start(
+            variable, period, branch_name
+        )
         self._enter_calculation(variable, period, branch_name)
         self._record_start_time()
 
@@ -141,7 +143,9 @@ class FullTracer:
     def generate_performance_tables(self, dir_path: str) -> None:
         self.performance_log.generate_performance_tables(dir_path)
 
-    def generate_variable_graph(self, name: str, output_vars: list[str]) -> None:
+    def generate_variable_graph(
+        self, name: str, output_vars: list[str]
+    ) -> None:
         self.variable_graph.visualize(
             name, aggregate=False, max_depth=None, output_vars=output_vars
         )
@@ -155,7 +159,9 @@ class FullTracer:
         return tree_call + children_calls
 
     def get_nb_requests(self, variable: str) -> int:
-        return sum(self._get_nb_requests(tree, variable) for tree in self.trees)
+        return sum(
+            self._get_nb_requests(tree, variable) for tree in self.trees
+        )
 
     def get_flat_trace(self) -> dict:
         return self.flat_trace.get_trace()

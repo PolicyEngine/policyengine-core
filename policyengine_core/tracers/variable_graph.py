@@ -6,6 +6,7 @@ import typing
 from typing import Optional, Union
 
 import numpy
+from pyvis.node import Node
 
 from policyengine_core.enums import EnumArray
 
@@ -77,22 +78,20 @@ class VariableGraph:
         os.chdir(dir)
 
         try:
-            i = 0
+            net = self._network()
 
             for root_node in self.tree(aggregate, max_depth, output_vars):
-                net = self._network()
                 self._add_nodes_and_edges(net, root_node)
 
-                file_name = f"{self._to_snake_case(name)}.{i}.html"
-                i += 1
+            file_name = f"{self._to_snake_case(name)}.html"
 
-                # redirect stdout to prevent net.show from printing the file name
-                old_stdout = sys.stdout  # backup current stdout
-                sys.stdout = open(os.devnull, "w")
+            # redirect stdout to prevent net.show from printing the file name
+            old_stdout = sys.stdout  # backup current stdout
+            sys.stdout = open(os.devnull, "w")
 
-                net.show(file_name, notebook=False)
+            net.show(file_name, notebook=False)
 
-                sys.stdout = old_stdout
+            sys.stdout = old_stdout
         finally:
             os.chdir("..")
 
@@ -113,16 +112,32 @@ class VariableGraph:
 
         while len(stack) > 0:
             node = stack.pop()
+            id = node.name
 
-            net.add_node(node.name, color=node.color(), title=node.value)
+            net_node = self._get_network_node(net, id)
+            if net_node is not None:
+                if node.value not in net_node["title"]:
+                    net_node["title"] += "\n" + node.value
+
+                continue
+
+            net.add_node(
+                id, color=node.color(), title=node.value, label=node.name
+            )
 
             for child in node.children:
-                edge = (node.name, child.name)
+                edge = (id, child.name)
                 edges.add(edge)
                 stack.append(child)
 
         for parent, child in edges:
             net.add_edge(child, parent)
+
+    def _get_network_node(self, net: Network, id: str):
+        try:
+            return net.get_node(id)
+        except KeyError:
+            return None
 
     def _get_node(
         self,
@@ -206,7 +221,7 @@ class VisualizeNode:
         else:
             formatted_value = self._display(value)
 
-        return f"{self.node.name}<{self.node.period}, ({self.node.branch_name})> = {formatted_value}"
+        return f"{self.node.period}: {formatted_value}"
 
     def color(self) -> str:
         if self.is_root:

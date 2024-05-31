@@ -314,6 +314,8 @@ class Simulation:
 
         self.default_calculation_period = self.dataset.time_period
 
+        self.tax_benefit_system.data_modified = False
+
     @property
     def trace(self) -> bool:
         return self._trace
@@ -1375,7 +1377,7 @@ class Simulation:
         """
         Get the value of a variable from a cache file.
         """
-        if not self.macro_cache_read:
+        if not self.macro_cache_read or self.tax_benefit_system.data_modified:
             return None
         with h5py.File(cache_file_path, "r") as f:
             return f["values"][()]
@@ -1388,7 +1390,7 @@ class Simulation:
         """
         Set the value of a variable in a cache file.
         """
-        if not self.macro_cache_write:
+        if not self.macro_cache_write or self.tax_benefit_system.data_modified:
             return None
         with h5py.File(cache_file_path, "w") as f:
             f.create_dataset("values", data=value)

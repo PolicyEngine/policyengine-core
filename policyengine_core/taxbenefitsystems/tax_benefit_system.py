@@ -122,6 +122,7 @@ class TaxBenefitSystem:
 
         if self.variables_dir is not None:
             self.add_variables_from_directory(self.variables_dir)
+        self.data_modified = False
 
         if self.parameters_dir is not None:
             self.load_parameters(self.parameters_dir)
@@ -228,6 +229,7 @@ class TaxBenefitSystem:
             policyengine_core.errors.VariableNameConflictError: if a variable with the same name have previously been added to the tax and benefit system.
 
         """
+        self.data_modified = True
         return self.load_variable(variable, update=False)
 
     def replace_variable(self, variable: str) -> Variable:
@@ -244,6 +246,7 @@ class TaxBenefitSystem:
         if self.variables.get(name) is not None:
             del self.variables[name]
         self.load_variable(variable, update=False)
+        self.data_modified = True
 
     def update_variable(self, variable: str) -> Variable:
         """
@@ -257,6 +260,7 @@ class TaxBenefitSystem:
 
         :param Variable variable: Variable to add. Must be a subclass of Variable.
         """
+        self.data_modified = True
         return self.load_variable(variable, update=True)
 
     def add_variables_from_file(self, file_path: str) -> None:
@@ -501,6 +505,7 @@ class TaxBenefitSystem:
         self.variables[variable_name] = variables.get_neutralized_variable(
             self.get_variable(variable_name)
         )
+        self.data_modified = True
 
     def annualize_variable(
         self, variable_name: str, period: typing.Optional[Period] = None

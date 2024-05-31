@@ -1,4 +1,0 @@
-- bump: minor
-  changes:
-    fixed:
-    - Bug causing reforms affecting data to not affect caches.

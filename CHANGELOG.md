@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.22.0] - 2024-05-31 11:12:13
+
+### Fixed
+
+- Bug causing reforms affecting data to not affect caches.
+
 ## [2.21.8] - 2024-05-14 15:33:07
 
 ### Fixed
@@ -682,6 +688,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[2.22.0]: https://github.com/PolicyEngine/policyengine-core/compare/2.21.8...2.22.0
 [2.21.8]: https://github.com/PolicyEngine/policyengine-core/compare/2.21.7...2.21.8
 [2.21.7]: https://github.com/PolicyEngine/policyengine-core/compare/2.21.6...2.21.7
 [2.21.6]: https://github.com/PolicyEngine/policyengine-core/compare/2.21.5...2.21.6

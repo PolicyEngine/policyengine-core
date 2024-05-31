@@ -572,3 +572,8 @@
     fixed:
     - Uncap coverage.
   date: 2024-05-14 15:33:07
+- bump: minor
+  changes:
+    fixed:
+    - Bug causing reforms affecting data to not affect caches.
+  date: 2024-05-31 11:12:13

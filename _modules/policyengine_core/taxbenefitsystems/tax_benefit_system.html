@@ -361,6 +361,7 @@
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">variables_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">add_variables_from_directory</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">variables_dir</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_modified</span> <span class="o">=</span> <span class="kc">False</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">load_parameters</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters_dir</span><span class="p">)</span>
@@ -467,6 +468,7 @@
 <span class="sd">            policyengine_core.errors.VariableNameConflictError: if a variable with the same name have previously been added to the tax and benefit system.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_modified</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_variable</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">update</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="TaxBenefitSystem.replace_variable"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.replace_variable">[docs]</a>    <span class="k">def</span> <span class="nf">replace_variable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Variable</span><span class="p">:</span>
@@ -482,7 +484,8 @@
         <span class="n">name</span> <span class="o">=</span> <span class="n">variable</span><span class="o">.</span><span class="vm">__name__</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">variables</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">load_variable</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">update</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">load_variable</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">update</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_modified</span> <span class="o">=</span> <span class="kc">True</span></div>
 
 <div class="viewcode-block" id="TaxBenefitSystem.update_variable"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.update_variable">[docs]</a>    <span class="k">def</span> <span class="nf">update_variable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Variable</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -496,6 +499,7 @@
 
 <span class="sd">        :param Variable variable: Variable to add. Must be a subclass of Variable.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_modified</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_variable</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">update</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="TaxBenefitSystem.add_variables_from_file"><a class="viewcode-back" href="../../../python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.add_variables_from_file">[docs]</a>    <span class="k">def</span> <span class="nf">add_variables_from_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -739,7 +743,8 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">variables</span><span class="p">[</span><span class="n">variable_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">variables</span><span class="o">.</span><span class="n">get_neutralized_variable</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span>
-        <span class="p">)</span></div>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_modified</span> <span class="o">=</span> <span class="kc">True</span></div>
 
     <span class="k">def</span> <span class="nf">annualize_variable</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">Period</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>

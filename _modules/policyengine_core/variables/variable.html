@@ -371,6 +371,12 @@
     <span class="n">exhaustive_parameter_dependencies</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;If these parameters (plus the dataset, branch and period) haven&#39;t changed, Core will use caching on this variable.&quot;&quot;&quot;</span>
 
+    <span class="n">min_value</span><span class="p">:</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Minimum value of the variable.&quot;&quot;&quot;</span>
+
+    <span class="n">max_value</span><span class="p">:</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Maximum value of the variable.&quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">baseline_variable</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
         <span class="n">attr</span> <span class="o">=</span> <span class="p">{</span>
@@ -544,6 +550,19 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">exhaustive_parameter_dependencies</span>
             <span class="p">]</span>
 
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span>
+            <span class="n">attr</span><span class="p">,</span>
+            <span class="s2">&quot;min_value&quot;</span><span class="p">,</span>
+            <span class="n">allowed_type</span><span class="o">=</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span>
+            <span class="n">setter</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">set_min_value</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span>
+            <span class="n">attr</span><span class="p">,</span>
+            <span class="s2">&quot;max_value&quot;</span><span class="p">,</span>
+            <span class="n">allowed_type</span><span class="o">=</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span>
+            <span class="n">setter</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">set_max_value</span><span class="p">,</span>
+        <span class="p">)</span>
+
         <span class="n">formulas_attr</span><span class="p">,</span> <span class="n">unexpected_attrs</span> <span class="o">=</span> <span class="n">helpers</span><span class="o">.</span><span class="n">_partition</span><span class="p">(</span>
             <span class="n">attr</span><span class="p">,</span>
             <span class="k">lambda</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">FORMULA_NAME_PREFIX</span><span class="p">),</span>
@@ -701,6 +720,18 @@
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">defined_for</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
             <span class="n">defined_for</span> <span class="o">=</span> <span class="n">defined_for</span><span class="o">.</span><span class="n">value</span>
         <span class="k">return</span> <span class="n">defined_for</span>
+
+    <span class="k">def</span> <span class="nf">set_min_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">min_value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">min_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">min_value</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_value</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;min_value cannot be greater than max_value&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">min_value</span>
+
+    <span class="k">def</span> <span class="nf">set_max_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">max_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">max_value</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_value</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;max_value cannot be smaller than min_value&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">max_value</span>
 
 <div class="viewcode-block" id="Variable.parse_formula_name"><a class="viewcode-back" href="../../../python_api/variables.html#policyengine_core.variables.variable.Variable.parse_formula_name">[docs]</a>    <span class="k">def</span> <span class="nf">parse_formula_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute_name</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>

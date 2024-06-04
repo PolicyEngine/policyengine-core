@@ -577,3 +577,8 @@
     fixed:
     - Bug causing reforms affecting data to not affect caches.
   date: 2024-05-31 11:12:13
+- bump: minor
+  changes:
+    added:
+    - max_value and min_value in Variable class.
+  date: 2024-06-04 19:43:13

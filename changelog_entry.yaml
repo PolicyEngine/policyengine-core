@@ -1,4 +1,0 @@
-- bump: minor
-  changes:
-    added:
-    - max_value and min_value in Variable class.

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.23.0] - 2024-06-04 19:43:13
+
+### Added
+
+- max_value and min_value in Variable class.
+
 ## [2.22.0] - 2024-05-31 11:12:13
 
 ### Fixed
@@ -688,6 +694,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[2.23.0]: https://github.com/PolicyEngine/policyengine-core/compare/2.22.0...2.23.0
 [2.22.0]: https://github.com/PolicyEngine/policyengine-core/compare/2.21.8...2.22.0
 [2.21.8]: https://github.com/PolicyEngine/policyengine-core/compare/2.21.7...2.21.8
 [2.21.7]: https://github.com/PolicyEngine/policyengine-core/compare/2.21.6...2.21.7

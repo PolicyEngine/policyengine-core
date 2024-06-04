@@ -132,6 +132,12 @@ class Variable:
     exhaustive_parameter_dependencies: List[str] = None
     """If these parameters (plus the dataset, branch and period) haven't changed, Core will use caching on this variable."""
 
+    min_value: (float, int) = None
+    """Minimum value of the variable."""
+
+    max_value: (float, int) = None
+    """Maximum value of the variable."""
+
     def __init__(self, baseline_variable=None):
         self.name = self.__class__.__name__
         attr = {
@@ -305,6 +311,19 @@ class Variable:
                 self.exhaustive_parameter_dependencies
             ]
 
+        self.min_value = self.set(
+            attr,
+            "min_value",
+            allowed_type=(float, int),
+            setter=self.set_min_value,
+        )
+        self.max_value = self.set(
+            attr,
+            "max_value",
+            allowed_type=(float, int),
+            setter=self.set_max_value,
+        )
+
         formulas_attr, unexpected_attrs = helpers._partition(
             attr,
             lambda name, value: name.startswith(config.FORMULA_NAME_PREFIX),
@@ -462,6 +481,18 @@ class Variable:
         if isinstance(defined_for, Enum):
             defined_for = defined_for.value
         return defined_for
+
+    def set_min_value(self, min_value):
+        if min_value is not None:
+            if self.max_value is not None and min_value > self.max_value:
+                raise ValueError("min_value cannot be greater than max_value")
+            return min_value
+
+    def set_max_value(self, max_value):
+        if max_value is not None:
+            if self.min_value is not None and max_value < self.min_value:
+                raise ValueError("max_value cannot be smaller than min_value")
+            return max_value
 
     def parse_formula_name(self, attribute_name):
         """

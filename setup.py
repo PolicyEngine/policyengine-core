@@ -29,6 +29,7 @@ general_requirements = [
     "pandas>=1",
     "plotly>=5.6.0,<6",
     "ipython>=7.17.0,<8",
+    "pyvis>=0.3.2",
 ]
 
 dev_requirements = [

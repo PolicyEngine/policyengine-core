@@ -60,6 +60,12 @@ def get_parser():
             help="increase output verbosity. If specified, output the entire calculation trace.",
         )
         parser.add_argument(
+            "--visualize",
+            action="store_true",
+            default=False,
+            help="output a relationship graph of the variables being tested",
+        )
+        parser.add_argument(
             "-a",
             "--aggregate",
             action="store_true",

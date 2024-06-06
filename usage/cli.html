@@ -260,9 +260,9 @@
 <p>Run OpenFisca YAML tests</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">policyengine</span><span class="o">-</span><span class="n">core</span> <span class="n">test</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">c</span> <span class="n">COUNTRY_PACKAGE</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">e</span> <span class="p">[</span><span class="n">EXTENSIONS</span> <span class="o">...</span><span class="p">]]</span>
                        <span class="p">[</span><span class="o">-</span><span class="n">r</span> <span class="p">[</span><span class="n">REFORMS</span> <span class="o">...</span><span class="p">]]</span> <span class="p">[</span><span class="o">-</span><span class="n">n</span> <span class="n">NAME_FILTER</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">p</span><span class="p">]</span>
-                       <span class="p">[</span><span class="o">--</span><span class="n">performance</span><span class="o">-</span><span class="n">graph</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">performance</span><span class="o">-</span><span class="n">tables</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">a</span><span class="p">]</span>
-                       <span class="p">[</span><span class="o">-</span><span class="n">d</span> <span class="n">MAX_DEPTH</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">o</span> <span class="p">[</span><span class="n">ONLY_VARIABLES</span> <span class="o">...</span><span class="p">]]</span>
-                       <span class="p">[</span><span class="o">-</span><span class="n">i</span> <span class="p">[</span><span class="n">IGNORE_VARIABLES</span> <span class="o">...</span><span class="p">]]</span>
+                       <span class="p">[</span><span class="o">--</span><span class="n">performance</span><span class="o">-</span><span class="n">graph</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">performance</span><span class="o">-</span><span class="n">tables</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span><span class="p">]</span>
+                       <span class="p">[</span><span class="o">--</span><span class="n">visualize</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">a</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">d</span> <span class="n">MAX_DEPTH</span><span class="p">]</span>
+                       <span class="p">[</span><span class="o">-</span><span class="n">o</span> <span class="p">[</span><span class="n">ONLY_VARIABLES</span> <span class="o">...</span><span class="p">]]</span> <span class="p">[</span><span class="o">-</span><span class="n">i</span> <span class="p">[</span><span class="n">IGNORE_VARIABLES</span> <span class="o">...</span><span class="p">]]</span>
                        <span class="n">path</span> <span class="p">[</span><span class="n">path</span> <span class="o">...</span><span class="p">]</span>
 </pre></div>
 </div>
@@ -303,6 +303,10 @@
 </dd>
 <dt><kbd>-v, --verbose</kbd></dt>
 <dd><p>increase output verbosity. If specified, output the entire calculation trace.</p>
+<p>Default: False</p>
+</dd>
+<dt><kbd>--visualize</kbd></dt>
+<dd><p>output a relationship graph of the variables being tested</p>
 <p>Default: False</p>
 </dd>
 <dt><kbd>-a, --aggregate</kbd></dt>

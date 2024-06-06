@@ -363,6 +363,10 @@
         <span class="k">return</span> <span class="n">tracers</span><span class="o">.</span><span class="n">PerformanceLog</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">variable_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tracers</span><span class="o">.</span><span class="n">VariableGraph</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">tracers</span><span class="o">.</span><span class="n">VariableGraph</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">flat_trace</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tracers</span><span class="o">.</span><span class="n">FlatTrace</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">tracers</span><span class="o">.</span><span class="n">FlatTrace</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
@@ -377,6 +381,13 @@
 
     <span class="k">def</span> <span class="nf">generate_performance_tables</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dir_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">performance_log</span><span class="o">.</span><span class="n">generate_performance_tables</span><span class="p">(</span><span class="n">dir_path</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">generate_variable_graph</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">output_vars</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">variable_graph</span><span class="o">.</span><span class="n">visualize</span><span class="p">(</span>
+            <span class="n">name</span><span class="p">,</span> <span class="n">aggregate</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">max_depth</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">output_vars</span><span class="o">=</span><span class="n">output_vars</span>
+        <span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_get_nb_requests</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tree</span><span class="p">:</span> <span class="n">tracers</span><span class="o">.</span><span class="n">TraceNode</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
         <span class="n">tree_call</span> <span class="o">=</span> <span class="n">tree</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">variable</span>

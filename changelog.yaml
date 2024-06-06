@@ -582,3 +582,7 @@
     added:
     - max_value and min_value in Variable class.
   date: 2024-06-04 19:43:13
+- bump: patch
+  changes:
+    added: Visualization option when running tests
+  date: 2024-06-06 09:09:41

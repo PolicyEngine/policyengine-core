@@ -9,45 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- V
-- i
-- s
-- u
-- a
-- l
-- i
-- z
-- a
-- t
-- i
-- o
-- n
--  
-- o
-- p
-- t
-- i
-- o
-- n
--  
-- w
-- h
-- e
-- n
--  
-- r
-- u
-- n
-- n
-- i
-- n
-- g
--  
-- t
-- e
-- s
-- t
-- s
+- Visualisation option when running tests
 
 ## [2.23.0] - 2024-06-04 19:43:13
 

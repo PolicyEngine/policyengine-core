@@ -11,7 +11,7 @@ long_description = (this_directory / "README.md").read_text()
 
 general_requirements = [
     "pytest>=8,<9",
-    "numpy==1.26.4",
+    "numpy>=1.26.0",
     "black",
     "linecheck<1",
     "yaml-changelog<1",
@@ -58,8 +58,6 @@ setup(
         "License :: OSI Approved :: GNU Affero General Public License v3",
         "Operating System :: POSIX",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
@@ -78,7 +76,7 @@ setup(
             "policyengine-core=policyengine_core.scripts.policyengine_command:main",
         ],
     },
-    python_requires=">=3.7",
+    python_requires=">=3.9",
     extras_require={
         "dev": dev_requirements,
     },

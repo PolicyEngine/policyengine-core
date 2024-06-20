@@ -1,0 +1,4 @@
+- bump: major
+  changes:
+    changed:
+      - Added support for Python 3.12

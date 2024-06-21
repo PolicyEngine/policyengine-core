@@ -11,7 +11,7 @@ long_description = (this_directory / "README.md").read_text()
 
 general_requirements = [
     "pytest>=8,<9",
-    "numpy>=1.26.0",
+    "numpy~=1.26.4",
     "black",
     "linecheck<1",
     "yaml-changelog<1",

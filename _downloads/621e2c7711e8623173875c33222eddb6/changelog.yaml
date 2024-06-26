@@ -586,3 +586,8 @@
   changes:
     added: Visualization option when running tests
   date: 2024-06-06 09:09:41
+- bump: major
+  changes:
+    changed:
+    - Added support for Python 3.12
+  date: 2024-06-26 17:08:24

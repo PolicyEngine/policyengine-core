@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Type, Union
 import numpy
 import numpy as np
 import pandas as pd
+import importlib.metadata
+import pkg_resources
 from numpy.typing import ArrayLike
 
 from policyengine_core import commons, periods
@@ -35,6 +37,7 @@ from policyengine_core.tracers import SimpleTracer
 from policyengine_core.variables import Variable, QuantityType
 from policyengine_core.reforms.reform import Reform
 from policyengine_core.parameters import get_parameter
+from policyengine_core.simulations.sim_macro_cache import SimulationMacroCache
 
 
 class Simulation:
@@ -74,6 +77,9 @@ class Simulation:
 
     macro_cache_write: bool = True
     """Whether to write to the macro cache."""
+
+    version: str = None
+    """version number of the simulation."""
 
     def __init__(
         self,
@@ -198,6 +204,7 @@ class Simulation:
             self.baseline = None
 
         self.parent_branch = None
+        self.version = importlib.metadata.version("policyengine-core")
 
     def apply_reform(self, reform: Union[tuple, Reform]):
         if isinstance(reform, tuple):
@@ -568,7 +575,8 @@ class Simulation:
 
         if alternate_period_handling:
             if cache_path is not None:
-                self._set_macro_cache_value(cache_path, values)
+                message = self._set_macro_cache_value(cache_path, values)
+                print(message is not None)
             return values
 
         self._check_period_consistency(period, variable)
@@ -1379,8 +1387,7 @@ class Simulation:
         """
         if not self.macro_cache_read or self.tax_benefit_system.data_modified:
             return None
-        with h5py.File(cache_file_path, "r") as f:
-            return f["values"][()]
+        return SimulationMacroCache().get_cache_value(self.version, cache_file_path)
 
     def _set_macro_cache_value(
         self,
@@ -1392,8 +1399,8 @@ class Simulation:
         """
         if not self.macro_cache_write or self.tax_benefit_system.data_modified:
             return None
-        with h5py.File(cache_file_path, "w") as f:
-            f.create_dataset("values", data=value)
+        message = SimulationMacroCache().set_cache_value(self.version, cache_file_path, value)
+        return message
 
 
 class NpEncoder(json.JSONEncoder):

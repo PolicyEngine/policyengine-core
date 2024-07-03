@@ -1,6 +1,6 @@
 from policyengine_core.country_template.situation_examples import single
 from policyengine_core.simulations import SimulationBuilder
-
+from policyengine_core.country_template.data.datasets import country_template_dataset
 
 def test_calculate_full_tracer(tax_benefit_system):
     simulation = SimulationBuilder().build_default_simulation(
@@ -61,3 +61,17 @@ def test_get_memory_usage(tax_benefit_system):
     memory_usage = simulation.get_memory_usage(variables=["salary"])
     assert memory_usage["total_nb_bytes"] > 0
     assert len(memory_usage["by_variable"]) == 1
+
+
+def test_version(tax_benefit_system):
+    simulation = SimulationBuilder().build_from_entities(
+        tax_benefit_system, single
+    )
+    print(simulation.version)
+
+
+def test_macro_cache(tax_benefit_system):
+    simulation = SimulationBuilder().build_from_entities(
+        tax_benefit_system, single,
+    )
+    simulation.calculate("disposable_income", "2017-01")

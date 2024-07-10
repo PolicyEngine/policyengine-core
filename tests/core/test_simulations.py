@@ -67,7 +67,8 @@ def test_version(tax_benefit_system):
     simulation = SimulationBuilder().build_from_entities(
         tax_benefit_system, single
     )
-    print(simulation.version)
+    assert simulation.core_version is not None
+    assert simulation.country_version is not None
 
 
 def test_macro_cache(tax_benefit_system):

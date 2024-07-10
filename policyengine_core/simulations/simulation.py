@@ -5,7 +5,6 @@ import numpy
 import numpy as np
 import pandas as pd
 import importlib.metadata
-import pkg_resources
 from numpy.typing import ArrayLike
 
 from policyengine_core import commons, periods
@@ -78,8 +77,11 @@ class Simulation:
     macro_cache_write: bool = True
     """Whether to write to the macro cache."""
 
-    version: str = None
-    """version number of the simulation."""
+    core_version: str = None
+    """Version number of the simulation core."""
+
+    country_version: Dict[str, Any] = None
+    """Version number of the country packages."""
 
     def __init__(
         self,
@@ -204,7 +206,24 @@ class Simulation:
             self.baseline = None
 
         self.parent_branch = None
-        self.version = importlib.metadata.version("policyengine-core")
+        self.core_version = importlib.metadata.version("policyengine-core")
+
+        # TODO(SylviaDu99)
+        COUNTRIES = ("uk", "us", "ca", "ng", "il")
+        COUNTRY_PACKAGE_NAMES = (
+            "policyengine_uk",
+            "policyengine_us",
+            "policyengine_canada",
+            "policyengine_ng",
+            "policyengine_il",
+        )
+        try:
+            self.country_version = {
+                country: importlib.metadata.version(package_name)
+                for country, package_name in zip(COUNTRIES, COUNTRY_PACKAGE_NAMES)
+            }
+        except:
+            self.country_version = {country: "0.0.0" for country in COUNTRIES}
 
     def apply_reform(self, reform: Union[tuple, Reform]):
         if isinstance(reform, tuple):

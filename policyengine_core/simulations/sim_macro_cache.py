@@ -2,6 +2,9 @@ import shutil
 from pathlib import Path
 import h5py
 from numpy.typing import ArrayLike
+import importlib.metadata
+
+from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 
 
 class Singleton(type):
@@ -14,37 +17,39 @@ class Singleton(type):
 
 
 class SimulationMacroCache(metaclass=Singleton):
-    def __init__(self):
-        self.core_version = None
-        self.country_version = None
+    def __init__(self, tax_benefit_system: TaxBenefitSystem):
+        self.core_version = importlib.metadata.version("policyengine-core")
+        self.country_package_metadata = tax_benefit_system.get_package_metadata()
+        self.country_name = self.country_package_metadata["name"]
+        self.country_version = self.country_package_metadata["version"]
         self.cache_file_path = None
 
-    def set_version(self, core_version: str, country_version: {}):
-        self.core_version = core_version
-        self.country_version = country_version
+    def set_cache_path(self, parent_path: Path, dataset_name: str, variable_name: str, period: str, branch_name: str):
+        storage_folder = parent_path / f"{dataset_name}_variable_cache"
+        storage_folder.mkdir(exist_ok=True)
+        self.cache_file_path = storage_folder / f"{variable_name}_{period}_{branch_name}.h5"
 
-    def set_cache_path(self, parent_path: Path, dataset_name: str):
-        self.cache_file_path = parent_path / f"{dataset_name}_variable_cache"
+    def set_cache_value(self, cache_file_path: Path, value: ArrayLike):
+        with h5py.File(cache_file_path, "w") as f:
+            f.create_dataset("metadata:core_version", data=self.core_version)
+            f.create_dataset("metadata:country_package", data={self.country_name: self.country_version})
+            f.create_dataset("values", data=value)
 
-    def get_cache_value(self, version: str, country_version: {}, cache_file_path: Path):
+    def get_cache_path(self):
+        return self.cache_file_path
+
+    def get_cache_value(self, cache_file_path: Path):
         with h5py.File(cache_file_path, "r") as f:
+            # Validate both core version and country package metadata are uptodate, otherwise flush the cache
             if "metadata:core_version" in f and "metadata:country_version" in f:
-                # Validate version is correct, otherwise flush the cache
-                if f["metadata:core_version"][()] != version or f["metadata:country_version"][()] != country_version:
+                if (f["metadata:core_version"][()] != self.core_version or
+                        f["metadata:country_package"][()] != {self.country_name: self.country_version}):
                     self.clear_cache(cache_file_path)
                     return None
             else:
                 self.clear_cache(cache_file_path)
                 return None
             return f["values"][()]
-
-    def set_cache_value(self, core_version: str, country_version: {}, cache_file_path: Path, value: ArrayLike):
-        self.set_version(core_version, country_version)
-        with h5py.File(cache_file_path, "w") as f:
-            f.create_dataset("values", data=value)
-            f.create_dataset("metadata:core_version", data=self.core_version)
-            f.create_dataset("metadata:country_version", data=self.country_version)
-        return "cache set successfully"
 
     def clear_cache(self, cache_file_path: Path):
         shutil.rmtree(cache_file_path)

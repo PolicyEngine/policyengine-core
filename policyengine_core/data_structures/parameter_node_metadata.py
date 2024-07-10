@@ -42,5 +42,8 @@ class ParameterNodeMetadata:
     
     """
 
+    inclusive: bool
+    """Whether the value is inclusive or exclusive of the upper bound."""
+
     propagate_metadata_to_children: bool
     """Whether to propagate metadata to children of this node. This excludes `breakdown`."""

@@ -65,6 +65,9 @@ class ParameterMetadata:
     unit: str
     """The real-world meaning of a particular value."""
 
+    inclusive: bool
+    """Whether the value is inclusive or exclusive of the upper bound."""
+
     uprating: Union[UpratingIndex, UpratingSchema]
     """The schema for uprating this parameter.
 

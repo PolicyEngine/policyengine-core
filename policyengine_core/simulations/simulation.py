@@ -540,11 +540,19 @@ class Simulation:
         # Check if cache could be used, if available, check if path exists
         is_cache_available = self.check_macro_cache(variable_name, str(period))
         if is_cache_available:
-            smc.set_cache_path(self.dataset.file_path.parent, self.dataset.name, variable_name, str(period),
-                               self.branch_name)
+            smc.set_cache_path(
+                self.dataset.file_path.parent,
+                self.dataset.name,
+                variable_name,
+                str(period),
+                self.branch_name,
+            )
             cache_path = smc.get_cache_path()
             if cache_path.exists():
-                if not self.macro_cache_read or self.tax_benefit_system.data_modified:
+                if (
+                    not self.macro_cache_read
+                    or self.tax_benefit_system.data_modified
+                ):
                     value = None
                 else:
                     value = smc.get_cache_value(cache_path)

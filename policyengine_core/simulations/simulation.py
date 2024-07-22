@@ -20,9 +20,6 @@ from policyengine_core.tracers import (
     SimpleTracer,
     TracingParameterNodeAtInstant,
 )
-import h5py
-from pathlib import Path
-import shutil
 
 import json
 
@@ -1348,8 +1345,8 @@ class Simulation:
         Check if the variable is able to have cached value
         """
         is_cache_available = True
-        if not self.is_over_dataset:
-            return not is_cache_available
+        if self.is_over_dataset:
+            return is_cache_available
 
         variable = self.tax_benefit_system.get_variable(variable_name)
         parameter_deps = variable.exhaustive_parameter_dependencies
@@ -1365,77 +1362,6 @@ class Simulation:
                 return not is_cache_available
 
         return is_cache_available
-
-    # def _get_macro_cache(
-    #     self,
-    #     variable_name: str,
-    #     period: str,
-    # ):
-    #     """
-    #     Get the cache location of a variable for a given period, if it exists.
-    #     """
-    #     if not self.is_over_dataset:
-    #         return None
-    #
-    #     variable = self.tax_benefit_system.get_variable(variable_name)
-    #     parameter_deps = variable.exhaustive_parameter_dependencies
-    #
-    #     if parameter_deps is None:
-    #         return None
-    #
-    #     for parameter in parameter_deps:
-    #         param = get_parameter(
-    #             self.tax_benefit_system.parameters, parameter
-    #         )
-    #         if param.modified:
-    #             return None
-    #
-    #     storage_folder = (
-    #         self.dataset.file_path.parent
-    #         / f"{self.dataset.name}_variable_cache"
-    #     )
-    #     storage_folder.mkdir(exist_ok=True)
-    #
-    #     cache_file_path = (
-    #         storage_folder / f"{variable_name}_{period}_{self.branch_name}.h5"
-    #     )
-    #
-    #     return cache_file_path
-    #
-    # def clear_macro_cache(self):
-    #     """
-    #     Clear the cache of all variables.
-    #     """
-    #     storage_folder = (
-    #         self.dataset.file_path.parent
-    #         / f"{self.dataset.name}_variable_cache"
-    #     )
-    #     if storage_folder.exists():
-    #         shutil.rmtree(storage_folder)
-    #
-    # def _get_macro_cache_value(
-    #     self,
-    #     cache_file_path: Path,
-    # ):
-    #     """
-    #     Get the value of a variable from a cache file.
-    #     """
-    #     if not self.macro_cache_read or self.tax_benefit_system.data_modified:
-    #         return None
-    #     return SimulationMacroCache().get_cache_value(self.version, cache_file_path)
-    #
-    # def _set_macro_cache_value(
-    #     self,
-    #     cache_file_path: Path,
-    #     value: ArrayLike,
-    # ):
-    #     """
-    #     Set the value of a variable in a cache file.
-    #     """
-    #     if not self.macro_cache_write or self.tax_benefit_system.data_modified:
-    #         return None
-    #     message = SimulationMacroCache().set_cache_value(self.version, cache_file_path, value)
-    #     return message
 
 
 class NpEncoder(json.JSONEncoder):

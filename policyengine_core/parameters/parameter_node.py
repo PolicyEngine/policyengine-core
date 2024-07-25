@@ -253,3 +253,24 @@ class ParameterNode(AtInstantLike):
         self.modified = True
         if self.parent is not None:
             self.parent.mark_as_modified()
+
+    def get_child(self, path: str) -> "ParameterNode":
+        node = self
+        for name in path.split("."):
+            try:
+                if "[" not in name:
+                    node = node.children[name]
+                else:
+                    try:
+                        name, index = name.split("[")
+                        index = int(index[:-1])
+                        node = node.children[name].brackets[index]
+                    except:
+                        raise ValueError(
+                            "Invalid bracket syntax (should be e.g. tax.brackets[3].rate"
+                        )
+            except:
+                raise ValueError(
+                    f"Could not find the parameter (failed at {name})."
+                )
+        return node

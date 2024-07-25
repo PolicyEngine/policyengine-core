@@ -30,6 +30,7 @@ class Dataset:
     TABLES = "tables"
     ARRAYS = "arrays"
     TIME_PERIOD_ARRAYS = "time_period_arrays"
+    FLAT_FILE = "flat_file"
 
     _table_cache: Dict[str, pd.DataFrame] = None
 
@@ -55,16 +56,10 @@ class Dataset:
             Dataset.TABLES,
             Dataset.ARRAYS,
             Dataset.TIME_PERIOD_ARRAYS,
+            Dataset.FLAT_FILE,
         ], f"You tried to instantiate a Dataset object, but your data_format attribute is invalid ({self.data_format})."
 
         self._table_cache = {}
-
-        if (
-            self.data_format != Dataset.TIME_PERIOD_ARRAYS
-        ) and self.time_period is None:
-            raise ValueError(
-                "You tried to instantiate a Dataset object, but no time_period has been provided."
-            )
 
         if not self.exists and require:
             if self.url is not None:
@@ -107,6 +102,13 @@ class Dataset:
                     values = f[key]
                 self._table_cache[key] = values
                 return values
+        elif self.data_format == Dataset.FLAT_FILE:
+            if key is None:
+                return pd.read_csv(file)
+            else:
+                raise ValueError(
+                    "You tried to load a key from a flat file dataset, but flat file datasets do not support keys."
+                )
         else:
             raise ValueError(
                 f"Invalid data format {self.data_format} for dataset {self.label}."
@@ -130,6 +132,8 @@ class Dataset:
             with pd.HDFStore(file, "a") as f:
                 f.put(key, values)
             self._table_cache = {}
+        elif self.data_format == Dataset.FLAT_FILE:
+            values.to_csv(file, index=False)
         else:
             raise ValueError(
                 f"Invalid data format {self.data_format} for dataset {self.label}."
@@ -242,6 +246,8 @@ class Dataset:
         elif self.data_format in (Dataset.ARRAYS, Dataset.TIME_PERIOD_ARRAYS):
             with h5py.File(self.file_path, "r") as f:
                 return list(f.keys())
+        elif self.data_format == Dataset.FLAT_FILE:
+            return pd.read_csv(self.file_path, nrows=0).columns.tolist()
         else:
             raise ValueError(
                 f"Invalid data format {self.data_format} for dataset {self.label}."
@@ -332,3 +338,28 @@ class Dataset:
         """Removes the dataset from disk."""
         if self.exists:
             self.file_path.unlink()
+
+    @staticmethod
+    def from_file(file_path: str, time_period: str = None):
+        """Creates a dataset from a file.
+
+        Args:
+            file_path (str): The file path to create the dataset from.
+
+        Returns:
+            Dataset: The dataset.
+        """
+        file_path = Path(file_path)
+        dataset = type(
+            "Dataset",
+            (Dataset,),
+            {
+                "name": file_path.stem,
+                "label": file_path.stem,
+                "data_format": Dataset.FLAT_FILE,
+                "file_path": file_path,
+                "time_period": time_period,
+            },
+        )()
+
+        return dataset

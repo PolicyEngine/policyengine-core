@@ -1,6 +1,0 @@
-- bump: minor
-  changes:
-    added:
-    - Flat file dataset option.
-    - Microdata weighting classes from microdf.
-    - Eternity dictionary reform options.

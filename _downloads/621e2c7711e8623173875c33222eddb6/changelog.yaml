@@ -591,3 +591,10 @@
     changed:
     - Added support for Python 3.12
   date: 2024-06-26 17:08:24
+- bump: minor
+  changes:
+    added:
+    - Flat file dataset option.
+    - Microdata weighting classes from microdf.
+    - Eternity dictionary reform options.
+  date: 2024-07-26 00:28:31

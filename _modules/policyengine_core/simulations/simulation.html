@@ -244,6 +244,7 @@
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">from</span> <span class="nn">numpy.typing</span> <span class="kn">import</span> <span class="n">ArrayLike</span>
+<span class="kn">import</span> <span class="nn">logging</span>
 
 <span class="kn">from</span> <span class="nn">policyengine_core</span> <span class="kn">import</span> <span class="n">commons</span><span class="p">,</span> <span class="n">periods</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.data.dataset</span> <span class="kn">import</span> <span class="n">Dataset</span>
@@ -269,7 +270,7 @@
     <span class="kn">from</span> <span class="nn">policyengine_core.taxbenefitsystems</span> <span class="kn">import</span> <span class="n">TaxBenefitSystem</span>
 
 <span class="kn">from</span> <span class="nn">policyengine_core.experimental</span> <span class="kn">import</span> <span class="n">MemoryConfig</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.populations</span> <span class="kn">import</span> <span class="n">Population</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.populations</span> <span class="kn">import</span> <span class="n">Population</span><span class="p">,</span> <span class="n">GroupPopulation</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.tracers</span> <span class="kn">import</span> <span class="n">SimpleTracer</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.variables</span> <span class="kn">import</span> <span class="n">Variable</span><span class="p">,</span> <span class="n">QuantityType</span>
 <span class="kn">from</span> <span class="nn">policyengine_core.reforms.reform</span> <span class="kn">import</span> <span class="n">Reform</span>
@@ -395,11 +396,12 @@
                 <span class="n">datasets_by_name</span> <span class="o">=</span> <span class="p">{</span>
                     <span class="n">dataset</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">dataset</span> <span class="k">for</span> <span class="n">dataset</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">datasets</span>
                 <span class="p">}</span>
-                <span class="k">if</span> <span class="n">dataset</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">datasets_by_name</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Dataset </span><span class="si">{</span><span class="n">dataset</span><span class="si">}</span><span class="s2"> not found. Available datasets: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">datasets_by_name</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="k">if</span> <span class="n">dataset</span> <span class="ow">in</span> <span class="n">datasets_by_name</span><span class="p">:</span>
+                    <span class="n">dataset</span> <span class="o">=</span> <span class="n">datasets_by_name</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">Path</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                    <span class="n">dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span>
+                        <span class="n">dataset</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_input_period</span>
                     <span class="p">)</span>
-                <span class="n">dataset</span> <span class="o">=</span> <span class="n">datasets_by_name</span><span class="p">[</span><span class="n">dataset</span><span class="p">]</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="p">(</span><span class="n">require</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
@@ -486,23 +488,31 @@
 
         <span class="n">person_entity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">person_entity</span>
         <span class="n">entity_id_field</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">person_entity</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">_id&quot;</span>
-        <span class="k">assert</span> <span class="p">(</span>
-            <span class="n">entity_id_field</span> <span class="ow">in</span> <span class="n">data</span>
-        <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Missing </span><span class="si">{</span><span class="n">entity_id_field</span><span class="si">}</span><span class="s2"> column in the dataset. Each person entity must have an ID array defined for ETERNITY.&quot;</span>
-
-        <span class="n">get_eternity_array</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">ds</span><span class="p">:</span> <span class="p">(</span>
-            <span class="n">ds</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]]</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">data_format</span> <span class="o">==</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">TIME_PERIOD_ARRAYS</span>
-            <span class="k">else</span> <span class="n">ds</span>
-        <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">data_format</span> <span class="o">!=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">FLAT_FILE</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="p">(</span>
+                <span class="n">entity_id_field</span> <span class="ow">in</span> <span class="n">data</span>
+            <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Missing </span><span class="si">{</span><span class="n">entity_id_field</span><span class="si">}</span><span class="s2"> column in the dataset. Each person entity must have an ID array defined for ETERNITY.&quot;</span>
+        <span class="k">elif</span> <span class="n">entity_id_field</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">data</span><span class="p">[</span><span class="n">entity_id_field</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">data_format</span> <span class="o">!=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">FLAT_FILE</span><span class="p">:</span>
+            <span class="n">get_eternity_array</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">ds</span><span class="p">:</span> <span class="p">(</span>
+                <span class="n">ds</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]]</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">data_format</span> <span class="o">==</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">TIME_PERIOD_ARRAYS</span>
+                <span class="k">else</span> <span class="n">ds</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">get_eternity_array</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">ds</span><span class="p">:</span> <span class="n">ds</span>
         <span class="n">entity_ids</span> <span class="o">=</span> <span class="n">get_eternity_array</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">entity_id_field</span><span class="p">])</span>
         <span class="n">builder</span><span class="o">.</span><span class="n">declare_person_entity</span><span class="p">(</span><span class="n">person_entity</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">entity_ids</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">group_entity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">group_entities</span><span class="p">:</span>
             <span class="n">entity_id_field</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">group_entity</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">_id&quot;</span>
-            <span class="k">assert</span> <span class="p">(</span>
-                <span class="n">entity_id_field</span> <span class="ow">in</span> <span class="n">data</span>
-            <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Missing </span><span class="si">{</span><span class="n">entity_id_field</span><span class="si">}</span><span class="s2"> column in the dataset. Each group entity must have an ID array defined for ETERNITY.&quot;</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">data_format</span> <span class="o">!=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">FLAT_FILE</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="p">(</span>
+                    <span class="n">entity_id_field</span> <span class="ow">in</span> <span class="n">data</span>
+                <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Missing </span><span class="si">{</span><span class="n">entity_id_field</span><span class="si">}</span><span class="s2"> column in the dataset. Each group entity must have an ID array defined for ETERNITY.&quot;</span>
+            <span class="k">elif</span> <span class="n">entity_id_field</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+                <span class="n">data</span><span class="p">[</span><span class="n">entity_id_field</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
 
             <span class="n">entity_ids</span> <span class="o">=</span> <span class="n">get_eternity_array</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">entity_id_field</span><span class="p">])</span>
             <span class="n">builder</span><span class="o">.</span><span class="n">declare_entity</span><span class="p">(</span><span class="n">group_entity</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">entity_ids</span><span class="p">)</span>
@@ -510,9 +520,12 @@
             <span class="n">person_membership_id_field</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">person_entity</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">group_entity</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">_id&quot;</span>
             <span class="p">)</span>
-            <span class="k">assert</span> <span class="p">(</span>
-                <span class="n">person_membership_id_field</span> <span class="ow">in</span> <span class="n">data</span>
-            <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Missing </span><span class="si">{</span><span class="n">person_membership_id_field</span><span class="si">}</span><span class="s2"> column in the dataset. Each group entity must have a person membership array defined for ETERNITY.&quot;</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">data_format</span> <span class="o">!=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">FLAT_FILE</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="p">(</span>
+                    <span class="n">person_membership_id_field</span> <span class="ow">in</span> <span class="n">data</span>
+                <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Missing </span><span class="si">{</span><span class="n">person_membership_id_field</span><span class="si">}</span><span class="s2"> column in the dataset. Each group entity must have a person membership array defined for ETERNITY.&quot;</span>
+            <span class="k">elif</span> <span class="n">person_membership_id_field</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+                <span class="n">data</span><span class="p">[</span><span class="n">person_membership_id_field</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
             <span class="n">person_membership_ids</span> <span class="o">=</span> <span class="n">get_eternity_array</span><span class="p">(</span>
                 <span class="n">data</span><span class="p">[</span><span class="n">person_membership_id_field</span><span class="p">]</span>
             <span class="p">)</span>
@@ -536,20 +549,55 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">build_from_populations</span><span class="p">(</span><span class="n">builder</span><span class="o">.</span><span class="n">populations</span><span class="p">)</span>
 
-        <span class="k">for</span> <span class="n">variable</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">variable</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">data_format</span> <span class="o">==</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">TIME_PERIOD_ARRAYS</span><span class="p">:</span>
-                    <span class="k">for</span> <span class="n">time_period</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="n">variable</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">data_format</span> <span class="o">!=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">FLAT_FILE</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">variable</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">variable</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">data_format</span> <span class="o">==</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">TIME_PERIOD_ARRAYS</span><span class="p">:</span>
+                        <span class="k">for</span> <span class="n">time_period</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="n">variable</span><span class="p">]:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">set_input</span><span class="p">(</span>
+                                <span class="n">variable</span><span class="p">,</span>
+                                <span class="n">time_period</span><span class="p">,</span>
+                                <span class="n">data</span><span class="p">[</span><span class="n">variable</span><span class="p">][</span><span class="n">time_period</span><span class="p">],</span>
+                            <span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">set_input</span><span class="p">(</span>
-                            <span class="n">variable</span><span class="p">,</span> <span class="n">time_period</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">variable</span><span class="p">][</span><span class="n">time_period</span><span class="p">]</span>
+                            <span class="n">variable</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">time_period</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">variable</span><span class="p">]</span>
                         <span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">set_input</span><span class="p">(</span>
-                        <span class="n">variable</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">time_period</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">variable</span><span class="p">]</span>
+                    <span class="c1"># Silently skip.</span>
+                    <span class="k">pass</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">variable</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s2">&quot;__&quot;</span> <span class="ow">in</span> <span class="n">variable</span><span class="p">:</span>
+                    <span class="n">variable_name</span><span class="p">,</span> <span class="n">time_period</span> <span class="o">=</span> <span class="n">variable</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;__&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">variable_name</span> <span class="o">=</span> <span class="n">variable</span>
+                    <span class="n">time_period</span> <span class="o">=</span> <span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">time_period</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_input_period</span>
                     <span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># Silently skip.</span>
-                <span class="k">pass</span>
+
+                <span class="k">if</span> <span class="n">variable_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Variable </span><span class="si">{</span><span class="n">variable_name</span><span class="si">}</span><span class="s2"> not found. Skipping.&quot;</span>
+                    <span class="p">)</span>
+                    <span class="k">continue</span>
+
+                <span class="n">variable_meta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
+                    <span class="n">variable_name</span>
+                <span class="p">)</span>
+                <span class="n">entity</span> <span class="o">=</span> <span class="n">variable_meta</span><span class="o">.</span><span class="n">entity</span>
+                <span class="n">population</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_population</span><span class="p">(</span><span class="n">entity</span><span class="o">.</span><span class="n">plural</span><span class="p">)</span>
+
+                <span class="c1"># All data should be person level</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">variable</span><span class="p">])</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">population</span><span class="o">.</span><span class="n">ids</span><span class="p">):</span>
+                    <span class="n">population</span><span class="p">:</span> <span class="n">GroupPopulation</span>
+                    <span class="n">entity_level_data</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">value_from_first_person</span><span class="p">(</span>
+                        <span class="n">data</span><span class="p">[</span><span class="n">variable</span><span class="p">]</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">entity_level_data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">variable</span><span class="p">]</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_input</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">time_period</span><span class="p">,</span> <span class="n">entity_level_data</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">default_calculation_period</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">time_period</span>
 

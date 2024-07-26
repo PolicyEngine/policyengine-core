@@ -5,6 +5,7 @@ import numpy
 import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
+import logging
 
 from policyengine_core import commons, periods
 from policyengine_core.data.dataset import Dataset
@@ -30,7 +31,7 @@ if TYPE_CHECKING:
     from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 
 from policyengine_core.experimental import MemoryConfig
-from policyengine_core.populations import Population
+from policyengine_core.populations import Population, GroupPopulation
 from policyengine_core.tracers import SimpleTracer
 from policyengine_core.variables import Variable, QuantityType
 from policyengine_core.reforms.reform import Reform
@@ -156,11 +157,12 @@ class Simulation:
                 datasets_by_name = {
                     dataset.name: dataset for dataset in self.datasets
                 }
-                if dataset not in datasets_by_name:
-                    raise ValueError(
-                        f"Dataset {dataset} not found. Available datasets: {list(datasets_by_name.keys())}"
+                if dataset in datasets_by_name:
+                    dataset = datasets_by_name.get(dataset)
+                elif Path(dataset).exists():
+                    dataset = Dataset.from_file(
+                        dataset, self.default_input_period
                     )
-                dataset = datasets_by_name[dataset]
             if isinstance(dataset, type):
                 self.dataset: Dataset = dataset(require=True)
             else:
@@ -247,23 +249,31 @@ class Simulation:
 
         person_entity = self.tax_benefit_system.person_entity
         entity_id_field = f"{person_entity.key}_id"
-        assert (
-            entity_id_field in data
-        ), f"Missing {entity_id_field} column in the dataset. Each person entity must have an ID array defined for ETERNITY."
-
-        get_eternity_array = lambda ds: (
-            ds[list(ds.keys())[0]]
-            if self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS
-            else ds
-        )
+        if self.dataset.data_format != Dataset.FLAT_FILE:
+            assert (
+                entity_id_field in data
+            ), f"Missing {entity_id_field} column in the dataset. Each person entity must have an ID array defined for ETERNITY."
+        elif entity_id_field not in data:
+            data[entity_id_field] = np.arange(len(data))
+        if self.dataset.data_format != Dataset.FLAT_FILE:
+            get_eternity_array = lambda ds: (
+                ds[list(ds.keys())[0]]
+                if self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS
+                else ds
+            )
+        else:
+            get_eternity_array = lambda ds: ds
         entity_ids = get_eternity_array(data[entity_id_field])
         builder.declare_person_entity(person_entity.key, entity_ids)
 
         for group_entity in self.tax_benefit_system.group_entities:
             entity_id_field = f"{group_entity.key}_id"
-            assert (
-                entity_id_field in data
-            ), f"Missing {entity_id_field} column in the dataset. Each group entity must have an ID array defined for ETERNITY."
+            if self.dataset.data_format != Dataset.FLAT_FILE:
+                assert (
+                    entity_id_field in data
+                ), f"Missing {entity_id_field} column in the dataset. Each group entity must have an ID array defined for ETERNITY."
+            elif entity_id_field not in data:
+                data[entity_id_field] = np.arange(len(data))
 
             entity_ids = get_eternity_array(data[entity_id_field])
             builder.declare_entity(group_entity.key, entity_ids)
@@ -271,9 +281,12 @@ class Simulation:
             person_membership_id_field = (
                 f"{person_entity.key}_{group_entity.key}_id"
             )
-            assert (
-                person_membership_id_field in data
-            ), f"Missing {person_membership_id_field} column in the dataset. Each group entity must have a person membership array defined for ETERNITY."
+            if self.dataset.data_format != Dataset.FLAT_FILE:
+                assert (
+                    person_membership_id_field in data
+                ), f"Missing {person_membership_id_field} column in the dataset. Each group entity must have a person membership array defined for ETERNITY."
+            elif person_membership_id_field not in data:
+                data[person_membership_id_field] = np.arange(len(data))
             person_membership_ids = get_eternity_array(
                 data[person_membership_id_field]
             )
@@ -297,20 +310,55 @@ class Simulation:
 
         self.build_from_populations(builder.populations)
 
-        for variable in data:
-            if variable in self.tax_benefit_system.variables:
-                if self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS:
-                    for time_period in data[variable]:
+        if self.dataset.data_format != Dataset.FLAT_FILE:
+            for variable in data:
+                if variable in self.tax_benefit_system.variables:
+                    if self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS:
+                        for time_period in data[variable]:
+                            self.set_input(
+                                variable,
+                                time_period,
+                                data[variable][time_period],
+                            )
+                    else:
                         self.set_input(
-                            variable, time_period, data[variable][time_period]
+                            variable, self.dataset.time_period, data[variable]
                         )
                 else:
-                    self.set_input(
-                        variable, self.dataset.time_period, data[variable]
+                    # Silently skip.
+                    pass
+        else:
+            for variable in data:
+                if "__" in variable:
+                    variable_name, time_period = variable.split("__")
+                else:
+                    variable_name = variable
+                    time_period = (
+                        self.dataset.time_period or self.default_input_period
                     )
-            else:
-                # Silently skip.
-                pass
+
+                if variable_name not in self.tax_benefit_system.variables:
+                    logging.warn(
+                        f"Variable {variable_name} not found. Skipping."
+                    )
+                    continue
+
+                variable_meta = self.tax_benefit_system.get_variable(
+                    variable_name
+                )
+                entity = variable_meta.entity
+                population = self.get_population(entity.plural)
+
+                # All data should be person level
+                if len(data[variable]) != len(population.ids):
+                    population: GroupPopulation
+                    entity_level_data = population.value_from_first_person(
+                        data[variable]
+                    )
+                else:
+                    entity_level_data = data[variable]
+
+                self.set_input(variable, time_period, entity_level_data)
 
         self.default_calculation_period = self.dataset.time_period
 

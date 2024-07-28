@@ -363,3 +363,27 @@ class Dataset:
         )()
 
         return dataset
+
+    @staticmethod
+    def from_dataframe(dataframe: pd.DataFrame, time_period: str = None):
+        """Creates a dataset from a DataFrame.
+
+        Returns:
+            Dataset: The dataset.
+        """
+        file_path = Path(file_path)
+        dataset = type(
+            "Dataset",
+            (Dataset,),
+            {
+                "name": file_path.stem,
+                "label": file_path.stem,
+                "data_format": Dataset.FLAT_FILE,
+                "file_path": "dataframe",
+                "time_period": time_period,
+                "load": lambda: dataframe,
+            },
+        )()
+
+        return dataset
+

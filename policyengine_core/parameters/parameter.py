@@ -137,7 +137,7 @@ class Parameter(AtInstantLike):
         ]
         return clone
 
-    def update(self, period=None, start=None, stop=None, value=None):
+    def update(self, value=None, period=None, start=None, stop=None):
         """
         Change the value for a given period.
 
@@ -156,7 +156,7 @@ class Parameter(AtInstantLike):
             start = period.start
             stop = period.stop
         if start is None:
-            raise ValueError("You must provide either a start or a period")
+            start = "0000-01-01"
         start_str = str(start)
         stop_str = str(stop.offset(1, "day")) if stop else None
 

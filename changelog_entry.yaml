@@ -1,0 +1,4 @@
+- bump: minor
+  changes:
+    changed:
+    - Reform syntax to increase flexibility.

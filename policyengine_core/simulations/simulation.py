@@ -85,7 +85,6 @@ class Simulation:
         reform: Reform = None,
         trace: bool = False,
     ):
-        reform_applied_after = False
         if tax_benefit_system is None:
             if (
                 self.default_tax_benefit_system_instance is not None
@@ -94,20 +93,11 @@ class Simulation:
                 tax_benefit_system = self.default_tax_benefit_system_instance
             else:
                 # If reform is taken as an arg, pass it
-                try:
-                    tax_benefit_system = self.default_tax_benefit_system(
-                        reform=reform
-                    )
-                except:
-                    tax_benefit_system = self.default_tax_benefit_system()
-                    reform_applied_after = True
+                tax_benefit_system = self.default_tax_benefit_system()
             self.tax_benefit_system = tax_benefit_system
 
         self.reform = reform
         self.tax_benefit_system = tax_benefit_system
-
-        if reform_applied_after and reform is not None:
-            self.apply_reform(reform)
         self.branch_name = "default"
 
         if dataset is None:
@@ -168,6 +158,11 @@ class Simulation:
             else:
                 self.dataset = dataset
             self.build_from_dataset()
+
+        self.tax_benefit_system.simulation = self
+
+        if self.reform is not None:
+            self.tax_benefit_system.apply_reform_set(self.reform)
 
         # Backwards compatibility methods
         self.calc = self.calculate

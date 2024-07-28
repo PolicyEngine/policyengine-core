@@ -29,6 +29,7 @@ class CountryTemplateDataset(Dataset):
             "person_household_id": {ETERNITY: person_household_id},
             "person_household_role": {ETERNITY: person_household_role},
             "salary": {salary_time_period: salary},
+            "accommodation_size": {salary_time_period: [200, 300]},
             "household_weight": {weight_time_period: weight},
         }
         self.save_dataset(data)

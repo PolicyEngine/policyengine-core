@@ -598,3 +598,8 @@
     - Microdata weighting classes from microdf.
     - Eternity dictionary reform options.
   date: 2024-07-26 00:28:31
+- bump: minor
+  changes:
+    changed:
+    - Reform syntax to increase flexibility.
+  date: 2024-07-28 19:28:05

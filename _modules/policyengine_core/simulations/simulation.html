@@ -174,7 +174,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/cli.html">Using the command-line interface</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/parameters.html">Writing parameters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/datasets.html">Writing datasets</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../usage/reforms.html">Writing reforms</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/charts.html">Charts</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python API</span></p>
@@ -324,7 +323,6 @@
         <span class="n">reform</span><span class="p">:</span> <span class="n">Reform</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">trace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
-        <span class="n">reform_applied_after</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="k">if</span> <span class="n">tax_benefit_system</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">default_tax_benefit_system_instance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
@@ -333,20 +331,11 @@
                 <span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_tax_benefit_system_instance</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># If reform is taken as an arg, pass it</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_tax_benefit_system</span><span class="p">(</span>
-                        <span class="n">reform</span><span class="o">=</span><span class="n">reform</span>
-                    <span class="p">)</span>
-                <span class="k">except</span><span class="p">:</span>
-                    <span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_tax_benefit_system</span><span class="p">()</span>
-                    <span class="n">reform_applied_after</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_tax_benefit_system</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="n">tax_benefit_system</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">reform</span> <span class="o">=</span> <span class="n">reform</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="n">tax_benefit_system</span>
-
-        <span class="k">if</span> <span class="n">reform_applied_after</span> <span class="ow">and</span> <span class="n">reform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">apply_reform</span><span class="p">(</span><span class="n">reform</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">branch_name</span> <span class="o">=</span> <span class="s2">&quot;default&quot;</span>
 
         <span class="k">if</span> <span class="n">dataset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -407,6 +396,11 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">build_from_dataset</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">simulation</span> <span class="o">=</span> <span class="bp">self</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">apply_reform_set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reform</span><span class="p">)</span>
 
         <span class="c1"># Backwards compatibility methods</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">calc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span>

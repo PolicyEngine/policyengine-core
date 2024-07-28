@@ -174,7 +174,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/cli.html">Using the command-line interface</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/parameters.html">Writing parameters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/datasets.html">Writing datasets</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../usage/reforms.html">Writing reforms</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/charts.html">Charts</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python API</span></p>
@@ -598,6 +597,29 @@
                 <span class="s2">&quot;data_format&quot;</span><span class="p">:</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">FLAT_FILE</span><span class="p">,</span>
                 <span class="s2">&quot;file_path&quot;</span><span class="p">:</span> <span class="n">file_path</span><span class="p">,</span>
                 <span class="s2">&quot;time_period&quot;</span><span class="p">:</span> <span class="n">time_period</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">)()</span>
+
+        <span class="k">return</span> <span class="n">dataset</span></div>
+
+<div class="viewcode-block" id="Dataset.from_dataframe"><a class="viewcode-back" href="../../../python_api/data.html#policyengine_core.data.Dataset.from_dataframe">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_dataframe</span><span class="p">(</span><span class="n">dataframe</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">time_period</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Creates a dataset from a DataFrame.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dataset: The dataset.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">file_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span>
+            <span class="s2">&quot;Dataset&quot;</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">Dataset</span><span class="p">,),</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">file_path</span><span class="o">.</span><span class="n">stem</span><span class="p">,</span>
+                <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="n">file_path</span><span class="o">.</span><span class="n">stem</span><span class="p">,</span>
+                <span class="s2">&quot;data_format&quot;</span><span class="p">:</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">FLAT_FILE</span><span class="p">,</span>
+                <span class="s2">&quot;file_path&quot;</span><span class="p">:</span> <span class="s2">&quot;dataframe&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;time_period&quot;</span><span class="p">:</span> <span class="n">time_period</span><span class="p">,</span>
+                <span class="s2">&quot;load&quot;</span><span class="p">:</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">dataframe</span><span class="p">,</span>
             <span class="p">},</span>
         <span class="p">)()</span>
 

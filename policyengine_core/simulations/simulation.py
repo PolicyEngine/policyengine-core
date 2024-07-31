@@ -362,6 +362,7 @@ class Simulation:
                 else:
                     entity_level_data = data[variable]
 
+                print(f"Setting {variable} in {time_period} to {data[variable]}")
                 self.set_input(variable, time_period, entity_level_data)
 
         self.default_calculation_period = (

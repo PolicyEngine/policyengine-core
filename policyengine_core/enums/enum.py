@@ -53,7 +53,7 @@ class Enum(enum.Enum):
         # Confusingly, Numpy uses "S" to refer to byte-string arrays
         # and "U" to refer to Unicode-string arrays, which are also
         # referred to as the "str" type
-        if array.dtype.kind == "S":
+        if array.dtype.kind == "S" or array.dtype == object:
             # Convert boolean array to string array
             array = array.astype(str)
 

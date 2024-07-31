@@ -34,6 +34,9 @@ class Population:
         result.ids = self.ids
         return result
 
+    def has_any_input(self, variable_name: str) -> bool:
+        return len(self.get_holder(variable_name).get_known_periods()) > 0
+
     def empty_array(self) -> numpy.ndarray:
         return numpy.zeros(self.count)
 

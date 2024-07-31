@@ -224,3 +224,12 @@ class Parameter(AtInstantLike):
             if value_at_instant.instant_str <= instant:
                 return value_at_instant.value
         return None
+
+    def relative_change(self, start_instant, end_instant):
+        start_instant = str(start_instant)
+        end_instant = str(end_instant)
+        end_value = self._get_at_instant(end_instant)
+        start_value = self._get_at_instant(start_instant)
+        if end_value is None or start_value is None:
+            return None
+        return end_value / start_value - 1

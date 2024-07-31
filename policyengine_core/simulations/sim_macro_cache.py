@@ -36,7 +36,10 @@ class SimulationMacroCache(metaclass=Singleton):
         period: str,
         branch_name: str,
     ):
-        storage_folder = parent_path / f"{dataset_name}_variable_cache"
+        storage_folder = (
+            Path(parent_path)
+            / f"{dataset_name}_variable_cache"
+        )
         storage_folder.mkdir(exist_ok=True)
         self.cache_file_path = (
             storage_folder / f"{variable_name}_{period}_{branch_name}.h5"

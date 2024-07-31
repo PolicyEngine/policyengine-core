@@ -77,6 +77,30 @@ def test_version(tax_benefit_system):
     )
     assert cache.country_version == "0.0.0"
 
+# Test set_cache_path
+def test_set_cache_path(tax_benefit_system):
+    cache = SimulationMacroCache(tax_benefit_system)
+    cache.set_cache_path(
+        parent_path="tests/core",
+        dataset_name="test_dataset",
+        variable_name="test_variable",
+        period="2020",
+        branch_name="test_branch",
+    )
+    cache.set_cache_value(
+        cache_file_path=cache.cache_file_path,
+        value=3,
+    )
+    assert cache.cache_file_path == "tests/core/test_dataset_variable_cache/test_variable_2020_test_branch.h5"
+
+# Test set_cache_value
+
+# Test get_cache_path
+
+# Test get_cache_value
+
+# Test clear_cache
+
 
 def test_macro_cache(tax_benefit_system):
     simulation = SimulationBuilder().build_from_entities(

@@ -1,5 +1,0 @@
-- bump: minor
-  changes:
-    added:
-    - Simulation loading from dataframes.
-    - Simulation `start_instant` attribute.

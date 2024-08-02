@@ -76,6 +76,9 @@ class Simulation:
     macro_cache_write: bool = True
     """Whether to write to the macro cache."""
 
+    start_instant: str = None
+    """The earliest data input instant of the simulation."""
+
     def __init__(
         self,
         tax_benefit_system: "TaxBenefitSystem" = None,
@@ -155,6 +158,10 @@ class Simulation:
                     )
             if isinstance(dataset, type):
                 self.dataset: Dataset = dataset(require=True)
+            elif isinstance(dataset, pd.DataFrame):
+                self.dataset = Dataset.from_dataframe(
+                    dataset, self.default_input_period
+                )
             else:
                 self.dataset = dataset
             self.build_from_dataset()
@@ -242,6 +249,9 @@ class Simulation:
                 + "Make sure you have downloaded or built it using the `policyengine-core data` command."
             ) from e
 
+        if self.dataset.data_format == Dataset.FLAT_FILE:
+            data = {col: data[col].values for col in data.columns}
+
         person_entity = self.tax_benefit_system.person_entity
         entity_id_field = f"{person_entity.key}_id"
         if self.dataset.data_format != Dataset.FLAT_FILE:
@@ -250,14 +260,11 @@ class Simulation:
             ), f"Missing {entity_id_field} column in the dataset. Each person entity must have an ID array defined for ETERNITY."
         elif entity_id_field not in data:
             data[entity_id_field] = np.arange(len(data))
-        if self.dataset.data_format != Dataset.FLAT_FILE:
-            get_eternity_array = lambda ds: (
-                ds[list(ds.keys())[0]]
-                if self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS
-                else ds
-            )
-        else:
-            get_eternity_array = lambda ds: ds
+        get_eternity_array = lambda ds: (
+            ds[list(ds.keys())[0]]
+            if self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS
+            else ds
+        )
         entity_ids = get_eternity_array(data[entity_id_field])
         builder.declare_person_entity(person_entity.key, entity_ids)
 
@@ -268,7 +275,12 @@ class Simulation:
                     entity_id_field in data
                 ), f"Missing {entity_id_field} column in the dataset. Each group entity must have an ID array defined for ETERNITY."
             elif entity_id_field not in data:
-                data[entity_id_field] = np.arange(len(data))
+                if f"person_{group_entity.key}_id" in data:
+                    data[entity_id_field] = np.arange(
+                        len(np.unique(data[f"person_{group_entity.key}_id"]))
+                    )
+                else:
+                    data[entity_id_field] = np.arange(len(data))
 
             entity_ids = get_eternity_array(data[entity_id_field])
             builder.declare_entity(group_entity.key, entity_ids)
@@ -333,9 +345,6 @@ class Simulation:
                     )
 
                 if variable_name not in self.tax_benefit_system.variables:
-                    logging.warn(
-                        f"Variable {variable_name} not found. Skipping."
-                    )
                     continue
 
                 variable_meta = self.tax_benefit_system.get_variable(
@@ -355,7 +364,9 @@ class Simulation:
 
                 self.set_input(variable, time_period, entity_level_data)
 
-        self.default_calculation_period = self.dataset.time_period
+        self.default_calculation_period = (
+            self.dataset.time_period or self.default_calculation_period
+        )
 
         self.tax_benefit_system.data_modified = False
 
@@ -684,6 +695,8 @@ class Simulation:
                 ):
                     # Variables with a calculate-output property specify
                     last_known_period = sorted(known_periods)[-1]
+                    if last_known_period.start > period.start:
+                        return holder.default_array()
                     array = holder.get_array(last_known_period)
                 else:
                     array = holder.default_array()
@@ -1139,10 +1152,12 @@ class Simulation:
 
         If a ``set_input`` property has been set for the variable, this method may accept inputs for periods not matching the ``definition_period`` of the variable. To read more about this, check the `documentation <https://openfisca.org/doc/coding-the-legislation/35_periods.html#automatically-process-variable-inputs-defined-for-periods-not-matching-the-definitionperiod>`_.
         """
+        period = periods.period(period)
+        if self.start_instant is None or self.start_instant > period.start:
+            self.start_instant = period.start
         variable = self.tax_benefit_system.get_variable(
             variable_name, check_existence=True
         )
-        period = periods.period(period)
         if (variable.end is not None) and (period.start.date > variable.end):
             return
         self.get_holder(variable_name).set_input(

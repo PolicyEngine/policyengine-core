@@ -7,6 +7,8 @@ from policyengine_core import projectors
 from policyengine_core.entities import Entity, Role
 from policyengine_core.enums import EnumArray
 from policyengine_core.populations.population import Population
+from policyengine_core.periods.period_ import Period
+from typing import Optional, Container
 
 if TYPE_CHECKING:
     from policyengine_core.simulations import Simulation
@@ -20,6 +22,20 @@ class GroupPopulation(Population):
         self._members_role: ArrayLike = None
         self._members_position: ArrayLike = None
         self._ordered_members_map = None
+
+    def __call__(
+        self,
+        variable_name: str,
+        period: Period = None,
+        options: Optional[Container[str]] = None,
+    ):
+        variable = self.simulation.tax_benefit_system.variables.get(
+            variable_name
+        )
+        if variable.entity.is_person:
+            return self.sum(self.members(variable_name, period, options))
+        else:
+            return super().__call__(variable_name, period, options)
 
     def clone(
         self, simulation: "Simulation", members: Population

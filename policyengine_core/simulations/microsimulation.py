@@ -1,6 +1,6 @@
 from typing import Dict, Type
 
-from microdf import MicroDataFrame, MicroSeries
+from policyengine_core.weighting import MicroDataFrame, MicroSeries
 import numpy as np
 from policyengine_core.data.dataset import Dataset
 from policyengine_core.periods import Period

@@ -371,17 +371,16 @@ class Dataset:
         Returns:
             Dataset: The dataset.
         """
-        file_path = Path(file_path)
         dataset = type(
             "Dataset",
             (Dataset,),
             {
-                "name": file_path.stem,
-                "label": file_path.stem,
+                "name": "dataframe",
+                "label": "DataFrame",
                 "data_format": Dataset.FLAT_FILE,
                 "file_path": "dataframe",
                 "time_period": time_period,
-                "load": lambda: dataframe,
+                "load": lambda self: dataframe,
             },
         )()
 

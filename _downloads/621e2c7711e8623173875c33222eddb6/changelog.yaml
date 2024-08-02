@@ -603,3 +603,9 @@
     changed:
     - Reform syntax to increase flexibility.
   date: 2024-07-28 19:28:05
+- bump: minor
+  changes:
+    added:
+    - Simulation loading from dataframes.
+    - Simulation `start_instant` attribute.
+  date: 2024-08-02 09:09:51

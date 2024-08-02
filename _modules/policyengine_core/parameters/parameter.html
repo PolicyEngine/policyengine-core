@@ -174,6 +174,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/cli.html">Using the command-line interface</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/parameters.html">Writing parameters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/datasets.html">Writing datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/reforms.html">Reforms</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/charts.html">Charts</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python API</span></p>
@@ -461,7 +462,16 @@
         <span class="k">for</span> <span class="n">value_at_instant</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">values_list</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">value_at_instant</span><span class="o">.</span><span class="n">instant_str</span> <span class="o">&lt;=</span> <span class="n">instant</span><span class="p">:</span>
                 <span class="k">return</span> <span class="n">value_at_instant</span><span class="o">.</span><span class="n">value</span>
-        <span class="k">return</span> <span class="kc">None</span></div>
+        <span class="k">return</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="Parameter.relative_change"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.parameter.Parameter.relative_change">[docs]</a>    <span class="k">def</span> <span class="nf">relative_change</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start_instant</span><span class="p">,</span> <span class="n">end_instant</span><span class="p">):</span>
+        <span class="n">start_instant</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">start_instant</span><span class="p">)</span>
+        <span class="n">end_instant</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">end_instant</span><span class="p">)</span>
+        <span class="n">end_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_at_instant</span><span class="p">(</span><span class="n">end_instant</span><span class="p">)</span>
+        <span class="n">start_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_at_instant</span><span class="p">(</span><span class="n">start_instant</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">end_value</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">start_value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">end_value</span> <span class="o">/</span> <span class="n">start_value</span> <span class="o">-</span> <span class="mi">1</span></div></div>
 </pre></div>
         </article>
       </div>

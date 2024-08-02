@@ -173,6 +173,7 @@
 <li class="toctree-l1"><a class="reference internal" href="usage/cli.html">Using the command-line interface</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage/parameters.html">Writing parameters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage/datasets.html">Writing datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage/reforms.html">Reforms</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage/charts.html">Charts</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python API</span></p>
@@ -867,12 +868,14 @@
   <h2>H</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="python_api/populations.html#policyengine_core.populations.population.Population.has_role">has_role() (policyengine_core.populations.population.Population method)</a>
+        <li><a href="python_api/populations.html#policyengine_core.populations.population.Population.has_any_input">has_any_input() (policyengine_core.populations.population.Population method)</a>
 </li>
-        <li><a href="python_api/variables.html#policyengine_core.variables.variable.Variable.hidden_input">hidden_input (policyengine_core.variables.variable.Variable attribute)</a>
+        <li><a href="python_api/populations.html#policyengine_core.populations.population.Population.has_role">has_role() (policyengine_core.populations.population.Population method)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python_api/variables.html#policyengine_core.variables.variable.Variable.hidden_input">hidden_input (policyengine_core.variables.variable.Variable attribute)</a>
+</li>
         <li><a href="python_api/holders.html#policyengine_core.holders.holder.Holder">Holder (class in policyengine_core.holders.holder)</a>
 </li>
         <li><a href="usage/parameters.html#policyengine_core.data_structures.Reference.href">href (policyengine_core.data_structures.Reference attribute)</a>
@@ -1292,6 +1295,8 @@
 </li>
         <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder.register_variable">register_variable() (policyengine_core.simulations.simulation_builder.SimulationBuilder method)</a>
 </li>
+        <li><a href="python_api/parameters.html#policyengine_core.parameters.parameter.Parameter.relative_change">relative_change() (policyengine_core.parameters.parameter.Parameter method)</a>
+</li>
         <li><a href="python_api/data.html#policyengine_core.data.Dataset.remove">remove() (policyengine_core.data.Dataset method)</a>
 </li>
         <li><a href="python_api/taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem.replace_variable">replace_variable() (policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem method)</a>
@@ -1348,10 +1353,10 @@
 </li>
         <li><a href="python_api/tracers.html#policyengine_core.tracers.simple_tracer.SimpleTracer">SimpleTracer (class in policyengine_core.tracers.simple_tracer)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation">Simulation (class in policyengine_core.simulations.simulation)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder">SimulationBuilder (class in policyengine_core.simulations.simulation_builder)</a>
 </li>
         <li><a href="python_api/taxscales.html#policyengine_core.taxscales.single_amount_tax_scale.SingleAmountTaxScale">SingleAmountTaxScale (class in policyengine_core.taxscales.single_amount_tax_scale)</a>
@@ -1369,7 +1374,13 @@
         <li><a href="python_api/periods.html#policyengine_core.periods.period_.Period.start">start (policyengine_core.periods.period_.Period property)</a>
 </li>
         <li><a href="usage/parameters.html#policyengine_core.data_structures.parameter_metadata.UpratingSchema.start_instant">start_instant (policyengine_core.data_structures.parameter_metadata.UpratingSchema attribute)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.microsimulation.Microsimulation.start_instant">(policyengine_core.simulations.microsimulation.Microsimulation attribute)</a>
 </li>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.start_instant">(policyengine_core.simulations.simulation.Simulation attribute)</a>
+</li>
+        </ul></li>
         <li><a href="python_api/periods.html#policyengine_core.periods.period_.Period.stop">stop (policyengine_core.periods.period_.Period property)</a>
 </li>
         <li><a href="python_api/data.html#policyengine_core.data.Dataset.store_file">store_file() (policyengine_core.data.Dataset method)</a>

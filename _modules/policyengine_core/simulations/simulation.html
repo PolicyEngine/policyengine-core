@@ -174,6 +174,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/cli.html">Using the command-line interface</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/parameters.html">Writing parameters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/datasets.html">Writing datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../usage/reforms.html">Reforms</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/charts.html">Charts</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python API</span></p>
@@ -314,6 +315,9 @@
     <span class="n">macro_cache_write</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Whether to write to the macro cache.&quot;&quot;&quot;</span>
 
+    <span class="n">start_instant</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The earliest data input instant of the simulation.&quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">tax_benefit_system</span><span class="p">:</span> <span class="s2">&quot;TaxBenefitSystem&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -393,6 +397,10 @@
                     <span class="p">)</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="p">(</span><span class="n">require</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">from_dataframe</span><span class="p">(</span>
+                    <span class="n">dataset</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_input_period</span>
+                <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">build_from_dataset</span><span class="p">()</span>
@@ -480,6 +488,9 @@
                 <span class="o">+</span> <span class="s2">&quot;Make sure you have downloaded or built it using the `policyengine-core data` command.&quot;</span>
             <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
 
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">data_format</span> <span class="o">==</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">FLAT_FILE</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="n">col</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">values</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">}</span>
+
         <span class="n">person_entity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">person_entity</span>
         <span class="n">entity_id_field</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">person_entity</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">_id&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">data_format</span> <span class="o">!=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">FLAT_FILE</span><span class="p">:</span>
@@ -488,14 +499,11 @@
             <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Missing </span><span class="si">{</span><span class="n">entity_id_field</span><span class="si">}</span><span class="s2"> column in the dataset. Each person entity must have an ID array defined for ETERNITY.&quot;</span>
         <span class="k">elif</span> <span class="n">entity_id_field</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
             <span class="n">data</span><span class="p">[</span><span class="n">entity_id_field</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">data_format</span> <span class="o">!=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">FLAT_FILE</span><span class="p">:</span>
-            <span class="n">get_eternity_array</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">ds</span><span class="p">:</span> <span class="p">(</span>
-                <span class="n">ds</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]]</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">data_format</span> <span class="o">==</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">TIME_PERIOD_ARRAYS</span>
-                <span class="k">else</span> <span class="n">ds</span>
-            <span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">get_eternity_array</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">ds</span><span class="p">:</span> <span class="n">ds</span>
+        <span class="n">get_eternity_array</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">ds</span><span class="p">:</span> <span class="p">(</span>
+            <span class="n">ds</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]]</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">data_format</span> <span class="o">==</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">TIME_PERIOD_ARRAYS</span>
+            <span class="k">else</span> <span class="n">ds</span>
+        <span class="p">)</span>
         <span class="n">entity_ids</span> <span class="o">=</span> <span class="n">get_eternity_array</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">entity_id_field</span><span class="p">])</span>
         <span class="n">builder</span><span class="o">.</span><span class="n">declare_person_entity</span><span class="p">(</span><span class="n">person_entity</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">entity_ids</span><span class="p">)</span>
 
@@ -506,7 +514,12 @@
                     <span class="n">entity_id_field</span> <span class="ow">in</span> <span class="n">data</span>
                 <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Missing </span><span class="si">{</span><span class="n">entity_id_field</span><span class="si">}</span><span class="s2"> column in the dataset. Each group entity must have an ID array defined for ETERNITY.&quot;</span>
             <span class="k">elif</span> <span class="n">entity_id_field</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
-                <span class="n">data</span><span class="p">[</span><span class="n">entity_id_field</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+                <span class="k">if</span> <span class="sa">f</span><span class="s2">&quot;person_</span><span class="si">{</span><span class="n">group_entity</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">_id&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+                    <span class="n">data</span><span class="p">[</span><span class="n">entity_id_field</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+                        <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;person_</span><span class="si">{</span><span class="n">group_entity</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">_id&quot;</span><span class="p">]))</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">data</span><span class="p">[</span><span class="n">entity_id_field</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
 
             <span class="n">entity_ids</span> <span class="o">=</span> <span class="n">get_eternity_array</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">entity_id_field</span><span class="p">])</span>
             <span class="n">builder</span><span class="o">.</span><span class="n">declare_entity</span><span class="p">(</span><span class="n">group_entity</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">entity_ids</span><span class="p">)</span>
@@ -571,9 +584,6 @@
                     <span class="p">)</span>
 
                 <span class="k">if</span> <span class="n">variable_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
-                    <span class="n">logging</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Variable </span><span class="si">{</span><span class="n">variable_name</span><span class="si">}</span><span class="s2"> not found. Skipping.&quot;</span>
-                    <span class="p">)</span>
                     <span class="k">continue</span>
 
                 <span class="n">variable_meta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
@@ -593,7 +603,9 @@
 
                 <span class="bp">self</span><span class="o">.</span><span class="n">set_input</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">time_period</span><span class="p">,</span> <span class="n">entity_level_data</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">default_calculation_period</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">time_period</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">default_calculation_period</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">time_period</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_calculation_period</span>
+        <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">data_modified</span> <span class="o">=</span> <span class="kc">False</span></div>
 
@@ -922,6 +934,8 @@
                 <span class="p">):</span>
                     <span class="c1"># Variables with a calculate-output property specify</span>
                     <span class="n">last_known_period</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">known_periods</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">last_known_period</span><span class="o">.</span><span class="n">start</span> <span class="o">&gt;</span> <span class="n">period</span><span class="o">.</span><span class="n">start</span><span class="p">:</span>
+                        <span class="k">return</span> <span class="n">holder</span><span class="o">.</span><span class="n">default_array</span><span class="p">()</span>
                     <span class="n">array</span> <span class="o">=</span> <span class="n">holder</span><span class="o">.</span><span class="n">get_array</span><span class="p">(</span><span class="n">last_known_period</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">array</span> <span class="o">=</span> <span class="n">holder</span><span class="o">.</span><span class="n">default_array</span><span class="p">()</span>
@@ -1377,10 +1391,12 @@
 
 <span class="sd">        If a ``set_input`` property has been set for the variable, this method may accept inputs for periods not matching the ``definition_period`` of the variable. To read more about this, check the `documentation &lt;https://openfisca.org/doc/coding-the-legislation/35_periods.html#automatically-process-variable-inputs-defined-for-periods-not-matching-the-definitionperiod&gt;`_.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">period</span> <span class="o">=</span> <span class="n">periods</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="n">period</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_instant</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_instant</span> <span class="o">&gt;</span> <span class="n">period</span><span class="o">.</span><span class="n">start</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">start_instant</span> <span class="o">=</span> <span class="n">period</span><span class="o">.</span><span class="n">start</span>
         <span class="n">variable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
             <span class="n">variable_name</span><span class="p">,</span> <span class="n">check_existence</span><span class="o">=</span><span class="kc">True</span>
         <span class="p">)</span>
-        <span class="n">period</span> <span class="o">=</span> <span class="n">periods</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="n">period</span><span class="p">)</span>
         <span class="k">if</span> <span class="p">(</span><span class="n">variable</span><span class="o">.</span><span class="n">end</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">period</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">date</span> <span class="o">&gt;</span> <span class="n">variable</span><span class="o">.</span><span class="n">end</span><span class="p">):</span>
             <span class="k">return</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">get_holder</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span><span class="o">.</span><span class="n">set_input</span><span class="p">(</span>

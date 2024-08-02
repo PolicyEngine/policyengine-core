@@ -3,10 +3,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Reforms" href="reforms.html" /><link rel="prev" title="Writing parameters" href="parameters.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Charts" href="charts.html" /><link rel="prev" title="Writing datasets" href="datasets.html" />
 
     <!-- Generated with Sphinx 5.0.0 and Furo 2022.12.07 -->
-        <title>Writing datasets - PolicyEngine Core</title>
+        <title>Reforms - PolicyEngine Core</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
@@ -141,7 +141,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -174,8 +174,8 @@
 <li class="toctree-l1"><a class="reference internal" href="country.html">Creating a country package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cli.html">Using the command-line interface</a></li>
 <li class="toctree-l1"><a class="reference internal" href="parameters.html">Writing parameters</a></li>
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Writing datasets</a></li>
-<li class="toctree-l1"><a class="reference internal" href="reforms.html">Reforms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">Writing datasets</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Reforms</a></li>
 <li class="toctree-l1"><a class="reference internal" href="charts.html">Charts</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python API</span></p>
@@ -232,70 +232,87 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main">
-          <section class="tex2jax_ignore mathjax_ignore" id="writing-datasets">
-<h1>Writing datasets<a class="headerlink" href="#writing-datasets" title="Permalink to this heading">#</a></h1>
-<p>A common use case of PolicyEngine Core country models is not just simulating for a few households, but thousands in the form of microsimulation on survey data. This technique can be used to simulate the impact of a policy on a population, or to compare the impact of different policies on the same population. To do this, we need to be able to load data into PolicyEngine Core, and to do this we use a standardised format using the <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> class.</p>
-<section id="example">
-<h2>Example<a class="headerlink" href="#example" title="Permalink to this heading">#</a></h2>
-<p>Here’s the Country Template’s default example for a dataset.</p>
+          <section class="tex2jax_ignore mathjax_ignore" id="reforms">
+<h1>Reforms<a class="headerlink" href="#reforms" title="Permalink to this heading">#</a></h1>
+<p>To define a reform, simply define a class inheriting from <code class="docutils literal notranslate"><span class="pre">Reform</span></code> with an <code class="docutils literal notranslate"><span class="pre">apply(self)</span></code> function. Inside it, <code class="docutils literal notranslate"><span class="pre">self</span></code> is the tax-benefit system attached to the simulation with loaded data <code class="docutils literal notranslate"><span class="pre">self.simulation:</span> <span class="pre">Simulation</span></code>. From this, you can run any kind of modification on the <code class="docutils literal notranslate"><span class="pre">Simulation</span></code> instance that you like- modify parameters, variable logic or even adjust simulation data.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">policyengine_core.country_template.constants</span> <span class="kn">import</span> <span class="n">COUNTRY_DIR</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.data</span> <span class="kn">import</span> <span class="n">Dataset</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.periods</span> <span class="kn">import</span> <span class="n">ETERNITY</span><span class="p">,</span> <span class="n">MONTH</span><span class="p">,</span> <span class="n">period</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">policyengine_core.country_template</span> <span class="kn">import</span> <span class="n">Microsimulation</span>
+<span class="kn">from</span> <span class="nn">policyengine_core.model_api</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="n">baseline</span> <span class="o">=</span> <span class="n">Microsimulation</span><span class="p">()</span>
 
 
-<span class="k">class</span> <span class="nc">CountryTemplateDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
-    <span class="c1"># Specify metadata used to describe and store the dataset.</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;country_template_dataset&quot;</span>
-    <span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;Country template dataset&quot;</span>
-    <span class="n">folder_path</span> <span class="o">=</span> <span class="n">COUNTRY_DIR</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;storage&quot;</span>
-    <span class="n">data_format</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">TIME_PERIOD_ARRAYS</span>
+<span class="k">class</span> <span class="nc">reform</span><span class="p">(</span><span class="n">Reform</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">simulation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulation</span>
 
-    <span class="c1"># The generation function is the most important part: it defines</span>
-    <span class="c1"># how the dataset is generated from the raw data for a given year.</span>
-    <span class="k">def</span> <span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">year</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">person_id</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
-        <span class="n">household_id</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
-        <span class="n">person_household_id</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
-        <span class="n">person_household_role</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;parent&quot;</span><span class="p">,</span> <span class="s2">&quot;child&quot;</span><span class="p">,</span> <span class="s2">&quot;parent&quot;</span><span class="p">]</span>
-        <span class="n">salary</span> <span class="o">=</span> <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">200</span><span class="p">]</span>
-        <span class="n">salary_time_period</span> <span class="o">=</span> <span class="n">period</span><span class="p">(</span><span class="s2">&quot;2022-01&quot;</span><span class="p">)</span>
-        <span class="n">weight</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1e6</span><span class="p">,</span> <span class="mf">1.2e6</span><span class="p">]</span>
-        <span class="n">weight_time_period</span> <span class="o">=</span> <span class="n">period</span><span class="p">(</span><span class="s2">&quot;2022&quot;</span><span class="p">)</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;person_id&quot;</span><span class="p">:</span> <span class="p">{</span><span class="n">ETERNITY</span><span class="p">:</span> <span class="n">person_id</span><span class="p">},</span>
-            <span class="s2">&quot;household_id&quot;</span><span class="p">:</span> <span class="p">{</span><span class="n">ETERNITY</span><span class="p">:</span> <span class="n">household_id</span><span class="p">},</span>
-            <span class="s2">&quot;person_household_id&quot;</span><span class="p">:</span> <span class="p">{</span><span class="n">ETERNITY</span><span class="p">:</span> <span class="n">person_household_id</span><span class="p">},</span>
-            <span class="s2">&quot;person_household_role&quot;</span><span class="p">:</span> <span class="p">{</span><span class="n">ETERNITY</span><span class="p">:</span> <span class="n">person_household_role</span><span class="p">},</span>
-            <span class="s2">&quot;salary&quot;</span><span class="p">:</span> <span class="p">{</span><span class="n">salary_time_period</span><span class="p">:</span> <span class="n">salary</span><span class="p">},</span>
-            <span class="s2">&quot;household_weight&quot;</span><span class="p">:</span> <span class="p">{</span><span class="n">weight_time_period</span><span class="p">:</span> <span class="n">weight</span><span class="p">},</span>
-        <span class="p">}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">save_variable_values</span><span class="p">(</span><span class="n">year</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+        <span class="c1"># Modify parameters</span>
+
+        <span class="n">simulation</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">taxes</span><span class="o">.</span><span class="n">housing_tax</span><span class="o">.</span><span class="n">rate</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+            <span class="mi">20</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Modify simulation data</span>
+
+        <span class="n">salary</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;salary&quot;</span><span class="p">,</span> <span class="s2">&quot;2022-01&quot;</span><span class="p">)</span>
+
+        <span class="n">new_salary</span> <span class="o">=</span> <span class="n">salary</span> <span class="o">*</span> <span class="mf">1.1</span>
+
+        <span class="n">simulation</span><span class="o">.</span><span class="n">set_input</span><span class="p">(</span><span class="s2">&quot;salary&quot;</span><span class="p">,</span> <span class="s2">&quot;2022-01&quot;</span><span class="p">,</span> <span class="n">new_salary</span><span class="p">)</span>
 
 
-<span class="c1"># Important: we must instantiate datasets. This tests their validity and adds dynamic logic.</span>
-<span class="n">CountryTemplateDataset</span> <span class="o">=</span> <span class="n">CountryTemplateDataset</span><span class="p">()</span>
+<span class="n">reformed</span> <span class="o">=</span> <span class="n">Microsimulation</span><span class="p">(</span><span class="n">reform</span><span class="o">=</span><span class="n">reform</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 </div>
-</section>
-<section id="dataset-api">
-<h2>Dataset API<a class="headerlink" href="#dataset-api" title="Permalink to this heading">#</a></h2>
-<p>PolicyEngine Core also includes two subclasses of <code class="docutils literal notranslate"><span class="pre">Dataset</span></code>:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">PublicDataset</span></code> - a dataset that is publicly available, and can be downloaded from a URL. Includes a <code class="docutils literal notranslate"><span class="pre">download</span></code> method to download the dataset.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">PrivateDataset</span></code> - a dataset that is not publicly available, and must be downloaded from a private URL (specifically, Google Cloud buckets). Includes a <code class="docutils literal notranslate"><span class="pre">download</span></code> method to download the dataset, and a <code class="docutils literal notranslate"><span class="pre">upload</span></code> method to upload the dataset.</p></li>
-</ul>
-<p>See <a class="reference internal" href="../python_api/data.html"><span class="doc">Data</span></a> for the API reference.</p>
-</section>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">reformed</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;salary&quot;</span><span class="p">,</span> <span class="s2">&quot;2022-01&quot;</span><span class="p">),</span> <span class="n">baseline</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span>
+    <span class="s2">&quot;salary&quot;</span><span class="p">,</span> <span class="s2">&quot;2022-01&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(   value     weight
+ 0  110.0  1000000.0
+ 1    0.0  1000000.0
+ 2  220.0  1200000.0,
+    value     weight
+ 0  100.0  1000000.0
+ 1    0.0  1000000.0
+ 2  200.0  1200000.0)
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">reformed</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;housing_tax&quot;</span><span class="p">,</span> <span class="mi">2022</span><span class="p">),</span> <span class="n">baseline</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span>
+    <span class="s2">&quot;housing_tax&quot;</span><span class="p">,</span> <span class="mi">2022</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(    value     weight
+ 0  4000.0  1000000.0
+ 1  6000.0  1200000.0,
+     value     weight
+ 0  2000.0  1000000.0
+ 1  3000.0  1200000.0)
+</pre></div>
+</div>
+</div>
+</div>
 </section>
 
     <script type="text/x-thebe-config">
@@ -322,23 +339,23 @@
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="reforms.html">
+          <a class="next-page" href="charts.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Reforms</div>
+                <div class="title">Charts</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="parameters.html">
+          <a class="prev-page" href="datasets.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Writing parameters</div>
+                <div class="title">Writing datasets</div>
                 
               </div>
             </a>
@@ -360,28 +377,8 @@
         
       </footer>
     </div>
-    <aside class="toc-drawer">
+    <aside class="toc-drawer no-toc">
       
-      
-      <div class="toc-sticky toc-scroll">
-        <div class="toc-title-container">
-          <span class="toc-title">
-            On this page
-          </span>
-        </div>
-        <div class="toc-tree-container">
-          <div class="toc-tree">
-            <ul>
-<li><a class="reference internal" href="#">Writing datasets</a><ul>
-<li><a class="reference internal" href="#example">Example</a></li>
-<li><a class="reference internal" href="#dataset-api">Dataset API</a></li>
-</ul>
-</li>
-</ul>
-
-          </div>
-        </div>
-      </div>
       
       
     </aside>

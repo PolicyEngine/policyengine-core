@@ -2,6 +2,7 @@ import datetime
 import inspect
 import re
 import textwrap
+import ast
 from typing import Callable, List, Type
 
 import numpy
@@ -508,6 +509,26 @@ class Variable:
         no_specified_formulas = len(self.formulas) == 0
         no_adds_or_subtracts = self.adds is None and self.subtracts is None
         return no_specified_formulas and no_adds_or_subtracts
+    
+    def get_accessed_parameters(self):
+        """
+        Returns the full parameter paths accessed by the variable.
+        """
+
+        # This needs to be changed to reflect time
+        func = self.formulas["0001-01-01"]
+
+        # Get the source code of the function
+        source = textwrap.dedent(inspect.getsource(func))
+    
+        # Parse the source code into an AST
+        tree = ast.parse(source)
+    
+        # Find all variable names used in the function
+        finder = ParameterAccessFinder()
+        finder.visit(tree)
+
+        return list(finder.parameters)
 
     @classmethod
     def get_introspection_data(cls, tax_benefit_system):
@@ -623,3 +644,70 @@ class Variable:
             return EnumArray(array, self.possible_values)
         array.fill(self.default_value)
         return array
+
+class ParameterAccessFinder(ast.NodeVisitor):
+    def __init__(self):
+        self.parameters = set()
+        self.parameter_aliases = {}
+        self.current_path = []
+
+    def visit_Assign(self, node):
+        if len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+            alias = node.targets[0].id
+            path = self.extract_path(node.value)
+            if path:
+                self.parameter_aliases[alias] = path
+        self.generic_visit(node)
+
+    def visit_Attribute(self, node):
+        self.current_path.append(node.attr)
+        self.generic_visit(node)
+        path = self.extract_path(node)
+        if path:
+            self.add_parameter(path)
+        self.current_path.pop()
+
+    def visit_Name(self, node):
+        if node.id == 'parameters':
+            self.add_parameter('.'.join(reversed(self.current_path)))
+        elif node.id in self.parameter_aliases:
+            self.add_parameter(self.parameter_aliases[node.id] + '.' + '.'.join(reversed(self.current_path)))
+
+    def extract_path(self, node):
+        if isinstance(node, ast.Name):
+            if node.id == 'parameters':
+                return ''
+            elif node.id in self.parameter_aliases:
+                return self.parameter_aliases[node.id]
+        
+        path = []
+        current = node
+        while isinstance(current, ast.Attribute):
+            path.append(current.attr)
+            current = current.value
+
+        if isinstance(current, ast.Call) and isinstance(current.func, ast.Name) and current.func.id == 'parameters':
+            if len(current.args) > 0 and isinstance(current.args[0], ast.Name) and current.args[0].id == 'period':
+                return '.'.join(reversed(path))
+        elif isinstance(current, ast.Name) and current.id in self.parameter_aliases:
+            return self.parameter_aliases[current.id] + '.' + '.'.join(reversed(path))
+
+        return None
+
+    def add_parameter(self, path):
+        # Ignore paths that end with '.'
+        if (path.endswith('.')):
+            return
+
+        # Ignore paths that are themselves prefixes of an existing path; these are ParameterNodes
+        for p in self.parameters:
+            if p.startswith(path + '.'):
+                return
+            
+        # Remove any existing paths that are prefixes of this one
+        self.parameters = {p for p in self.parameters if not path.startswith(p + '.')}
+
+        # Add path
+        self.parameters.add(path)
+        
+

@@ -510,15 +510,19 @@ class Variable:
         no_adds_or_subtracts = self.adds is None and self.subtracts is None
         return no_specified_formulas and no_adds_or_subtracts
     
-    def get_accessed_parameters(self):
+    def get_accessed_parameters(self, period=None) -> List[str]:
         """
         Returns the full parameter paths accessed by the variable.
         """
 
-        # This needs to be changed to reflect time
-        func = self.formulas["0001-01-01"]
+        if not hasattr(self, "formulas"):
+            return []
 
-        # Get the source code of the function
+        # This needs to be changed to reflect time
+        func = self.get_formula(period)
+
+        # Get the source code of the function; this assumes formula is always
+        # indented one line
         source = textwrap.dedent(inspect.getsource(func))
     
         # Parse the source code into an AST

@@ -700,6 +700,12 @@ class ParameterAccessFinder(ast.NodeVisitor):
         return None
 
     def add_parameter(self, path):
+        # List of keywords that should be
+        # clipped from the end of the path
+        keywords_to_remove = [
+            "calc"
+        ]
+
         # Ignore paths that end with '.'
         if (path.endswith('.')):
             return
@@ -708,6 +714,12 @@ class ParameterAccessFinder(ast.NodeVisitor):
         for p in self.parameters:
             if p.startswith(path + '.'):
                 return
+        
+        # Clip any of the reserved keywords from the end of the path
+        for keyword in keywords_to_remove:
+            if path.endswith('.' + keyword):
+                path = path[:-(len(keyword) + 1)]
+                break
             
         # Remove any existing paths that are prefixes of this one
         self.parameters = {p for p in self.parameters if not path.startswith(p + '.')}

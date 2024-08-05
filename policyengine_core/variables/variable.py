@@ -512,14 +512,15 @@ class Variable:
     
     def get_accessed_parameters(self, period=None) -> List[str]:
         """
-        Returns the full parameter paths accessed by the variable.
+        Returns the full parameter paths accessed by the variable's formula
         """
 
-        if not hasattr(self, "formulas"):
-            return []
-
-        # This needs to be changed to reflect time
+        # Pull relevant function from variable
         func = self.get_formula(period)
+        
+        # Return empty if no formula
+        if not func:
+            return []
 
         # Get the source code of the function; this assumes formula is always
         # indented one line

@@ -1331,14 +1331,13 @@ class Simulation:
         """
         if not self.is_over_dataset:
             return None
-
+        
         variable = self.tax_benefit_system.get_variable(variable_name)
-        parameter_deps = variable.exhaustive_parameter_dependencies
+        accessed_params = variable.get_accessed_parameters(period=period)
 
-        if parameter_deps is None:
-            return None
+        # TODO: Add opt-out
 
-        for parameter in parameter_deps:
+        for parameter in accessed_params:
             param = get_parameter(
                 self.tax_benefit_system.parameters, parameter
             )

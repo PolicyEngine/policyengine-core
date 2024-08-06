@@ -682,9 +682,7 @@ class Simulation:
                         )
 
                     array = (
-                        holder.get_array(
-                            latest_known_period, self.branch_name
-                        )
+                        holder.get_array(latest_known_period, self.branch_name)
                         * uprating_factor
                     )
                 elif (

@@ -148,6 +148,8 @@ class Reform(TaxBenefitSystem):
                         for period, value in period_values.items():
                             if "." in period:
                                 start, stop = period.split(".")
+                                start = instant_(start)
+                                stop = instant_(stop)
                                 parameter.update(
                                     start=start, stop=stop, value=value
                                 )

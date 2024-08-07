@@ -250,22 +250,32 @@ class Simulation:
             ) from e
 
         if self.dataset.data_format == Dataset.FLAT_FILE:
+            data_copy = {col: data[col].values for col in data.copy().columns}
             data = {col: data[col].values for col in data.columns}
 
         person_entity = self.tax_benefit_system.person_entity
         entity_id_field = f"{person_entity.key}_id"
+
+        def get_eternity_array(name):
+            if self.dataset.data_format == Dataset.FLAT_FILE:
+                # Look for any column with variablename__timeperiod
+                for col in data:
+                    if col.split("__")[0] == name:
+                        return data[col]
+            elif self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS:
+                return data[name][list(data[name].keys())[0]]
+            return data[name]
+
         if self.dataset.data_format != Dataset.FLAT_FILE:
             assert (
                 entity_id_field in data
             ), f"Missing {entity_id_field} column in the dataset. Each person entity must have an ID array defined for ETERNITY."
         elif entity_id_field not in data:
-            data[entity_id_field] = np.arange(len(data))
-        get_eternity_array = lambda ds: (
-            ds[list(ds.keys())[0]]
-            if self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS
-            else ds
-        )
-        entity_ids = get_eternity_array(data[entity_id_field])
+            data[entity_id_field] = np.arange(
+                len(get_eternity_array("person_id"))
+            )
+
+        entity_ids = get_eternity_array(entity_id_field)
         builder.declare_person_entity(person_entity.key, entity_ids)
 
         for group_entity in self.tax_benefit_system.group_entities:
@@ -274,15 +284,18 @@ class Simulation:
                 assert (
                     entity_id_field in data
                 ), f"Missing {entity_id_field} column in the dataset. Each group entity must have an ID array defined for ETERNITY."
+                entity_ids = get_eternity_array(entity_id_field)
             elif entity_id_field not in data:
-                if f"person_{group_entity.key}_id" in data:
-                    data[entity_id_field] = np.arange(
-                        len(np.unique(data[f"person_{group_entity.key}_id"]))
+                entity_id_field_values = get_eternity_array(
+                    f"person_{group_entity.key}_id"
+                )
+                if entity_id_field_values is not None:
+                    entity_ids = np.arange(
+                        len(np.unique(entity_id_field_values))
                     )
                 else:
-                    data[entity_id_field] = np.arange(len(data))
+                    entity_ids = np.arange(len(data[list(data.keys())[0]]))
 
-            entity_ids = get_eternity_array(data[entity_id_field])
             builder.declare_entity(group_entity.key, entity_ids)
 
             person_membership_id_field = (
@@ -295,14 +308,14 @@ class Simulation:
             elif person_membership_id_field not in data:
                 data[person_membership_id_field] = np.arange(len(data))
             person_membership_ids = get_eternity_array(
-                data[person_membership_id_field]
+                person_membership_id_field
             )
 
             person_role_field = f"{person_entity.key}_{group_entity.key}_role"
             if person_role_field in data:
-                person_roles = get_eternity_array(data[person_role_field])
+                person_roles = get_eternity_array(person_role_field)
             elif "role" in data:
-                person_roles = get_eternity_array(data["role"])
+                person_roles = get_eternity_array("role")
             elif self.default_role is not None:
                 person_roles = np.full(len(entity_ids), self.default_role)
             else:
@@ -316,6 +329,10 @@ class Simulation:
             )
 
         self.build_from_populations(builder.populations)
+
+        if self.dataset.data_format == Dataset.FLAT_FILE:
+            # Ensure we're back to all person-level data.
+            data = data_copy
 
         if self.dataset.data_format != Dataset.FLAT_FILE:
             for variable in data:
@@ -359,10 +376,12 @@ class Simulation:
                     entity_level_data = population.value_from_first_person(
                         data[variable]
                     )
+                    if variable_name == "region":
+                        print(entity_level_data)
                 else:
                     entity_level_data = data[variable]
 
-                self.set_input(variable, time_period, entity_level_data)
+                self.set_input(variable_name, time_period, entity_level_data)
 
         self.default_calculation_period = (
             self.dataset.time_period or self.default_calculation_period
@@ -1452,6 +1471,25 @@ class Simulation:
             return None
         with h5py.File(cache_file_path, "w") as f:
             f.create_dataset("values", data=value)
+
+    def to_input_dataframe(
+        self,
+    ) -> pd.DataFrame:
+        """Exports a DataFrame which can be loaded back to a new Simulation to reproduce the same results.
+
+        Returns:
+            pd.DataFrame: The DataFrame containing the input values.
+        """
+
+        df = pd.DataFrame()
+
+        for variable in self.tax_benefit_system.variables:
+            for period in self.get_holder(variable).get_known_periods():
+                values = self.calculate(variable, period, map_to="person")
+                if values is not None:
+                    df[f"{variable}__{period}"] = values
+
+        return df
 
 
 class NpEncoder(json.JSONEncoder):

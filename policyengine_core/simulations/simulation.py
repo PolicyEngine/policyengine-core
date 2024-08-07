@@ -1335,7 +1335,7 @@ class Simulation:
         variable = self.tax_benefit_system.get_variable(variable_name)
         accessed_params = variable.get_accessed_parameters(period=period)
 
-        # TODO: Add opt-out
+        # # TODO: Add opt-out
 
         for parameter in accessed_params:
             param = get_parameter(
@@ -1344,17 +1344,18 @@ class Simulation:
             if param.modified:
                 return None
 
-        storage_folder = (
-            self.dataset.file_path.parent
-            / f"{self.dataset.name}_variable_cache"
-        )
-        storage_folder.mkdir(exist_ok=True)
+        # storage_folder = (
+        #     self.dataset.file_path.parent
+        #     / f"{self.dataset.name}_variable_cache"
+        # )
+        # storage_folder.mkdir(exist_ok=True)
 
-        cache_file_path = (
-            storage_folder / f"{variable_name}_{period}_{self.branch_name}.h5"
-        )
+        # cache_file_path = (
+        #     storage_folder / f"{variable_name}_{period}_{self.branch_name}.h5"
+        # )
 
-        return cache_file_path
+        # return cache_file_path
+        return None
 
     def clear_macro_cache(self):
         """

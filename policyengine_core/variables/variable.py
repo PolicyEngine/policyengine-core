@@ -130,8 +130,10 @@ class Variable:
     requires_computation_after: str = None
     """Name of a variable that must be computed before this variable."""
 
-    exhaustive_parameter_dependencies: List[str] = None
-    """If these parameters (plus the dataset, branch and period) haven't changed, Core will use caching on this variable."""
+    # exhaustive_parameter_dependencies: List[str] = None
+    # """If these parameters (plus the dataset, branch and period) haven't changed, Core will use caching on this variable."""
+
+    is_cacheable: bool = True
 
     def __init__(self, baseline_variable=None):
         self.name = self.__class__.__name__
@@ -237,6 +239,12 @@ class Variable:
             "documentation",
             allowed_type=str,
             setter=self.set_documentation,
+        )
+        self.is_cacheable = self.set(
+            attr,
+            "is_cacheable",
+            allowed_type=bool,
+            default=True,
         )
         self.set_input = self.set_set_input(
             attr.pop(
@@ -516,6 +524,7 @@ class Variable:
         """
 
         # Pull relevant function from variable
+        print("Getting accessed parameters for variable: ", self.name)
         func = self.get_formula(period)
         
         # Return empty if no formula
@@ -678,13 +687,30 @@ class ParameterAccessFinder(ast.NodeVisitor):
         elif node.id in self.parameter_aliases:
             self.add_parameter(self.parameter_aliases[node.id] + '.' + '.'.join(reversed(self.current_path)))
 
+    # def extract_path(self, node):
+    #     if isinstance(node, ast.Name):
+    #         if node.id == 'parameters':
+    #             return ''
+    #         elif node.id in self.parameter_aliases:
+    #             return self.parameter_aliases[node.id]
+    #     
+    #     path = []
+    #     current = node
+    #     while isinstance(current, ast.Attribute):
+    #         path.append(current.attr)
+    #         current = current.value
+
+    #     if isinstance(current, ast.Call) and isinstance(current.func, ast.Name) and current.func.id == 'parameters':
+    #         if len(current.args) > 0 and isinstance(current.args[0], ast.Name) and current.args[0].id == 'period':
+    #             return '.'.join(reversed(path))
+    #     elif isinstance(current, ast.Name) and current.id in self.parameter_aliases:
+    #         return self.parameter_aliases[current.id] + '.' + '.'.join(reversed(path))
+
+    #     return None
+
+
     def extract_path(self, node):
-        if isinstance(node, ast.Name):
-            if node.id == 'parameters':
-                return ''
-            elif node.id in self.parameter_aliases:
-                return self.parameter_aliases[node.id]
-        
+
         path = []
         current = node
         while isinstance(current, ast.Attribute):
@@ -695,16 +721,27 @@ class ParameterAccessFinder(ast.NodeVisitor):
             if len(current.args) > 0 and isinstance(current.args[0], ast.Name) and current.args[0].id == 'period':
                 return '.'.join(reversed(path))
         elif isinstance(current, ast.Name) and current.id in self.parameter_aliases:
-            return self.parameter_aliases[current.id] + '.' + '.'.join(reversed(path))
+            aliased_path = self.parameter_aliases[current.id]
+            if aliased_path:  # Only if the alias isn't just 'parameters'
+                return aliased_path + '.' + '.'.join(reversed(path)) if path else aliased_path
 
         return None
 
     def add_parameter(self, path):
         # List of keywords that should be
         # clipped from the end of the path
+        print(path)
+
         keywords_to_remove = [
-            "calc"
+            "calc",
+            "decode_to_str",
+            "__iter__",
+            "astype"
         ]
+
+        # Ignore undesirable values
+        if not path or path == "":
+            return
 
         # Ignore paths that end with '.'
         if (path.endswith('.')):
@@ -726,5 +763,7 @@ class ParameterAccessFinder(ast.NodeVisitor):
 
         # Add path
         self.parameters.add(path)
+
+        print(self.parameters)
         
 

@@ -250,6 +250,7 @@ class ParameterNode(AtInstantLike):
             self._at_instant_cache.clear()
 
     def mark_as_modified(self):
+        print(f"Marking ParameterNode {self.name} as modified")
         self.modified = True
         if self.parent is not None:
             self.parent.mark_as_modified()

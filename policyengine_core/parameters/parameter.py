@@ -213,6 +213,7 @@ class Parameter(AtInstantLike):
         self.mark_as_modified()
 
     def mark_as_modified(self):
+        print(f"Marking Parameter {self.name} as modified")
         self.modified = True
         self.parent.mark_as_modified()
 

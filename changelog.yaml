@@ -609,3 +609,8 @@
     - Simulation loading from dataframes.
     - Simulation `start_instant` attribute.
   date: 2024-08-02 09:09:51
+- bump: minor
+  changes:
+    added:
+    - Flat file export option to simulations.
+  date: 2024-08-07 12:42:36

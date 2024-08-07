@@ -2,6 +2,7 @@ from policyengine_core.country_template.situation_examples import single
 from policyengine_core.simulations import SimulationBuilder
 from policyengine_core.simulations.sim_macro_cache import SimulationMacroCache
 import importlib.metadata
+import numpy as np
 
 
 def test_calculate_full_tracer(tax_benefit_system):
@@ -77,6 +78,7 @@ def test_version(tax_benefit_system):
     )
     assert cache.country_version == "0.0.0"
 
+
 # Test set_cache_path
 def test_set_cache_path(tax_benefit_system):
     cache = SimulationMacroCache(tax_benefit_system)
@@ -89,9 +91,13 @@ def test_set_cache_path(tax_benefit_system):
     )
     cache.set_cache_value(
         cache_file_path=cache.cache_file_path,
-        value=3,
+        value=np.array([1, 2, 3], dtype=np.float32),
     )
-    assert cache.cache_file_path == "tests/core/test_dataset_variable_cache/test_variable_2020_test_branch.h5"
+    assert (
+        str(cache.cache_file_path)
+        == "tests/core/test_dataset_variable_cache/test_variable_2020_test_branch.h5"
+    )
+
 
 # Test set_cache_value
 

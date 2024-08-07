@@ -36,10 +36,7 @@ class SimulationMacroCache(metaclass=Singleton):
         period: str,
         branch_name: str,
     ):
-        storage_folder = (
-            Path(parent_path)
-            / f"{dataset_name}_variable_cache"
-        )
+        storage_folder = Path(parent_path) / f"{dataset_name}_variable_cache"
         storage_folder.mkdir(exist_ok=True)
         self.cache_file_path = (
             storage_folder / f"{variable_name}_{period}_{branch_name}.h5"
@@ -49,8 +46,8 @@ class SimulationMacroCache(metaclass=Singleton):
         with h5py.File(cache_file_path, "w") as f:
             f.create_dataset("metadata:core_version", data=self.core_version)
             f.create_dataset(
-                "metadata:country_package",
-                data={self.country_name: self.country_version},
+                "metadata:country_version",
+                data=self.country_version,
             )
             f.create_dataset("values", data=value)
 
@@ -64,9 +61,11 @@ class SimulationMacroCache(metaclass=Singleton):
                 "metadata:core_version" in f
                 and "metadata:country_version" in f
             ):
-                if f["metadata:core_version"][()] != self.core_version or f[
-                    "metadata:country_package"
-                ][()] != {self.country_name: self.country_version}:
+                if (
+                    f["metadata:core_version"][()] != self.core_version
+                    or f["metadata:country_version"][()]
+                    != self.country_version
+                ):
                     self.clear_cache(cache_file_path)
                     return None
             else:

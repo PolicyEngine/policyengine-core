@@ -376,8 +376,6 @@ class Simulation:
                     entity_level_data = population.value_from_first_person(
                         data[variable]
                     )
-                    if variable_name == "region":
-                        print(entity_level_data)
                 else:
                     entity_level_data = data[variable]
 

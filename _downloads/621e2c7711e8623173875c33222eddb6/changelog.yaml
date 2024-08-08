@@ -614,3 +614,8 @@
     added:
     - Flat file export option to simulations.
   date: 2024-08-07 12:42:36
+- bump: minor
+  changes:
+    removed:
+    - Removed nptyping, migrated to numpy.typing
+  date: 2024-08-08 15:16:12

@@ -1,4 +1,0 @@
-- bump: minor
-  changes:
-    removed:
-    - Removed nptyping, migrated to numpy.typing

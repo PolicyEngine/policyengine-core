@@ -30,7 +30,7 @@ class SimulationMacroCache(metaclass=Singleton):
 
     def set_cache_path(
         self,
-        parent_path: Path,
+        parent_path: [Path, str],
         dataset_name: str,
         variable_name: str,
         period: str,

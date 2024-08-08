@@ -619,3 +619,8 @@
     removed:
     - Removed nptyping, migrated to numpy.typing
   date: 2024-08-08 15:16:12
+- bump: patch
+  changes:
+    fixed:
+    - fixed bug where uprating was causing nan.
+  date: 2024-08-08 15:17:05

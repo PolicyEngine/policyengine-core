@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    fixed:
-      - fixed bug where uprating was causing nan.

@@ -234,6 +234,7 @@ class YamlItem(pytest.Item):
         verbose = self.options.get("verbose")
         performance_graph = self.options.get("performance_graph")
         performance_tables = self.options.get("performance_tables")
+        visualize = self.options.get("visualize")
 
         try:
             builder.set_default_period(period)
@@ -256,7 +257,7 @@ class YamlItem(pytest.Item):
 
         try:
             self.simulation.trace = (
-                verbose or performance_graph or performance_tables
+                verbose or performance_graph or performance_tables or visualize
             )
             self.check_output()
         finally:
@@ -267,6 +268,8 @@ class YamlItem(pytest.Item):
                 self.generate_performance_graph(tracer)
             if performance_tables:
                 self.generate_performance_tables(tracer)
+            if visualize:
+                self.generate_variable_graph(tracer)
 
     def print_computation_log(self, tracer):
         print("Computation log:")  # noqa T001
@@ -277,6 +280,24 @@ class YamlItem(pytest.Item):
 
     def generate_performance_tables(self, tracer):
         tracer.generate_performance_tables(".")
+
+    def generate_variable_graph(self, tracer):
+        tracer.generate_variable_graph(
+            self.test.get("name"), self._all_output_vars()
+        )
+
+    def _all_output_vars(self):
+        return self._get_leaf_keys(self.test["output"])
+
+    def _get_leaf_keys(self, dictionary: dict):
+        keys = []
+        for key, value in dictionary.items():
+            if type(value) is dict:
+                keys.extend(self._get_leaf_keys(value))
+            else:
+                keys.append(key)
+
+        return keys
 
     def check_output(self):
         output = self.test.get("output")

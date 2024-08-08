@@ -5,6 +5,7 @@ import numpy
 import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
+import logging
 
 from policyengine_core import commons, periods
 from policyengine_core.data.dataset import Dataset
@@ -27,7 +28,7 @@ if TYPE_CHECKING:
     from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 
 from policyengine_core.experimental import MemoryConfig
-from policyengine_core.populations import Population
+from policyengine_core.populations import Population, GroupPopulation
 from policyengine_core.tracers import SimpleTracer
 from policyengine_core.variables import Variable, QuantityType
 from policyengine_core.reforms.reform import Reform
@@ -73,6 +74,9 @@ class Simulation:
     macro_cache_write: bool = True
     """Whether to write to the macro cache."""
 
+    start_instant: str = None
+    """The earliest data input instant of the simulation."""
+
     def __init__(
         self,
         tax_benefit_system: "TaxBenefitSystem" = None,
@@ -82,7 +86,6 @@ class Simulation:
         reform: Reform = None,
         trace: bool = False,
     ):
-        reform_applied_after = False
         if tax_benefit_system is None:
             if (
                 self.default_tax_benefit_system_instance is not None
@@ -91,20 +94,11 @@ class Simulation:
                 tax_benefit_system = self.default_tax_benefit_system_instance
             else:
                 # If reform is taken as an arg, pass it
-                try:
-                    tax_benefit_system = self.default_tax_benefit_system(
-                        reform=reform
-                    )
-                except:
-                    tax_benefit_system = self.default_tax_benefit_system()
-                    reform_applied_after = True
+                tax_benefit_system = self.default_tax_benefit_system()
             self.tax_benefit_system = tax_benefit_system
 
         self.reform = reform
         self.tax_benefit_system = tax_benefit_system
-
-        if reform_applied_after and reform is not None:
-            self.apply_reform(reform)
         self.branch_name = "default"
 
         if dataset is None:
@@ -154,16 +148,26 @@ class Simulation:
                 datasets_by_name = {
                     dataset.name: dataset for dataset in self.datasets
                 }
-                if dataset not in datasets_by_name:
-                    raise ValueError(
-                        f"Dataset {dataset} not found. Available datasets: {list(datasets_by_name.keys())}"
+                if dataset in datasets_by_name:
+                    dataset = datasets_by_name.get(dataset)
+                elif Path(dataset).exists():
+                    dataset = Dataset.from_file(
+                        dataset, self.default_input_period
                     )
-                dataset = datasets_by_name[dataset]
             if isinstance(dataset, type):
                 self.dataset: Dataset = dataset(require=True)
+            elif isinstance(dataset, pd.DataFrame):
+                self.dataset = Dataset.from_dataframe(
+                    dataset, self.default_input_period
+                )
             else:
                 self.dataset = dataset
             self.build_from_dataset()
+
+        self.tax_benefit_system.simulation = self
+
+        if self.reform is not None:
+            self.tax_benefit_system.apply_reform_set(self.reform)
 
         # Backwards compatibility methods
         self.calc = self.calculate
@@ -243,44 +247,73 @@ class Simulation:
                 + "Make sure you have downloaded or built it using the `policyengine-core data` command."
             ) from e
 
+        if self.dataset.data_format == Dataset.FLAT_FILE:
+            data_copy = {col: data[col].values for col in data.copy().columns}
+            data = {col: data[col].values for col in data.columns}
+
         person_entity = self.tax_benefit_system.person_entity
         entity_id_field = f"{person_entity.key}_id"
-        assert (
-            entity_id_field in data
-        ), f"Missing {entity_id_field} column in the dataset. Each person entity must have an ID array defined for ETERNITY."
 
-        get_eternity_array = lambda ds: (
-            ds[list(ds.keys())[0]]
-            if self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS
-            else ds
-        )
-        entity_ids = get_eternity_array(data[entity_id_field])
+        def get_eternity_array(name):
+            if self.dataset.data_format == Dataset.FLAT_FILE:
+                # Look for any column with variablename__timeperiod
+                for col in data:
+                    if col.split("__")[0] == name:
+                        return data[col]
+            elif self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS:
+                return data[name][list(data[name].keys())[0]]
+            return data[name]
+
+        if self.dataset.data_format != Dataset.FLAT_FILE:
+            assert (
+                entity_id_field in data
+            ), f"Missing {entity_id_field} column in the dataset. Each person entity must have an ID array defined for ETERNITY."
+        elif entity_id_field not in data:
+            data[entity_id_field] = np.arange(
+                len(get_eternity_array("person_id"))
+            )
+
+        entity_ids = get_eternity_array(entity_id_field)
         builder.declare_person_entity(person_entity.key, entity_ids)
 
         for group_entity in self.tax_benefit_system.group_entities:
             entity_id_field = f"{group_entity.key}_id"
-            assert (
-                entity_id_field in data
-            ), f"Missing {entity_id_field} column in the dataset. Each group entity must have an ID array defined for ETERNITY."
+            if self.dataset.data_format != Dataset.FLAT_FILE:
+                assert (
+                    entity_id_field in data
+                ), f"Missing {entity_id_field} column in the dataset. Each group entity must have an ID array defined for ETERNITY."
+                entity_ids = get_eternity_array(entity_id_field)
+            elif entity_id_field not in data:
+                entity_id_field_values = get_eternity_array(
+                    f"person_{group_entity.key}_id"
+                )
+                if entity_id_field_values is not None:
+                    entity_ids = np.arange(
+                        len(np.unique(entity_id_field_values))
+                    )
+                else:
+                    entity_ids = np.arange(len(data[list(data.keys())[0]]))
 
-            entity_ids = get_eternity_array(data[entity_id_field])
             builder.declare_entity(group_entity.key, entity_ids)
 
             person_membership_id_field = (
                 f"{person_entity.key}_{group_entity.key}_id"
             )
-            assert (
-                person_membership_id_field in data
-            ), f"Missing {person_membership_id_field} column in the dataset. Each group entity must have a person membership array defined for ETERNITY."
+            if self.dataset.data_format != Dataset.FLAT_FILE:
+                assert (
+                    person_membership_id_field in data
+                ), f"Missing {person_membership_id_field} column in the dataset. Each group entity must have a person membership array defined for ETERNITY."
+            elif person_membership_id_field not in data:
+                data[person_membership_id_field] = np.arange(len(data))
             person_membership_ids = get_eternity_array(
-                data[person_membership_id_field]
+                person_membership_id_field
             )
 
             person_role_field = f"{person_entity.key}_{group_entity.key}_role"
             if person_role_field in data:
-                person_roles = get_eternity_array(data[person_role_field])
+                person_roles = get_eternity_array(person_role_field)
             elif "role" in data:
-                person_roles = get_eternity_array(data["role"])
+                person_roles = get_eternity_array("role")
             elif self.default_role is not None:
                 person_roles = np.full(len(entity_ids), self.default_role)
             else:
@@ -295,22 +328,60 @@ class Simulation:
 
         self.build_from_populations(builder.populations)
 
-        for variable in data:
-            if variable in self.tax_benefit_system.variables:
-                if self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS:
-                    for time_period in data[variable]:
+        if self.dataset.data_format == Dataset.FLAT_FILE:
+            # Ensure we're back to all person-level data.
+            data = data_copy
+
+        if self.dataset.data_format != Dataset.FLAT_FILE:
+            for variable in data:
+                if variable in self.tax_benefit_system.variables:
+                    if self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS:
+                        for time_period in data[variable]:
+                            self.set_input(
+                                variable,
+                                time_period,
+                                data[variable][time_period],
+                            )
+                    else:
                         self.set_input(
-                            variable, time_period, data[variable][time_period]
+                            variable, self.dataset.time_period, data[variable]
                         )
                 else:
-                    self.set_input(
-                        variable, self.dataset.time_period, data[variable]
+                    # Silently skip.
+                    pass
+        else:
+            for variable in data:
+                if "__" in variable:
+                    variable_name, time_period = variable.split("__")
+                else:
+                    variable_name = variable
+                    time_period = (
+                        self.dataset.time_period or self.default_input_period
                     )
-            else:
-                # Silently skip.
-                pass
 
-        self.default_calculation_period = self.dataset.time_period
+                if variable_name not in self.tax_benefit_system.variables:
+                    continue
+
+                variable_meta = self.tax_benefit_system.get_variable(
+                    variable_name
+                )
+                entity = variable_meta.entity
+                population = self.get_population(entity.plural)
+
+                # All data should be person level
+                if len(data[variable]) != len(population.ids):
+                    population: GroupPopulation
+                    entity_level_data = population.value_from_first_person(
+                        data[variable]
+                    )
+                else:
+                    entity_level_data = data[variable]
+
+                self.set_input(variable_name, time_period, entity_level_data)
+
+        self.default_calculation_period = (
+            self.dataset.time_period or self.default_calculation_period
+        )
 
         self.tax_benefit_system.data_modified = False
 
@@ -614,43 +685,40 @@ class Simulation:
             if array is None:
                 # Check if the variable has a previously defined value
                 known_periods = holder.get_known_periods()
-                if variable.uprating is not None and len(known_periods) > 0:
-                    start_instants = [
-                        str(known_period.start)
-                        for known_period in known_periods
-                        if known_period.unit == variable.definition_period
-                        and known_period.start < period.start
+                start_instants = [
+                    str(known_period.start)
+                    for known_period in known_periods
+                    if known_period.unit == variable.definition_period
+                    and known_period.start < period.start
+                ]
+                if variable.uprating is not None and len(start_instants) > 0:
+                    latest_known_period = known_periods[
+                        np.argmax(start_instants)
                     ]
-                    if len(start_instants) > 0:
-                        latest_known_period = known_periods[
-                            np.argmax(start_instants)
-                        ]
-                        try:
-                            uprating_parameter = get_parameter(
-                                self.tax_benefit_system.parameters,
-                                variable.uprating,
-                            )
-                        except:
-                            raise ValueError(
-                                f"Could not find uprating parameter {variable.uprating} when trying to uprate {variable_name}."
-                            )
-                        value_in_last_period = uprating_parameter(
-                            latest_known_period.start
+                    try:
+                        uprating_parameter = get_parameter(
+                            self.tax_benefit_system.parameters,
+                            variable.uprating,
                         )
-                        value_in_this_period = uprating_parameter(period.start)
-                        if value_in_last_period == 0:
-                            uprating_factor = 1
-                        else:
-                            uprating_factor = (
-                                value_in_this_period / value_in_last_period
-                            )
+                    except:
+                        raise ValueError(
+                            f"Could not find uprating parameter {variable.uprating} when trying to uprate {variable_name}."
+                        )
+                    value_in_last_period = uprating_parameter(
+                        latest_known_period.start
+                    )
+                    value_in_this_period = uprating_parameter(period.start)
+                    if value_in_last_period == 0:
+                        uprating_factor = 1
+                    else:
+                        uprating_factor = (
+                            value_in_this_period / value_in_last_period
+                        )
 
-                        array = (
-                            holder.get_array(
-                                latest_known_period, self.branch_name
-                            )
-                            * uprating_factor
-                        )
+                    array = (
+                        holder.get_array(latest_known_period, self.branch_name)
+                        * uprating_factor
+                    )
                 elif (
                     self.tax_benefit_system.auto_carry_over_input_variables
                     and variable.calculate_output is None
@@ -658,6 +726,8 @@ class Simulation:
                 ):
                     # Variables with a calculate-output property specify
                     last_known_period = sorted(known_periods)[-1]
+                    if last_known_period.start > period.start:
+                        return holder.default_array()
                     array = holder.get_array(last_known_period)
                 else:
                     array = holder.default_array()
@@ -1113,10 +1183,12 @@ class Simulation:
 
         If a ``set_input`` property has been set for the variable, this method may accept inputs for periods not matching the ``definition_period`` of the variable. To read more about this, check the `documentation <https://openfisca.org/doc/coding-the-legislation/35_periods.html#automatically-process-variable-inputs-defined-for-periods-not-matching-the-definitionperiod>`_.
         """
+        period = periods.period(period)
+        if self.start_instant is None or self.start_instant > period.start:
+            self.start_instant = period.start
         variable = self.tax_benefit_system.get_variable(
             variable_name, check_existence=True
         )
-        period = periods.period(period)
         if (variable.end is not None) and (period.start.date > variable.end):
             return
         self.get_holder(variable_name).set_input(
@@ -1362,6 +1434,25 @@ class Simulation:
                 return not is_cache_available
 
         return is_cache_available
+
+    def to_input_dataframe(
+        self,
+    ) -> pd.DataFrame:
+        """Exports a DataFrame which can be loaded back to a new Simulation to reproduce the same results.
+
+        Returns:
+            pd.DataFrame: The DataFrame containing the input values.
+        """
+
+        df = pd.DataFrame()
+
+        for variable in self.tax_benefit_system.variables:
+            for period in self.get_holder(variable).get_known_periods():
+                values = self.calculate(variable, period, map_to="person")
+                if values is not None:
+                    df[f"{variable}__{period}"] = values
+
+        return df
 
 
 class NpEncoder(json.JSONEncoder):

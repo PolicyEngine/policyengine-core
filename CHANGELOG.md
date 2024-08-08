@@ -5,6 +5,91 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.1] - 2024-08-08 15:17:05
+
+### Fixed
+
+- fixed bug where uprating was causing nan.
+
+## [3.5.0] - 2024-08-08 15:16:12
+
+## [3.4.0] - 2024-08-07 12:42:36
+
+### Added
+
+- Flat file export option to simulations.
+
+## [3.3.0] - 2024-08-02 09:09:51
+
+### Added
+
+- Simulation loading from dataframes.
+- Simulation `start_instant` attribute.
+
+## [3.2.0] - 2024-07-28 19:28:05
+
+### Changed
+
+- Reform syntax to increase flexibility.
+
+## [3.1.0] - 2024-07-26 00:28:31
+
+### Added
+
+- Flat file dataset option.
+- Microdata weighting classes from microdf.
+- Eternity dictionary reform options.
+
+## [3.0.0] - 2024-06-26 17:08:24
+
+### Changed
+
+- Added support for Python 3.12
+
+## [2.23.1] - 2024-06-06 09:09:41
+
+### Added
+
+- V
+- i
+- s
+- u
+- a
+- l
+- i
+- z
+- a
+- t
+- i
+- o
+- n
+-  
+- o
+- p
+- t
+- i
+- o
+- n
+-  
+- w
+- h
+- e
+- n
+-  
+- r
+- u
+- n
+- n
+- i
+- n
+- g
+-  
+- t
+- e
+- s
+- t
+- s
+
 ## [2.23.0] - 2024-06-04 19:43:13
 
 ### Added
@@ -694,6 +779,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[3.5.1]: https://github.com/PolicyEngine/policyengine-core/compare/3.5.0...3.5.1
+[3.5.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.4.0...3.5.0
+[3.4.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.3.0...3.4.0
+[3.3.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.2.0...3.3.0
+[3.2.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.1.0...3.2.0
+[3.1.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.0.0...3.1.0
+[3.0.0]: https://github.com/PolicyEngine/policyengine-core/compare/2.23.1...3.0.0
+[2.23.1]: https://github.com/PolicyEngine/policyengine-core/compare/2.23.0...2.23.1
 [2.23.0]: https://github.com/PolicyEngine/policyengine-core/compare/2.22.0...2.23.0
 [2.22.0]: https://github.com/PolicyEngine/policyengine-core/compare/2.21.8...2.22.0
 [2.21.8]: https://github.com/PolicyEngine/policyengine-core/compare/2.21.7...2.21.8

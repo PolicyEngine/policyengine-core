@@ -582,3 +582,45 @@
     added:
     - max_value and min_value in Variable class.
   date: 2024-06-04 19:43:13
+- bump: patch
+  changes:
+    added: Visualization option when running tests
+  date: 2024-06-06 09:09:41
+- bump: major
+  changes:
+    changed:
+    - Added support for Python 3.12
+  date: 2024-06-26 17:08:24
+- bump: minor
+  changes:
+    added:
+    - Flat file dataset option.
+    - Microdata weighting classes from microdf.
+    - Eternity dictionary reform options.
+  date: 2024-07-26 00:28:31
+- bump: minor
+  changes:
+    changed:
+    - Reform syntax to increase flexibility.
+  date: 2024-07-28 19:28:05
+- bump: minor
+  changes:
+    added:
+    - Simulation loading from dataframes.
+    - Simulation `start_instant` attribute.
+  date: 2024-08-02 09:09:51
+- bump: minor
+  changes:
+    added:
+    - Flat file export option to simulations.
+  date: 2024-08-07 12:42:36
+- bump: minor
+  changes:
+    removed:
+    - Removed nptyping, migrated to numpy.typing
+  date: 2024-08-08 15:16:12
+- bump: patch
+  changes:
+    fixed:
+    - fixed bug where uprating was causing nan.
+  date: 2024-08-08 15:17:05

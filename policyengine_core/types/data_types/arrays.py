@@ -1,14 +1,10 @@
-from typing import Sequence, TypeVar, Union
-
-import numpy
-from nptyping import NDArray as ArrayType
-from nptyping import types
+from typing import Sequence, TypeVar, Any
+from numpy.typing import NDArray as ArrayType
 
 T = TypeVar("T", bool, bytes, float, int, object, str)
 
-types._ndarray_meta._Type = Union[type, numpy.dtype, TypeVar]
+ArrayLike = ArrayType[Any] | Sequence[T]
 
-ArrayLike = Union[ArrayType[T], Sequence[T]]
 """:obj:`typing.Generic`: Type of any castable to :class:`numpy.ndarray`.
 
 These include any :obj:`numpy.ndarray` and sequences (like
@@ -22,17 +18,8 @@ Examples:
     typing.Union[numpy.ndarray, typing.Sequence[str]]
 
 Note:
-    It is possible since numpy version 1.21 to specify the type of an
-    array, thanks to `numpy.typing.NDArray`_::
-
-        from numpy.typing import NDArray
-        NDArray[numpy.float64]
-
     `mypy`_ provides `duck type compatibility`_, so an :obj:`int` is
     considered to be valid whenever a :obj:`float` is expected.
-
-Todo:
-    * Refactor once numpy version >= 1.21 is used.
 
 .. versionadded:: 35.5.0
 

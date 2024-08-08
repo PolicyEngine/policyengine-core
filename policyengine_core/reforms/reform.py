@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import copy
-from typing import Callable, Union
+from typing import Callable, Union, TYPE_CHECKING
 
 from policyengine_core.parameters import ParameterNode, Parameter
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
+
+if TYPE_CHECKING:
+    from policyengine_core.simulations import Simulation
 from policyengine_core.periods import (
     period as period_,
     instant as instant_,
@@ -59,6 +62,8 @@ class Reform(TaxBenefitSystem):
 
     parameter_values: dict = None
     """The parameter values of the reform. This is used to inform any calls to the PolicyEngine API."""
+
+    simulation: "Simulation" = None
 
     def __init__(self, baseline: TaxBenefitSystem):
         """
@@ -134,25 +139,24 @@ class Reform(TaxBenefitSystem):
         class reform(Reform):
             def apply(self):
                 for path, period_values in parameter_values.items():
-                    for period, value in period_values.items():
-                        if "." in period:
-                            start, stop = period.split(".")
-                            self.modify_parameters(
-                                set_parameter(
-                                    path,
-                                    value,
-                                    period=None,
-                                    start=start,
-                                    stop=stop,
-                                    return_modifier=True,
+                    parameter = self.parameters.get_child(path)
+                    if not isinstance(period_values, dict):
+                        parameter.update(
+                            start="0000-01-01", value=period_values
+                        )
+                    else:
+                        for period, value in period_values.items():
+                            if "." in period:
+                                start, stop = period.split(".")
+                                start = instant_(start)
+                                stop = instant_(stop)
+                                parameter.update(
+                                    start=start, stop=stop, value=value
                                 )
-                            )
-                        else:
-                            self.modify_parameters(
-                                set_parameter(
-                                    path, value, period, return_modifier=True
+                            else:
+                                parameter = parameter.update(
+                                    period=period, value=value
                                 )
-                            )
 
         reform.country_id = country_id
         reform.parameter_values = parameter_values

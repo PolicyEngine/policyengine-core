@@ -11,7 +11,7 @@ long_description = (this_directory / "README.md").read_text()
 
 general_requirements = [
     "pytest>=8,<9",
-    "numpy<1.25",
+    "numpy~=1.26.4",
     "black",
     "linecheck<1",
     "yaml-changelog<1",
@@ -19,16 +19,14 @@ general_requirements = [
     "sortedcontainers<3",
     "numexpr<3",
     "dpath<3",
-    "nptyping<2",
     "psutil<6",
     "wheel<1",
     "h5py>=3,<4",
-    "microdf_python>=0.3.0,<1",
-    "tqdm>=4.46.0,<5",
     "requests>=2.27.1,<3",
     "pandas>=1",
     "plotly>=5.6.0,<6",
     "ipython>=7.17.0,<8",
+    "pyvis>=0.3.2",
 ]
 
 dev_requirements = [
@@ -49,7 +47,7 @@ dev_requirements = [
 
 setup(
     name="policyengine-core",
-    version="2.23.0",
+    version="3.5.1",
     author="PolicyEngine",
     author_email="hello@policyengine.org",
     classifiers=[
@@ -57,10 +55,10 @@ setup(
         "License :: OSI Approved :: GNU Affero General Public License v3",
         "Operating System :: POSIX",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Scientific/Engineering :: Information Analysis",
     ],
     description="Core microsimulation engine enabling country-specific policy models.",
@@ -75,7 +73,7 @@ setup(
             "policyengine-core=policyengine_core.scripts.policyengine_command:main",
         ],
     },
-    python_requires=">=3.7",
+    python_requires=">=3.9",
     extras_require={
         "dev": dev_requirements,
     },

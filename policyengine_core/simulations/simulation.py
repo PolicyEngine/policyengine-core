@@ -668,43 +668,40 @@ class Simulation:
             if array is None:
                 # Check if the variable has a previously defined value
                 known_periods = holder.get_known_periods()
-                if variable.uprating is not None and len(known_periods) > 0:
-                    start_instants = [
-                        str(known_period.start)
-                        for known_period in known_periods
-                        if known_period.unit == variable.definition_period
-                        and known_period.start < period.start
+                start_instants = [
+                    str(known_period.start)
+                    for known_period in known_periods
+                    if known_period.unit == variable.definition_period
+                    and known_period.start < period.start
+                ]
+                if variable.uprating is not None and len(start_instants) > 0:
+                    latest_known_period = known_periods[
+                        np.argmax(start_instants)
                     ]
-                    if len(start_instants) > 0:
-                        latest_known_period = known_periods[
-                            np.argmax(start_instants)
-                        ]
-                        try:
-                            uprating_parameter = get_parameter(
-                                self.tax_benefit_system.parameters,
-                                variable.uprating,
-                            )
-                        except:
-                            raise ValueError(
-                                f"Could not find uprating parameter {variable.uprating} when trying to uprate {variable_name}."
-                            )
-                        value_in_last_period = uprating_parameter(
-                            latest_known_period.start
+                    try:
+                        uprating_parameter = get_parameter(
+                            self.tax_benefit_system.parameters,
+                            variable.uprating,
                         )
-                        value_in_this_period = uprating_parameter(period.start)
-                        if value_in_last_period == 0:
-                            uprating_factor = 1
-                        else:
-                            uprating_factor = (
-                                value_in_this_period / value_in_last_period
-                            )
+                    except:
+                        raise ValueError(
+                            f"Could not find uprating parameter {variable.uprating} when trying to uprate {variable_name}."
+                        )
+                    value_in_last_period = uprating_parameter(
+                        latest_known_period.start
+                    )
+                    value_in_this_period = uprating_parameter(period.start)
+                    if value_in_last_period == 0:
+                        uprating_factor = 1
+                    else:
+                        uprating_factor = (
+                            value_in_this_period / value_in_last_period
+                        )
 
-                        array = (
-                            holder.get_array(
-                                latest_known_period, self.branch_name
-                            )
-                            * uprating_factor
-                        )
+                    array = (
+                        holder.get_array(latest_known_period, self.branch_name)
+                        * uprating_factor
+                    )
                 elif (
                     self.tax_benefit_system.auto_carry_over_input_variables
                     and variable.calculate_output is None

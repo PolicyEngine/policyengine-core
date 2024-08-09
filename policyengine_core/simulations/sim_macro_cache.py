@@ -66,7 +66,8 @@ class SimulationMacroCache(metaclass=Singleton):
                 and "metadata:country_version" in f
             ):
                 if (
-                    f["metadata:core_version"][()].decode("utf-8") != self.core_version
+                    f["metadata:core_version"][()].decode("utf-8")
+                    != self.core_version
                     or f["metadata:country_version"][()].decode("utf-8")
                     != self.country_version
                 ):

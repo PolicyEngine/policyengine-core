@@ -94,7 +94,7 @@ def test_macro_cache(tax_benefit_system):
     )
     assert np.array_equal(
         cache.get_cache_value(cache.cache_file_path),
-        np.array([1, 2, 3], dtype=np.float32)
+        np.array([1, 2, 3], dtype=np.float32),
     )
-    # cache.clear_cache(cache.cache_folder_path)
-    # assert not cache.cache_folder_path.exists()
+    cache.clear_cache(cache.cache_folder_path)
+    assert not cache.cache_folder_path.exists()

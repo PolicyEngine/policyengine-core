@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    added:
+      - Added class SimulationMacroCache for macro simulation caching purposes.

@@ -598,7 +598,8 @@ class TaxBenefitSystem:
 
         fallback_metadata = {
             "name": self.__class__.__name__,
-            "version": "",
+            # For testing purposes
+            "version": "0.0.0",
             "repository_url": "",
             "location": "",
         }

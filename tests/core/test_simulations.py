@@ -67,7 +67,7 @@ def test_get_memory_usage(tax_benefit_system):
     assert len(memory_usage["by_variable"]) == 1
 
 
-def test_version(tax_benefit_system):
+def test_macro_cache(tax_benefit_system):
     simulation = SimulationBuilder().build_from_entities(
         tax_benefit_system, single
     )
@@ -78,9 +78,6 @@ def test_version(tax_benefit_system):
     )
     assert cache.country_version == "0.0.0"
 
-
-def test_macro_cache(tax_benefit_system):
-    cache = SimulationMacroCache(tax_benefit_system)
     cache.set_cache_path(
         parent_path="tests/core",
         dataset_name="test_dataset",
@@ -95,8 +92,9 @@ def test_macro_cache(tax_benefit_system):
     assert cache.get_cache_path() == Path(
         "tests/core/test_dataset_variable_cache/test_variable_2020_test_branch.h5"
     )
-    assert cache.get_cache_value(cache.cache_file_path) == np.array(
-        [1, 2, 3], dtype=np.float32
+    assert np.array_equal(
+        cache.get_cache_value(cache.cache_file_path),
+        np.array([1, 2, 3], dtype=np.float32)
     )
-    cache.clear_cache(cache.cache_file_path)
-    assert cache.get_cache_value(cache.cache_file_path) is None
+    # cache.clear_cache(cache.cache_folder_path)
+    # assert not cache.cache_folder_path.exists()

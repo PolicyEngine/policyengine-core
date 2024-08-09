@@ -24,8 +24,8 @@ class SimulationMacroCache(metaclass=Singleton):
         self.country_package_metadata = (
             tax_benefit_system.get_package_metadata()
         )
-        self.country_name = self.country_package_metadata["name"]
         self.country_version = self.country_package_metadata["version"]
+        self.cache_folder_path = None
         self.cache_file_path = None
 
     def set_cache_path(
@@ -37,6 +37,7 @@ class SimulationMacroCache(metaclass=Singleton):
         branch_name: str,
     ):
         storage_folder = Path(parent_path) / f"{dataset_name}_variable_cache"
+        self.cache_folder_path = storage_folder
         storage_folder.mkdir(exist_ok=True)
         self.cache_file_path = (
             storage_folder / f"{variable_name}_{period}_{branch_name}.h5"
@@ -44,7 +45,10 @@ class SimulationMacroCache(metaclass=Singleton):
 
     def set_cache_value(self, cache_file_path: Path, value: ArrayLike):
         with h5py.File(cache_file_path, "w") as f:
-            f.create_dataset("metadata:core_version", data=self.core_version)
+            f.create_dataset(
+                "metadata:core_version",
+                data=self.core_version,
+            )
             f.create_dataset(
                 "metadata:country_version",
                 data=self.country_version,
@@ -62,16 +66,18 @@ class SimulationMacroCache(metaclass=Singleton):
                 and "metadata:country_version" in f
             ):
                 if (
-                    f["metadata:core_version"][()] != self.core_version
-                    or f["metadata:country_version"][()]
+                    f["metadata:core_version"][()].decode("utf-8") != self.core_version
+                    or f["metadata:country_version"][()].decode("utf-8")
                     != self.country_version
                 ):
-                    self.clear_cache(cache_file_path)
+                    f.close()
+                    self.clear_cache(self.cache_folder_path)
                     return None
             else:
-                self.clear_cache(cache_file_path)
+                f.close()
+                self.clear_cache(self.cache_folder_path)
                 return None
             return f["values"][()]
 
-    def clear_cache(self, cache_file_path: Path):
-        shutil.rmtree(cache_file_path)
+    def clear_cache(self, cache_folder_path: Path):
+        shutil.rmtree(cache_folder_path)

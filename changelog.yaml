@@ -624,5 +624,4 @@
     fixed:
     - fixed bug where uprating was causing nan.
   date: 2024-08-08 15:17:05
-- bump: minor
 

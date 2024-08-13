@@ -35,7 +35,7 @@ dev_requirements = [
     "markupsafe==2.0.1",
     "coverage",
     "furo",
-    "mypy==1.11.1",
+    "mypy<2",
     "sphinx==5.0.0",
     "sphinx-argparse==0.4.0",
     "sphinx-math-dollar==1.2.1",

@@ -60,7 +60,7 @@ class SimulationMacroCache(metaclass=Singleton):
 
     def get_cache_value(self, cache_file_path: Path):
         with h5py.File(cache_file_path, "r") as f:
-            # Validate both core version and country package metadata are uptodate, otherwise flush the cache
+            # Validate both core version and country package metadata are up-to-date, otherwise flush the cache
             if (
                 "metadata:core_version" in f
                 and "metadata:country_version" in f

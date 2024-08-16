@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
 import logging
+from pathlib import Path
 
 from policyengine_core import commons, periods
 from policyengine_core.data.dataset import Dataset
@@ -1416,24 +1417,27 @@ class Simulation:
         """
         Check if the variable is able to have cached value
         """
-        is_cache_available = True
+        if hasattr(self, "dataset"):
+            if self.dataset.data_format == Dataset.FLAT_FILE:
+                return False
+
         if self.is_over_dataset:
-            return is_cache_available
+            return True
 
         variable = self.tax_benefit_system.get_variable(variable_name)
         parameter_deps = variable.exhaustive_parameter_dependencies
 
         if parameter_deps is None:
-            return not is_cache_available
+            return False
 
         for parameter in parameter_deps:
             param = get_parameter(
                 self.tax_benefit_system.parameters, parameter
             )
             if param.modified:
-                return not is_cache_available
+                return False
 
-        return is_cache_available
+        return True
 
     def to_input_dataframe(
         self,

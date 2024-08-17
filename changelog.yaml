@@ -624,4 +624,8 @@
     fixed:
     - fixed bug where uprating was causing nan.
   date: 2024-08-08 15:17:05
-
+- bump: patch
+  changes:
+    changed:
+    - change mypy version from 1.11.1 to <2
+  date: 2024-08-17 19:28:38

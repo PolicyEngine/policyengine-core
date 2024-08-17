@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    changed:
-      - change mypy version from 1.11.1 to <2

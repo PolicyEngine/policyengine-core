@@ -95,7 +95,9 @@ class Simulation:
             ):
                 tax_benefit_system = self.default_tax_benefit_system_instance
             else:
-                tax_benefit_system = self.default_tax_benefit_system(reform=reform)
+                tax_benefit_system = self.default_tax_benefit_system(
+                    reform=reform
+                )
             self.tax_benefit_system = tax_benefit_system
 
         self.reform = reform

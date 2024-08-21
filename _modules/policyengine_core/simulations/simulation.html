@@ -334,8 +334,9 @@
             <span class="p">):</span>
                 <span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_tax_benefit_system_instance</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># If reform is taken as an arg, pass it</span>
-                <span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_tax_benefit_system</span><span class="p">()</span>
+                <span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_tax_benefit_system</span><span class="p">(</span>
+                    <span class="n">reform</span><span class="o">=</span><span class="n">reform</span>
+                <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span> <span class="o">=</span> <span class="n">tax_benefit_system</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">reform</span> <span class="o">=</span> <span class="n">reform</span>

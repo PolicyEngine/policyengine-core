@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    changed:
-    - Fixed script to initialize a reform within the simulation

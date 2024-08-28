@@ -634,3 +634,8 @@
     changed:
     - Fixed script to initialize a reform within the simulation
   date: 2024-08-21 14:34:52
+- bump: minor
+  changes:
+    fixed:
+    - Bugs in typing and Dataset saving.
+  date: 2024-08-28 16:41:26

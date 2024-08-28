@@ -3,7 +3,7 @@ from numpy.typing import NDArray as ArrayType
 
 T = TypeVar("T", bool, bytes, float, int, object, str)
 
-ArrayLike = ArrayType[Any] | Sequence[T]
+ArrayLike = Sequence[T]
 
 """:obj:`typing.Generic`: Type of any castable to :class:`numpy.ndarray`.
 

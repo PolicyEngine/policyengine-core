@@ -624,3 +624,18 @@
     fixed:
     - fixed bug where uprating was causing nan.
   date: 2024-08-08 15:17:05
+- bump: patch
+  changes:
+    changed:
+    - change mypy version from 1.11.1 to <2
+  date: 2024-08-17 19:28:38
+- bump: patch
+  changes:
+    changed:
+    - Fixed script to initialize a reform within the simulation
+  date: 2024-08-21 14:34:52
+- bump: minor
+  changes:
+    fixed:
+    - Bugs in typing and Dataset saving.
+  date: 2024-08-28 16:41:26

@@ -187,7 +187,7 @@ class Dataset:
                             f"Could not save {variable} to {file}. The value is {value}."
                         )
         elif self.data_format == Dataset.FLAT_FILE:
-            values.to_csv(file, index=False)
+            data.to_csv(file, index=False)
 
     def load_dataset(
         self,

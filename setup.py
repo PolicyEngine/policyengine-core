@@ -35,7 +35,7 @@ dev_requirements = [
     "markupsafe==2.0.1",
     "coverage",
     "furo",
-    "mypy==0.991",
+    "mypy<2",
     "sphinx==5.0.0",
     "sphinx-argparse==0.4.0",
     "sphinx-math-dollar==1.2.1",
@@ -47,7 +47,7 @@ dev_requirements = [
 
 setup(
     name="policyengine-core",
-    version="3.5.1",
+    version="3.6.0",
     author="PolicyEngine",
     author_email="hello@policyengine.org",
     classifiers=[

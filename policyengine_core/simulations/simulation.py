@@ -1418,7 +1418,10 @@ class Simulation:
         """
         Check if the variable is able to have cached value
         """
-        if hasattr(self, "dataset") and self.dataset.data_format == Dataset.FLAT_FILE:
+        if (
+            hasattr(self, "dataset")
+            and self.dataset.data_format == Dataset.FLAT_FILE
+        ):
             return False
 
         if self.is_over_dataset:

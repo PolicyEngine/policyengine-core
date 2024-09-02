@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
 import logging
+from pathlib import Path
 
 from policyengine_core import commons, periods
 from policyengine_core.data.dataset import Dataset
@@ -21,9 +22,6 @@ from policyengine_core.tracers import (
     SimpleTracer,
     TracingParameterNodeAtInstant,
 )
-import h5py
-from pathlib import Path
-import shutil
 
 import json
 
@@ -36,6 +34,7 @@ from policyengine_core.tracers import SimpleTracer
 from policyengine_core.variables import Variable, QuantityType
 from policyengine_core.reforms.reform import Reform
 from policyengine_core.parameters import get_parameter
+from policyengine_core.simulations.sim_macro_cache import SimulationMacroCache
 
 
 class Simulation:
@@ -606,11 +605,30 @@ class Simulation:
         if cached_array is not None:
             return cached_array
 
-        cache_path = self._get_macro_cache(variable_name, str(period))
-        if cache_path and cache_path.exists():
-            value = self._get_macro_cache_value(cache_path)
-            if value is not None:
-                return self._get_macro_cache_value(cache_path)
+        smc = SimulationMacroCache(self.tax_benefit_system)
+
+        # Check if cache could be used, if available, check if path exists
+        is_cache_available = self.check_macro_cache(variable_name, str(period))
+        if is_cache_available:
+            smc.set_cache_path(
+                self.dataset.file_path.parent,
+                self.dataset.name,
+                variable_name,
+                str(period),
+                self.branch_name,
+            )
+            cache_path = smc.get_cache_path()
+            if cache_path.exists():
+                if (
+                    not self.macro_cache_read
+                    or self.tax_benefit_system.data_modified
+                ):
+                    value = None
+                else:
+                    value = smc.get_cache_value(cache_path)
+
+                if value is not None:
+                    return value
 
         if variable.requires_computation_after is not None:
             if variable.requires_computation_after not in [
@@ -639,8 +657,8 @@ class Simulation:
                 values = self.calculate_divide(variable_name, period)
 
         if alternate_period_handling:
-            if cache_path is not None:
-                self._set_macro_cache_value(cache_path, values)
+            if is_cache_available:
+                smc.set_cache_value(cache_path, values)
             return values
 
         self._check_period_consistency(period, variable)
@@ -738,8 +756,8 @@ class Simulation:
                 f"RecursionError while calculating {variable_name} for period {period}. The full computation stack is:\n{stack_formatted}"
             )
 
-        if cache_path is not None:
-            self._set_macro_cache_value(cache_path, array)
+        if is_cache_available:
+            smc.set_cache_value(cache_path, array)
 
         return array
 
@@ -1396,77 +1414,33 @@ class Simulation:
 
         return json.loads(json.dumps(situation, cls=NpEncoder))
 
-    def _get_macro_cache(
-        self,
-        variable_name: str,
-        period: str,
-    ):
+    def check_macro_cache(self, variable_name: str, period: str) -> bool:
         """
-        Get the cache location of a variable for a given period, if it exists.
+        Check if the variable is able to have cached value
         """
-        if not self.is_over_dataset:
-            return None
+        if (
+            hasattr(self, "dataset")
+            and self.dataset.data_format == Dataset.FLAT_FILE
+        ):
+            return False
+
+        if self.is_over_dataset:
+            return True
 
         variable = self.tax_benefit_system.get_variable(variable_name)
         parameter_deps = variable.exhaustive_parameter_dependencies
 
         if parameter_deps is None:
-            return None
+            return False
 
         for parameter in parameter_deps:
             param = get_parameter(
                 self.tax_benefit_system.parameters, parameter
             )
             if param.modified:
-                return None
+                return False
 
-        storage_folder = (
-            self.dataset.file_path.parent
-            / f"{self.dataset.name}_variable_cache"
-        )
-        storage_folder.mkdir(exist_ok=True)
-
-        cache_file_path = (
-            storage_folder / f"{variable_name}_{period}_{self.branch_name}.h5"
-        )
-
-        return cache_file_path
-
-    def clear_macro_cache(self):
-        """
-        Clear the cache of all variables.
-        """
-        storage_folder = (
-            self.dataset.file_path.parent
-            / f"{self.dataset.name}_variable_cache"
-        )
-        if storage_folder.exists():
-            shutil.rmtree(storage_folder)
-
-    def _get_macro_cache_value(
-        self,
-        cache_file_path: Path,
-    ):
-        """
-        Get the value of a variable from a cache file.
-        """
-        if not self.macro_cache_read or self.tax_benefit_system.data_modified:
-            return None
-        with h5py.File(cache_file_path, "r") as f:
-            return f["values"][()]
-
-    def _set_macro_cache_value(
-        self,
-        cache_file_path: Path,
-        value: ArrayLike,
-    ):
-        """
-        Set the value of a variable in a cache file.
-        """
-        if not self.macro_cache_write or self.tax_benefit_system.data_modified:
-            return None
-        with h5py.File(cache_file_path, "w") as f:
-            f.create_dataset("values", data=value)
+        return True
 
     def to_input_dataframe(
         self,

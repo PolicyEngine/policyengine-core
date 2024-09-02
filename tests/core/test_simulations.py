@@ -1,5 +1,9 @@
 from policyengine_core.country_template.situation_examples import single
 from policyengine_core.simulations import SimulationBuilder
+from policyengine_core.simulations.sim_macro_cache import SimulationMacroCache
+import importlib.metadata
+import numpy as np
+from pathlib import Path
 
 
 def test_calculate_full_tracer(tax_benefit_system):
@@ -61,3 +65,36 @@ def test_get_memory_usage(tax_benefit_system):
     memory_usage = simulation.get_memory_usage(variables=["salary"])
     assert memory_usage["total_nb_bytes"] > 0
     assert len(memory_usage["by_variable"]) == 1
+
+
+def test_macro_cache(tax_benefit_system):
+    simulation = SimulationBuilder().build_from_entities(
+        tax_benefit_system, single
+    )
+
+    cache = SimulationMacroCache(tax_benefit_system)
+    assert cache.core_version == importlib.metadata.version(
+        "policyengine-core"
+    )
+    assert cache.country_version == "0.0.0"
+
+    cache.set_cache_path(
+        parent_path="tests/core",
+        dataset_name="test_dataset",
+        variable_name="test_variable",
+        period="2020",
+        branch_name="test_branch",
+    )
+    cache.set_cache_value(
+        cache_file_path=cache.cache_file_path,
+        value=np.array([1, 2, 3], dtype=np.float32),
+    )
+    assert cache.get_cache_path() == Path(
+        "tests/core/test_dataset_variable_cache/test_variable_2020_test_branch.h5"
+    )
+    assert np.array_equal(
+        cache.get_cache_value(cache.cache_file_path),
+        np.array([1, 2, 3], dtype=np.float32),
+    )
+    cache.clear_cache(cache.cache_folder_path)
+    assert not cache.cache_folder_path.exists()

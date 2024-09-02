@@ -649,3 +649,8 @@
     added:
     - Added class SimulationMacroCache for macro simulation caching purposes.
   date: 2024-09-02 13:04:21
+- bump: patch
+  changes:
+    fixed:
+    - Syntax error in Simulation class
+  date: 2024-09-02 22:01:19

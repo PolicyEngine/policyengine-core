@@ -654,3 +654,10 @@
     fixed:
     - Syntax error in Simulation class
   date: 2024-09-02 22:01:19
+- bump: patch
+  changes:
+    changed:
+    - Ensure that every instance of 'Simulation' class has 'dataset' attribute, even
+      if equal to 'None'
+    - Add better safeguards to 'check_macro_cache' method of 'Simulation' class
+  date: 2024-09-03 18:42:55

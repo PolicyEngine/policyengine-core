@@ -102,6 +102,7 @@ class Simulation:
         self.reform = reform
         self.tax_benefit_system = tax_benefit_system
         self.branch_name = "default"
+        self.dataset = dataset
 
         if dataset is None:
             if self.default_dataset is not None:
@@ -607,7 +608,7 @@ class Simulation:
 
         smc = SimulationMacroCache(self.tax_benefit_system)
 
-        # Check if cache could be used, if available, check if path exists
+        # Check if cache can be used, if available, check if path exists
         is_cache_available = self.check_macro_cache(variable_name, str(period))
         if is_cache_available:
             smc.set_cache_path(
@@ -1418,9 +1419,18 @@ class Simulation:
         """
         Check if the variable is able to have cached value
         """
-        if hasattr(self, "dataset"):
-            if self.dataset.data_format == Dataset.FLAT_FILE:
-                return False
+
+        # Dataset should always exist, but just in case
+        if not hasattr(self, "dataset"):
+            return False
+
+        # If no dataset, no need to cache
+        if self.dataset is None:
+            return False
+
+        # If using a flat file dataset, we're unable to cache
+        if self.dataset.data_format == Dataset.FLAT_FILE:
+            return False
 
         if self.is_over_dataset:
             return True

@@ -9,41 +9,41 @@ long_description = (this_directory / "README.md").read_text()
 # Please make sure to cap all dependency versions, in order to avoid unwanted
 # functional and integration breaks caused by external code updates.
 
-general_requirements = [
-    "pytest>=8,<9",
-    "numpy~=1.26.4",
-    "black",
-    "linecheck<1",
-    "yaml-changelog<1",
-    "coverage",
-    "sortedcontainers<3",
-    "numexpr<3",
-    "dpath<3",
-    "psutil<6",
-    "wheel<1",
-    "h5py>=3,<4",
-    "requests>=2.27.1,<3",
-    "pandas>=1",
-    "plotly>=5.6.0,<6",
-    "ipython>=7.17.0,<8",
-    "pyvis>=0.3.2",
-]
-
-dev_requirements = [
-    "jupyter-book<1",
-    "furo<2023",
-    "markupsafe==2.0.1",
-    "coverage",
-    "furo",
-    "mypy<2",
-    "sphinx==5.0.0",
-    "sphinx-argparse==0.4.0",
-    "sphinx-math-dollar==1.2.1",
-    "types-PyYAML==6.0.12.2",
-    "types-requests==2.28.11.7",
-    "types-setuptools==65.6.0.2",
-    "types-urllib3==1.26.25.4",
-]
+# general_requirements = [
+#     "pytest>=8,<9",
+#     "numpy~=1.26.4",
+#     "black",
+#     "linecheck<1",
+#     "yaml-changelog<1",
+#     "coverage",
+#     "sortedcontainers<3",
+#     "numexpr<3",
+#     "dpath<3",
+#     "psutil<6",
+#     "wheel<1",
+#     "h5py>=3,<4",
+#     "requests>=2.27.1,<3",
+#     "pandas>=1",
+#     "plotly>=5.6.0,<6",
+#     "ipython>=7.17.0,<8",
+#     "pyvis>=0.3.2",
+# ]
+#
+# dev_requirements = [
+#     "jupyter-book<1",
+#     "furo<2023",
+#     "markupsafe==2.0.1",
+#     "coverage",
+#     "furo",
+#     "mypy<2",
+#     "sphinx==5.0.0",
+#     "sphinx-argparse==0.4.0",
+#     "sphinx-math-dollar==1.2.1",
+#     "types-PyYAML==6.0.12.2",
+#     "types-requests==2.28.11.7",
+#     "types-setuptools==65.6.0.2",
+#     "types-urllib3==1.26.25.4",
+# ]
 
 setup(
     name="policyengine-core",
@@ -74,10 +74,10 @@ setup(
         ],
     },
     python_requires=">=3.9",
-    extras_require={
-        "dev": dev_requirements,
-    },
+    # extras_require={
+    #     "dev": dev_requirements,
+    # },
     include_package_data=True,  # Will read MANIFEST.in
-    install_requires=general_requirements,
+    # install_requires=general_requirements,
     packages=find_packages(exclude=["tests*"]),
 )

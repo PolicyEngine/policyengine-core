@@ -1,13 +1,10 @@
 [build-system]
-requires = [
-    "setuptools",
-    "pathlib"
-]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "policyengine-core"
-version = "3.6.0"
+version = "3.6.3"
 dependencies = [
     "pytest>=8,<9",
     "numpy~=1.26.4",
@@ -46,6 +43,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Information Analysis",
 ]
+dynamic = ["scripts"]
 
 [project.optional-dependencies]
 dev = [
@@ -66,6 +64,12 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/policyengine/policyengine-core"
+
+[tool.setuptools.packages.find]
+exclude = ["tests*"]
+
+[tool.setuptools]
+include-package-data = true
 
 [project.entry-points.console_scripts]
 policyengine-core = "policyengine_core.scripts.policyengine_command:main"

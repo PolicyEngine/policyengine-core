@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    fixed:
+    - Corrected logic with Simulation.check_macro_cache to prevent undesirable caching

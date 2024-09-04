@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.5] - 2024-09-04 21:19:20
+
+### Fixed
+
+- Corrected logic with Simulation.check_macro_cache to prevent undesirable caching
+
 ## [3.6.4] - 2024-09-03 18:42:55
 
 ### Changed
@@ -822,6 +828,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[3.6.5]: https://github.com/PolicyEngine/policyengine-core/compare/3.6.4...3.6.5
 [3.6.4]: https://github.com/PolicyEngine/policyengine-core/compare/3.6.3...3.6.4
 [3.6.3]: https://github.com/PolicyEngine/policyengine-core/compare/3.6.2...3.6.3
 [3.6.2]: https://github.com/PolicyEngine/policyengine-core/compare/3.6.1...3.6.2

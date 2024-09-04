@@ -1432,8 +1432,8 @@ class Simulation:
         if self.dataset.data_format == Dataset.FLAT_FILE:
             return False
 
-        if self.is_over_dataset:
-            return True
+        if not self.is_over_dataset:
+            return False
 
         variable = self.tax_benefit_system.get_variable(variable_name)
         parameter_deps = variable.exhaustive_parameter_dependencies

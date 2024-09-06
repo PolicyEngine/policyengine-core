@@ -65,9 +65,6 @@ dev = [
 [project.urls]
 Homepage = "https://github.com/policyengine/policyengine-core"
 
-[tool.setuptools.packages.find]
-exclude = ["tests*"]
-
 [tool.setuptools]
 include-package-data = true
 

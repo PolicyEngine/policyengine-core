@@ -666,3 +666,8 @@
     fixed:
     - Corrected logic with Simulation.check_macro_cache to prevent undesirable caching
   date: 2024-09-04 21:19:20
+- bump: patch
+  changes:
+    changed:
+    - Disable macro cache by default.
+  date: 2024-09-09 13:52:47

@@ -69,10 +69,10 @@ class Simulation:
     is_over_dataset: bool = False
     """Whether this simulation is built over a dataset."""
 
-    macro_cache_read: bool = True
+    macro_cache_read: bool = False
     """Whether to read from the macro cache."""
 
-    macro_cache_write: bool = True
+    macro_cache_write: bool = False
     """Whether to write to the macro cache."""
 
     start_instant: str = None
@@ -1419,6 +1419,8 @@ class Simulation:
         """
         Check if the variable is able to have cached value
         """
+        if not self.macro_cache_read:
+            return False
 
         # Dataset should always exist, but just in case
         if not hasattr(self, "dataset"):

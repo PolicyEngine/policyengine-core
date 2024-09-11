@@ -1,29 +1,26 @@
-import os
-import subprocess
+from pathlib import Path
 import tomli
 import pytest
 
 
 @pytest.fixture(scope="module")
 def toml_data():
-    file_path = "../../pyproject.toml"
-    if not os.path.exists(file_path):
-        pytest.fail("pyproject.toml not found in the current directory.")
+    file_path = Path("/policyengine-core/pyproject.toml")
+    if not file_path.exists():
+        pytest.fail(f"pyproject.toml not found in the current directory.")
     with open(file_path, "rb") as f:
         return tomli.load(f)
 
 
-def test_toml_syntax():
-    file_path = "../../pyproject.toml"
+def test_toml_syntax(toml_data):
     try:
-        with open(file_path, "rb") as f:
-            tomli.load(f)
+        toml_data
     except tomli.TOMLDecodeError as e:
         pytest.fail(f"TOML syntax error: {e}")
 
 
 def test_required_fields(toml_data):
-    required_fields = ["name", "version", "description"]
+    required_fields = ["name", "version", "dependencies"]
     for field in required_fields:
         assert field in toml_data.get(
             "project", {}

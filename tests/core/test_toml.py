@@ -1,11 +1,17 @@
+import os
 from pathlib import Path
-import tomli
+
 import pytest
+import tomli
 
 
 @pytest.fixture(scope="module")
 def toml_data():
-    file_path = Path("/policyengine-core/pyproject.toml")
+    # get the path of current file and find pyproject.toml relatively
+    file_path = (
+        Path(os.path.abspath(os.path.dirname(__file__))).parents[1]
+        / "pyproject.toml"
+    )
     if not file_path.exists():
         pytest.fail(f"pyproject.toml not found in the current directory.")
     with open(file_path, "rb") as f:

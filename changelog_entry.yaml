@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    changed:
+      - Renamed sim_macro_cache.py to simulation_macro_cache.py

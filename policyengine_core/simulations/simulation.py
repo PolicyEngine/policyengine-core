@@ -34,7 +34,9 @@ from policyengine_core.tracers import SimpleTracer
 from policyengine_core.variables import Variable, QuantityType
 from policyengine_core.reforms.reform import Reform
 from policyengine_core.parameters import get_parameter
-from policyengine_core.simulations.sim_macro_cache import SimulationMacroCache
+from policyengine_core.simulations.simulation_macro_cache import (
+    SimulationMacroCache,
+)
 
 
 class Simulation:

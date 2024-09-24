@@ -1473,14 +1473,14 @@ class Simulation:
         return df
 
     def subsample(
-        self, n=None, frac=None, key=None, time_period=None
+        self, n=None, frac=None, seed=None, time_period=None
     ) -> "Simulation":
         """Quantize the simulation to a smaller size by sampling households.
 
         Args:
             n (int, optional): The number of households to sample. Defaults to 10_000.
             frac (float, optional): The fraction of households to sample. Defaults to None.
-            key (int, optional): The key used to seed the random number generator. Defaults to the dataset name.
+            seed (int, optional): The key used to seed the random number generator. Defaults to the dataset name.
             time_period (str, optional): Sample households based on their weight in this time period. Defaults to the default calculation period.
 
         Returns:
@@ -1521,7 +1521,7 @@ class Simulation:
             return self
 
         # Seed the random number generators for reproducibility
-        random.seed(key)
+        random.seed(str(seed))
         state = random.randint(0, 2**32 - 1)
         np.random.seed(state)
 

@@ -1487,8 +1487,8 @@ class Simulation:
             Simulation: The quantized simulation.
         """
         # Set default key if not provided
-        if key is None:
-            key = self.dataset.name
+        if seed is None:
+            seed = self.dataset.name
 
         # Set default time period if not provided
         if time_period is None:

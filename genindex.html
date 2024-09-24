@@ -1,6 +1,6 @@
 <!doctype html>
 <html class="no-js" lang="en">
-  <head><meta charset="utf-8"/>
+  <head><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="#" /><link rel="search" title="Search" href="search.html" />
 
@@ -170,11 +170,9 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="usage/simulation.html">Simulating policy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage/country.html">Creating a country package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="usage/cli.html">Using the command-line interface</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage/parameters.html">Writing parameters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage/datasets.html">Writing datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage/reforms.html">Reforms</a></li>
-<li class="toctree-l1"><a class="reference internal" href="usage/charts.html">Charts</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python API</span></p>
 <ul>
@@ -1355,10 +1353,10 @@
 </li>
         <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation">Simulation (class in policyengine_core.simulations.simulation)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation_builder.SimulationBuilder">SimulationBuilder (class in policyengine_core.simulations.simulation_builder)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/taxscales.html#policyengine_core.taxscales.single_amount_tax_scale.SingleAmountTaxScale">SingleAmountTaxScale (class in policyengine_core.taxscales.single_amount_tax_scale)</a>
 </li>
         <li><a href="python_api/errors.html#policyengine_core.errors.situation_parsing_error.SituationParsingError">SituationParsingError (class in policyengine_core.errors.situation_parsing_error)</a>
@@ -1385,6 +1383,12 @@
 </li>
         <li><a href="python_api/data.html#policyengine_core.data.Dataset.store_file">store_file() (policyengine_core.data.Dataset method)</a>
 </li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.microsimulation.Microsimulation.subsample">subsample() (policyengine_core.simulations.microsimulation.Microsimulation method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.subsample">(policyengine_core.simulations.simulation.Simulation method)</a>
+</li>
+        </ul></li>
         <li><a href="python_api/variables.html#policyengine_core.variables.variable.Variable.subtracts">subtracts (policyengine_core.variables.variable.Variable attribute)</a>
 </li>
         <li><a href="python_api/populations.html#policyengine_core.populations.group_population.GroupPopulation.sum">sum() (policyengine_core.populations.group_population.GroupPopulation method)</a>

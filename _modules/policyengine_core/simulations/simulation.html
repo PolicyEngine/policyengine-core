@@ -1,6 +1,6 @@
 <!doctype html>
 <html class="no-js" lang="en">
-  <head><meta charset="utf-8"/>
+  <head><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
@@ -171,11 +171,9 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/simulation.html">Simulating policy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/country.html">Creating a country package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../usage/cli.html">Using the command-line interface</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/parameters.html">Writing parameters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/datasets.html">Writing datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../usage/reforms.html">Reforms</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../usage/charts.html">Charts</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python API</span></p>
 <ul>
@@ -261,6 +259,7 @@
     <span class="n">SimpleTracer</span><span class="p">,</span>
     <span class="n">TracingParameterNodeAtInstant</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="kn">import</span> <span class="nn">random</span>
 
 <span class="kn">import</span> <span class="nn">json</span>
 
@@ -1708,7 +1707,84 @@
                 <span class="k">if</span> <span class="n">values</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">variable</span><span class="si">}</span><span class="s2">__</span><span class="si">{</span><span class="n">period</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span>
 
-        <span class="k">return</span> <span class="n">df</span></div></div>
+        <span class="k">return</span> <span class="n">df</span></div>
+
+<div class="viewcode-block" id="Simulation.subsample"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.subsample">[docs]</a>    <span class="k">def</span> <span class="nf">subsample</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">frac</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">time_period</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Simulation&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Quantize the simulation to a smaller size by sampling households.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            n (int, optional): The number of households to sample. Defaults to 10_000.</span>
+<span class="sd">            frac (float, optional): The fraction of households to sample. Defaults to None.</span>
+<span class="sd">            seed (int, optional): The key used to seed the random number generator. Defaults to the dataset name.</span>
+<span class="sd">            time_period (str, optional): Sample households based on their weight in this time period. Defaults to the default calculation period.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Simulation: The quantized simulation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Set default key if not provided</span>
+        <span class="k">if</span> <span class="n">seed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">seed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">name</span>
+
+        <span class="c1"># Set default time period if not provided</span>
+        <span class="k">if</span> <span class="n">time_period</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">time_period</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_calculation_period</span>
+
+        <span class="c1"># Convert simulation inputs to DataFrame</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_input_dataframe</span><span class="p">()</span>
+
+        <span class="c1"># Extract time period from DataFrame columns</span>
+        <span class="n">df_time_period</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;__&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">df_household_id_column</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;household_id__</span><span class="si">{</span><span class="n">df_time_period</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="c1"># Determine the appropriate household weight column</span>
+        <span class="k">if</span> <span class="sa">f</span><span class="s2">&quot;household_weight__</span><span class="si">{</span><span class="n">time_period</span><span class="si">}</span><span class="s2">&quot;</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">household_weight_column</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;household_weight__</span><span class="si">{</span><span class="n">time_period</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">household_weight_column</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;household_weight__</span><span class="si">{</span><span class="n">df_time_period</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="c1"># Group by household ID and get the first entry for each group</span>
+        <span class="n">h_df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">df_household_id_column</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+        <span class="n">h_ids</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">h_df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">frac</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Either n or frac must be provided.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">h_ids</span><span class="p">)</span> <span class="o">*</span> <span class="n">frac</span><span class="p">)</span>
+        <span class="n">h_weights</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">h_df</span><span class="p">[</span><span class="n">household_weight_column</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">h_weights</span><span class="p">):</span>
+            <span class="c1"># Don&#39;t need to subsample!</span>
+            <span class="k">return</span> <span class="bp">self</span>
+
+        <span class="c1"># Seed the random number generators for reproducibility</span>
+        <span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">seed</span><span class="p">))</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="o">**</span><span class="mi">32</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+
+        <span class="c1"># Sample household IDs based on their weights</span>
+        <span class="n">chosen_household_ids</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
+            <span class="n">h_ids</span><span class="p">,</span>
+            <span class="n">n</span><span class="p">,</span>
+            <span class="n">p</span><span class="o">=</span><span class="n">h_weights</span><span class="o">.</span><span class="n">values</span> <span class="o">/</span> <span class="n">h_weights</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span>
+            <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Filter DataFrame to include only the chosen households</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="n">df_household_id_column</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">chosen_household_ids</span><span class="p">)]</span>
+
+        <span class="c1"># Adjust household weights to maintain the total weight</span>
+        <span class="n">df</span><span class="p">[</span><span class="n">household_weight_column</span><span class="p">]</span> <span class="o">*=</span> <span class="p">(</span>
+            <span class="n">h_weights</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            <span class="o">/</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">df_household_id_column</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">first</span><span class="p">()[</span><span class="n">household_weight_column</span><span class="p">]</span>
+            <span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Update the dataset and rebuild the simulation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">from_dataframe</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">build_from_dataset</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span></div></div>
 
 
 <span class="k">class</span> <span class="nc">NpEncoder</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">JSONEncoder</span><span class="p">):</span>

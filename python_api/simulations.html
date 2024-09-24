@@ -1,6 +1,6 @@
 <!doctype html>
 <html class="no-js" lang="en">
-  <head><meta charset="utf-8"/>
+  <head><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Tax-benefit systems" href="taxbenefitsystems.html" /><link rel="prev" title="Scripts" href="scripts.html" />
@@ -172,11 +172,9 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../usage/simulation.html">Simulating policy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../usage/country.html">Creating a country package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../usage/cli.html">Using the command-line interface</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../usage/parameters.html">Writing parameters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../usage/datasets.html">Writing datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../usage/reforms.html">Reforms</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../usage/charts.html">Charts</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python API</span></p>
 <ul class="current">
@@ -657,6 +655,28 @@ array([12, 14], dtype=int32)</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.simulations.simulation.Simulation.subsample">
+<span class="sig-name descname"><span class="pre">subsample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frac</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_period</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.simulations.simulation.Simulation" title="policyengine_core.simulations.simulation.Simulation"><span class="pre">Simulation</span></a></span></span><a class="reference internal" href="../_modules/policyengine_core/simulations/simulation.html#Simulation.subsample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.simulations.simulation.Simulation.subsample" title="Permalink to this definition">#</a></dt>
+<dd><p>Quantize the simulation to a smaller size by sampling households.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> (<em>int</em><em>, </em><em>optional</em>) – The number of households to sample. Defaults to 10_000.</p></li>
+<li><p><strong>frac</strong> (<em>float</em><em>, </em><em>optional</em>) – The fraction of households to sample. Defaults to None.</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – The key used to seed the random number generator. Defaults to the dataset name.</p></li>
+<li><p><strong>time_period</strong> (<em>str</em><em>, </em><em>optional</em>) – Sample households based on their weight in this time period. Defaults to the default calculation period.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The quantized simulation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#policyengine_core.simulations.simulation.Simulation" title="policyengine_core.simulations.simulation.Simulation">Simulation</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.simulations.simulation.Simulation.to_input_dataframe">
 <span class="sig-name descname"><span class="pre">to_input_dataframe</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="../_modules/policyengine_core/simulations/simulation.html#Simulation.to_input_dataframe"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.simulations.simulation.Simulation.to_input_dataframe" title="Permalink to this definition">#</a></dt>
 <dd><p>Exports a DataFrame which can be loaded back to a new Simulation to reproduce the same results.</p>
@@ -1126,6 +1146,28 @@ array([12, 14], dtype=int32)</p>
 <dt class="sig sig-object py" id="policyengine_core.simulations.microsimulation.Microsimulation.start_instant">
 <span class="sig-name descname"><span class="pre">start_instant</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#policyengine_core.simulations.microsimulation.Microsimulation.start_instant" title="Permalink to this definition">#</a></dt>
 <dd><p>The earliest data input instant of the simulation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.simulations.microsimulation.Microsimulation.subsample">
+<span class="sig-name descname"><span class="pre">subsample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frac</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_period</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.simulations.simulation.Simulation" title="policyengine_core.simulations.simulation.Simulation"><span class="pre">Simulation</span></a></span></span><a class="headerlink" href="#policyengine_core.simulations.microsimulation.Microsimulation.subsample" title="Permalink to this definition">#</a></dt>
+<dd><p>Quantize the simulation to a smaller size by sampling households.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> (<em>int</em><em>, </em><em>optional</em>) – The number of households to sample. Defaults to 10_000.</p></li>
+<li><p><strong>frac</strong> (<em>float</em><em>, </em><em>optional</em>) – The fraction of households to sample. Defaults to None.</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – The key used to seed the random number generator. Defaults to the dataset name.</p></li>
+<li><p><strong>time_period</strong> (<em>str</em><em>, </em><em>optional</em>) – Sample households based on their weight in this time period. Defaults to the default calculation period.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The quantized simulation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#policyengine_core.simulations.simulation.Simulation" title="policyengine_core.simulations.simulation.Simulation">Simulation</a></p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">

@@ -1,6 +1,6 @@
 <!doctype html>
 <html class="no-js" lang="en">
-  <head><meta charset="utf-8"/>
+  <head><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Creating a country package" href="country.html" /><link rel="prev" title="How to contribute" href="../contributing/intro.html" />
@@ -172,11 +172,9 @@
 <ul class="current">
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Simulating policy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="country.html">Creating a country package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="cli.html">Using the command-line interface</a></li>
 <li class="toctree-l1"><a class="reference internal" href="parameters.html">Writing parameters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="datasets.html">Writing datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="reforms.html">Reforms</a></li>
-<li class="toctree-l1"><a class="reference internal" href="charts.html">Charts</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python API</span></p>
 <ul>
@@ -360,27 +358,11 @@
     <span class="p">)</span>
 <span class="p">)</span>
 
-<span class="n">display_fig</span><span class="p">(</span><span class="n">format_fig</span><span class="p">(</span><span class="n">fig</span><span class="p">))</span>
+<span class="n">format_fig</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">---------------------------------------------------------------------------</span>
-<span class="ne">ImportError</span><span class="g g-Whitespace">                               </span>Traceback (most recent call last)
-<span class="nn">/Users/nikhil/policyengine/policyengine-core/docs/usage/simulation.ipynb Cell 5</span> in <span class="ni">&lt;cell line: 2&gt;</span><span class="nt">()</span>
-      <span class="o">&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s1">&#39;vscode-notebook-cell:/Users/nikhil/policyengine/policyengine-core/docs/usage/simulation.ipynb#X11sZmlsZQ%3D%3D?line=0&#39;</span><span class="o">&gt;</span><span class="mi">1</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span> <span class="kn">import</span> <span class="nn">plotly.express</span> <span class="k">as</span> <span class="nn">px</span>
-<span class="o">----&gt;</span> <span class="o">&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s1">&#39;vscode-notebook-cell:/Users/nikhil/policyengine/policyengine-core/docs/usage/simulation.ipynb#X11sZmlsZQ%3D%3D?line=1&#39;</span><span class="o">&gt;</span><span class="mi">2</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span> <span class="kn">from</span> <span class="nn">policyengine_core.charts</span> <span class="kn">import</span> <span class="n">format_fig</span><span class="p">,</span> <span class="n">display_fig</span>
-      <span class="o">&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s1">&#39;vscode-notebook-cell:/Users/nikhil/policyengine/policyengine-core/docs/usage/simulation.ipynb#X11sZmlsZQ%3D%3D?line=3&#39;</span><span class="o">&gt;</span><span class="mi">4</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span> <span class="n">fig</span> <span class="o">=</span> <span class="n">px</span><span class="o">.</span><span class="n">line</span><span class="p">(</span>
-      <span class="o">&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s1">&#39;vscode-notebook-cell:/Users/nikhil/policyengine/policyengine-core/docs/usage/simulation.ipynb#X11sZmlsZQ%3D%3D?line=4&#39;</span><span class="o">&gt;</span><span class="mi">5</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span>     <span class="n">x</span><span class="o">=</span><span class="n">simulation</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;salary&quot;</span><span class="p">),</span>
-      <span class="o">&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s1">&#39;vscode-notebook-cell:/Users/nikhil/policyengine/policyengine-core/docs/usage/simulation.ipynb#X11sZmlsZQ%3D%3D?line=5&#39;</span><span class="o">&gt;</span><span class="mi">6</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span>     <span class="n">y</span><span class="o">=</span><span class="n">simulation</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;income_tax&quot;</span><span class="p">),</span>
-   <span class="p">(</span><span class="o">...</span><span class="p">)</span>
-     <span class="o">&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s1">&#39;vscode-notebook-cell:/Users/nikhil/policyengine/policyengine-core/docs/usage/simulation.ipynb#X11sZmlsZQ%3D%3D?line=15&#39;</span><span class="o">&gt;</span><span class="mi">16</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span>     <span class="n">hovertemplate</span><span class="o">=</span><span class="s2">&quot;&lt;b&gt;Salary&lt;/b&gt;: £%</span><span class="si">{x:,.0f}</span><span class="s2">&lt;br&gt;&lt;b&gt;Income tax&lt;/b&gt;: £%</span><span class="si">{y:,.0f}</span><span class="s2">&quot;</span><span class="p">,</span>
-     <span class="o">&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s1">&#39;vscode-notebook-cell:/Users/nikhil/policyengine/policyengine-core/docs/usage/simulation.ipynb#X11sZmlsZQ%3D%3D?line=16&#39;</span><span class="o">&gt;</span><span class="mi">17</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span> <span class="p">)</span>
-     <span class="o">&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s1">&#39;vscode-notebook-cell:/Users/nikhil/policyengine/policyengine-core/docs/usage/simulation.ipynb#X11sZmlsZQ%3D%3D?line=18&#39;</span><span class="o">&gt;</span><span class="mi">19</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span> <span class="n">display_fig</span><span class="p">(</span><span class="n">format_fig</span><span class="p">(</span><span class="n">fig</span><span class="p">))</span>
-
-<span class="ne">ImportError</span>: cannot import name &#39;display_fig&#39; from &#39;policyengine_core.charts&#39; (/Users/nikhil/policyengine/policyengine-core/policyengine_core/charts/__init__.py)
-</pre></div>
-</div>
 </div>
 </div>
 </section>
@@ -405,6 +387,39 @@
 </div>
 </div>
 <p>If you inspect the result of the <code class="docutils literal notranslate"><span class="pre">sim.calculate</span></code> call, you’ll find it actually returns a <code class="docutils literal notranslate"><span class="pre">MicroSeries</span></code> (defined by the <code class="docutils literal notranslate"><span class="pre">microdf</span></code> Python package). This is a class inheriting from <code class="docutils literal notranslate"><span class="pre">pandas.Series</span></code>, with a few extra methods for handling survey weights. The general intuition is that you can treat this weighted array as if it were an array of the full population it’s representative of, using it it as you would any other <code class="docutils literal notranslate"><span class="pre">pandas.Series</span></code>.</p>
+<section id="subsampling-simulations">
+<h3>Subsampling simulations<a class="headerlink" href="#subsampling-simulations" title="Permalink to this heading">#</a></h3>
+<p>Often, we’re running simulations over very large (100,000+) datasets. This can be slow, so we might want to subsample the dataset to speed up the simulation. This can be done by using <code class="docutils literal notranslate"><span class="pre">Simulation.subsample</span></code> or <code class="docutils literal notranslate"><span class="pre">Microsimulation.subsample</span></code>, which will return a new <code class="docutils literal notranslate"><span class="pre">Simulation</span></code> or <code class="docutils literal notranslate"><span class="pre">Microsimulation</span></code> object with a smaller dataset.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">policyengine_us</span> <span class="kn">import</span> <span class="n">Microsimulation</span>
+
+<span class="n">sim</span> <span class="o">=</span> <span class="n">Microsimulation</span><span class="p">()</span>
+
+<span class="n">sim</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;adjusted_gross_income&quot;</span><span class="p">,</span> <span class="mi">2024</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="mf">1e9</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>13996.034939691408
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">sim</span> <span class="o">=</span> <span class="n">Microsimulation</span><span class="p">()</span><span class="o">.</span><span class="n">subsample</span><span class="p">(</span><span class="n">frac</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+<span class="n">sim</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;adjusted_gross_income&quot;</span><span class="p">,</span> <span class="mi">2024</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="mf">1e9</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>13891.76442888221
+</pre></div>
+</div>
+</div>
+</div>
+</section>
 </section>
 </section>
 
@@ -487,7 +502,10 @@
 <li><a class="reference internal" href="#simulating-over-axes">Simulating over axes</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#simulating-over-populations">Simulating over populations</a></li>
+<li><a class="reference internal" href="#simulating-over-populations">Simulating over populations</a><ul>
+<li><a class="reference internal" href="#subsampling-simulations">Subsampling simulations</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>

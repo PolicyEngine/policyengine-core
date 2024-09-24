@@ -168,7 +168,7 @@ class Simulation:
         self.tax_benefit_system.simulation = self
 
         if self.reform is not None:
-            self.tax_benefit_system.apply_reform_set(self.reform)
+            self.apply_reform(self.reform)
 
         # Backwards compatibility methods
         self.calc = self.calculate
@@ -1470,7 +1470,7 @@ class Simulation:
         return df
 
     def subsample(
-        self, n=None, frac=None, key=None, time_period=None, reform=None
+        self, n=None, frac=None, key=None, time_period=None
     ) -> "Simulation":
         """Quantize the simulation to a smaller size by sampling households.
 
@@ -1479,7 +1479,6 @@ class Simulation:
             frac (float, optional): The fraction of households to sample. Defaults to None.
             key (int, optional): The key used to seed the random number generator. Defaults to the dataset name.
             time_period (str, optional): Sample households based on their weight in this time period. Defaults to the default calculation period.
-            reform (Reform, optional): The reform to apply to the quantized simulation. Defaults to None.
 
         Returns:
             Simulation: The quantized simulation.
@@ -1541,7 +1540,6 @@ class Simulation:
         # Update the dataset and rebuild the simulation
         self.dataset = Dataset.from_dataframe(df)
         self.build_from_dataset()
-
         return self
 
 

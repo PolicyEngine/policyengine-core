@@ -671,3 +671,8 @@
     changed:
     - Disable macro cache by default.
   date: 2024-09-09 13:52:47
+- bump: minor
+  changes:
+    added:
+    - Simulation subsampling.
+  date: 2024-09-24 18:10:25

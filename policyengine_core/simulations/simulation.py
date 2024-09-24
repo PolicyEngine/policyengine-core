@@ -88,16 +88,19 @@ class Simulation:
         reform: Reform = None,
         trace: bool = False,
     ):
-        self.reform = reform
         if tax_benefit_system is None:
-            if self.default_tax_benefit_system_instance is not None:
+            if (
+                self.default_tax_benefit_system_instance is not None
+                and reform is None
+            ):
                 tax_benefit_system = self.default_tax_benefit_system_instance
             else:
-                tax_benefit_system = self.default_tax_benefit_system()
+                tax_benefit_system = self.default_tax_benefit_system(
+                    reform=reform
+                )
             self.tax_benefit_system = tax_benefit_system
-        if self.reform is not None:
-            tax_benefit_system = tax_benefit_system.clone()
 
+        self.reform = reform
         self.tax_benefit_system = tax_benefit_system
         self.branch_name = "default"
         self.dataset = dataset
@@ -168,7 +171,7 @@ class Simulation:
         self.tax_benefit_system.simulation = self
 
         if self.reform is not None:
-            self.apply_reform(self.reform)
+            self.tax_benefit_system.apply_reform_set(self.reform)
 
         # Backwards compatibility methods
         self.calc = self.calculate
@@ -1511,10 +1514,11 @@ class Simulation:
             raise ValueError("Either n or frac must be provided.")
         if n is None:
             n = int(len(h_ids) * frac)
-        h_weights = pd.Series(h_df[household_weight_column])
+        h_weights = pd.Series(h_df[household_weight_column].values)
 
-        # Ensure n does not exceed the number of households
-        n = min(n, len(h_weights))
+        if n > len(h_weights):
+            # Don't need to subsample!
+            return self
 
         # Seed the random number generators for reproducibility
         random.seed(key)
@@ -1523,7 +1527,10 @@ class Simulation:
 
         # Sample household IDs based on their weights
         chosen_household_ids = np.random.choice(
-            h_ids, n, p=h_weights / h_weights.sum(), replace=False
+            h_ids,
+            n,
+            p=h_weights.values / h_weights.values.sum(),
+            replace=False,
         )
 
         # Filter DataFrame to include only the chosen households

@@ -22,6 +22,7 @@ from policyengine_core.tracers import (
     SimpleTracer,
     TracingParameterNodeAtInstant,
 )
+import random
 
 import json
 
@@ -1470,6 +1471,83 @@ class Simulation:
                     df[f"{variable}__{period}"] = values
 
         return df
+
+    def subsample(
+        self, n=None, frac=None, seed=None, time_period=None
+    ) -> "Simulation":
+        """Quantize the simulation to a smaller size by sampling households.
+
+        Args:
+            n (int, optional): The number of households to sample. Defaults to 10_000.
+            frac (float, optional): The fraction of households to sample. Defaults to None.
+            seed (int, optional): The key used to seed the random number generator. Defaults to the dataset name.
+            time_period (str, optional): Sample households based on their weight in this time period. Defaults to the default calculation period.
+
+        Returns:
+            Simulation: The quantized simulation.
+        """
+        # Set default key if not provided
+        if seed is None:
+            seed = self.dataset.name
+
+        # Set default time period if not provided
+        if time_period is None:
+            time_period = self.default_calculation_period
+
+        # Convert simulation inputs to DataFrame
+        df = self.to_input_dataframe()
+
+        # Extract time period from DataFrame columns
+        df_time_period = df.columns.values[0].split("__")[1]
+        df_household_id_column = f"household_id__{df_time_period}"
+
+        # Determine the appropriate household weight column
+        if f"household_weight__{time_period}" in df.columns:
+            household_weight_column = f"household_weight__{time_period}"
+        else:
+            household_weight_column = f"household_weight__{df_time_period}"
+
+        # Group by household ID and get the first entry for each group
+        h_df = df.groupby(df_household_id_column).first()
+        h_ids = pd.Series(h_df.index)
+        if n is None and frac is None:
+            raise ValueError("Either n or frac must be provided.")
+        if n is None:
+            n = int(len(h_ids) * frac)
+        h_weights = pd.Series(h_df[household_weight_column].values)
+
+        if n > len(h_weights):
+            # Don't need to subsample!
+            return self
+
+        # Seed the random number generators for reproducibility
+        random.seed(str(seed))
+        state = random.randint(0, 2**32 - 1)
+        np.random.seed(state)
+
+        # Sample household IDs based on their weights
+        chosen_household_ids = np.random.choice(
+            h_ids,
+            n,
+            p=h_weights.values / h_weights.values.sum(),
+            replace=False,
+        )
+
+        # Filter DataFrame to include only the chosen households
+        df = df[df[df_household_id_column].isin(chosen_household_ids)]
+
+        # Adjust household weights to maintain the total weight
+        df[household_weight_column] *= (
+            h_weights.sum()
+            / df.groupby(df_household_id_column)
+            .first()[household_weight_column]
+            .sum()
+        )
+
+        # Update the dataset and rebuild the simulation
+        self.dataset = Dataset.from_dataframe(df)
+        self.build_from_dataset()
+        return self
 
 
 class NpEncoder(json.JSONEncoder):

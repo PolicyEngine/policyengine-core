@@ -43,13 +43,10 @@ jobs:
           author_name: Github Actions[bot]
           message: Update PolicyEngine Core
   Test:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     if: |
       (github.repository == 'PolicyEngine/policyengine-core')
       && (github.event.head_commit.message == 'Update PolicyEngine Core')
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3

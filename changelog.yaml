@@ -676,3 +676,8 @@
     added:
     - Simulation subsampling.
   date: 2024-09-24 18:10:25
+- bump: patch
+  changes:
+    changed:
+    - Renamed sim_macro_cache.py to simulation_macro_cache.py
+  date: 2024-09-26 00:13:13

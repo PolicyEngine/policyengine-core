@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.0] - 2024-09-26 12:00:25
+
+### Added
+
+- Randomness based on entity IDs as seeds.
+- OpenFisca-Core imports.
+
 ## [3.7.1] - 2024-09-26 00:13:13
 
 ### Changed
@@ -846,6 +853,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[3.8.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.7.1...3.8.0
 [3.7.1]: https://github.com/PolicyEngine/policyengine-core/compare/3.7.0...3.7.1
 [3.7.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.6.6...3.7.0
 [3.6.6]: https://github.com/PolicyEngine/policyengine-core/compare/3.6.5...3.6.6

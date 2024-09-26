@@ -681,3 +681,9 @@
     changed:
     - Renamed sim_macro_cache.py to simulation_macro_cache.py
   date: 2024-09-26 00:13:13
+- bump: minor
+  changes:
+    added:
+    - Randomness based on entity IDs as seeds.
+    - OpenFisca-Core imports.
+  date: 2024-09-26 12:00:25

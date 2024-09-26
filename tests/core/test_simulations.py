@@ -1,6 +1,8 @@
 from policyengine_core.country_template.situation_examples import single
 from policyengine_core.simulations import SimulationBuilder
-from policyengine_core.simulations.sim_macro_cache import SimulationMacroCache
+from policyengine_core.simulations.simulation_macro_cache import (
+    SimulationMacroCache,
+)
 import importlib.metadata
 import numpy as np
 from pathlib import Path

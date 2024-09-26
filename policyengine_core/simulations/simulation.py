@@ -1547,7 +1547,7 @@ class Simulation:
         )
 
         # Update the dataset and rebuild the simulation
-        self.dataset = Dataset.from_dataframe(df)
+        self.dataset = Dataset.from_dataframe(df, self.dataset.time_period)
         self.build_from_dataset()
         return self
 

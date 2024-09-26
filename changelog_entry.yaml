@@ -1,0 +1,5 @@
+- bump: minor
+  changes:
+    added:
+    - Randomness based on entity IDs as seeds.
+    - OpenFisca-Core imports.

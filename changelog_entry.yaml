@@ -1,0 +1,5 @@
+- bump: patch
+  changes:
+    changed:
+    - Set test runner's default period as underlying simulation's default period
+    - Prevented crashing when absolutely no date is provided anywhere for tests

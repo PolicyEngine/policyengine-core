@@ -10,6 +10,8 @@ format:
 
 install:
 	pip install -e .[dev]
+	pip install policyengine-us
+	pip install policyengine-uk
 
 test-country-template:
 	policyengine-core test policyengine_core/country_template/tests -c policyengine_core.country_template

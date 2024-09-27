@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     )
 
 from policyengine_core.variables import Variable
+from datetime import datetime
 
 
 class SimulationBuilder:
@@ -507,6 +508,10 @@ class SimulationBuilder:
     def set_default_period(self, period_str: str) -> None:
         if period_str:
             self.default_period = str(periods.period(period_str))
+        else:
+            # If at absolute worst, no period is specified anywhere,
+            # use current year
+            self.default_period = periods.period(datetime.now().year)
 
     def get_input(self, variable: str, period_str: str) -> Any:
         if variable not in self.input_buffer:

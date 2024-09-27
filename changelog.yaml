@@ -687,3 +687,9 @@
     - Randomness based on entity IDs as seeds.
     - OpenFisca-Core imports.
   date: 2024-09-26 12:00:25
+- bump: patch
+  changes:
+    changed:
+    - Set test runner's default period as underlying simulation's default period
+    - Prevented crashing when absolutely no date is provided anywhere for tests
+  date: 2024-09-27 10:43:12

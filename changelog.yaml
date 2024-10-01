@@ -693,3 +693,8 @@
     - Set test runner's default period as underlying simulation's default period
     - Prevented crashing when absolutely no date is provided anywhere for tests
   date: 2024-09-27 10:43:12
+- bump: patch
+  changes:
+    changed:
+    - Updated README.md
+  date: 2024-10-01 19:33:10

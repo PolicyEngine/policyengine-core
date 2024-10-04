@@ -666,7 +666,7 @@ class TaxBenefitSystem:
                 "parameters",
                 "_parameters_at_instant_cache",
                 "variables",
-                "entities"
+                "entities",
             ):
                 new_dict[key] = value
 

@@ -666,6 +666,7 @@ class TaxBenefitSystem:
                 "parameters",
                 "_parameters_at_instant_cache",
                 "variables",
+                "entities",
             ):
                 new_dict[key] = value
 
@@ -675,6 +676,7 @@ class TaxBenefitSystem:
             variable_name: variable.clone()
             for variable_name, variable in self.variables.items()
         }
+        new_dict["entities"] = [copy.copy(entity) for entity in self.entities]
 
         for entity in new_dict["entities"]:
             entity.set_tax_benefit_system(new)

@@ -698,3 +698,8 @@
     changed:
     - Updated README.md
   date: 2024-10-01 19:33:10
+- bump: minor
+  changes:
+    changed:
+    - Shallow copy entities between TaxBenefitSystem objects when cloning
+  date: 2024-10-09 20:29:35

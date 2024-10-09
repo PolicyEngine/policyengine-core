@@ -1,4 +1,0 @@
-- bump: minor
-  changes:
-    changed:
-    - Shallow copy entities between TaxBenefitSystem objects when cloning

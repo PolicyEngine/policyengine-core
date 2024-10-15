@@ -1,4 +1,5 @@
 import tempfile
+from pathlib import Path
 
 import pytest
 
@@ -141,3 +142,12 @@ def test_name():
     }
     parameter = ParameterNode("root", data=parameter_data)
     assert parameter.children["2010"].name == "root.2010"
+
+
+def test_write_yaml():
+    parameter_data = {
+        "description": "Parameter indexed by a numeric key",
+        "2010": {"values": {"2006-01-01": 0.0075}},
+    }
+    parameter = ParameterNode("root", data=parameter_data)
+    parameter.write_yaml(Path("output.yaml"))

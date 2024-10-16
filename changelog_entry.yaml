@@ -1,0 +1,4 @@
+- bump: minor
+  changes:
+    changed:
+    - Shallow copy GroupEntities and PopulationEntity when cloning TaxBenefitSystem object

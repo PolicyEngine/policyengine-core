@@ -668,7 +668,7 @@ class TaxBenefitSystem:
                 "variables",
                 "entities",
                 "person_entity",
-                "group_entities"
+                "group_entities",
             ):
                 new_dict[key] = value
 
@@ -682,7 +682,9 @@ class TaxBenefitSystem:
         # Apply shallow copies to all relevant entities
         new_dict["entities"] = [copy.copy(entity) for entity in self.entities]
         new_dict["person_entity"] = copy.copy(self.person_entity)
-        new_dict["group_entities"] = [copy.copy(entity) for entity in self.group_entities]
+        new_dict["group_entities"] = [
+            copy.copy(entity) for entity in self.group_entities
+        ]
 
         # For all shallow-copied entities, set entity._tax_benefit_system to the new system
         for entity in new_dict["entities"]:
@@ -690,7 +692,7 @@ class TaxBenefitSystem:
         for entity in new_dict["group_entities"]:
             entity.set_tax_benefit_system(new)
         new_dict["person_entity"].set_tax_benefit_system(new)
-        
+
         return new
 
     def entities_plural(self) -> dict:

@@ -1,16 +1,16 @@
 import copy
 import os
 import typing
-from typing import Iterable, List, Type, Union
+from pathlib import Path
+from typing import Iterable, Union
+
+import yaml
 
 from policyengine_core import commons, parameters, tools
 from policyengine_core.data_structures import Reference
 from policyengine_core.periods.instant_ import Instant
 from policyengine_core.tracers import TracingParameterNodeAtInstant
-
 from .at_instant_like import AtInstantLike
-from .parameter import Parameter
-from .parameter_node_at_instant import ParameterNodeAtInstant
 from .config import COMMON_KEYS, FILE_EXTENSIONS
 from .helpers import (
     load_parameter_file,
@@ -19,6 +19,8 @@ from .helpers import (
     _parse_child,
     _load_yaml_file,
 )
+from .parameter import Parameter
+from .parameter_node_at_instant import ParameterNodeAtInstant
 
 EXCLUDED_PARAMETER_CHILD_NAMES = ["reference", "__pycache__"]
 
@@ -274,3 +276,19 @@ class ParameterNode(AtInstantLike):
                     f"Could not find the parameter (failed at {name})."
                 )
         return node
+
+    def write_yaml(self, file_path: Path) -> yaml:
+        data = {"name": self.name, "description": self.description}
+        for key, value in self.children.items():
+            name = key
+            value_dict = {}
+            data[name] = {"values": value_dict}
+            for value_at_instant in value.values_list:
+                value_dict[value_at_instant.instant_str] = (
+                    value_at_instant.value
+                )
+        try:
+            with open(file_path, "w") as f:
+                yaml.dump(data, f, sort_keys=False)
+        except Exception as e:
+            print(f"Error when writing YAML file: {e}")

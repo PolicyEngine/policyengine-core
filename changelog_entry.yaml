@@ -1,5 +1,5 @@
 - bump: minor
   changes:
     added:
-    - `write_yaml` function to output ParameterNode data to a YAML file
-    - `test_write_yaml` test to produce a sample output
+    - write_yaml function to output ParameterNode data to a YAML file
+    - test_write_yaml test to produce a sample output

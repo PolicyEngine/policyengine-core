@@ -284,7 +284,9 @@ class ParameterNode(AtInstantLike):
             value_dict = {}
             data[name] = {"values": value_dict}
             for value_at_instant in value.values_list:
-                value_dict[value_at_instant.instant_str] = value_at_instant.value
+                value_dict[value_at_instant.instant_str] = (
+                    value_at_instant.value
+                )
         try:
             with open(file_path, "w") as f:
                 yaml.dump(data, f, sort_keys=False)

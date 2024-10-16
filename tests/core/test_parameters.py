@@ -145,17 +145,17 @@ def test_name():
 
 
 def test_write_yaml():
-    parameter_data={
-        'amount': {
-            'values': {
-                "2015-01-01": {'value': 550},
-                "2016-01-01": {'value': 600}
+    parameter_data = {
+        "amount": {
+            "values": {
+                "2015-01-01": {"value": 550},
+                "2016-01-01": {"value": 600},
             }
         },
-        'min_age': {
-            'values': {
-                "2015-01-01": {'value': 25},
-                "2016-01-01": {'value': 18}
+        "min_age": {
+            "values": {
+                "2015-01-01": {"value": 25},
+                "2016-01-01": {"value": 18},
             }
         },
     }

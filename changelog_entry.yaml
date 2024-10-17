@@ -1,6 +1,0 @@
-- bump: minor
-  changes:
-    changed:
-    - Shallow copy GroupEntities and PopulationEntity when cloning TaxBenefitSystem object
-    added:
-    - Two tests related to extensions that were previously removed

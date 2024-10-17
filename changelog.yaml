@@ -703,3 +703,11 @@
     changed:
     - Shallow copy entities between TaxBenefitSystem objects when cloning
   date: 2024-10-09 20:29:35
+- bump: minor
+  changes:
+    added:
+    - Two tests related to extensions that were previously removed
+    changed:
+    - Shallow copy GroupEntities and PopulationEntity when cloning TaxBenefitSystem
+      object
+  date: 2024-10-17 15:59:10

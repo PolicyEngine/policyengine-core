@@ -76,6 +76,13 @@ def test_with_reform(tax_benefit_system):
     )
 
 
+def test_with_extension(tax_benefit_system):
+    assert (
+        run_yaml_test(tax_benefit_system, "test_with_extension.yaml")
+        == EXIT_OK
+    )
+
+
 def test_with_anchors(tax_benefit_system):
     assert (
         run_yaml_test(tax_benefit_system, "test_with_anchors.yaml") == EXIT_OK

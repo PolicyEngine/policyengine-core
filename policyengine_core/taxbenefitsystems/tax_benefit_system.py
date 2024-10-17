@@ -667,6 +667,8 @@ class TaxBenefitSystem:
                 "_parameters_at_instant_cache",
                 "variables",
                 "entities",
+                "person_entity",
+                "group_entities",
             ):
                 new_dict[key] = value
 
@@ -676,10 +678,21 @@ class TaxBenefitSystem:
             variable_name: variable.clone()
             for variable_name, variable in self.variables.items()
         }
-        new_dict["entities"] = [copy.copy(entity) for entity in self.entities]
 
+        # Apply shallow copies to all relevant entities
+        new_dict["entities"] = [copy.copy(entity) for entity in self.entities]
+        new_dict["person_entity"] = copy.copy(self.person_entity)
+        new_dict["group_entities"] = [
+            copy.copy(entity) for entity in self.group_entities
+        ]
+
+        # For all shallow-copied entities, set entity._tax_benefit_system to the new system
         for entity in new_dict["entities"]:
             entity.set_tax_benefit_system(new)
+        for entity in new_dict["group_entities"]:
+            entity.set_tax_benefit_system(new)
+        new_dict["person_entity"].set_tax_benefit_system(new)
+
         return new
 
     def entities_plural(self) -> dict:

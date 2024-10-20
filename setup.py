@@ -47,7 +47,7 @@ dev_requirements = [
 
 setup(
     name="policyengine-core",
-    version="3.8.0",
+    version="3.10.0",
     author="PolicyEngine",
     author_email="hello@policyengine.org",
     classifiers=[
@@ -55,7 +55,6 @@ setup(
         "License :: OSI Approved :: GNU Affero General Public License v3",
         "Operating System :: POSIX",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
@@ -73,7 +72,7 @@ setup(
             "policyengine-core=policyengine_core.scripts.policyengine_command:main",
         ],
     },
-    python_requires=">=3.9",
+    python_requires=">=3.10",
     extras_require={
         "dev": dev_requirements,
     },

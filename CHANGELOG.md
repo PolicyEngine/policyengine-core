@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.10.0] - 2024-10-17 15:59:10
+
+### Added
+
+- Two tests related to extensions that were previously removed
+
+### Changed
+
+- Shallow copy GroupEntities and PopulationEntity when cloning TaxBenefitSystem object
+
+## [3.9.0] - 2024-10-09 20:29:35
+
+### Changed
+
+- Shallow copy entities between TaxBenefitSystem objects when cloning
+
+## [3.8.2] - 2024-10-01 19:33:10
+
+### Changed
+
+- Updated README.md
+
+## [3.8.1] - 2024-09-27 10:43:12
+
+### Changed
+
+- Set test runner's default period as underlying simulation's default period
+- Prevented crashing when absolutely no date is provided anywhere for tests
+
 ## [3.8.0] - 2024-09-26 12:00:25
 
 ### Added
@@ -853,6 +882,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[3.10.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.9.0...3.10.0
+[3.9.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.8.2...3.9.0
+[3.8.2]: https://github.com/PolicyEngine/policyengine-core/compare/3.8.1...3.8.2
+[3.8.1]: https://github.com/PolicyEngine/policyengine-core/compare/3.8.0...3.8.1
 [3.8.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.7.1...3.8.0
 [3.7.1]: https://github.com/PolicyEngine/policyengine-core/compare/3.7.0...3.7.1
 [3.7.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.6.6...3.7.0

@@ -241,6 +241,7 @@ class YamlItem(pytest.Item):
             self.simulation = builder.build_from_dict(
                 self.tax_benefit_system, input
             )
+            self.simulation.default_calculation_period = builder.default_period
         except (VariableNotFoundError, SituationParsingError):
             raise
         except Exception as e:

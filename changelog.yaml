@@ -687,3 +687,27 @@
     - Randomness based on entity IDs as seeds.
     - OpenFisca-Core imports.
   date: 2024-09-26 12:00:25
+- bump: patch
+  changes:
+    changed:
+    - Set test runner's default period as underlying simulation's default period
+    - Prevented crashing when absolutely no date is provided anywhere for tests
+  date: 2024-09-27 10:43:12
+- bump: patch
+  changes:
+    changed:
+    - Updated README.md
+  date: 2024-10-01 19:33:10
+- bump: minor
+  changes:
+    changed:
+    - Shallow copy entities between TaxBenefitSystem objects when cloning
+  date: 2024-10-09 20:29:35
+- bump: minor
+  changes:
+    added:
+    - Two tests related to extensions that were previously removed
+    changed:
+    - Shallow copy GroupEntities and PopulationEntity when cloning TaxBenefitSystem
+      object
+  date: 2024-10-17 15:59:10

@@ -150,13 +150,29 @@ def test_write_yaml():
             "values": {
                 "2015-01-01": {"value": 550},
                 "2016-01-01": {"value": 600},
-            }
+            },
+            "branch_name": "default",
+            "description": "The amount of the basic income",
+            "documentation": None,
+            "file_path": "test_path/to/file/1",
+            # "metadata": Unclear yet what form this dict takes
+            "modified": False,
+            "trace": True,
+            "tracer": None,
         },
         "min_age": {
             "values": {
                 "2015-01-01": {"value": 25},
                 "2016-01-01": {"value": 18},
-            }
+            },
+            "branch_name": "labor_supply_1",
+            "description": "The minimum age to receive the basic income",
+            "documentation": None,
+            "file_path": "test_path/to/file/2",
+            # "metadata": Unclear yet what form this dict takes
+            "modified": True,
+            "trace": False,
+            "tracer": None,
         },
     }
     parameter = ParameterNode("root", data=parameter_data)

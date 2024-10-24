@@ -1549,6 +1549,14 @@ class Simulation:
         # Update the dataset and rebuild the simulation
         self.dataset = Dataset.from_dataframe(df, self.dataset.time_period)
         self.build_from_dataset()
+
+        # Ensure the baseline branch has the new data.
+        if "baseline" in self.branches:
+            baseline_tax_benefit_system = self.branches[
+                "baseline"
+            ].tax_benefit_system
+            self.branches["baseline"] = self.clone()
+            self.branches["tax_benefit_system"] = baseline_tax_benefit_system
         return self
 
 

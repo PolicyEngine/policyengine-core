@@ -711,3 +711,8 @@
     - Shallow copy GroupEntities and PopulationEntity when cloning TaxBenefitSystem
       object
   date: 2024-10-17 15:59:10
+- bump: minor
+  changes:
+    fixed:
+    - Bug causing subsample to not work in some situations.
+  date: 2024-10-24 11:04:12

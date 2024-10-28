@@ -278,17 +278,9 @@ class ParameterNode(AtInstantLike):
         return node
 
     def write_yaml(self, file_path: Path) -> yaml:
-        data = {"name": self.name, "description": self.description}
-        for key, value in self.children.items():
-            name = key
-            value_dict = {}
-            data[name] = {"values": value_dict}
-            for value_at_instant in value.values_list:
-                value_dict[value_at_instant.instant_str] = (
-                    value_at_instant.value
-                )
+        data = self.get_attr_dict()
         try:
             with open(file_path, "w") as f:
-                yaml.dump(data, f, sort_keys=False)
+                yaml.dump(data, f, sort_keys=True)
         except Exception as e:
             print(f"Error when writing YAML file: {e}")

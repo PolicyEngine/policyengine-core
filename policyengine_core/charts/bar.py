@@ -1,7 +1,7 @@
 import pandas as pd
 from .formatting import *
 import plotly.express as px
-from policyengine_core.weighting import MicroSeries
+from microdf import MicroSeries
 from typing import Callable
 import numpy as np
 

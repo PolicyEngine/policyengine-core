@@ -23,6 +23,7 @@ general_requirements = [
     "plotly>=5,<6",
     "ipython>=7,<8",
     "pyvis>=0.3.2",
+    "microdf_python>=0.4.3",
 ]
 
 dev_requirements = [

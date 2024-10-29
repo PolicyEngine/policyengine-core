@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    changed:
-    - Replace custom implementation of microdf with deployed version

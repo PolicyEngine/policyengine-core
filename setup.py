@@ -21,7 +21,7 @@ general_requirements = [
     "requests>=2,<3",
     "pandas>=1",
     "plotly>=5,<6",
-    "ipython>=7,<8",
+    "ipython>=8,<9",
     "pyvis>=0.3.2",
 ]
 

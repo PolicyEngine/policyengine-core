@@ -1,0 +1,4 @@
+- bump: minor
+  changes:
+    changed:
+    - update the ipython requirement to version 8

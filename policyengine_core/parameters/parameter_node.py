@@ -21,6 +21,7 @@ from .helpers import (
 )
 from .parameter import Parameter
 from .parameter_node_at_instant import ParameterNodeAtInstant
+from .parameter_at_instant import ParameterAtInstant
 
 EXCLUDED_PARAMETER_CHILD_NAMES = ["reference", "__pycache__"]
 
@@ -278,7 +279,24 @@ class ParameterNode(AtInstantLike):
         return node
 
     def write_yaml(self, file_path: Path) -> yaml:
-        data = self.get_attr_dict()
+        exclusion_list = ["parent", "children", "_at_instant_cache"]
+        data = self.get_attr_dict(exclusion_list)
+        for attr_name in data.keys():
+            attr_value = data.get(attr_name)
+            if type(attr_value) in [
+                ParameterNode,
+                parameters.ParameterScale,
+                Parameter,
+            ]:
+                child_data = attr_value.get_attr_dict(exclusion_list)
+                data[attr_name] = child_data
+                if "values_list" in child_data.keys():
+                    value_dict = {}
+                    for value_at_instant in child_data["values_list"]:
+                        value_dict[value_at_instant.instant_str] = (
+                            value_at_instant.value
+                        )
+                    child_data["values_list"] = value_dict
         try:
             with open(file_path, "w") as f:
                 yaml.dump(data, f, sort_keys=True)

@@ -698,3 +698,26 @@
     changed:
     - Updated README.md
   date: 2024-10-01 19:33:10
+- bump: minor
+  changes:
+    changed:
+    - Shallow copy entities between TaxBenefitSystem objects when cloning
+  date: 2024-10-09 20:29:35
+- bump: minor
+  changes:
+    added:
+    - Two tests related to extensions that were previously removed
+    changed:
+    - Shallow copy GroupEntities and PopulationEntity when cloning TaxBenefitSystem
+      object
+  date: 2024-10-17 15:59:10
+- bump: minor
+  changes:
+    fixed:
+    - Bug causing subsample to not work in some situations.
+  date: 2024-10-24 11:04:12
+- bump: patch
+  changes:
+    changed:
+    - Replace custom implementation of microdf with deployed version
+  date: 2024-10-29 20:04:02

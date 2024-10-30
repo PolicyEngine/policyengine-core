@@ -48,7 +48,7 @@ dev_requirements = [
 
 setup(
     name="policyengine-core",
-    version="3.11.1",
+    version="3.12.0",
     author="PolicyEngine",
     author_email="hello@policyengine.org",
     classifiers=[

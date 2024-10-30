@@ -1,0 +1,6 @@
+- bump: minor
+  changes:
+    changed:
+    - update the psutil requirement to version 6
+    - update the furo requirment to <2025
+    - update the markupsafe requirment to <3

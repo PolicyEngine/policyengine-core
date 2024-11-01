@@ -739,7 +739,15 @@ class Simulation:
                     array = holder.default_array()
 
             if variable.defined_for is not None:
-                array = np.where(mask, array, np.zeros_like(array))
+                array = np.where(mask, array, variable.default_value)
+                if variable.value_type == Enum:
+                    array = np.array(
+                        [
+                            item.index if isinstance(item, Enum) else item
+                            for item in array
+                        ]
+                    )
+                    array = EnumArray(array, variable.possible_values)
 
             array = self._cast_formula_result(array, variable)
             holder.put_in_cache(array, period, self.branch_name)

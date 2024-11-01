@@ -9,7 +9,7 @@ format:
 	black . -l 79
 
 install:
-	pip install -e .[dev]
+	pip install -e ".[dev]" --config-settings editable_mode=compat
 	pip install policyengine-us
 	pip install policyengine-uk
 

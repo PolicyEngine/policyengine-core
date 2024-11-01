@@ -731,3 +731,8 @@
     fixed:
     - Bug causing Enums to fail in some simulations.
   date: 2024-11-01 11:36:53
+- bump: patch
+  changes:
+    added:
+    - Compatibility settings for editable installs
+  date: 2024-11-01 21:39:35

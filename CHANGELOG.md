@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.12.3] - 2024-11-04 16:29:34
+
+### Fixed
+
+- Bug in labour supply responses.
+
 ## [3.12.2] - 2024-11-01 21:39:35
 
 ### Added
@@ -912,6 +918,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[3.12.3]: https://github.com/PolicyEngine/policyengine-core/compare/3.12.2...3.12.3
 [3.12.2]: https://github.com/PolicyEngine/policyengine-core/compare/3.12.1...3.12.2
 [3.12.1]: https://github.com/PolicyEngine/policyengine-core/compare/3.12.0...3.12.1
 [3.12.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.11.1...3.12.0

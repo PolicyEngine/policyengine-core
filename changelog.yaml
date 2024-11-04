@@ -736,3 +736,8 @@
     added:
     - Compatibility settings for editable installs
   date: 2024-11-01 21:39:35
+- bump: patch
+  changes:
+    fixed:
+    - Bug in labour supply responses.
+  date: 2024-11-04 16:29:34

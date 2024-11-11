@@ -1,4 +1,4 @@
 - bump: patch
   changes:
     fixed:
-      - DataSets writing downloaded data now use an atomic_write to write it to disk. This prevents other processes attempting to read a partial file or clobbering each other.
+      - Datasets writing downloaded data now use an atomic_write to write it to disk. This prevents other processes attempting to read a partial file or clobbering each other.

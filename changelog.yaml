@@ -741,3 +741,10 @@
     fixed:
     - Bug in labour supply responses.
   date: 2024-11-04 16:29:34
+- bump: patch
+  changes:
+    fixed:
+    - Datasets writing downloaded data now use an atomic_write to write it to disk.
+      This prevents other processes attempting to read a partial file or clobbering
+      each other.
+  date: 2024-11-11 14:20:12

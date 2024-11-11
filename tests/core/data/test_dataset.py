@@ -1,4 +1,5 @@
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 
 def test_dataset_class():
@@ -24,3 +25,21 @@ def test_dataset_class():
     assert test_dataset.exists
     test_dataset.remove()
     assert not test_dataset.exists
+
+
+def test_atomic_write():
+    from policyengine_core.data.dataset import atomic_write
+
+    with NamedTemporaryFile(mode="w") as file:
+        file.write("Hello, world\n")
+        file.flush()
+        # Open the file before overwriting
+        with open(file.name, "r") as file_original:
+
+            atomic_write(Path(file.name), "NOPE\n".encode())
+
+            # Open file descriptor still points to the old node
+            assert file_original.readline() == "Hello, world\n"
+            # But if I open it again it has the new content
+            with open(file.name, "r") as file_updated:
+                assert file_updated.readline() == "NOPE\n"

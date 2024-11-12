@@ -7,7 +7,6 @@ from typing import Iterable, Union
 import yaml
 
 from policyengine_core import commons, parameters, tools
-from policyengine_core.data_structures import Reference
 from policyengine_core.periods.instant_ import Instant
 from policyengine_core.tracers import TracingParameterNodeAtInstant
 from .at_instant_like import AtInstantLike
@@ -21,7 +20,6 @@ from .helpers import (
 )
 from .parameter import Parameter
 from .parameter_node_at_instant import ParameterNodeAtInstant
-from .parameter_at_instant import ParameterAtInstant
 
 EXCLUDED_PARAMETER_CHILD_NAMES = ["reference", "__pycache__"]
 
@@ -34,6 +32,8 @@ class ParameterNode(AtInstantLike):
     _allowed_keys: typing.Optional[typing.Iterable[str]] = (
         None  # By default, no restriction on the keys
     )
+
+    _exclusion_list = ["parent", "_at_instant_cache"]
 
     parent: "ParameterNode" = None
     """The parent of the node, or None if the node is the root of the tree."""
@@ -278,27 +278,26 @@ class ParameterNode(AtInstantLike):
                 )
         return node
 
+    def get_attr_dict(self) -> dict:
+        data = self.__dict__.copy()
+        for attr in self._exclusion_list:
+            if attr in data.keys():
+                del data[attr]
+        if "children" in data.keys():
+            child_dict = data.get("children")
+            for child_name, child in child_dict.items():
+                data[child_name] = child.get_attr_dict()
+        del data["children"]
+        return data
+
+    class NoAliasDumper(yaml.SafeDumper):
+        def ignore_aliases(self, data):
+            return True
+
     def write_yaml(self, file_path: Path) -> yaml:
-        exclusion_list = ["parent", "children", "_at_instant_cache"]
-        data = self.get_attr_dict(exclusion_list)
-        for attr_name in data.keys():
-            attr_value = data.get(attr_name)
-            if type(attr_value) in [
-                ParameterNode,
-                parameters.ParameterScale,
-                Parameter,
-            ]:
-                child_data = attr_value.get_attr_dict(exclusion_list)
-                data[attr_name] = child_data
-                if "values_list" in child_data.keys():
-                    value_dict = {}
-                    for value_at_instant in child_data["values_list"]:
-                        value_dict[value_at_instant.instant_str] = (
-                            value_at_instant.value
-                        )
-                    child_data["values_list"] = value_dict
+        data = self.get_attr_dict()
         try:
             with open(file_path, "w") as f:
-                yaml.dump(data, f, sort_keys=True)
+                yaml.dump(data, f, sort_keys=True, Dumper=self.NoAliasDumper)
         except Exception as e:
             print(f"Error when writing YAML file: {e}")

@@ -20,9 +20,6 @@ class AtInstantLike(abc.ABC):
     @abc.abstractmethod
     def _get_at_instant(self, instant): ...
 
-    def get_attr_dict(self, exclusion_list) -> dict:
-        attr_dict = self.__dict__
-        for attr_name in exclusion_list:
-            if attr_name in attr_dict.keys():
-                del attr_dict[attr_name]
-        return attr_dict
+    @abc.abstractmethod
+    def get_attr_dict(self) -> dict:
+        raise NotImplementedError

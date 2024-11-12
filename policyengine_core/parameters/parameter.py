@@ -2,14 +2,15 @@ import copy
 import os
 from typing import Dict, List, Optional
 
-from policyengine_core.errors import ParameterParsingError
-from .at_instant_like import AtInstantLike
-from .parameter_at_instant import ParameterAtInstant
+import numpy
 
-from .helpers import _validate_parameter, _compose_name
-from .config import COMMON_KEYS
 from policyengine_core.commons.misc import empty_clone
+from policyengine_core.errors import ParameterParsingError
 from policyengine_core.periods import INSTANT_PATTERN, period as get_period
+from .at_instant_like import AtInstantLike
+from .config import COMMON_KEYS
+from .helpers import _validate_parameter, _compose_name
+from .parameter_at_instant import ParameterAtInstant
 
 
 class Parameter(AtInstantLike):
@@ -44,6 +45,8 @@ class Parameter(AtInstantLike):
             })
 
     """
+
+    _exclusion_list = ["parent", "_at_instant_cache"]
 
     def __init__(
         self, name: str, data: dict, file_path: Optional[str] = None
@@ -233,3 +236,18 @@ class Parameter(AtInstantLike):
         if end_value is None or start_value is None:
             return None
         return end_value / start_value - 1
+
+    def get_attr_dict(self) -> dict:
+        data = self.__dict__.copy()
+        for attr in self._exclusion_list:
+            if attr in data.keys():
+                del data[attr]
+        if "values_list" in data.keys():
+            value_dict = {}
+            for value_at_instant in data["values_list"]:
+                value = value_at_instant.value
+                if type(value) is numpy.float64:
+                    value = float(value)
+                value_dict[value_at_instant.instant_str] = value
+            data["values_list"] = value_dict
+        return data

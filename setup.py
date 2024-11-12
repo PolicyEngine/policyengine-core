@@ -21,7 +21,7 @@ general_requirements = [
     "requests>=2,<3",
     "pandas>=1",
     "plotly>=5,<6",
-    "ipython>=7,<8",
+    "ipython>=8,<9",
     "pyvis>=0.3.2",
     "microdf_python>=0.4.3",
 ]
@@ -48,7 +48,7 @@ dev_requirements = [
 
 setup(
     name="policyengine-core",
-    version="3.11.1",
+    version="3.12.4",
     author="PolicyEngine",
     author_email="hello@policyengine.org",
     classifiers=[

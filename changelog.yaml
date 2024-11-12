@@ -721,3 +721,30 @@
     changed:
     - Replace custom implementation of microdf with deployed version
   date: 2024-10-29 20:04:02
+- bump: minor
+  changes:
+    changed:
+    - update the ipython requirement to version 8
+  date: 2024-10-30 18:46:15
+- bump: patch
+  changes:
+    fixed:
+    - Bug causing Enums to fail in some simulations.
+  date: 2024-11-01 11:36:53
+- bump: patch
+  changes:
+    added:
+    - Compatibility settings for editable installs
+  date: 2024-11-01 21:39:35
+- bump: patch
+  changes:
+    fixed:
+    - Bug in labour supply responses.
+  date: 2024-11-04 16:29:34
+- bump: patch
+  changes:
+    fixed:
+    - Datasets writing downloaded data now use an atomic_write to write it to disk.
+      This prevents other processes attempting to read a partial file or clobbering
+      each other.
+  date: 2024-11-11 14:20:12

@@ -635,15 +635,20 @@ class Simulation:
                     return value
 
         if variable.requires_computation_after is not None:
-            if variable.requires_computation_after not in [
+            variables_in_stack = [
                 node.get("name") for node in self.tracer.stack
-            ]:
+            ]
+            variable_in_stack = (
+                variable.requires_computation_after in variables_in_stack
+            )
+            required_is_known_periods = self.get_holder(
+                variable.requires_computation_after
+            ).get_known_periods()
+            if (not variable_in_stack) and (
+                not len(required_is_known_periods) > 0
+            ):
                 raise ValueError(
-                    f"Variable {variable_name} requires {variable.requires_computation_after} to be requested first. The full stack is: "
-                    + "\n".join(
-                        f"  - {node.get('name')} {node.get('period')}, {node.get('branch_name')}"
-                        for node in self.tracer.stack
-                    )
+                    f"Variable {variable_name} requires {variable.requires_computation_after} to be requested first. That variable is known in: {required_is_known_periods}. The full stack is: {variables_in_stack}. {variable_in_stack, len(required_is_known_periods) > 0}"
                 )
         alternate_period_handling = False
         if variable.definition_period == MONTH and period.unit == YEAR:
@@ -739,7 +744,15 @@ class Simulation:
                     array = holder.default_array()
 
             if variable.defined_for is not None:
-                array = np.where(mask, array, np.zeros_like(array))
+                array = np.where(mask, array, variable.default_value)
+                if variable.value_type == Enum:
+                    array = np.array(
+                        [
+                            item.index if isinstance(item, Enum) else item
+                            for item in array
+                        ]
+                    )
+                    array = EnumArray(array, variable.possible_values)
 
             array = self._cast_formula_result(array, variable)
             holder.put_in_cache(array, period, self.branch_name)

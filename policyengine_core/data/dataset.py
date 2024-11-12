@@ -6,6 +6,34 @@ import pandas as pd
 import shutil
 import requests
 import os
+import tempfile
+
+
+def atomic_write(file: Path, content: bytes) -> None:
+    """
+    Atomically update the target file with the content. Any existing file will be unlinked rather than overritten.
+
+    Implemented by
+    1. Downloading the file to a temporary file with a unique name
+    2. renaming (not copying) the file to the target name so that the operation is atomic (either the file is there or it's not, no partial file)
+
+    If a process is reading the original file when a new file is renamed, that should relink the file, not clear and overwrite the old one so
+    both processes should continue happily.
+    """
+    with tempfile.NamedTemporaryFile(
+        mode="wb",
+        dir=file.parent.absolute().as_posix(),
+        prefix=file.name + ".download.",
+        delete=False,
+    ) as f:
+        try:
+            f.write(content)
+            f.close()
+            os.rename(f.name, file.absolute().as_posix())
+        except:
+            f.delete = True
+            f.close()
+            raise
 
 
 class Dataset:
@@ -278,7 +306,7 @@ class Dataset:
             raise FileNotFoundError(f"File {file_path} does not exist.")
         shutil.move(file_path, self.file_path)
 
-    def download(self, url: str = None):
+    def download(self, url: str = None) -> None:
         """Downloads a file to the dataset's file path.
 
         Args:
@@ -333,8 +361,7 @@ class Dataset:
                 f"Invalid response code {response.status_code} for url {url}."
             )
 
-        with open(self.file_path, "wb") as f:
-            f.write(response.content)
+        atomic_write(self.file_path, response.content)
 
     def remove(self):
         """Removes the dataset from disk."""

@@ -1,4 +1,4 @@
-- bump: minor
+- bump: patch
   changes:
     changed:
     - update the psutil requirement to version 6

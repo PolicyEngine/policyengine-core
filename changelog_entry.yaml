@@ -3,4 +3,4 @@
     changed:
     - update the psutil requirement to version 6
     - update the furo requirment to <2025
-    - update the markupsafe requirment to <3
+    - update the markupsafe requirement to <3

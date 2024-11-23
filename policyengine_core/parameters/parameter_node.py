@@ -34,6 +34,7 @@ class ParameterNode(AtInstantLike):
     )
 
     _exclusion_list = ["parent", "_at_instant_cache"]
+    """The keys to be excluded from the node when output to a yaml file."""
 
     parent: "ParameterNode" = None
     """The parent of the node, or None if the node is the root of the tree."""
@@ -298,6 +299,6 @@ class ParameterNode(AtInstantLike):
         data = self.get_attr_dict()
         try:
             with open(file_path, "w") as f:
-                yaml.dump(data, f, sort_keys=True, Dumper=self.NoAliasDumper)
+                yaml.dump(data, f, sort_keys=False, Dumper=self.NoAliasDumper)
         except Exception as e:
             print(f"Error when writing YAML file: {e}")

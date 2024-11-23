@@ -47,6 +47,7 @@ class Parameter(AtInstantLike):
     """
 
     _exclusion_list = ["parent", "_at_instant_cache"]
+    """The keys to be excluded from the node when output to a yaml file."""
 
     def __init__(
         self, name: str, data: dict, file_path: Optional[str] = None

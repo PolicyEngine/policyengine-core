@@ -25,6 +25,7 @@ class ParameterScale(AtInstantLike):
     _allowed_keys = config.COMMON_KEYS.union({"brackets"})
 
     _exclusion_list = ["parent", "_at_instant_cache"]
+    """The keys to be excluded from the node when output to a yaml file."""
 
     def __init__(self, name: str, data: dict, file_path: str):
         """

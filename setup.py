@@ -15,7 +15,7 @@ general_requirements = [
     "sortedcontainers<3",
     "numexpr<3",
     "dpath<3",
-    "psutil<6",
+    "psutil>=6,<7",
     "wheel<1",
     "h5py>=3,<4",
     "requests>=2,<3",
@@ -32,8 +32,8 @@ dev_requirements = [
     "jupyter-book<1",
     "yaml-changelog<1",
     "coverage",
-    "furo<2023",
-    "markupsafe==2.0.1",
+    "furo<2025",
+    "markupsafe<3",
     "coverage",
     "furo",
     "mypy<2",
@@ -48,7 +48,7 @@ dev_requirements = [
 
 setup(
     name="policyengine-core",
-    version="3.12.4",
+    version="3.12.5",
     author="PolicyEngine",
     author_email="hello@policyengine.org",
     classifiers=[

@@ -748,3 +748,10 @@
       This prevents other processes attempting to read a partial file or clobbering
       each other.
   date: 2024-11-11 14:20:12
+- bump: patch
+  changes:
+    changed:
+    - update the psutil requirement to version 6
+    - update the furo requirment to <2025
+    - update the markupsafe requirement to <3
+  date: 2024-11-20 13:13:13

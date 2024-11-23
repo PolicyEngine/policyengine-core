@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.12.5] - 2024-11-20 13:13:13
+
+### Changed
+
+- update the psutil requirement to version 6
+- update the furo requirment to <2025
+- update the markupsafe requirement to <3
+
 ## [3.12.4] - 2024-11-11 14:20:12
 
 ### Fixed
@@ -924,6 +932,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[3.12.5]: https://github.com/PolicyEngine/policyengine-core/compare/3.12.4...3.12.5
 [3.12.4]: https://github.com/PolicyEngine/policyengine-core/compare/3.12.3...3.12.4
 [3.12.3]: https://github.com/PolicyEngine/policyengine-core/compare/3.12.2...3.12.3
 [3.12.2]: https://github.com/PolicyEngine/policyengine-core/compare/3.12.1...3.12.2

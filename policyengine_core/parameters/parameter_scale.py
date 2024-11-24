@@ -2,7 +2,7 @@ import copy
 import os
 import typing
 from typing import Any, Iterable
-
+from collections import OrderedDict
 from policyengine_core import commons, parameters, tools
 from policyengine_core.errors import ParameterParsingError
 from policyengine_core.parameters import AtInstantLike, config, helpers
@@ -174,7 +174,7 @@ class ParameterScale(AtInstantLike):
             return scale
 
     def get_attr_dict(self) -> dict:
-        data = self.__dict__.copy()
+        data = OrderedDict(self.__dict__.copy())
         for attr in self._exclusion_list:
             if attr in data.keys():
                 del data[attr]
@@ -185,4 +185,5 @@ class ParameterScale(AtInstantLike):
                 node_list[i] = node.get_attr_dict()
                 i += 1
             data["brackets"] = node_list
-        return data
+            data.move_to_end("brackets")
+        return dict(data)

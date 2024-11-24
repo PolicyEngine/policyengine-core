@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Iterable, Union
 
 import yaml
+from collections import OrderedDict
 
 from policyengine_core import commons, parameters, tools
 from policyengine_core.periods.instant_ import Instant
@@ -280,7 +281,7 @@ class ParameterNode(AtInstantLike):
         return node
 
     def get_attr_dict(self) -> dict:
-        data = self.__dict__.copy()
+        data = OrderedDict(self.__dict__.copy())
         for attr in self._exclusion_list:
             if attr in data.keys():
                 del data[attr]
@@ -288,8 +289,9 @@ class ParameterNode(AtInstantLike):
             child_dict = data.get("children")
             for child_name, child in child_dict.items():
                 data[child_name] = child.get_attr_dict()
-        del data["children"]
-        return data
+                data.move_to_end(child_name)
+            del data["children"]
+        return dict(data)
 
     class NoAliasDumper(yaml.SafeDumper):
         def ignore_aliases(self, data):

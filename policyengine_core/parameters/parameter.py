@@ -3,7 +3,7 @@ import os
 from typing import Dict, List, Optional
 
 import numpy
-
+from collections import OrderedDict
 from policyengine_core.commons.misc import empty_clone
 from policyengine_core.errors import ParameterParsingError
 from policyengine_core.periods import INSTANT_PATTERN, period as get_period
@@ -239,7 +239,7 @@ class Parameter(AtInstantLike):
         return end_value / start_value - 1
 
     def get_attr_dict(self) -> dict:
-        data = self.__dict__.copy()
+        data = OrderedDict(self.__dict__.copy())
         for attr in self._exclusion_list:
             if attr in data.keys():
                 del data[attr]
@@ -251,4 +251,5 @@ class Parameter(AtInstantLike):
                     value = float(value)
                 value_dict[value_at_instant.instant_str] = value
             data["values_list"] = value_dict
-        return data
+            data.move_to_end("values_list")
+        return dict(data)

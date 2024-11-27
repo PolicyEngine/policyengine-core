@@ -755,3 +755,8 @@
     - update the furo requirment to <2025
     - update the markupsafe requirement to <3
   date: 2024-11-20 13:13:13
+- bump: minor
+  changes:
+    added:
+    - HuggingFace upload/download functionality.
+  date: 2024-11-27 13:12:44

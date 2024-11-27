@@ -24,6 +24,7 @@ general_requirements = [
     "ipython>=8,<9",
     "pyvis>=0.3.2",
     "microdf_python>=0.4.3",
+    "huggingface_hub>=0.25.1",
 ]
 
 dev_requirements = [
@@ -48,7 +49,7 @@ dev_requirements = [
 
 setup(
     name="policyengine-core",
-    version="3.12.5",
+    version="3.13.0",
     author="PolicyEngine",
     author_email="hello@policyengine.org",
     classifiers=[

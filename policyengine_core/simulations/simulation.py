@@ -23,6 +23,7 @@ from policyengine_core.tracers import (
     TracingParameterNodeAtInstant,
 )
 import random
+from policyengine_core.tools.hugging_face import *
 
 import json
 
@@ -54,7 +55,7 @@ class Simulation:
     default_dataset: Dataset = None
     """The default dataset class to use if none is provided."""
 
-    default_role: str = None
+    default_role: str = "member"
     """The default role to assign people to groups if none is provided."""
 
     default_input_period: str = None
@@ -151,6 +152,14 @@ class Simulation:
 
         if dataset is not None:
             if isinstance(dataset, str):
+                if "hf://" in dataset:
+                    owner, repo, filename = dataset.split("/")[-3:]
+                    if "@" in filename:
+                        version = filename.split("@")[-1]
+                        filename = filename.split("@")[0]
+                    else:
+                        version = None
+                    dataset = download(owner + "/" + repo, filename, version)
                 datasets_by_name = {
                     dataset.name: dataset for dataset in self.datasets
                 }

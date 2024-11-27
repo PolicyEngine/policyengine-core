@@ -1,5 +1,6 @@
 import tempfile
-
+from pathlib import Path
+import os
 import pytest
 
 from policyengine_core.parameters import (
@@ -8,6 +9,7 @@ from policyengine_core.parameters import (
     ParameterNotFoundError,
     load_parameter_file,
 )
+from policyengine_core.tools.test_runner import yaml
 
 
 def test_get_at_instant(tax_benefit_system):
@@ -141,3 +143,42 @@ def test_name():
     }
     parameter = ParameterNode("root", data=parameter_data)
     assert parameter.children["2010"].name == "root.2010"
+
+
+def test_write_yaml():
+    parameter_data = {
+        "amount": {
+            "values": {
+                "2015-01-01": {"value": 550},
+                "2016-01-01": {"value": 600},
+            },
+            "description": "The amount of the basic income",
+            "documentation": None,
+            "modified": False,
+        },
+        "min_age": {
+            "values": {
+                "2015-01-01": {"value": 25},
+                "2016-01-01": {"value": 18},
+            },
+            "description": "The minimum age to receive the basic income",
+            "documentation": None,
+            "modified": True,
+        },
+    }
+    parameter = ParameterNode("root", data=parameter_data)
+    parameter.write_yaml(Path("output.yaml"))
+
+    try:
+        with open("output.yaml", "r") as file:
+            data = yaml.safe_load(file)
+        os.remove("output.yaml")
+    except yaml.YAMLError as e:
+        pytest.fail(f"Output is not valid YAML: {e}")
+
+
+# from policyengine_us import Microsimulation
+# def test_yaml_us():
+#     baseline = Microsimulation()
+#     tbs = baseline.tax_benefit_system
+#     tbs.parameters.gov.write_yaml("test_output.yaml")

@@ -1,0 +1,4 @@
+- bump: minor
+  changes:
+    added:
+    - Support for HuggingFace-hosted H5 file inputs.

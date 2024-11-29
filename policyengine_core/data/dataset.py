@@ -7,8 +7,7 @@ import shutil
 import requests
 import os
 import tempfile
-from huggingface_hub import HfApi, login, hf_hub_download
-import pkg_resources
+from policyengine_core.tools.hugging_face import *
 
 
 def atomic_write(file: Path, content: bytes) -> None:
@@ -318,7 +317,7 @@ class Dataset:
         """
 
         if url is None:
-            url = self.huggingface_url or self.url
+            url = self.url or self.huggingface_url
 
         if "POLICYENGINE_GITHUB_MICRODATA_AUTH_TOKEN" not in os.environ:
             auth_headers = {}
@@ -400,13 +399,29 @@ class Dataset:
             Dataset: The dataset.
         """
         file_path = Path(file_path)
+
+        # If it's a h5 file, check the first key
+
+        if file_path.suffix == ".h5":
+            with h5py.File(file_path, "r") as f:
+                first_key = list(f.keys())[0]
+                first_value = f[first_key]
+                if isinstance(first_value, h5py.Dataset):
+                    data_format = Dataset.ARRAYS
+                else:
+                    data_format = Dataset.TIME_PERIOD_ARRAYS
+                    subkeys = list(first_value.keys())
+                    if len(subkeys) > 0:
+                        time_period = subkeys[0]
+        else:
+            data_format = Dataset.FLAT_FILE
         dataset = type(
             "Dataset",
             (Dataset,),
             {
                 "name": file_path.stem,
                 "label": file_path.stem,
-                "data_format": Dataset.FLAT_FILE,
+                "data_format": data_format,
                 "file_path": file_path,
                 "time_period": time_period,
             },
@@ -446,21 +461,14 @@ class Dataset:
         token = os.environ.get(
             "HUGGING_FACE_TOKEN",
         )
-        login(token=token)
         api = HfApi()
-
-        # Add the policyengine-uk-data version and policyengine-uk version to the h5 metadata.
-        uk_data_version = get_package_version("policyengine-uk-data")
-        uk_version = get_package_version("policyengine-uk")
-        with h5py.File(self.file_path, "a") as f:
-            f.attrs["policyengine-uk-data"] = uk_data_version
-            f.attrs["policyengine-uk"] = uk_version
 
         api.upload_file(
             path_or_fileobj=self.file_path,
             path_in_repo=self.file_path.name,
             repo_id=f"{owner_name}/{model_name}",
             repo_type="model",
+            token=token,
         )
 
     def download_from_huggingface(
@@ -475,19 +483,11 @@ class Dataset:
         token = os.environ.get(
             "HUGGING_FACE_TOKEN",
         )
-        login(token=token)
 
         hf_hub_download(
             repo_id=f"{owner_name}/{model_name}",
             repo_type="model",
             path=self.file_path,
             revision=version,
+            token=token,
         )
-
-
-def get_package_version(package_name: str) -> str:
-    """Get the installed version of a package."""
-    try:
-        return pkg_resources.get_distribution(package_name).version
-    except pkg_resources.DistributionNotFound:
-        return "not installed"

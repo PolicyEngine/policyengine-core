@@ -317,7 +317,7 @@ class Dataset:
         """
 
         if url is None:
-            url = self.huggingface_url or self.url
+            url = self.url or self.huggingface_url
 
         if "POLICYENGINE_GITHUB_MICRODATA_AUTH_TOKEN" not in os.environ:
             auth_headers = {}

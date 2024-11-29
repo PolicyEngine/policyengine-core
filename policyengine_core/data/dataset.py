@@ -461,7 +461,6 @@ class Dataset:
         token = os.environ.get(
             "HUGGING_FACE_TOKEN",
         )
-        login(token=token)
         api = HfApi()
 
         api.upload_file(
@@ -469,6 +468,7 @@ class Dataset:
             path_in_repo=self.file_path.name,
             repo_id=f"{owner_name}/{model_name}",
             repo_type="model",
+            token=token,
         )
 
     def download_from_huggingface(
@@ -483,11 +483,11 @@ class Dataset:
         token = os.environ.get(
             "HUGGING_FACE_TOKEN",
         )
-        login(token=token)
 
         hf_hub_download(
             repo_id=f"{owner_name}/{model_name}",
             repo_type="model",
             path=self.file_path,
             revision=version,
+            token=token,
         )

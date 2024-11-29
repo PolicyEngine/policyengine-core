@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.14.0] - 2024-11-29 16:08:25
+
+### Added
+
+- Support for HuggingFace-hosted H5 file inputs.
+
 ## [3.13.0] - 2024-11-27 13:12:44
 
 ### Added
@@ -938,6 +944,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[3.14.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.13.0...3.14.0
 [3.13.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.12.5...3.13.0
 [3.12.5]: https://github.com/PolicyEngine/policyengine-core/compare/3.12.4...3.12.5
 [3.12.4]: https://github.com/PolicyEngine/policyengine-core/compare/3.12.3...3.12.4

@@ -760,3 +760,8 @@
     added:
     - HuggingFace upload/download functionality.
   date: 2024-11-27 13:12:44
+- bump: minor
+  changes:
+    added:
+    - Support for HuggingFace-hosted H5 file inputs.
+  date: 2024-11-29 16:08:25

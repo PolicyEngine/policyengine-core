@@ -1,0 +1,5 @@
+- bump: patch
+  changes:
+    changed:
+    - Replaced coexistent standard/Hugging Face URL with standalone URL parameter
+    - Fixed bugs in download_from_huggingface() method

@@ -765,3 +765,10 @@
     added:
     - Support for HuggingFace-hosted H5 file inputs.
   date: 2024-11-29 16:08:25
+- bump: patch
+  changes:
+    changed:
+    - Replaced coexistent standard/HuggingFace URL with standalone URL parameter
+    - Fixed bugs in download_from_huggingface() method
+    - Create utility function for pulling HuggingFace env var
+  date: 2024-12-02 16:35:14

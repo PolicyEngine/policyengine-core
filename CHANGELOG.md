@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.14.1] - 2024-12-02 16:35:14
+
+### Changed
+
+- Replaced coexistent standard/HuggingFace URL with standalone URL parameter
+- Fixed bugs in download_from_huggingface() method
+- Create utility function for pulling HuggingFace env var
+
 ## [3.14.0] - 2024-11-29 16:08:25
 
 ### Added
@@ -944,6 +952,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[3.14.1]: https://github.com/PolicyEngine/policyengine-core/compare/3.14.0...3.14.1
 [3.14.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.13.0...3.14.0
 [3.13.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.12.5...3.13.0
 [3.12.5]: https://github.com/PolicyEngine/policyengine-core/compare/3.12.4...3.12.5

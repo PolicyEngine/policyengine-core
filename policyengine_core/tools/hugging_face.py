@@ -1,4 +1,5 @@
 from huggingface_hub import hf_hub_download, login, HfApi
+from getpass import getpass
 import os
 import warnings
 
@@ -18,3 +19,23 @@ def download(repo: str, repo_filename: str, version: str = None):
         revision=version,
         token=token,
     )
+
+
+def get_or_prompt_hf_token() -> str:
+    """
+    Either get the Hugging Face token from the environment,
+    or prompt the user for it and store it in the environment.
+
+    Returns:
+        str: The Hugging Face token.
+    """
+
+    token = os.environ.get("HUGGING_FACE_TOKEN")
+    if token is None:
+        token = getpass(
+            "Enter your Hugging Face token (or set HUGGING_FACE_TOKEN environment variable): "
+        )
+        # Optionally store in env for subsequent calls in same session
+        os.environ["HUGGING_FACE_TOKEN"] = token
+
+    return token

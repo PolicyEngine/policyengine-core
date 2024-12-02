@@ -455,7 +455,7 @@ class Dataset:
     def upload_to_huggingface(
         self, owner_name: str, model_name: str, file_name: str
     ):
-        """Uploads the dataset to Hugging Face.
+        """Uploads the dataset to HuggingFace.
 
         Args:
             owner_name (str): The owner name.
@@ -463,13 +463,11 @@ class Dataset:
         """
 
         print(
-            f"Uploading to Hugging Face {owner_name}/{model_name}/{file_name}",
+            f"Uploading to HuggingFace {owner_name}/{model_name}/{file_name}",
             file=sys.stderr,
         )
 
-        token = os.environ.get(
-            "HUGGING_FACE_TOKEN",
-        )
+        token = get_or_prompt_hf_token()
         api = HfApi()
 
         api.upload_file(
@@ -487,7 +485,7 @@ class Dataset:
         file_name: str,
         version: str = None,
     ):
-        """Downloads the dataset from Hugging Face.
+        """Downloads the dataset from HuggingFace.
 
         Args:
             owner_name (str): The owner name.
@@ -495,13 +493,11 @@ class Dataset:
         """
 
         print(
-            f"Downloading from Hugging Face {owner_name}/{model_name}/{file_name}",
+            f"Downloading from HuggingFace {owner_name}/{model_name}/{file_name}",
             file=sys.stderr,
         )
 
-        token = os.environ.get(
-            "HUGGING_FACE_TOKEN",
-        )
+        token = get_or_prompt_hf_token()
 
         hf_hub_download(
             repo_id=f"{owner_name}/{model_name}",

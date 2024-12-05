@@ -221,6 +221,8 @@ class Simulation:
             for subreform in reform:
                 self.apply_reform(subreform)
         else:
+            if isinstance(reform, dict):
+                reform = Reform.from_dict(reform)
             reform.apply(self.tax_benefit_system)
 
     def build_from_populations(

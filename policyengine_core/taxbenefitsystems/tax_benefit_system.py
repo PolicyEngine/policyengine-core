@@ -145,6 +145,10 @@ class TaxBenefitSystem:
             for subreform in reform:
                 self.apply_reform_set(subreform)
         else:
+            if isinstance(reform, dict):
+                from policyengine_core.reforms import Reform
+
+                reform = Reform.from_dict(reform)
             reform.apply(self)
 
     def add_abolition_parameters(self):

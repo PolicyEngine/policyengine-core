@@ -5,7 +5,7 @@ from huggingface_hub import ModelInfo
 from huggingface_hub.errors import RepositoryNotFoundError
 from policyengine_core.tools.hugging_face import (
     get_or_prompt_hf_token,
-    hf_download,
+    download_huggingface_dataset,
 )
 
 
@@ -28,7 +28,7 @@ class TestHfDownload:
                     id=test_id, private=False
                 )
 
-                hf_download(test_repo, test_filename, test_version)
+                download_huggingface_dataset(test_repo, test_filename, test_version)
 
                 mock_download.assert_called_with(
                     repo_id=test_repo,
@@ -58,7 +58,7 @@ class TestHfDownload:
                 ) as mock_token:
                     mock_token.return_value = "test_token"
 
-                    hf_download(test_repo, test_filename, test_version)
+                    download_huggingface_dataset(test_repo, test_filename, test_version)
                     mock_download.assert_called_with(
                         repo_id=test_repo,
                         repo_type="model",
@@ -88,7 +88,7 @@ class TestHfDownload:
                     mock_token.return_value = ""
 
                     with pytest.raises(Exception):
-                        hf_download(test_repo, test_filename, test_version)
+                        download_huggingface_dataset(test_repo, test_filename, test_version)
                         mock_download.assert_not_called()
 
 

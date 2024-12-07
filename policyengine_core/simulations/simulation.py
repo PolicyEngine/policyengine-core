@@ -158,7 +158,7 @@ class Simulation:
                         filename = filename.split("@")[0]
                     else:
                         version = None
-                    dataset = hf_download(
+                    dataset = download_huggingface_dataset(
                         owner + "/" + repo, filename, version
                     )
                 datasets_by_name = {

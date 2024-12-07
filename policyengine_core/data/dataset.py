@@ -497,7 +497,7 @@ class Dataset:
             file=sys.stderr,
         )
 
-        hf_download(
+        download_huggingface_dataset(
             repo=f"{owner_name}/{model_name}",
             repo_filename=file_name,
             version=version,

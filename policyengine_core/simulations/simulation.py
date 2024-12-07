@@ -159,7 +159,9 @@ class Simulation:
                     else:
                         version = None
                     dataset = download_huggingface_dataset(
-                        owner + "/" + repo, filename, version
+                        repo=f"{owner}/{repo}",
+                        repo_filename=filename,
+                        version=version,
                     )
                 datasets_by_name = {
                     dataset.name: dataset for dataset in self.datasets

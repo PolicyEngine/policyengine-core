@@ -9,7 +9,7 @@ from policyengine_core.tools.hugging_face import (
 )
 
 
-class TestHfDownload:
+class TestHuggingFaceDownload:
     def test_download_public_repo(self):
         """Test downloading from a public repo"""
         test_repo = "test_repo"
@@ -90,7 +90,6 @@ class TestHfDownload:
                     with pytest.raises(Exception):
                         download_huggingface_dataset(test_repo, test_filename, test_version)
                         mock_download.assert_not_called()
-
 
 class TestGetOrPromptHfToken:
     def test_get_token_from_environment(self):

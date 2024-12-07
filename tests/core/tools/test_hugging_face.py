@@ -28,7 +28,9 @@ class TestHuggingFaceDownload:
                     id=test_id, private=False
                 )
 
-                download_huggingface_dataset(test_repo, test_filename, test_version)
+                download_huggingface_dataset(
+                    test_repo, test_filename, test_version
+                )
 
                 mock_download.assert_called_with(
                     repo_id=test_repo,
@@ -58,7 +60,9 @@ class TestHuggingFaceDownload:
                 ) as mock_token:
                     mock_token.return_value = "test_token"
 
-                    download_huggingface_dataset(test_repo, test_filename, test_version)
+                    download_huggingface_dataset(
+                        test_repo, test_filename, test_version
+                    )
                     mock_download.assert_called_with(
                         repo_id=test_repo,
                         repo_type="model",
@@ -88,8 +92,11 @@ class TestHuggingFaceDownload:
                     mock_token.return_value = ""
 
                     with pytest.raises(Exception):
-                        download_huggingface_dataset(test_repo, test_filename, test_version)
+                        download_huggingface_dataset(
+                            test_repo, test_filename, test_version
+                        )
                         mock_download.assert_not_called()
+
 
 class TestGetOrPromptHfToken:
     def test_get_token_from_environment(self):

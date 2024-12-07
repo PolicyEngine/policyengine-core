@@ -14,7 +14,9 @@ with warnings.catch_warnings():
     warnings.simplefilter("ignore")
 
 
-def download_huggingface_dataset(repo: str, repo_filename: str, version: str = None):
+def download_huggingface_dataset(
+    repo: str, repo_filename: str, version: str = None
+):
     """
     Download a dataset from the Hugging Face Hub.
 

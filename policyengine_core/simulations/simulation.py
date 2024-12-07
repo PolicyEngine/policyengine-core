@@ -1,7 +1,6 @@
 import tempfile
 from typing import TYPE_CHECKING, Any, Dict, List, Type, Union
 
-import numpy
 import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
@@ -159,7 +158,9 @@ class Simulation:
                         filename = filename.split("@")[0]
                     else:
                         version = None
-                    dataset = download(owner + "/" + repo, filename, version)
+                    dataset = hf_download(
+                        owner + "/" + repo, filename, version
+                    )
                 datasets_by_name = {
                     dataset.name: dataset for dataset in self.datasets
                 }
@@ -1041,7 +1042,7 @@ class Simulation:
         if variable.value_type == Enum and not isinstance(value, EnumArray):
             return variable.possible_values.encode(value)
 
-        if not isinstance(value, numpy.ndarray):
+        if not isinstance(value, np.ndarray):
             population = self.get_variable_population(variable.name)
             value = population.filled_array(value)
 

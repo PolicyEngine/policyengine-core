@@ -1,8 +1,6 @@
 from huggingface_hub import (
     hf_hub_download,
     model_info,
-    login,
-    HfApi,
     ModelInfo,
 )
 from huggingface_hub.errors import RepositoryNotFoundError

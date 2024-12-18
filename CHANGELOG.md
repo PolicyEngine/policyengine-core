@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.16.0] - 2024-12-18 15:12:25
+
+### Changed
+
+- Refactor all Hugging Face downloads to use the same download function
+- Attempt to determine whether a token is necessary before downloading from Hugging Face
+- Add tests for this new functionality
+
 ## [3.15.0] - 2024-12-05 14:47:01
 
 ### Added
@@ -958,6 +966,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[3.16.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.15.0...3.16.0
 [3.15.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.14.1...3.15.0
 [3.14.1]: https://github.com/PolicyEngine/policyengine-core/compare/3.14.0...3.14.1
 [3.14.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.13.0...3.14.0

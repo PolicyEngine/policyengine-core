@@ -777,3 +777,11 @@
     added:
     - Chained reform handling in TaxBenefitSystems.
   date: 2024-12-05 14:47:01
+- bump: minor
+  changes:
+    changed:
+    - Refactor all Hugging Face downloads to use the same download function
+    - Attempt to determine whether a token is necessary before downloading from Hugging
+      Face
+    - Add tests for this new functionality
+  date: 2024-12-18 15:12:25

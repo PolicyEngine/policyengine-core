@@ -1,0 +1,4 @@
+- bump: minor
+  changes:
+    removed:
+    - Reverted Hugging Face token code due to unclear error

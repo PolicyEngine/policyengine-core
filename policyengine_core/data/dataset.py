@@ -497,8 +497,13 @@ class Dataset:
             file=sys.stderr,
         )
 
-        download_huggingface_dataset(
-            repo=f"{owner_name}/{model_name}",
-            repo_filename=file_name,
-            version=version,
+        token = get_or_prompt_hf_token()
+
+        hf_hub_download(
+            repo_id=f"{owner_name}/{model_name}",
+            repo_type="model",
+            filename=file_name,
+            local_dir=self.file_path.parent,
+            revision=version,
+            token=token,
         )

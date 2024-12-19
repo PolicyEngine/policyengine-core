@@ -501,4 +501,5 @@ class Dataset:
             repo=f"{owner_name}/{model_name}",
             repo_filename=file_name,
             version=version,
+            local_dir=self.file_path.parent,
         )

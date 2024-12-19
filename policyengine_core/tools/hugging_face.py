@@ -13,7 +13,10 @@ with warnings.catch_warnings():
 
 
 def download_huggingface_dataset(
-    repo: str, repo_filename: str, version: str = None
+    repo: str,
+    repo_filename: str,
+    version: str = None,
+    local_dir: str | None = None,
 ):
     """
     Download a dataset from the Hugging Face Hub.
@@ -22,6 +25,7 @@ def download_huggingface_dataset(
         repo (str): The Hugging Face repo name, in format "{org}/{repo}".
         repo_filename (str): The filename of the dataset.
         version (str, optional): The version of the dataset. Defaults to None.
+        local_dir (str, optional): The local directory to save the dataset to. Defaults to None.
     """
     # Attempt connection to Hugging Face model_info endpoint
     # (https://huggingface.co/docs/huggingface_hub/v0.26.5/en/package_reference/hf_api#huggingface_hub.HfApi.model_info)
@@ -52,6 +56,7 @@ def download_huggingface_dataset(
         filename=repo_filename,
         revision=version,
         token=authentication_token,
+        local_dir=local_dir,
     )
 
 

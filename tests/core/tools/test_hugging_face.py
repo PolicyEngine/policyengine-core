@@ -15,6 +15,7 @@ class TestHuggingFaceDownload:
         test_repo = "test_repo"
         test_filename = "test_filename"
         test_version = "test_version"
+        test_dir = "test_dir"
 
         with patch(
             "policyengine_core.tools.hugging_face.hf_hub_download"
@@ -29,7 +30,7 @@ class TestHuggingFaceDownload:
                 )
 
                 download_huggingface_dataset(
-                    test_repo, test_filename, test_version
+                    test_repo, test_filename, test_version, test_dir
                 )
 
                 mock_download.assert_called_with(
@@ -37,6 +38,7 @@ class TestHuggingFaceDownload:
                     repo_type="model",
                     filename=test_filename,
                     revision=test_version,
+                    local_dir=test_dir,
                     token=None,
                 )
 
@@ -45,6 +47,7 @@ class TestHuggingFaceDownload:
         test_repo = "test_repo"
         test_filename = "test_filename"
         test_version = "test_version"
+        test_dir = "test_dir"
 
         with patch(
             "policyengine_core.tools.hugging_face.hf_hub_download"
@@ -61,7 +64,7 @@ class TestHuggingFaceDownload:
                     mock_token.return_value = "test_token"
 
                     download_huggingface_dataset(
-                        test_repo, test_filename, test_version
+                        test_repo, test_filename, test_version, test_dir
                     )
                     mock_download.assert_called_with(
                         repo_id=test_repo,
@@ -69,6 +72,7 @@ class TestHuggingFaceDownload:
                         filename=test_filename,
                         revision=test_version,
                         token=mock_token.return_value,
+                        local_dir=test_dir,
                     )
 
     def test_download_private_repo_no_token(self):
@@ -76,6 +80,7 @@ class TestHuggingFaceDownload:
         test_repo = "test_repo"
         test_filename = "test_filename"
         test_version = "test_version"
+        test_dir = "test_dir"
 
         with patch(
             "policyengine_core.tools.hugging_face.hf_hub_download"
@@ -93,7 +98,7 @@ class TestHuggingFaceDownload:
 
                     with pytest.raises(Exception):
                         download_huggingface_dataset(
-                            test_repo, test_filename, test_version
+                            test_repo, test_filename, test_version, test_dir
                         )
                         mock_download.assert_not_called()
 

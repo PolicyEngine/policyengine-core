@@ -785,3 +785,8 @@
       Face
     - Add tests for this new functionality
   date: 2024-12-18 15:12:25
+- bump: patch
+  changes:
+    changed:
+    - Explicitly set local directory when downloading datasets from Hugging Face
+  date: 2024-12-20 12:56:31

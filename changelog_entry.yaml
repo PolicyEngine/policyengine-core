@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    changed:
-    - Explicitly set local directory when downloading datasets from Hugging Face

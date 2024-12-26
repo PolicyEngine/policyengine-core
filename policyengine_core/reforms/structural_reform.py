@@ -1,5 +1,6 @@
-from typing import Annotated, Callable
+from typing import Annotated, Callable, Literal
 from datetime import datetime
+from dataclasses import dataclass
 from policyengine_core.periods import instant, Instant
 from policyengine_core.variables import Variable
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
@@ -9,10 +10,23 @@ from policyengine_core.errors import (
 )
 
 
+@dataclass
+class TransformationLogItem:
+    """
+    A log item for a transformation applied to a variable.
+    """
+
+    variable_name: str
+    transformation: Literal["neutralize", "add", "update"]
+    start_instant: Annotated[str, "YYYY-MM-DD"]
+    end_instant: Annotated[str, "YYYY-MM-DD"] | None
+
+
 class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSystem?
 
     DEFAULT_START_INSTANT = "0000-01-01"
     variables: list[Variable] = []
+    transformation_log: list[TransformationLogItem] = []
 
     def __init__(
         self,
@@ -56,6 +70,17 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
             self.start_instant,
             self.end_instant,
         )
+
+        # Log transformation
+        self.transformation_log.append(
+            TransformationLogItem(
+                variable_name=name,
+                transformation="neutralize",
+                start_instant=self.start_instant,
+                end_instant=self.end_instant,
+            )
+        )
+
         return fetched_variable
 
     def add_variable(self, variable: Variable) -> Variable:
@@ -101,6 +126,16 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
             self.end_instant,
         )
 
+        # Log transformation
+        self.transformation_log.append(
+            TransformationLogItem(
+                variable_name=variable.__name__,
+                transformation="add",
+                start_instant=self.start_instant,
+                end_instant=self.end_instant,
+            )
+        )
+
         return added_variable
 
     def update_variable(self, variable: Variable) -> Variable:
@@ -134,6 +169,17 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
             self.start_instant,
             self.end_instant,
         )
+
+        # Log transformation
+        self.transformation_log.append(
+            TransformationLogItem(
+                variable_name=variable.__name__,
+                transformation="update",
+                start_instant=self.start_instant,
+                end_instant=self.end_instant,
+            )
+        )
+
         return fetched_variable
 
     def _fetch_variable(self, name: str) -> Variable | None:

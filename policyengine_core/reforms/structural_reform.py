@@ -58,7 +58,7 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
         )
         return fetched_variable
 
-    def add_variable(self, variable: Variable) -> None:
+    def add_variable(self, variable: Variable) -> Variable:
         """
         Only partially implemented; Add a variable to the StructuralReform.
 
@@ -83,19 +83,25 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
                 f"Unable to add {variable.__name__}; variable with the same name already exists."
             )
 
-        # TODO: Likely need to do something to add the variable to the TBS
+        # Insert variable into the tax-benefit system
+        added_variable = self.tax_benefit_system.add_variable(variable)
 
         # Create variable with neutralized formula until start date, then valid formula
         neutralized_formula = self._neutralized_formula(variable)
         self._add_formula(
-            variable,
+            added_variable,
             neutralized_formula,
             self.DEFAULT_START_INSTANT,
             self.start_instant,
         )
         self._add_formula(
-            variable, variable.formula, self.start_instant, self.end_instant
+            added_variable,
+            variable.formula,
+            self.start_instant,
+            self.end_instant,
         )
+
+        return added_variable
 
     def update_variable(self, variable: Variable) -> Variable:
         """
@@ -119,8 +125,7 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
 
         # If variable doesn't exist, run self.add_variable
         if fetched_variable is None:
-            self.add_variable(variable)
-            return
+            return self.add_variable(variable)
 
         # Otherwise, add new formula to existing variable
         self._add_formula(
@@ -151,7 +156,7 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
         end_instant: Annotated[str, "YYYY-MM-DD"] | None,
     ) -> Variable:
         """
-        Add an evolved formula, beginning at start_instant and ending at end_instant,
+        Mutatively add an evolved formula, beginning at start_instant and ending at end_instant,
         to a variable, and return said variable.
 
         For more on evolved formulas, consult
@@ -167,34 +172,26 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
         Returns:
           The variable with the evolved formula
         """
+        # Prior to manipulation, get formula at end_instant + 1 day
+        next_formula: Callable | None = None
+        if end_instant is not None:
+            next_formula_start = self._get_next_day(end_instant)
+            next_formula = variable.get_formula(next_formula_start)
 
-        # Determine if there's already a formula at our exact start_instant
-        if start_instant in variable.formulas.keys():
-            # If so, save it in case we need it later
-            old_formula = variable.formulas[start_instant]
-
-        # Add formula to variable's formulas
+        # Insert formula into variable's formulas at start_instant
         variable.formulas.update({start_instant: formula})
 
-        # If no end_instant, remove all formulas after start_instant
-        if end_instant is None:
-            for date in variable.formulas.keys():
-                if date > start_instant:
-                    variable.formulas.pop(date)
-            return
-
-        # Otherwise, only remove formulas within interval
+        # Remove all formulas between start_instant and end_instant (or into perpetuity
+        # if end_instant is None)
         for date in variable.formulas.keys():
-            if date > start_instant and date <= end_instant:
+            if date > start_instant and (
+                date <= end_instant or end_instant is None
+            ):
                 variable.formulas.pop(date)
 
-        # If there's no formula at end_instant + 1 day,
-        # add the old formula back in
-        typecast_end_instant: Instant = instant(end_instant)
-        next_formula_start: str = str(typecast_end_instant.offset(1, "day"))
-
-        if next_formula_start not in variable.formulas.keys():
-            variable.formulas[next_formula_start] = old_formula
+        # If end_instant, add back in formula at end_instant + 1 day
+        if end_instant is not None:
+            variable.formulas[next_formula_start] = next_formula
 
         return variable
 
@@ -209,6 +206,16 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
           The neutralized formula
         """
         return lambda population, period, parameters: variable.default_value
+
+    def _get_next_day(self, date: str) -> str:
+        """
+        Return the date of the day following the input date.
+
+        Args:
+          date: The date from which to calculate the next day
+        """
+        typed_date: Instant = instant(date)
+        return str(typed_date.offset(1, "day"))
 
     # Validate start instant
 

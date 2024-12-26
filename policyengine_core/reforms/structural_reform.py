@@ -1,7 +1,7 @@
 from typing import Annotated, Callable, Literal
 from datetime import datetime
 from dataclasses import dataclass
-from policyengine_core.periods import instant, Instant
+import inspect
 from policyengine_core.variables import Variable
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 from policyengine_core.errors import (
@@ -37,6 +37,16 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
         + "-01-01",
         end_instant: Annotated[str, "YYYY-MM-DD"] | None = None,
     ):
+        """
+        Create a new StructuralReform.
+
+        Args:
+          tax_benefit_system: The tax benefit system to which the reform will be applied
+          start_instant: The date on which the reform will take effect
+          end_instant: The date on which the reform ends, exclusive (i.e.,
+            the reform will be applied up to but not including this date); if None,
+            the reform will be applied indefinitely
+        """
         # TODO: Validate start_instant and end_instant
 
         self.tax_benefit_system = tax_benefit_system
@@ -108,17 +118,19 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
                 f"Unable to add {variable.__name__}; variable with the same name already exists."
             )
 
-        # Insert variable into the tax-benefit system
+        # Insert variable into the tax-benefit system; this will apply default formula over
+        # entire period, which we will modify below
         added_variable = self.tax_benefit_system.add_variable(variable)
 
-        # Create variable with neutralized formula until start date, then valid formula
+        # First, neutralize entire period
         neutralized_formula = self._neutralized_formula(variable)
         self._add_formula(
             added_variable,
             neutralized_formula,
             self.DEFAULT_START_INSTANT,
-            self.start_instant,
         )
+
+        # Then, re-add formula in order to format correctly
         self._add_formula(
             added_variable,
             variable.formula,
@@ -199,7 +211,7 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
         variable: Variable,
         formula: Callable,
         start_instant: Annotated[str, "YYYY-MM-DD"],
-        end_instant: Annotated[str, "YYYY-MM-DD"] | None,
+        end_instant: Annotated[str, "YYYY-MM-DD"] | None = None,
     ) -> Variable:
         """
         Mutatively add an evolved formula, beginning at start_instant and ending at end_instant,
@@ -212,8 +224,9 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
           variable: The variable to which the formula will be added
           formula: The formula to be added
           start_instant: The date on which the formula will take effect
-          end_instant: The final effective date of the formula; any future formula
-            begins the next day; if None, the formula will be applied indefinitely
+          end_instant: The date on which the formula ends, exclusive (i.e.,
+            the formula will be applied up to but not including this date); if None,
+            the formula will be applied indefinitely
 
         Returns:
           The variable with the evolved formula
@@ -221,8 +234,7 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
         # Prior to manipulation, get formula at end_instant + 1 day
         next_formula: Callable | None = None
         if end_instant is not None:
-            next_formula_start = self._get_next_day(end_instant)
-            next_formula = variable.get_formula(next_formula_start)
+            next_formula = variable.get_formula(end_instant)
 
         # Insert formula into variable's formulas at start_instant
         variable.formulas.update({start_instant: formula})
@@ -231,13 +243,13 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
         # if end_instant is None)
         for date in variable.formulas.keys():
             if date > start_instant and (
-                date <= end_instant or end_instant is None
+                end_instant is None or date <= end_instant
             ):
                 variable.formulas.pop(date)
 
-        # If end_instant, add back in formula at end_instant + 1 day
+        # If end_instant, add back in formula at end_instant
         if end_instant is not None:
-            variable.formulas[next_formula_start] = next_formula
+            variable.formulas[end_instant] = next_formula
 
         return variable
 
@@ -252,16 +264,6 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
           The neutralized formula
         """
         return lambda population, period, parameters: variable.default_value
-
-    def _get_next_day(self, date: str) -> str:
-        """
-        Return the date of the day following the input date.
-
-        Args:
-          date: The date from which to calculate the next day
-        """
-        typed_date: Instant = instant(date)
-        return str(typed_date.offset(1, "day"))
 
     # Validate start instant
 

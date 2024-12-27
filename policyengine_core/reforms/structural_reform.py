@@ -263,7 +263,7 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
         Returns:
           The neutralized formula
         """
-        return lambda population, period, parameters: variable.default_value
+        return lambda: variable.default_value
 
     # Validate start instant
 

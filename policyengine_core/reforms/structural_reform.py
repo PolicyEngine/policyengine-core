@@ -1,8 +1,8 @@
-from typing import Annotated, Callable, Literal
+from typing import Annotated, Callable, Literal, Any
 from datetime import datetime
 from dataclasses import dataclass
-import inspect
 from policyengine_core.variables import Variable
+from policyengine_core.periods import config
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 from policyengine_core.errors import (
     VariableNotFoundError,
@@ -47,7 +47,9 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
             the reform will be applied up to but not including this date); if None,
             the reform will be applied indefinitely
         """
-        # TODO: Validate start_instant and end_instant
+        self._validate_instant(start_instant)
+        if end_instant is not None:
+            self._validate_instant(end_instant)
 
         self.tax_benefit_system = tax_benefit_system
         self.start_instant = start_instant
@@ -267,5 +269,25 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
         return lambda: variable.default_value
 
     # Validate start instant
+    def _validate_instant(self, instant: Any) -> bool:
+        """
+        Validate an instant.
+
+        Args:
+          instant: The instant to be validated
+        """
+        if not isinstance(instant, str):
+            raise TypeError(
+                "Instant must be a string in the format 'YYYY-MM-DD'."
+            )
+
+        if not config.INSTANT_PATTERN.match(instant):
+            raise ValueError(
+                "'{}' is not a valid instant. Instants are described using the 'YYYY-MM-DD' format, for instance '2015-06-15'.".format(
+                    instant
+                )
+            )
+
+        return True
 
     # Default outputs method of some sort?

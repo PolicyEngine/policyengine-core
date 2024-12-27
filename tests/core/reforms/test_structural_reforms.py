@@ -68,6 +68,30 @@ class TestGivenEmptyTaxBenefitSystem:
         assert reform.start_instant == "2020-01-01"
         assert reform.end_instant == "2021-01-01"
 
+    def test_structural_reform_init_with_invalid_date_type(
+        self, isolated_tax_benefit_system
+    ):
+
+        # When a new structural reform is created with incorrectly typed dates...
+
+        # Then the reform raises a TypeError
+
+        with pytest.raises(TypeError):
+            StructuralReform(isolated_tax_benefit_system, "2020-01-01", 15)
+
+    def test_structural_reform_init_with_invalid_date_format(
+        self, isolated_tax_benefit_system
+    ):
+
+        # When a new structural reform is created with incorrectly formatted dates...
+
+        # Then the reform raises a ValueError
+
+        with pytest.raises(ValueError):
+            StructuralReform(
+                isolated_tax_benefit_system, "2020-01-01", "2020-13-01"
+            )
+
     def test_add_variable_no_end_dates(
         self,
         isolated_tax_benefit_system,

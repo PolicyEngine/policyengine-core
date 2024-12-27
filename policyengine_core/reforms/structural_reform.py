@@ -64,12 +64,13 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
         Raises:
           VariableNotFoundError: If the variable is not found in the tax benefit system
         """
-        # Clone variable
+        # Fetch variable
         fetched_variable: Variable | None = self._fetch_variable(name)
 
         if fetched_variable is None:
             raise VariableNotFoundError(
-                f"Unable to neutralize {name}; variable not found."
+                f"Unable to neutralize {name}; variable not found.",
+                self.tax_benefit_system,
             )
 
         # Add formula to variable that returns all defaults

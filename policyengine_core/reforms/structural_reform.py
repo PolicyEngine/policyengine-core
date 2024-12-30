@@ -2,6 +2,7 @@ from typing import Annotated, Callable, Literal, Any
 from datetime import datetime
 from dataclasses import dataclass
 from policyengine_core.variables import Variable
+from policyengine_core.parameters import Parameter
 from policyengine_core.periods import config
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 from policyengine_core.errors import (
@@ -17,7 +18,7 @@ class TransformationLogItem:
     """
 
     variable_name: str
-    variable: Variable | None # None is present when using neutralize
+    variable: Variable | None  # None is present when using neutralize
     transformation: Literal["neutralize", "add", "update"]
 
 
@@ -29,6 +30,17 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
     tax_benefit_system: TaxBenefitSystem | None = None
     start_instant: Annotated[str, "YYYY-MM-DD"] = DEFAULT_START_INSTANT
     end_instant: Annotated[str, "YYYY-MM-DD"] | None = None
+    trigger_parameter: str = ""
+
+    def __init__(self, trigger_parameter: str):
+        """
+        Initialize a structural reform.
+
+        Args:
+          trigger_parameter: Path to the parameter that triggers the structural reform;
+          this parameter must be Boolean
+        """
+        self.trigger_parameter = trigger_parameter
 
     def add_tax_benefit_system(self, tax_benefit_system: TaxBenefitSystem):
         """
@@ -43,7 +55,11 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
             )
         self.tax_benefit_system = tax_benefit_system
 
-    def activate(self, start_instant: Annotated[str, "YYYY-MM-DD"], end_instant: Annotated[str, "YYYY-MM-DD"] | None):
+    def activate(
+        self,
+        start_instant: Annotated[str, "YYYY-MM-DD"],
+        end_instant: Annotated[str, "YYYY-MM-DD"] | None,
+    ):
         """
         Activate the structural reform.
 
@@ -55,7 +71,7 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
             raise ValueError(
                 "Tax benefit system must be added before start instant."
             )
-        
+
         self._add_start_instant(start_instant)
         self._add_end_instant(end_instant)
         self._activate_transformation_log()
@@ -106,7 +122,7 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
             )
         )
 
-    def _activate_transformation_log(self): 
+    def _activate_transformation_log(self):
         """
         Activate the transformation log by applying the transformations to the tax benefit system.
         """
@@ -178,7 +194,7 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
         # entire period, which we will modify below
         added_variable = self.tax_benefit_system.add_variable(variable)
 
-        # First, neutralize entire period
+        # First, neutralize over entire period
         neutralized_formula = self._neutralized_formula(variable)
         self._add_formula(
             added_variable,
@@ -334,7 +350,9 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
         self._validate_instant(start_instant)
         self.start_instant = start_instant
 
-    def _add_end_instant(self, end_instant: Annotated[str, "YYYY-MM-DD"] | None):
+    def _add_end_instant(
+        self, end_instant: Annotated[str, "YYYY-MM-DD"] | None
+    ):
         """
         Add an end instant to the structural reform.
 
@@ -346,6 +364,7 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
                 "Tax benefit system must be added before end instant."
             )
         if end_instant is not None:
-          self._validate_instant(end_instant)
+            self._validate_instant(end_instant)
         self.end_instant = end_instant
+
     # Default outputs method of some sort?

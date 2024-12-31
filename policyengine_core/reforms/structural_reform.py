@@ -42,21 +42,9 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
         """
         self.trigger_parameter = trigger_parameter
 
-    def add_tax_benefit_system(self, tax_benefit_system: TaxBenefitSystem):
-        """
-        Add a tax benefit system to the structural reform.
-
-        Args:
-          tax_benefit_system: The tax benefit system to be added
-        """
-        if not isinstance(tax_benefit_system, TaxBenefitSystem):
-            raise TypeError(
-                "Tax benefit system must be an instance of the TaxBenefitSystem class."
-            )
-        self.tax_benefit_system = tax_benefit_system
-
     def activate(
         self,
+        tax_benefit_system: TaxBenefitSystem,
         start_instant: Annotated[str, "YYYY-MM-DD"],
         end_instant: Annotated[str, "YYYY-MM-DD"] | None,
     ):
@@ -64,14 +52,11 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
         Activate the structural reform.
 
         Args:
+          tax_benefit_system: The tax benefit system to which the structural reform will be applied
           start_instant: The start instant to be added; must be in the format 'YYYY-MM-DD'
           end_instant: The end instant to be added; must be in the format 'YYYY-MM-DD' or None
         """
-        if not self.tax_benefit_system or self.tax_benefit_system is None:
-            raise ValueError(
-                "Tax benefit system must be added before start instant."
-            )
-
+        self._add_tax_benefit_system(tax_benefit_system)
         self._add_start_instant(start_instant)
         self._add_end_instant(end_instant)
         self._activate_transformation_log()
@@ -366,5 +351,18 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
         if end_instant is not None:
             self._validate_instant(end_instant)
         self.end_instant = end_instant
+
+    def _add_tax_benefit_system(self, tax_benefit_system: TaxBenefitSystem):
+        """
+        Add a tax benefit system to the structural reform.
+
+        Args:
+          tax_benefit_system: The tax benefit system to be added
+        """
+        if not isinstance(tax_benefit_system, TaxBenefitSystem):
+            raise TypeError(
+                "Tax benefit system must be an instance of the TaxBenefitSystem class."
+            )
+        self.tax_benefit_system = tax_benefit_system
 
     # Default outputs method of some sort?

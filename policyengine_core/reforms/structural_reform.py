@@ -2,7 +2,7 @@ from typing import Annotated, Callable, Literal, Any
 from datetime import datetime
 from dataclasses import dataclass
 from policyengine_core.variables import Variable
-from policyengine_core.parameters import Parameter, ParameterNode
+from policyengine_core.parameters import Parameter, ParameterNode, ParameterAtInstant
 from policyengine_core.periods import config
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 from policyengine_core.errors import (
@@ -28,7 +28,7 @@ class StructuralReform:
     transformation_log: list[TransformationLogItem] = []
 
     tax_benefit_system: TaxBenefitSystem | None = None
-    start_instant: Annotated[str, "YYYY-MM-DD"] = DEFAULT_START_INSTANT
+    start_instant: Annotated[str, "YYYY-MM-DD"] | None = None
     end_instant: Annotated[str, "YYYY-MM-DD"] | None = None
     trigger_parameter_path: str = ""
 
@@ -45,16 +45,12 @@ class StructuralReform:
     def activate(
         self,
         tax_benefit_system: TaxBenefitSystem,
-        start_instant: Annotated[str, "YYYY-MM-DD"],
-        end_instant: Annotated[str, "YYYY-MM-DD"] | None,
     ):
         """
         Activate the structural reform.
 
         Args:
           tax_benefit_system: The tax benefit system to which the structural reform will be applied
-          start_instant: The start instant to be added; must be in the format 'YYYY-MM-DD'
-          end_instant: The end instant to be added; must be in the format 'YYYY-MM-DD' or None
         """
         if tax_benefit_system is None:
           raise ValueError("Tax benefit system must be provided.")
@@ -69,16 +65,17 @@ class StructuralReform:
         # Fetch the trigger parameter
         trigger_parameter: Parameter = self._fetch_parameter(self.trigger_parameter_path)
 
-        # TODO: Parse date out of trigger parameter
+        # Parse date out of trigger parameter and set
         start_instant: Annotated[str, "YYYY-MM-DD"] | None
         end_instant: Annotated[str, "YYYY-MM-DD"] | None
         start_instant, end_instant = self._parse_activation_period(trigger_parameter)
 
+        self.start_instant = start_instant
+        self.end_instant = end_instant
 
-        # Set 
+        if self.start_instant is None:
+            return
 
-        # self._add_start_instant(start_instant)
-        # self._add_end_instant(end_instant)
         self._activate_transformation_log()
 
     def neutralize_variable(self, name: str):
@@ -374,35 +371,7 @@ class StructuralReform:
 
         return True
 
-    def _add_start_instant(self, start_instant: Annotated[str, "YYYY-MM-DD"]):
-        """
-        Add a start instant to the structural reform.
-
-        Args:
-          start_instant: The start instant to be added
-        """
-
-        self._validate_instant(start_instant)
-        self.start_instant = start_instant
-
-    def _add_end_instant(
-        self, end_instant: Annotated[str, "YYYY-MM-DD"] | None
-    ):
-        """
-        Add an end instant to the structural reform.
-
-        Args:
-          end_instant: The end instant to be added
-        """
-        if not self.tax_benefit_system or self.tax_benefit_system is None:
-            raise ValueError(
-                "Tax benefit system must be added before end instant."
-            )
-        if end_instant is not None:
-            self._validate_instant(end_instant)
-        self.end_instant = end_instant
-
-    def _parse_activation_period(self, trigger_parameter: Parameter) -> tuple[Annotated[str, "YYYY-MM-DD"], Annotated[str, "YYYY-MM-DD"] | None]:
+    def _parse_activation_period(self, trigger_parameter: Parameter) -> tuple[Annotated[str, "YYYY-MM-DD"] | None, Annotated[str, "YYYY-MM-DD"] | None]:
         """
         Given a trigger parameter, parse the reform start and end dates and return them.
 
@@ -410,6 +379,43 @@ class StructuralReform:
           A tuple containing the start and end dates of the reform, 
           or None if the reform is not triggered
         """
-        return (self.start_instant, self.end_instant)
+
+        # Crash if trigger param isn't Boolean; this shouldn't be used as a trigger
+        if (trigger_parameter.metadata is None) or (trigger_parameter.metadata["unit"] != "bool"):
+            raise ValueError("Trigger parameter must be a Boolean.")
+        
+        # Build custom representation of trigger parameter instants and values
+        values_dict: dict[Annotated[str, "YYYY-MM-DD"], int | float] = self._generate_param_values_dict(trigger_parameter.values_list)
+
+        if list(values_dict.values()).count(True) > 1:
+            raise ValueError("Trigger parameter must only be activated once.")
+        
+        if list(values_dict.values()).count(True) == 0:
+            return (None, None)
+        
+        # Now that True only occurs once, find it
+        start_instant_index: int = list(values_dict.values()).index(True)
+        start_instant: Annotated[str, "YYYY-MM-DD"] = list(values_dict.keys())[start_instant_index]
+        self._validate_instant(start_instant)
+
+        # If it's the last item, the reform occurs into perpetuity, else 
+        # the reform ends at the next instant
+        if start_instant_index == len(values_dict) - 1:
+            return (start_instant, None)
+
+        end_instant: Annotated[str, "YYYY-MM-DD"] = list(values_dict.keys())[start_instant_index + 1]
+        self._validate_instant(end_instant)
+        return (start_instant, end_instant)
+
+    def _generate_param_values_dict(self, values_list: list[ParameterAtInstant]) -> dict[Annotated[str, "YYYY-MM-DD"], int | float]:
+        """
+        Given a list of ParameterAtInstant objects, generate a dictionary of the form {instant: value}.
+
+        Args:
+          values_list: The list of ParameterAtInstant objects
+        """
+        unsorted_dict = {value.instant_str: value.value for value in values_list}
+        sorted_dict = dict(sorted(unsorted_dict.items(), key=lambda item: item[0]))
+        return sorted_dict
 
     # Default outputs method of some sort?

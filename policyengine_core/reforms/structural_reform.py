@@ -2,7 +2,7 @@ from typing import Annotated, Callable, Literal, Any
 from datetime import datetime
 from dataclasses import dataclass
 from policyengine_core.variables import Variable
-from policyengine_core.parameters import Parameter
+from policyengine_core.parameters import Parameter, ParameterNode
 from policyengine_core.periods import config
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 from policyengine_core.errors import (
@@ -22,7 +22,7 @@ class TransformationLogItem:
     transformation: Literal["neutralize", "add", "update"]
 
 
-class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSystem?
+class StructuralReform:  
 
     DEFAULT_START_INSTANT = "0000-01-01"
     transformation_log: list[TransformationLogItem] = []
@@ -30,9 +30,9 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
     tax_benefit_system: TaxBenefitSystem | None = None
     start_instant: Annotated[str, "YYYY-MM-DD"] = DEFAULT_START_INSTANT
     end_instant: Annotated[str, "YYYY-MM-DD"] | None = None
-    trigger_parameter: str = ""
+    trigger_parameter_path: str = ""
 
-    def __init__(self, trigger_parameter: str):
+    def __init__(self, trigger_parameter_path: str):
         """
         Initialize a structural reform.
 
@@ -40,7 +40,7 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
           trigger_parameter: Path to the parameter that triggers the structural reform;
           this parameter must be Boolean
         """
-        self.trigger_parameter = trigger_parameter
+        self.trigger_parameter_path = trigger_parameter_path
 
     def activate(
         self,
@@ -56,15 +56,36 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
           start_instant: The start instant to be added; must be in the format 'YYYY-MM-DD'
           end_instant: The end instant to be added; must be in the format 'YYYY-MM-DD' or None
         """
-        self._add_tax_benefit_system(tax_benefit_system)
-        self._add_start_instant(start_instant)
-        self._add_end_instant(end_instant)
+        if tax_benefit_system is None:
+          raise ValueError("Tax benefit system must be provided.")
+          
+        if not isinstance(tax_benefit_system, TaxBenefitSystem):
+            raise TypeError(
+                "Tax benefit system must be an instance of the TaxBenefitSystem class."
+            )
+        
+        self.tax_benefit_system = tax_benefit_system
+
+        # Fetch the trigger parameter
+        trigger_parameter: Parameter = self._fetch_parameter(self.trigger_parameter_path)
+
+        # TODO: Parse date out of trigger parameter
+        start_instant: Annotated[str, "YYYY-MM-DD"] | None
+        end_instant: Annotated[str, "YYYY-MM-DD"] | None
+        start_instant, end_instant = self._parse_activation_period(trigger_parameter)
+
+
+        # Set 
+
+        # self._add_start_instant(start_instant)
+        # self._add_end_instant(end_instant)
         self._activate_transformation_log()
 
     def neutralize_variable(self, name: str):
         """
-        Neutralize a variable by setting its formula to return the default value
-        from the StructuralReform's start_instant date to its end_instant date.
+        When structural reform is activated, neutralize a variable
+        by setting its formula to return the default value from the
+        StructuralReform's start_instant date to its end_instant date.
 
         Args:
           name: The name of the variable
@@ -78,7 +99,8 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
 
     def add_variable(self, variable: Variable):
         """
-        Add a variable to the StructuralReform.
+        When structural reform is activated, add a variable
+        to the StructuralReform.
 
         Args:
           variable: The variable to be added
@@ -93,8 +115,9 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
 
     def update_variable(self, variable: Variable):
         """
-        Update a variable in the tax benefit system; if the variable does not
-        yet exist, it will be added.
+        When structural reform is activated, update a 
+        variable in the tax benefit system; if the variable 
+        does not yet exist, it will be added.
 
         Args:
           variable: The variable to be updated
@@ -239,6 +262,33 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
           name: The name of the variable
         """
         return self.tax_benefit_system.get_variable(name)
+    
+    def _fetch_parameter(self, parameter_path: str) -> Parameter:
+        """
+        Given a dot-notated string, fetch a parameter by 
+        reference from the tax benefit system.
+
+        Args:
+          parameter_path: The dot-notated path to the parameter
+
+        Raises:
+          AttributeError: If the parameter cannot be found
+        """
+        root: ParameterNode | Parameter = self.tax_benefit_system.parameters
+        current: ParameterNode | Parameter = root
+        full_path: str = ""
+
+        for index, key in enumerate(parameter_path.split(".")):
+            full_path += f"{key}" if index == 0 else f".{key}"
+            try:
+                current = getattr(current, key)
+            except AttributeError:
+                raise AttributeError(f"Unable to find parameter at path '{full_path}'") from None
+        
+        if not isinstance(current, Parameter):
+            raise AttributeError(f"Parameter at path '{full_path}' is not a Parameter, but a {type(current)}")
+        
+        return current
 
     # Method to modify metadata based on new items?
 
@@ -352,17 +402,14 @@ class StructuralReform:  # Should this inherit from Reform and/or TaxBenefitSyst
             self._validate_instant(end_instant)
         self.end_instant = end_instant
 
-    def _add_tax_benefit_system(self, tax_benefit_system: TaxBenefitSystem):
+    def _parse_activation_period(self, trigger_parameter: Parameter) -> tuple[Annotated[str, "YYYY-MM-DD"], Annotated[str, "YYYY-MM-DD"] | None]:
         """
-        Add a tax benefit system to the structural reform.
+        Given a trigger parameter, parse the reform start and end dates and return them.
 
-        Args:
-          tax_benefit_system: The tax benefit system to be added
+        Returns:
+          A tuple containing the start and end dates of the reform, 
+          or None if the reform is not triggered
         """
-        if not isinstance(tax_benefit_system, TaxBenefitSystem):
-            raise TypeError(
-                "Tax benefit system must be an instance of the TaxBenefitSystem class."
-            )
-        self.tax_benefit_system = tax_benefit_system
+        return (self.start_instant, self.end_instant)
 
     # Default outputs method of some sort?

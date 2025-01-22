@@ -44,6 +44,7 @@ class StructuralReform:
           trigger_parameter: Path to the parameter that triggers the structural reform;
           this parameter must be Boolean
         """
+        self.reform_id = hash(f"{self.__class__.__module__}_{self.__class__.__qualname__}")
         self.trigger_parameter_path = trigger_parameter_path
 
     def activate(

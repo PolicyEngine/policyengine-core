@@ -11,7 +11,7 @@ long_description = (this_directory / "README.md").read_text()
 
 general_requirements = [
     "pytest>=8,<9",
-    "numpy~=1.26.4",
+    "numpy~=2.0.0",
     "sortedcontainers<3",
     "numexpr<3",
     "dpath<3",
@@ -60,6 +60,7 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
         "Topic :: Scientific/Engineering :: Information Analysis",
     ],
     description="Core microsimulation engine enabling country-specific policy models.",

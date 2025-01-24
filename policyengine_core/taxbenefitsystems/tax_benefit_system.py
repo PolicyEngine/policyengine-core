@@ -93,6 +93,8 @@ class TaxBenefitSystem:
     """Short list of basic inputs to get medium accuracy."""
     modelled_policies: str = None
     """A YAML filepath containing metadata describing the modelled policies."""
+    possible_structural_reforms: List[StructuralReform] = None
+    """List of possible structural reforms that can be applied to the tax and benefit system."""
 
     def __init__(self, entities: Sequence[Entity] = None, reform=None) -> None:
         if entities is None:
@@ -105,7 +107,6 @@ class TaxBenefitSystem:
         self.parameters: Optional[ParameterNode] = None
         self._parameters_at_instant_cache = {}  # weakref.WeakValueDictionary()
         self.variables: Dict[Any, Any] = {}
-        self.possible_structural_reforms: list[StructuralReform] = []
         # Tax benefit systems are mutable, so entities (which need to know about our variables) can't be shared among them
         if entities is None or len(entities) == 0:
             raise Exception(

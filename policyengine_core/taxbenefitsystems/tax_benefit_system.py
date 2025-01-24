@@ -53,6 +53,7 @@ log = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from policyengine_core.reforms import StructuralReform
 
+
 class TaxBenefitSystem:
     """
     Represents the legislation.
@@ -86,8 +87,6 @@ class TaxBenefitSystem:
     """Directory containing the Python files defining the variables of the tax and benefit system."""
     parameters_dir: str = None
     """Directory containing the YAML parameter tree."""
-    structural_reforms_dir: str = None
-    """Directory containing the Python files defining structural reforms."""
     auto_carry_over_input_variables: bool = False
     """Whether to automatically carry over input variables when calculating a variable for a period different from the period of the input variables."""
     basic_inputs: List[str] = None
@@ -142,9 +141,6 @@ class TaxBenefitSystem:
             self.parameters = uprate_parameters(self.parameters)
             self.parameters = propagate_parameter_metadata(self.parameters)
             self.add_abolition_parameters()
-
-        if self.structural_reforms_dir is not None:
-            self.create_structural_reform_data(self.structural_reforms_dir)
 
         self.add_modelled_policy_metadata()
 
@@ -409,93 +405,6 @@ class TaxBenefitSystem:
         """
         for variable in variables:
             self.add_variable(variable)
-
-    def create_structural_reform_data(self, directory: str):
-        """
-        Creates a data module representing all possible structural reforms
-        within the current tax-benefit system
-
-        Args:
-            directory: str
-        """
-        self._create_structural_reform_data_from_dir(directory),
-
-        # TODO: Add loading of deprecated-style structural reforms
-        # self._create_structural_reform_data_from_dir_deprecated(directory)
-    
-    def _create_structural_reform_data_from_dir(self, directory: str):
-        """
-        Recursively adds data about all StructuralReform instances to a
-        data module within the `TaxBenefitSystem`.
-
-        Args:
-            directory: str
-        """
-        py_files = glob.glob(os.path.join(directory, "*.py"))
-        for py_file in py_files:
-            self._create_structural_reform_data_from_file(py_file)
-        subdirectories = glob.glob(os.path.join(directory, "*/"))
-        for subdirectory in subdirectories:
-            self._create_structural_reform_data_from_dir(subdirectory)
-
-    def _create_structural_reform_data_from_file(self, file_path: str):
-        
-        # To avoid circular import error due to typecheck
-        from policyengine_core.reforms import StructuralReform
-
-        try:
-            file_name = os.path.splitext(os.path.basename(file_path))[0]
-
-            #  As Python remembers loaded modules by name, in order to prevent collisions, we need to make sure that:
-            #  - Files with the same name, but located in different directories, have a different module names. Hence the file path hash in the module name.
-            #  - The same file, loaded by different tax and benefit systems, has distinct module names. Hence the `id(self)` in the module name.
-            module_name = (
-                f"{id(self)}_{hash(os.path.abspath(file_path))}_{file_name}"
-            )
-
-            try:
-                spec = importlib.util.spec_from_file_location(
-                    module_name, file_path
-                )
-                module = importlib.util.module_from_spec(spec)
-                sys.modules[module_name] = module
-                spec.loader.exec_module(module)
-            except NameError as e:
-                logging.error(
-                    str(e)
-                )
-                raise
-            potential_reforms = [
-                getattr(module, item)
-                for item in module.__dict__
-                if not item.startswith("__")
-            ]
-
-            for pot_reform in potential_reforms:
-                if isinstance(pot_reform, StructuralReform):
-                    added_reform_ids = [reform.reform_id for reform in self.possible_structural_reforms]
-                    print("Pot reform reform ID: ", pot_reform.reform_id)
-                    if pot_reform.reform_id not in added_reform_ids:
-                        print("Not in seen reform ids")
-                        self.add_structural_reform(pot_reform)
-
-        except Exception:
-            log.error(
-                'Unable to load structural reform(s) from file "{}"'.format(
-                    file_path
-                )
-            )
-            raise
-        
-    def add_structural_reform(self, reform: StructuralReform):
-        """
-        Adds a structural reform to the tax and benefit system.
-        
-        Args:
-            reform: The structural reform to add. Must be an instance of StructuralReform.
-        """
-        self.possible_structural_reforms.append(reform)
-        
 
     def load_extension(self, extension: str) -> None:
         """

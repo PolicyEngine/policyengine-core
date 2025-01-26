@@ -2,6 +2,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 import sys
 import threading
+from policyengine_core.tools.win_file_manager import WindowsAtomicFileManager
 
 def test_dataset_class():
     from policyengine_core.data.dataset import Dataset
@@ -29,9 +30,7 @@ def test_dataset_class():
 
 
 def test_atomic_write():
-    if sys.platform == "win32":
-        pass
-    else:
+    if sys.platform != "win32":
         from policyengine_core.data.dataset import atomic_write
 
         with NamedTemporaryFile(mode="w") as file:
@@ -47,6 +46,7 @@ def test_atomic_write():
                 # But if I open it again it has the new content
                 with open(file.name, "r") as file_updated:
                     assert file_updated.readline() == "NOPE\n"
+
 
 def test_atomic_write_windows():
     if sys.platform == "win32":
@@ -73,6 +73,7 @@ def test_atomic_write_windows():
         for i, results in enumerate(check_results):
             for expected, actual in results:
                 assert expected == actual, f"Mismatch in file {i}: expected {expected}, got {actual}"
+
 
 def file_task(manager, contents, check_results):
     for content in contents:

@@ -95,7 +95,8 @@ def _dump_entity(population, directory):
     else:
         encoded_roles = np.select(
             [population.members_role == role for role in flattened_roles],
-            [role.key for role in flattened_roles],
+            [str(role.key) for role in flattened_roles],
+            default="unknown"
         )
     np.save(os.path.join(path, "members_role.npy"), encoded_roles)
 

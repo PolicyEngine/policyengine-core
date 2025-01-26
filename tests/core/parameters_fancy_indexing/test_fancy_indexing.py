@@ -114,5 +114,5 @@ def test_with_enum():
         z1 = "Zone 1"
         z2 = "Zone 2"
 
-    zone = np.asarray([TypesZone.z1, TypesZone.z2, TypesZone.z2, TypesZone.z1])
+    zone = np.asarray([z.name for z in [TypesZone.z1, TypesZone.z2, TypesZone.z2, TypesZone.z1]])
     assert_near(P.single.owner[zone], [100, 200, 200, 100])

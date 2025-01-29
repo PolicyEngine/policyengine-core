@@ -12,7 +12,7 @@ then
     exit 0
 fi
 
-current_version=`python setup.py --version`
+current_version=`python .github/fetch_version.py`
 
 if git rev-parse --verify --quiet $current_version
 then

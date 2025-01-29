@@ -1,0 +1,5 @@
+- bump: major
+  changes:
+    added:
+      - pyproject.toml, transforming from setup.py
+      - testing for pyproject.toml

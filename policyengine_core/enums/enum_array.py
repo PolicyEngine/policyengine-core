@@ -97,7 +97,7 @@ class EnumArray(numpy.ndarray):
         return numpy.select(
             [self == item.index for item in self.possible_values],
             [str(item.name) for item in self.possible_values],
-            default="unknown"
+            default="unknown",
         )
 
     def __repr__(self) -> str:

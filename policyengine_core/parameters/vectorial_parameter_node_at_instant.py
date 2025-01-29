@@ -204,14 +204,14 @@ class VectorialParameterNodeAtInstant:
                     key = numpy.select(
                         [key == item for item in enum],
                         [str(item.name) for item in enum],
-                        default="unknown"
+                        default="unknown",
                     )
                 elif isinstance(key, EnumArray):
                     enum = key.possible_values
                     key = numpy.select(
                         [key == item.index for item in enum],
                         [item.name for item in enum],
-                        default="unknown"
+                        default="unknown",
                     )
                 else:
                     key = key.astype("str")

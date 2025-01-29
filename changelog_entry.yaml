@@ -1,0 +1,5 @@
+- bump: patch
+  changes:
+    fixed:
+    - Issue of running on windows because of not having UTF-8 encoding.
+  date: 2025-01-30 02:03:07

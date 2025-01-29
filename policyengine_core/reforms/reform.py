@@ -142,21 +142,27 @@ class Reform(TaxBenefitSystem):
                     parameter = self.parameters.get_child(path)
                     if not isinstance(period_values, dict):
                         parameter.update(
-                            start="0000-01-01", value=period_values
+                            period="year:2000:100", value=period_values
                         )
                     else:
                         for period, value in period_values.items():
-                            if "." in period:
-                                start, stop = period.split(".")
-                                start = instant_(start)
-                                stop = instant_(stop)
-                                parameter.update(
-                                    start=start, stop=stop, value=value
-                                )
-                            else:
+                            try:
+                                period = period_(period)
                                 parameter = parameter.update(
                                     period=period, value=value
                                 )
+                            except:
+                                if "." in period:
+                                    start, stop = period.split(".")
+                                    start = instant_(start)
+                                    stop = instant_(stop)
+                                    parameter.update(
+                                        start=start, stop=stop, value=value
+                                    )
+                                else:
+                                    parameter = parameter.update(
+                                        period=period, value=value
+                                    )
 
         reform.country_id = country_id
         reform.parameter_values = parameter_values

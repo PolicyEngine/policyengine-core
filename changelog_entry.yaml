@@ -1,7 +1,5 @@
-- bump: minor
+- bump: major
   changes:
     added:
       - pyproject.toml, transforming from setup.py
       - testing for pyproject.toml
-    changed:
-      - edited dependencies in setup.py to avoid overwriting

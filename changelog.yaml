@@ -795,3 +795,8 @@
     fixed:
     - Bug in parametric reforms.
   date: 2025-01-28 07:08:07
+- bump: patch
+  changes:
+    fixed:
+    - Fix file writing on windows.
+  date: 2025-01-30 02:31:17

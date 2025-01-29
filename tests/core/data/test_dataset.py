@@ -4,6 +4,7 @@ import sys
 import threading
 from policyengine_core.tools.win_file_manager import WindowsAtomicFileManager
 
+
 def test_dataset_class():
     from policyengine_core.data.dataset import Dataset
     from policyengine_core.periods import period
@@ -62,7 +63,8 @@ def test_atomic_write_windows():
         threads = []
         for i in range(5):
             thread = threading.Thread(
-                target=file_task, args=(managers[i], contents_list[i], check_results[i])
+                target=file_task,
+                args=(managers[i], contents_list[i], check_results[i]),
             )
             threads.append(thread)
             thread.start()
@@ -72,7 +74,9 @@ def test_atomic_write_windows():
 
         for i, results in enumerate(check_results):
             for expected, actual in results:
-                assert expected == actual, f"Mismatch in file {i}: expected {expected}, got {actual}"
+                assert (
+                    expected == actual
+                ), f"Mismatch in file {i}: expected {expected}, got {actual}"
 
 
 def file_task(manager, contents, check_results):

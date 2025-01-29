@@ -24,7 +24,7 @@ class WindowsAtomicFileManager:
     def write(self, content: bytes):
         with self.lock:
             with tempfile.NamedTemporaryFile(
-                    mode="wb", dir=self.base_dir, delete=False
+                mode="wb", dir=self.base_dir, delete=False
             ) as temp_file:
                 temp_file.write(content)
                 temp_file.flush()

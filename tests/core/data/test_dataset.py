@@ -3,6 +3,9 @@ from tempfile import NamedTemporaryFile
 import sys
 import threading
 from policyengine_core.tools.win_file_manager import WindowsAtomicFileManager
+import tempfile
+from pathlib import Path
+import uuid
 
 
 def test_dataset_class():
@@ -51,8 +54,12 @@ def test_atomic_write():
 
 def test_atomic_write_windows():
     if sys.platform == "win32":
-        file_names = [f"file_{i}" for i in range(5)]
-        managers = [WindowsAtomicFileManager(name) for name in file_names]
+        temp_dir = Path(tempfile.gettempdir())
+        temp_files = [
+            temp_dir / f"tempfile_{uuid.uuid4().hex}.tmp" for _ in range(5)
+        ]
+
+        managers = [WindowsAtomicFileManager(path) for path in temp_files]
 
         contents_list = [
             [f"Content_{i}_{j}".encode() for j in range(5)] for i in range(5)
@@ -77,6 +84,10 @@ def test_atomic_write_windows():
                 assert (
                     expected == actual
                 ), f"Mismatch in file {i}: expected {expected}, got {actual}"
+
+        for temp_file in temp_files:
+            if temp_file.exists():
+                temp_file.unlink()
 
 
 def file_task(manager, contents, check_results):

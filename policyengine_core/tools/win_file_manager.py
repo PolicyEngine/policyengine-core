@@ -15,16 +15,17 @@ class WindowsAtomicFileManager:
     - For any fallback, Cleanup temporary file if replacement fails
     """
 
-    def __init__(self, logical_name: str):
-        self.base_dir = Path(tempfile.gettempdir())
-        self.logical_name = logical_name
-        self.target_path = self.base_dir / f"{logical_name}.current"
+    def __init__(self, file: Path):
+        self.logical_name = file.name
+        self.target_path = file
         self.lock = Lock()
 
     def write(self, content: bytes):
         with self.lock:
             with tempfile.NamedTemporaryFile(
-                mode="wb", dir=self.base_dir, delete=False
+                mode="wb",
+                dir=self.target_path.parent.absolute().as_posix(),
+                delete=False,
             ) as temp_file:
                 temp_file.write(content)
                 temp_file.flush()

@@ -24,7 +24,7 @@ def atomic_write(file: Path, content: bytes) -> None:
     both processes should continue happily.
     """
     if sys.platform == "win32":
-        manager = WindowsAtomicFileManager(file_name)
+        manager = WindowsAtomicFileManager(file.name)
         manager.write(content)
     else:
         with tempfile.NamedTemporaryFile(

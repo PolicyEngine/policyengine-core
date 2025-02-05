@@ -14,7 +14,7 @@ args = parser.parse_args()
 book_folder = Path(args.book_path)
 
 for html_file in book_folder.glob("**/*.html"):
-    with open(html_file, "r") as f:
+    with open(html_file, "r", encoding="utf-8") as f:
         html = f.read()
 
     # Add the script tag to the start of the <head> tag.
@@ -23,5 +23,5 @@ for html_file in book_folder.glob("**/*.html"):
         '<head><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>',
     )
 
-    with open(html_file, "w") as f:
+    with open(html_file, "w", encoding="utf-8") as f:
         f.write(html)

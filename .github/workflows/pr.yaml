@@ -31,7 +31,11 @@ jobs:
       - name: Check version number has been properly updated
         run: .github/is-version-number-acceptable.sh
   Test:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3

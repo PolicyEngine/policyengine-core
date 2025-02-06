@@ -1,5 +1,5 @@
 """
-This module directs PyTest to include certain global fixtures when running tests. 
+This module directs PyTest to include certain global fixtures when running tests.
 """
 
 pytest_plugins = [

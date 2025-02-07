@@ -9,6 +9,7 @@ import os
 import tempfile
 from policyengine_core.tools.hugging_face import *
 import sys
+from policyengine_core.tools.win_file_manager import WindowsAtomicFileManager
 
 
 def atomic_write(file: Path, content: bytes) -> None:
@@ -22,20 +23,24 @@ def atomic_write(file: Path, content: bytes) -> None:
     If a process is reading the original file when a new file is renamed, that should relink the file, not clear and overwrite the old one so
     both processes should continue happily.
     """
-    with tempfile.NamedTemporaryFile(
-        mode="wb",
-        dir=file.parent.absolute().as_posix(),
-        prefix=file.name + ".download.",
-        delete=False,
-    ) as f:
-        try:
-            f.write(content)
-            f.close()
-            os.rename(f.name, file.absolute().as_posix())
-        except:
-            f.delete = True
-            f.close()
-            raise
+    if sys.platform == "win32":
+        manager = WindowsAtomicFileManager(file)
+        manager.write(content)
+    else:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            dir=file.parent.absolute().as_posix(),
+            prefix=file.name + ".download.",
+            delete=False,
+        ) as f:
+            try:
+                f.write(content)
+                f.close()
+                os.rename(f.name, file.absolute().as_posix())
+            except:
+                f.delete = True
+                f.close()
+                raise
 
 
 class Dataset:

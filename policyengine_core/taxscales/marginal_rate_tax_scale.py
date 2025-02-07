@@ -66,12 +66,12 @@ class MarginalRateTaxScale(RateTaxScaleLike):
         #
         #   numpy.finfo(float_).eps
         thresholds1 = numpy.outer(
-            factor + numpy.finfo(numpy.float_).eps,
+            factor + numpy.finfo(numpy.float64).eps,
             numpy.array(self.thresholds + [numpy.inf]),
         )
 
         if round_base_decimals is not None:
-            thresholds1 = numpy.round_(thresholds1, round_base_decimals)
+            thresholds1 = numpy.round(thresholds1, round_base_decimals)
 
         a = numpy.maximum(
             numpy.minimum(base1, thresholds1[:, 1:]) - thresholds1[:, :-1], 0
@@ -82,8 +82,8 @@ class MarginalRateTaxScale(RateTaxScaleLike):
 
         else:
             r = numpy.tile(self.rates, (len(tax_base), 1))
-            b = numpy.round_(a, round_base_decimals)
-            return numpy.round_(r * b, round_base_decimals).sum(axis=1)
+            b = numpy.round(a, round_base_decimals)
+            return numpy.round(r * b, round_base_decimals).sum(axis=1)
 
     def combine_bracket(
         self,

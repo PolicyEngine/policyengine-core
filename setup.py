@@ -25,7 +25,7 @@ general_requirements = [
     "pyvis>=0.3.2",
     "microdf_python>=0.4.3",
     "huggingface_hub>=0.25.1",
-    "standard-imghdr"
+    "standard-imghdr",
 ]
 
 dev_requirements = [

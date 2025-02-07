@@ -10,7 +10,7 @@ format:
 
 install:
 	pip install -e ".[dev]" --config-settings editable_mode=compat
-	pip install policyengine-us
+	pip install git+https://github.com/noman404/policyengine-us.git@noman404/python3.13
 	pip install policyengine-uk
 
 test-country-template:

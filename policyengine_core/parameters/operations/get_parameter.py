@@ -14,74 +14,74 @@ def get_parameter(root: ParameterNode, parameter: str) -> Parameter:
     """
     node = root
     for name in parameter.split("."):
-        try:
-            if "[" not in name:
+        if "[" not in name:
+            try:
                 node = node.children[name]
-            else:
-                try:
-                    name, index = name.split("[")
-                    index = int(index[:-1])
-                    node = node.children[name].brackets[index]
-                except Exception:
-                    # Enhanced error message for bracket syntax errors
-                    raise ValueError(
-                        f"Invalid bracket syntax at '{name}' in parameter path '{parameter}'. "
-                        "Use format: parameter_name[index], e.g., brackets[0].rate"
-                    )
-        except KeyError:
-            # Enhanced error message for parameter not found
-            similar_params = []
-            if hasattr(node, "children"):
-                similar_params = [
-                    key
-                    for key in node.children.keys()
-                    if (
-                        name.lower() in key.lower()
-                        or key.lower().startswith(name.lower())
-                    )
-                    and "[" not in name
-                ]
-
-            suggestions = (
-                f" Did you mean: {', '.join(similar_params)}?"
-                if similar_params
-                else ""
-            )
-            raise ValueError(
-                f"Parameter '{name}' not found in path '{parameter}'.{suggestions}"
-            )
-        except (IndexError, AttributeError) as e:
-            # Enhanced error message for bracket index errors
-            if isinstance(e, IndexError) and "[" in name:
-                try:
-                    name_part = name.split("[")[0]
-                    max_index = len(node.children[name_part].brackets) - 1
-                    raise ValueError(
-                        f"Bracket index out of range in '{name}' of parameter path '{parameter}'. "
-                        f"Valid indices are 0 to {max_index}."
-                    )
-                except Exception as inner_e:
-                    raise ValueError(
-                        f"Error processing bracket index in '{name}' of parameter path '{parameter}': {str(inner_e)}"
-                    )
-            elif isinstance(e, AttributeError) and "[" in name:
-                name_part = name.split("[")[0]
+            except KeyError:
+                suggestions = _find_similar_parameters(node, name)
+                suggestion_text = f" Did you mean: {', '.join(suggestions)}?" if suggestions else ""
                 raise ValueError(
-                    f"'{name_part}' in parameter path '{parameter}' does not support bracket indexing. "
-                    "Only scale parameters (like brackets) support indexing."
+                    f"Parameter '{name}' not found in path '{parameter}'.{suggestion_text}"
                 )
-
-            # Generic error message
-            raise ValueError(
-                f"Could not find the parameter '{parameter}' (failed at '{name}'). {str(e)}"
-            )
-        except ValueError:
-            # Re-raise ValueError directly
-            raise
-        except Exception as e:
-            # Catch-all for other errors
-            raise ValueError(
-                f"Error accessing parameter '{parameter}' at '{name}': {str(e)}"
-            )
-
+        else:
+            node = _process_bracket_notation(node, name, parameter)
+    
     return node
+
+
+def _find_similar_parameters(node, name):
+    """Find parameter names similar to the requested one."""
+    if not hasattr(node, "children"):
+        return []
+    
+    return [
+        key for key in node.children.keys()
+        if name.lower() in key.lower()
+    ]
+
+
+def _process_bracket_notation(node, name, full_parameter_path):
+    """Process a parameter name with bracket notation (e.g., 'brackets[0]')."""
+    try:
+        name_part, bracket_part = name.split("[")
+        if not bracket_part.endswith("]"):
+            raise ValueError(
+                f"Invalid bracket syntax at '{name}' in parameter path '{full_parameter_path}'. "
+                "Use format: parameter_name[index], e.g., brackets[0].rate"
+            )
+            
+        index = int(bracket_part[:-1])
+        
+        try:
+            child_node = node.children[name_part]
+        except KeyError:
+            suggestions = _find_similar_parameters(node, name_part)
+            suggestion_text = f" Did you mean: {', '.join(suggestions)}?" if suggestions else ""
+            raise ValueError(
+                f"Parameter '{name_part}' not found in path '{full_parameter_path}'.{suggestion_text}"
+            )
+            
+        if not hasattr(child_node, "brackets"):
+            raise AttributeError(
+                f"'{name_part}' in parameter path '{full_parameter_path}' does not support bracket indexing. "
+                "Only scale parameters (like brackets) support indexing."
+            )
+            
+        try:
+            return child_node.brackets[index]
+        except IndexError:
+            max_index = len(child_node.brackets) - 1
+            raise ValueError(
+                f"Bracket index out of range in '{name}' of parameter path '{full_parameter_path}'. "
+                f"Valid indices are 0 to {max_index}."
+            )
+            
+    except ValueError as e:
+        # If it's our own ValueError with detailed message, propagate it
+        if "parameter path" in str(e):
+            raise
+        # Otherwise, it's likely a syntax error in the bracket notation
+        raise ValueError(
+            f"Invalid bracket syntax at '{name}' in parameter path '{full_parameter_path}'. "
+            "Use format: parameter_name[index], e.g., brackets[0].rate"
+        )

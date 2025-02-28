@@ -1,6 +1,5 @@
 - bump: minor
   changes:
-    added:
-      - A new ParameterPathError class for improved error handling in parameter operations
     changed:
-      - Enhanced get_parameter error handling with specific error types and helpful suggestions
+      - Refactored get_parameter implementation with cleaner code structure and improved readability
+      - Enhanced error messages with specific details and helpful suggestions when parameters are not found

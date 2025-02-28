@@ -1,8 +1,12 @@
 class ParameterPathError(ValueError):
     """
     Exception raised when there's an error in parameter path resolution.
-    Note: This class exists for backwards compatibility but is not currently used.
-    The get_parameter function uses ValueError instead.
+    
+    This includes:
+    - Parameter not found errors
+    - Invalid bracket syntax errors
+    - Invalid bracket index errors
+    - Attempted bracket access on non-bracket parameters
     """
     
     def __init__(self, message, parameter_path=None, failed_at=None):

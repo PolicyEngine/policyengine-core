@@ -60,8 +60,10 @@ def get_parameter(root: ParameterNode, parameter: str) -> Parameter:
                         f"Bracket index out of range in '{name}' of parameter path '{parameter}'. "
                         f"Valid indices are 0 to {max_index}."
                     )
-                except Exception:
-                    pass
+                except Exception as inner_e:
+                    raise ValueError(
+                        f"Error processing bracket index in '{name}' of parameter path '{parameter}': {str(inner_e)}"
+                    )
             elif isinstance(e, AttributeError) and "[" in name:
                 name_part = name.split("[")[0]
                 raise ValueError(

@@ -19,3 +19,7 @@
 - **Changelog**: Update changelog_entry.yaml with proper bump type and change description
 - **Dependencies**: All versions must be capped to avoid breaking changes
 - **Python**: 3.10+ required
+
+## Git Workflow
+- First push to a new branch: `git push -u origin feature/branch-name` to set up tracking
+- Subsequent pushes: just use `git push` to update the same PR

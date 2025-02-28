@@ -78,11 +78,7 @@ def test_invalid_bracket_syntax_message():
 def test_bracket_on_non_bracket_parameter():
     """Test error when trying to use bracket notation on a non-bracket parameter."""
     parameters = ParameterNode(
-        data={
-            "tax": {
-                "simple_rate": {"values": {"2022-01-01": 0.2}}
-            }
-        }
+        data={"tax": {"simple_rate": {"values": {"2022-01-01": 0.2}}}}
     )
 
     with pytest.raises(ParameterPathError) as excinfo:

@@ -1,4 +1,4 @@
-# PolicyEngine Core - Development Guide
+# PolicyEngine Core - Development Guide 📚
 
 ## Common Commands
 - `make all`: Full development cycle (install, format, test, build)

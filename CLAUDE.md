@@ -24,3 +24,25 @@
 - First push to a new branch: `git push -u origin feature/branch-name` to set up tracking
 - Subsequent pushes: just use `git push` to update the same PR
 - Always run `make format` before committing to ensure code passes style checks
+
+## PR Reviews
+- Check PR comments with: `gh pr view <PR_NUMBER> --repo PolicyEngine/policyengine-core`
+- Get review comments with: `gh api repos/PolicyEngine/policyengine-core/pulls/<PR_NUMBER>/comments`
+- Address all reviewer feedback before merging
+- Follow Clean Code principles when refactoring:
+  - Keep functions small and focused on a single task
+  - Avoid deeply nested conditionals and exceptions
+  - Extract complex logic into well-named helper functions
+  - Minimize duplication and optimize for readability
+  - Use consistent error handling patterns
+
+## Package Architecture
+- **Parameter System**: Core framework for tax-benefit system parameters
+  - Parameters organized in a hierarchical tree (accessible via dot notation)
+  - Parameters can be scalar values or bracket-based scales
+  - Supports time-varying values with date-based lookup
+- **Errors**: Custom error classes in `policyengine_core/errors/` for specific failures
+- **Entities**: Represents different units (person, household, etc.) in microsimulations
+- **Variables**: Calculations that can be performed on entities
+- **Testing**: Supports both Python tests and YAML-based test files
+- **Country Template**: Reference implementation of a tax-benefit system

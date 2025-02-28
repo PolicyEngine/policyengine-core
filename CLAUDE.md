@@ -23,3 +23,4 @@
 ## Git Workflow
 - First push to a new branch: `git push -u origin feature/branch-name` to set up tracking
 - Subsequent pushes: just use `git push` to update the same PR
+- Always run `make format` before committing to ensure code passes style checks

@@ -33,14 +33,20 @@ def get_parameter(root: ParameterNode, parameter: str) -> Parameter:
             similar_params = []
             if hasattr(node, "children"):
                 similar_params = [
-                    key for key in node.children.keys() 
+                    key
+                    for key in node.children.keys()
                     if (
-                        name.lower() in key.lower() or 
-                        key.lower().startswith(name.lower())
-                    ) and "[" not in name
+                        name.lower() in key.lower()
+                        or key.lower().startswith(name.lower())
+                    )
+                    and "[" not in name
                 ]
-            
-            suggestions = f" Did you mean: {', '.join(similar_params)}?" if similar_params else ""
+
+            suggestions = (
+                f" Did you mean: {', '.join(similar_params)}?"
+                if similar_params
+                else ""
+            )
             raise ValueError(
                 f"Parameter '{name}' not found in path '{parameter}'.{suggestions}"
             )
@@ -62,7 +68,7 @@ def get_parameter(root: ParameterNode, parameter: str) -> Parameter:
                     f"'{name_part}' in parameter path '{parameter}' does not support bracket indexing. "
                     "Only scale parameters (like brackets) support indexing."
                 )
-            
+
             # Generic error message
             raise ValueError(
                 f"Could not find the parameter '{parameter}' (failed at '{name}'). {str(e)}"
@@ -75,5 +81,5 @@ def get_parameter(root: ParameterNode, parameter: str) -> Parameter:
             raise ValueError(
                 f"Error accessing parameter '{parameter}' at '{name}': {str(e)}"
             )
-    
+
     return node

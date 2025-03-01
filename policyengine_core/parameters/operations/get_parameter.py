@@ -43,43 +43,45 @@ def _navigate_to_node(node, path_component, full_path):
 def _find_child(node, path_component, full_path):
     """
     Process a path component to find a child node, including bracket access if needed.
-    
+
     Args:
         node: The parent node to search in
         path_component: The path component to process
         full_path: The full parameter path being accessed (for error reporting)
-        
+
     Returns:
         The found node after processing the path component
-        
+
     Raises:
         ParameterPathError: When the child cannot be found or other errors occur
     """
     # Parse the path component into name part and optional bracket part
     name_part, index = _parse_path_component(path_component, full_path)
-    
+
     # Find the matching child by name
     child_node = _find_matching_child(node, name_part, full_path)
-    
+
     # If we have a bracket index, access the brackets property
     if index is not None:
-        return _access_indexed_value(child_node, name_part, index, path_component, full_path)
-        
+        return _access_indexed_value(
+            child_node, name_part, index, path_component, full_path
+        )
+
     return child_node
 
 
 def _find_matching_child(node, name_part, full_path):
     """
     Find a child node by name, providing helpful error messages when not found.
-    
+
     Args:
         node: The parent node to search in
         name_part: The name of the child to find
         full_path: The full parameter path being accessed (for error reporting)
-        
+
     Returns:
         The found child node
-        
+
     Raises:
         ParameterPathError: When the child cannot be found, with helpful suggestions
     """

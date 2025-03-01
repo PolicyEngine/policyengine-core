@@ -29,12 +29,17 @@
 - Check PR comments with: `gh pr view <PR_NUMBER> --repo PolicyEngine/policyengine-core`
 - Get review comments with: `gh api repos/PolicyEngine/policyengine-core/pulls/<PR_NUMBER>/comments`
 - Address all reviewer feedback before merging
+- Add "Claude Code wrote this comment" to GitHub comments written by Claude
 - Follow Clean Code principles when refactoring:
   - Keep functions small and focused on a single task
   - Avoid deeply nested conditionals and exceptions
   - Extract complex logic into well-named helper functions
   - Minimize duplication and optimize for readability
   - Use consistent error handling patterns
+  - Avoid too many levels of indentation
+  - Prefer clear, well-named functions over comments
+  - Ensure 100% test coverage for error handling code
+  - Separate concerns with dedicated helper functions
 
 ## Package Architecture
 - **Parameter System**: Core framework for tax-benefit system parameters

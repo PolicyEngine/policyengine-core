@@ -39,9 +39,35 @@ def _navigate_to_node(node, path_component, full_path):
             failed_at=path_component,
         )
 
-    # Look up the name in the node's children
+    # Find the child node by name
+    child_node = _find_child(node, name_part, full_path)
+
+    # If we have a bracket index, access the brackets property
+    if index is not None:
+        return _access_bracket(
+            child_node, name_part, index, path_component, full_path
+        )
+
+    return child_node
+
+
+def _find_child(node, name_part, full_path):
+    """
+    Find a child node by name, providing helpful error messages when not found.
+    
+    Args:
+        node: The parent node to search in
+        name_part: The name of the child to find
+        full_path: The full parameter path being accessed (for error reporting)
+        
+    Returns:
+        The found child node
+        
+    Raises:
+        ParameterPathError: When the child cannot be found, with helpful suggestions
+    """
     try:
-        child_node = node.children[name_part]
+        return node.children[name_part]
     except KeyError:
         suggestions = _find_similar_parameters(node, name_part)
         suggestion_text = (
@@ -52,14 +78,6 @@ def _navigate_to_node(node, path_component, full_path):
             parameter_path=full_path,
             failed_at=name_part,
         )
-
-    # If we have a bracket index, access the brackets property
-    if index is not None:
-        return _access_bracket(
-            child_node, name_part, index, path_component, full_path
-        )
-
-    return child_node
 
 
 def _handle_bracket_access(node, path_component, full_path):

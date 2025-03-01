@@ -27,9 +27,6 @@ def _navigate_to_node(node, path_component, full_path):
         # Handle case where we're already at a scale parameter and need to access a bracket
         return _handle_bracket_access(node, path_component, full_path)
 
-    # Parse the path component into name part and optional bracket part
-    name_part, index = _parse_path_component(path_component, full_path)
-
     # For regular node navigation (no brackets)
     if not hasattr(node, "children"):
         raise ParameterPathError(
@@ -39,19 +36,39 @@ def _navigate_to_node(node, path_component, full_path):
             failed_at=path_component,
         )
 
-    # Find the child node by name
-    child_node = _find_child(node, name_part, full_path)
+    # Find the child node using the path component
+    return _find_child(node, path_component, full_path)
 
+
+def _find_child(node, path_component, full_path):
+    """
+    Process a path component to find a child node, including bracket access if needed.
+    
+    Args:
+        node: The parent node to search in
+        path_component: The path component to process
+        full_path: The full parameter path being accessed (for error reporting)
+        
+    Returns:
+        The found node after processing the path component
+        
+    Raises:
+        ParameterPathError: When the child cannot be found or other errors occur
+    """
+    # Parse the path component into name part and optional bracket part
+    name_part, index = _parse_path_component(path_component, full_path)
+    
+    # Find the matching child by name
+    child_node = _find_matching_child(node, name_part, full_path)
+    
     # If we have a bracket index, access the brackets property
     if index is not None:
-        return _access_bracket(
-            child_node, name_part, index, path_component, full_path
-        )
-
+        return _access_indexed_value(child_node, name_part, index, path_component, full_path)
+        
     return child_node
 
 
-def _find_child(node, name_part, full_path):
+def _find_matching_child(node, name_part, full_path):
     """
     Find a child node by name, providing helpful error messages when not found.
     
@@ -156,7 +173,7 @@ def _parse_path_component(path_component, full_path):
         )
 
 
-def _access_bracket(node, name_part, index, path_component, full_path):
+def _access_indexed_value(node, name_part, index, path_component, full_path):
     """Access a bracket by index on a node."""
     if not hasattr(node, "brackets"):
         raise ParameterPathError(

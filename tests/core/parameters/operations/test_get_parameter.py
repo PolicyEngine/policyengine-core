@@ -5,7 +5,7 @@ from policyengine_core.errors import ParameterPathError
 from policyengine_core.parameters.operations.get_parameter import (
     _find_similar_parameters,
     _navigate_to_node,
-    _access_bracket,
+    _access_indexed_value as _access_bracket,
     _handle_bracket_access
 )
 

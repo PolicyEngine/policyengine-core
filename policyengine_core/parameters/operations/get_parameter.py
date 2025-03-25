@@ -28,6 +28,6 @@ def get_parameter(root: ParameterNode, parameter: str) -> Parameter:
                     )
         except:
             raise ValueError(
-                f"Could not find the parameter (failed at {name})."
+                f"Could not find the parameter {parameter} (failed at {name})."
             )
     return node

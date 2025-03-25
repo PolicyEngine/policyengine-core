@@ -279,7 +279,7 @@ def set_parameter(
                         )
             except:
                 raise ValueError(
-                    f"Could not find the parameter (failed at {name})."
+                    f"Could not find the parameter {path} (failed at {name})."
                 )
         node.update(period=period, value=value, start=start, stop=stop)
         return parameters

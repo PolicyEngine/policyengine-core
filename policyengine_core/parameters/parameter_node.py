@@ -271,6 +271,6 @@ class ParameterNode(AtInstantLike):
                         )
             except:
                 raise ValueError(
-                    f"Could not find the parameter (failed at {name})."
+                    f"Could not find the parameter {path} (failed at {name})."
                 )
         return node

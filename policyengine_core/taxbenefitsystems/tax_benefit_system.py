@@ -31,7 +31,11 @@ from policyengine_core.errors import (
     VariableNameConflictError,
     VariableNotFoundError,
 )
-from policyengine_core.parameters import ParameterNode, ParameterNodeAtInstant
+from policyengine_core.parameters import (
+    ParameterNode,
+    ParameterNodeAtInstant,
+    Parameter,
+)
 from policyengine_core.parameters.operations.homogenize_parameters import (
     homogenize_parameter_structures,
 )
@@ -722,16 +726,26 @@ class TaxBenefitSystem:
         Args:
             modifier_function: A function that takes a :obj:`.ParameterNode` and should return an object of the same type.
         """
-        reform_parameters = modifier_function(self.parameters)
-        if not isinstance(reform_parameters, ParameterNode):
-            return ValueError(
-                "modifier_function {} in module {} must return a ParameterNode".format(
-                    modifier_function.__name__,
-                    modifier_function.__module__,
+        if isinstance(modifier_function, dict):
+            for parameter in modifier_function:
+                for time_period in modifier_function[parameter]:
+                    param: Parameter = self.parameters.get_child(parameter)
+                    param.update(
+                        value=modifier_function[parameter][time_period],
+                        period=periods.period(time_period),
+                    )
+        else:
+            reform_parameters = modifier_function(self.parameters)
+            if not isinstance(reform_parameters, ParameterNode):
+                return ValueError(
+                    "modifier_function {} in module {} must return a ParameterNode".format(
+                        modifier_function.__name__,
+                        modifier_function.__module__,
+                    )
                 )
-            )
-        self.parameters = reform_parameters
+            self.parameters = reform_parameters
         self._parameters_at_instant_cache = {}
+        return self
 
     def add_modelled_policy_metadata(self):
         """

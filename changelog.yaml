@@ -800,3 +800,8 @@
     fixed:
     - Fix file writing on windows.
   date: 2025-02-06 15:38:10
+- bump: patch
+  changes:
+    fixed:
+    - Bug causing some reforms to fail.
+  date: 2025-03-25 15:06:42

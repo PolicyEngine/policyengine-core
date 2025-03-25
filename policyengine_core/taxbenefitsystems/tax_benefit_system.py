@@ -31,7 +31,11 @@ from policyengine_core.errors import (
     VariableNameConflictError,
     VariableNotFoundError,
 )
-from policyengine_core.parameters import ParameterNode, ParameterNodeAtInstant, Parameter
+from policyengine_core.parameters import (
+    ParameterNode,
+    ParameterNodeAtInstant,
+    Parameter,
+)
 from policyengine_core.parameters.operations.homogenize_parameters import (
     homogenize_parameter_structures,
 )

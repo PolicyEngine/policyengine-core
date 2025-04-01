@@ -1,0 +1,77 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "policyengine-core"
+version = "3.16.4"
+authors = [
+  { name = "PolicyEngine", email = "hello@policyengine.org" },
+]
+description = "Core microsimulation engine enabling country-specific policy models."
+readme = "README.md"
+license = { text = "AGPL-3.0-or-later" }
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Operating System :: POSIX",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11", 
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+keywords = ["tax", "benefit", "microsimulation", "framework"]
+dependencies = [
+    "pytest>=8,<9",
+    "numpy~=1.26.4",
+    "sortedcontainers<3",
+    "numexpr<3",
+    "dpath<3",
+    "psutil>=6,<7",
+    "wheel<1",
+    "h5py>=3,<4",
+    "requests>=2,<3",
+    "pandas>=1",
+    "plotly>=5,<6",
+    "ipython>=8,<9",
+    "pyvis>=0.3.2",
+    "microdf_python>=0.4.3",
+    "huggingface_hub>=0.25.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/policyengine/policyengine-core"
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "linecheck<1",
+    "jupyter-book<1",
+    "yaml-changelog<1",
+    "coverage",
+    "furo<2025",
+    "markupsafe<3",
+    "mypy<2",
+    "sphinx==5.0.0",
+    "sphinx-argparse==0.4.0",
+    "sphinx-math-dollar==1.2.1",
+    "types-PyYAML==6.0.12.2",
+    "types-requests==2.28.11.7",
+    "types-setuptools==65.6.0.2",
+    "types-urllib3==1.26.25.4",
+    "policyengine-uk>=2.22.6",
+]
+
+[project.scripts]
+policyengine-core = "policyengine_core.scripts.policyengine_command:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["policyengine_core"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "policyengine_core/**/*",
+    "LICENSE",
+]

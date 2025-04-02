@@ -805,3 +805,8 @@
     fixed:
     - Bug causing some reforms to fail.
   date: 2025-03-25 15:06:42
+- bump: patch
+  changes:
+    fixed:
+    - Subsampling logic.
+  date: 2025-04-02 09:54:58

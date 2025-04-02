@@ -1543,7 +1543,7 @@ class Simulation:
         default_calculation_period = self.default_calculation_period
         # Set default key if not provided
         if seed is None:
-            seed = None  # seed = self.dataset.name
+            seed = self.dataset.name
 
         # Set default time period if not provided
         if time_period is None:

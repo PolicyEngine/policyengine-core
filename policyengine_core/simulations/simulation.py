@@ -1501,8 +1501,33 @@ class Simulation:
 
         return df
 
+    def to_input_dict(self) -> dict:
+        """Exports a dictionary which can be loaded back to a new Simulation to reproduce the same results.
+
+        Returns:
+            dict: The dictionary containing the input values.
+        """
+        data = {}
+
+        for variable in self.tax_benefit_system.variables:
+            data[variable] = {}
+            for period in self.get_holder(variable).get_known_periods():
+                values = self.calculate(variable, period, map_to="person")
+                if values is not None:
+                    data[variable][str(period)] = values.tolist()
+
+            if len(data[variable]) == 0:
+                del data[variable]
+
+        return data
+
     def subsample(
-        self, n=None, frac=None, seed=None, time_period=None
+        self,
+        n=None,
+        frac=None,
+        seed=None,
+        time_period=None,
+        quantize_weights: bool = True,
     ) -> "Simulation":
         """Quantize the simulation to a smaller size by sampling households.
 
@@ -1515,6 +1540,7 @@ class Simulation:
         Returns:
             Simulation: The quantized simulation.
         """
+        default_calculation_period = self.default_calculation_period
         # Set default key if not provided
         if seed is None:
             seed = self.dataset.name
@@ -1529,6 +1555,7 @@ class Simulation:
         # Extract time period from DataFrame columns
         df_time_period = df.columns.values[0].split("__")[1]
         df_household_id_column = f"household_id__{df_time_period}"
+        df_person_id_column = f"person_id__{df_time_period}"
 
         # Determine the appropriate household weight column
         if f"household_weight__{time_period}" in df.columns:
@@ -1545,33 +1572,58 @@ class Simulation:
             n = int(len(h_ids) * frac)
         h_weights = pd.Series(h_df[household_weight_column].values)
 
-        if n > len(h_weights):
-            # Don't need to subsample!
-            return self
+        frac = n / len(h_ids)
 
         # Seed the random number generators for reproducibility
         random.seed(str(seed))
         state = random.randint(0, 2**32 - 1)
         np.random.seed(state)
 
+        h_ids = h_ids[h_weights > 0]
+        h_weights = h_weights[h_weights > 0]
+
         # Sample household IDs based on their weights
-        chosen_household_ids = np.random.choice(
-            h_ids,
-            n,
-            p=h_weights.values / h_weights.values.sum(),
-            replace=False,
+        chosen_household_ids = pd.Series(
+            np.random.choice(
+                h_ids,
+                n,
+                p=(
+                    h_weights.values / h_weights.values.sum()
+                    if quantize_weights
+                    else None
+                ),
+                replace=True,
+            )
         )
 
-        # Filter DataFrame to include only the chosen households
-        df = df[df[df_household_id_column].isin(chosen_household_ids)]
+        household_id_to_count = {}
+        for household_id in chosen_household_ids:
+            if household_id not in household_id_to_count:
+                household_id_to_count[household_id] = 0
+            household_id_to_count[household_id] += 1
+
+        subset_df = df[
+            df[df_household_id_column].isin(chosen_household_ids)
+        ].copy()
+
+        household_counts = subset_df[df_household_id_column].map(
+            lambda x: household_id_to_count.get(x, 0)
+        )
 
         # Adjust household weights to maintain the total weight
-        df[household_weight_column] *= (
-            h_weights.sum()
-            / df.groupby(df_household_id_column)
-            .first()[household_weight_column]
-            .sum()
-        )
+
+        for col in subset_df.columns:
+            if "weight__" in col:
+                target_total_weight = df[col].values.sum()
+                if not quantize_weights:
+                    subset_df[col] *= household_counts.values
+                else:
+                    subset_df[col] = household_counts.values
+                subset_df[col] *= (
+                    target_total_weight / subset_df[col].values.sum()
+                )
+
+        df = subset_df
 
         # Update the dataset and rebuild the simulation
         self.dataset = Dataset.from_dataframe(df, self.dataset.time_period)
@@ -1584,6 +1636,8 @@ class Simulation:
             ].tax_benefit_system
             self.branches["baseline"] = self.clone()
             self.branches["tax_benefit_system"] = baseline_tax_benefit_system
+
+        self.default_calculation_period = default_calculation_period
         return self
 
 

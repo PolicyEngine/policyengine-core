@@ -810,3 +810,8 @@
     fixed:
     - Subsampling logic.
   date: 2025-04-02 09:54:58
+- bump: patch
+  changes:
+    added:
+    - Error handling for HF downloads.
+  date: 2025-04-09 09:40:30

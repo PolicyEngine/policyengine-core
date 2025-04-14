@@ -19,3 +19,7 @@ class AtInstantLike(abc.ABC):
 
     @abc.abstractmethod
     def _get_at_instant(self, instant): ...
+
+    @abc.abstractmethod
+    def get_attr_dict(self) -> dict:
+        raise NotImplementedError

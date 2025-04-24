@@ -330,12 +330,7 @@ def random(population):
 
     # Generate random values for each entity
     values = np.array(
-        [
-            np.random.default_rng(
-                seed=id * 100 + population.simulation.count_random_calls
-            ).random()
-            for id in entity_ids
-        ]
+        [np.random.default_rng(seed=id).random() for id in entity_ids]
     )
 
     return values

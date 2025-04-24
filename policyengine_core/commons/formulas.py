@@ -19,7 +19,6 @@ from policyengine_core.types import ArrayLike, ArrayType
 from policyengine_core.variables.variable import Variable
 
 import json
-import pdb
 
 T = TypeVar("T")
 

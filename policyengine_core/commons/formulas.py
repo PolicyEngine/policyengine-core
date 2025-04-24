@@ -19,6 +19,7 @@ from policyengine_core.types import ArrayLike, ArrayType
 from policyengine_core.variables.variable import Variable
 
 import json
+import pdb
 
 T = TypeVar("T")
 
@@ -329,9 +330,7 @@ def random(population):
     entity_ids = population(f"{population.entity.key}_id", period)
 
     # Generate random values for each entity
-    values = np.array(
-        [np.random.default_rng(seed=id).random() for id in entity_ids]
-    )
+    values = np.random.default_rng(seed=min(entity_ids)).random(size=len(entity_ids))
 
     return values
 

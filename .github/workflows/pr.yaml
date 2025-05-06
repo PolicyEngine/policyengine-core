@@ -59,3 +59,27 @@ jobs:
         run: make build
       - name: Test documentation builds
         run: make documentation
+  SmokeTestForMultipleVersions:
+    name: Test Core and Country Compatibility on (${{ matrix.os }}, py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    needs: Lint
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.10', '3.11', '3.12']
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install -core package ONLY (no dev deps)
+        run: python -m pip install .
+      - name: Install -us package from PyPI
+        run: python -m pip install policyengine-us
+      - name: Run smoke tests only
+        run: pytest -m smoke
+        env:
+          RUN_SMOKE_TESTS: "1"

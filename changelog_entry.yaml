@@ -1,6 +1,4 @@
 - bump: patch 
   changes:
     fixed:
-      - Removed the possibility of a negative seed in random() within commons/formulas.py
-    changed:
-      - As part of the negative seed fix in formulas.py, a single seed and generator was used to generate a random sequence, rather than a random number generator and seed combination being deployed for each entity id. This saves around 5-10 seconds of computation.
+      - Removed the possibility of a negative seed in random() within commons/formulas.py by removing the multiplication by 100

@@ -89,7 +89,15 @@ class Simulation:
         dataset: Union[str, Type[Dataset]] = None,
         reform: Reform = None,
         trace: bool = False,
+        default_input_period: str = None,
+        default_calculation_period: str = None,
     ):
+        self.default_input_period = (
+            default_input_period or self.default_input_period
+        )
+        self.default_calculation_period = (
+            default_calculation_period or self.default_calculation_period
+        )
         if tax_benefit_system is None:
             if (
                 self.default_tax_benefit_system_instance is not None

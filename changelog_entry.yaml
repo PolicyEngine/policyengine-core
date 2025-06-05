@@ -1,0 +1,4 @@
+- bump: minor
+  changes:
+    added:
+    - Default input and output periods to Simulation constructor.

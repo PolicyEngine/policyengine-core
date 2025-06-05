@@ -815,3 +815,8 @@
     added:
     - Error handling for HF downloads.
   date: 2025-04-09 09:40:30
+- bump: minor
+  changes:
+    added:
+    - Default input and output periods to Simulation constructor.
+  date: 2025-06-05 20:14:47

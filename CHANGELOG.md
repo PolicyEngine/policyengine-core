@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.17.0] - 2025-06-05 20:14:47
+
+### Added
+
+- Default input and output periods to Simulation constructor.
+
 ## [3.16.6] - 2025-04-09 09:40:30
 
 ### Added
@@ -1002,6 +1008,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[3.17.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.16.6...3.17.0
 [3.16.6]: https://github.com/PolicyEngine/policyengine-core/compare/3.16.5...3.16.6
 [3.16.5]: https://github.com/PolicyEngine/policyengine-core/compare/3.16.4...3.16.5
 [3.16.4]: https://github.com/PolicyEngine/policyengine-core/compare/3.16.3...3.16.4

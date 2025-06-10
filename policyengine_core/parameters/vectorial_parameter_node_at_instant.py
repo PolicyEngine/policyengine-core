@@ -216,8 +216,10 @@ class VectorialParameterNodeAtInstant:
             names = list(
                 self.dtype.names
             )  # Get all the names of the subnodes, e.g. ['zone_1', 'zone_2']
+            # Build a default array using an existing field rather than the key,
+            # which might be missing from the dataset.
             default = numpy.full_like(
-                self.vector[key[0]], numpy.nan
+                self.vector[names[0]], numpy.nan
             )  # In case of unexpected key, we will set the corresponding value to NaN.
             conditions = [key == name for name in names]
             values = [self.vector[name] for name in names]

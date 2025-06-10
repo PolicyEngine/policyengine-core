@@ -98,6 +98,13 @@ def test_wrong_key():
     assert "'rate.single.owner.toto' was not found" in get_message(e.value)
 
 
+def test_wrong_key_first():
+    zone = np.asarray(["toto", "z2", "z2", "z1"])
+    with pytest.raises(ParameterNotFoundError) as e:
+        P.single.owner[zone]
+    assert "'rate.single.owner.toto' was not found" in get_message(e.value)
+
+
 P_2 = parameters.local_tax("2015-01-01")
 
 

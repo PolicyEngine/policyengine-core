@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    fixed:
+    - Vectorized parameter lookup no longer raises ValueError when the first key is missing.

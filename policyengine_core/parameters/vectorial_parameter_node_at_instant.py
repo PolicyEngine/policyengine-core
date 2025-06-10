@@ -224,13 +224,14 @@ class VectorialParameterNodeAtInstant:
             conditions = [key == name for name in names]
             values = [self.vector[name] for name in names]
             result = numpy.select(conditions, values, default)
-            if helpers.contains_nan(result):
-                unexpected_key = (
-                    set(key).difference(self.vector.dtype.names).pop()
-                )
-                raise ParameterNotFoundError(
-                    ".".join([self._name, unexpected_key]), self._instant_str
-                )
+            #import pdb; pdb.set_trace()
+            #if helpers.contains_nan(result):
+            #    unexpected_key = (
+            #        set(key).difference(self.vector.dtype.names).pop()
+            #    )
+            #    raise ParameterNotFoundError(
+            #        ".".join([self._name, unexpected_key]), self._instant_str
+            #    )
 
             # If the result is not a leaf, wrap the result in a vectorial node.
             if numpy.issubdtype(

@@ -1,0 +1,4 @@
+- bump: patch 
+  changes:
+    fixed:
+      - Removed the possibility of a negative seed in random() within commons/formulas.py by removing the multiplication by 100

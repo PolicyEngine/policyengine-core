@@ -253,7 +253,11 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
         # We double-argsort all lines of the matrix.
         # Double-argsorting gets the rank of each value once sorted
         # For instance, if x = [3,1,6,4,0], y =  numpy.argsort(x) is [4, 1, 0, 3, 2] (because the value with index 4 is the smallest one, the value with index 1 the second smallest, etc.) and z =  numpy.argsort(y) is [2, 1, 4, 3, 0], the rank of each value.
-        sorted_matrix = numpy.argsort(numpy.argsort(matrix))
+
+        # because of the infinities the first sort creates positional indices
+        # The second argsort converts these positions to ranks, thus fixes the broken sort issue
+        first_argsort = numpy.argsort(matrix, axis=1, kind="stable")
+        sorted_matrix = numpy.argsort(first_argsort, axis=1, kind="stable")
 
         # Build the result vector by taking for each person the value in the right line (corresponding to its household id) and the right column (corresponding to its position)
         result = sorted_matrix[ids, positions]

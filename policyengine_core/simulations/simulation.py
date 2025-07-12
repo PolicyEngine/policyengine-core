@@ -1503,6 +1503,12 @@ class Simulation:
 
         for variable in self.tax_benefit_system.variables:
             for period in self.get_holder(variable).get_known_periods():
+                # Test if period matches entity definition period
+                if (
+                    variable.definition_period
+                    != period.unit
+                ):
+                    continue
                 values = self.calculate(variable, period, map_to="person")
                 if values is not None:
                     df[f"{variable}__{period}"] = values

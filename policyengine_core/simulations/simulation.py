@@ -1502,7 +1502,11 @@ class Simulation:
         df = pd.DataFrame()
 
         for variable in self.tax_benefit_system.variables:
+            variable_meta = self.tax_benefit_system.variables[variable]
             for period in self.get_holder(variable).get_known_periods():
+                # Test if period matches entity definition period
+                if variable_meta.definition_period != period.unit:
+                    continue
                 values = self.calculate(variable, period, map_to="person")
                 if values is not None:
                     df[f"{variable}__{period}"] = values
@@ -1561,7 +1565,11 @@ class Simulation:
         df = self.to_input_dataframe()
 
         # Extract time period from DataFrame columns
-        df_time_period = df.columns.values[0].split("__")[1]
+        df_time_period = (
+            df.columns[df.columns.str.contains("household_id__")]
+            .values[0]
+            .split("__")[1]
+        )
         df_household_id_column = f"household_id__{df_time_period}"
         df_person_id_column = f"person_id__{df_time_period}"
 

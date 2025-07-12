@@ -1505,6 +1505,7 @@ class Simulation:
             variable_meta = self.tax_benefit_system.variables[variable]
             for period in self.get_holder(variable).get_known_periods():
                 # Test if period matches entity definition period
+                print(f"{variable}, {period}, {variable_meta.definition_period}")
                 if variable_meta.definition_period != period.unit:
                     continue
                 values = self.calculate(variable, period, map_to="person")

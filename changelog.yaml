@@ -820,3 +820,8 @@
     added:
     - Default input and output periods to Simulation constructor.
   date: 2025-06-05 20:14:47
+- bump: patch
+  changes:
+    fixed:
+    - Bug causing to_input_dataframe to include bad time periods.
+  date: 2025-07-12 14:22:53

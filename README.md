@@ -8,7 +8,7 @@ This package, a fork of [OpenFisca-Core](https://github.com/OpenFisca/OpenFisca-
 
 # Prerequisites
 
-Python 3.10 or beyond is required.
+Python 3.10, 3.11, 3.12, or 3.13 is required.
 
 # Setting Up
 

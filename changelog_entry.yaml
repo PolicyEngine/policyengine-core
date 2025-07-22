@@ -1,6 +1,4 @@
 - bump: minor
   changes:
-    added:
-    - Re-export MicroDataFrame and MicroSeries from microdf to allow downstream packages to import from policyengine-core.
     changed:
     - Update microdf_python dependency to >=1.0.0.

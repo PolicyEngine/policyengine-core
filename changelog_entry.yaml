@@ -1,4 +1,0 @@
-- bump: minor
-  changes:
-    changed:
-    - Update microdf_python dependency to >=1.0.0.

@@ -825,3 +825,8 @@
     fixed:
     - Bug causing to_input_dataframe to include bad time periods.
   date: 2025-07-12 14:22:53
+- bump: minor
+  changes:
+    changed:
+    - Update microdf_python dependency to >=1.0.0.
+  date: 2025-07-22 20:16:08

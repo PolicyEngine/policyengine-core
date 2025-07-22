@@ -23,7 +23,7 @@ general_requirements = [
     "plotly>=5,<6",
     "ipython>=8,<9",
     "pyvis>=0.3.2",
-    "microdf_python>=0.4.3",
+    "microdf_python>=1.0.0",
     "huggingface_hub>=0.25.1",
     "standard-imghdr",
 ]
@@ -50,7 +50,7 @@ dev_requirements = [
 
 setup(
     name="policyengine-core",
-    version="3.16.6",
+    version="3.18.0",
     author="PolicyEngine",
     author_email="hello@policyengine.org",
     classifiers=[

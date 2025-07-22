@@ -815,3 +815,18 @@
     added:
     - Error handling for HF downloads.
   date: 2025-04-09 09:40:30
+- bump: minor
+  changes:
+    added:
+    - Default input and output periods to Simulation constructor.
+  date: 2025-06-05 20:14:47
+- bump: patch
+  changes:
+    fixed:
+    - Bug causing to_input_dataframe to include bad time periods.
+  date: 2025-07-12 14:22:53
+- bump: minor
+  changes:
+    changed:
+    - Update microdf_python dependency to >=1.0.0.
+  date: 2025-07-22 20:16:08

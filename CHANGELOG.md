@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.18.0] - 2025-07-22 20:16:08
+
+### Changed
+
+- Update microdf_python dependency to >=1.0.0.
+
+## [3.17.1] - 2025-07-12 14:22:53
+
+### Fixed
+
+- Bug causing to_input_dataframe to include bad time periods.
+
+## [3.17.0] - 2025-06-05 20:14:47
+
+### Added
+
+- Default input and output periods to Simulation constructor.
+
 ## [3.16.6] - 2025-04-09 09:40:30
 
 ### Added
@@ -1002,6 +1020,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[3.18.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.17.1...3.18.0
+[3.17.1]: https://github.com/PolicyEngine/policyengine-core/compare/3.17.0...3.17.1
+[3.17.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.16.6...3.17.0
 [3.16.6]: https://github.com/PolicyEngine/policyengine-core/compare/3.16.5...3.16.6
 [3.16.5]: https://github.com/PolicyEngine/policyengine-core/compare/3.16.4...3.16.5
 [3.16.4]: https://github.com/PolicyEngine/policyengine-core/compare/3.16.3...3.16.4

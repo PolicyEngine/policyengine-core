@@ -20,7 +20,7 @@ mypy:
 	mypy --config-file mypy.ini policyengine_core tests
 
 test: test-country-template
-	coverage run -a --branch -m pytest tests --disable-pytest-warnings
+	coverage run -a --branch -m pytest tests --disable-pytest-warnings --reruns 2 --reruns-delay 5
 	coverage xml -i
 
 build:

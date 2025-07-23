@@ -80,6 +80,8 @@ setup(
     python_requires=">=3.10",
     extras_require={
         "dev": dev_requirements,
+        # Note: For Python 3.13, policyengine-us requires special installation
+        # due to tables==3.9.2 not having Python 3.13 wheels. See CI workflow for workaround.
     },
     include_package_data=True,  # Will read MANIFEST.in
     install_requires=general_requirements,

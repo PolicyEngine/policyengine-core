@@ -11,7 +11,6 @@ long_description = (this_directory / "README.md").read_text()
 
 general_requirements = [
     "pytest>=8,<9",
-    "pytest-rerunfailures>=10,<15",
     "numpy~=2.1.0",
     "sortedcontainers<3",
     "numexpr<3",
@@ -47,6 +46,7 @@ dev_requirements = [
     "types-requests==2.28.11.7",
     "types-setuptools==65.6.0.2",
     "types-urllib3==1.26.25.4",
+    "pytest-rerunfailures>=10,<15",
 ]
 
 setup(

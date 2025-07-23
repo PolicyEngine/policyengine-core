@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - added support for python 3.13.0
 - upgraded dependency to numpy 2.1.0
 
+## [3.18.1] - 2025-07-22 22:49:07
+
+### Fixed
+
+- Fix NumPy 2.1.0 random seed overflow issue by ensuring seeds are always non-negative
+
 ## [3.18.0] - 2025-07-22 20:16:08
 
 ### Changed
@@ -1027,7 +1033,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-[3.19.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.18.0...3.19.0
+[3.19.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.18.1...3.19.0
+[3.18.1]: https://github.com/PolicyEngine/policyengine-core/compare/3.18.0...3.18.1
 [3.18.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.17.1...3.18.0
 [3.17.1]: https://github.com/PolicyEngine/policyengine-core/compare/3.17.0...3.17.1
 [3.17.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.16.6...3.17.0

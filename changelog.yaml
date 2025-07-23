@@ -836,3 +836,8 @@
     - added support for python 3.13.0
     - upgraded dependency to numpy 2.1.0
   date: 2025-07-23 00:48:51
+- bump: patch
+  changes:
+    fixed:
+    - Fix NumPy 2.1.0 random seed overflow issue by ensuring seeds are always non-negative
+  date: 2025-07-22 22:49:07

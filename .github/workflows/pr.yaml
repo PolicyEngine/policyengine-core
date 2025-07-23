@@ -80,6 +80,8 @@ jobs:
       - name: Install -us package from PyPI
         run: python -m pip install policyengine-us
       - name: Run smoke tests only
-        run: pytest -m smoke -p no:rerunfailures
+        run: |
+          pip list | grep pytest || true
+          pytest -m smoke
         env:
           RUN_SMOKE_TESTS: "1"

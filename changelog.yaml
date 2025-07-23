@@ -830,3 +830,9 @@
     changed:
     - Update microdf_python dependency to >=1.0.0.
   date: 2025-07-22 20:16:08
+- bump: minor
+  changes:
+    changed:
+    - added support for python 3.13.0
+    - upgraded dependency to numpy 2.1.0
+  date: 2025-07-23 00:48:51

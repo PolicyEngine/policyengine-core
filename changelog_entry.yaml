@@ -1,5 +1,0 @@
-- bump: minor
-  changes:
-    changed:
-    - added support for python 3.13.0
-    - upgraded dependency to numpy 2.1.0

@@ -403,7 +403,8 @@ def test_log_aggregate(tracer):
 
     lines = tracer.computation_log.lines(aggregate=True)
     assert (
-        lines[0] == "  A<2017, (default)> = {'avg': 1.0, 'max': 1, 'min': 1}"
+        lines[0].strip()
+        == "A<2017, (default)> = {'avg': np.float64(1.0), 'max': np.int64(1), 'min': np.int64(1)}"
     )
 
 

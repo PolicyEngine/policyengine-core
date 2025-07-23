@@ -232,7 +232,7 @@ class GroupPopulation(Population):
         return self.reduce(
             array,
             reducer=numpy.maximum,
-            neutral_element=-numpy.infty,
+            neutral_element=-numpy.inf,
             role=role,
         )
 
@@ -256,7 +256,7 @@ class GroupPopulation(Population):
         return self.reduce(
             array,
             reducer=numpy.minimum,
-            neutral_element=numpy.infty,
+            neutral_element=numpy.inf,
             role=role,
         )
 

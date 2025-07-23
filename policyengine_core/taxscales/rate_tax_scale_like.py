@@ -175,12 +175,12 @@ class RateTaxScaleLike(TaxScaleLike, abc.ABC):
         #
         #   numpy.finfo(float_).eps
         thresholds1 = numpy.outer(
-            +factor + numpy.finfo(numpy.float_).eps,
+            +factor + numpy.finfo(numpy.float64).eps,
             numpy.array(self.thresholds),
         )
 
         if round_decimals is not None:
-            thresholds1 = numpy.round_(thresholds1, round_decimals)
+            thresholds1 = numpy.round(thresholds1, round_decimals)
 
         return (base1 - thresholds1 >= 0).sum(axis=1) - 1
 

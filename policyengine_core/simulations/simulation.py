@@ -6,7 +6,7 @@ import pandas as pd
 from numpy.typing import ArrayLike
 import logging
 from pathlib import Path
-
+from policyengine_core.reforms.scenario import Scenario
 from policyengine_core import commons, periods
 from policyengine_core.data.dataset import Dataset
 from policyengine_core.entities.entity import Entity
@@ -91,6 +91,7 @@ class Simulation:
         trace: bool = False,
         default_input_period: str = None,
         default_calculation_period: str = None,
+        scenario: Scenario = None,
     ):
         self.default_input_period = (
             default_input_period or self.default_input_period
@@ -226,6 +227,12 @@ class Simulation:
             self.baseline = None
 
         self.parent_branch = None
+
+        if scenario is not None:
+            # Apply parameter changes
+            pass
+            if scenario.modifier_function is not None:
+                scenario.modifier_function(self)
 
     def apply_reform(self, reform: Union[tuple, Reform]):
         if isinstance(reform, tuple):

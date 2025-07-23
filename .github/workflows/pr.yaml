@@ -75,16 +75,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install HDF5 (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y libhdf5-dev
-      - name: Install HDF5 (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          choco install hdf5 -y --no-progress
-          echo "HDF5_DIR=C:\Program Files\HDF_Group\HDF5\1.14.5" >> $env:GITHUB_ENV
       - name: Install -core package
         run: python -m pip install .
+      - name: Upgrade tables for Python 3.13
+        if: matrix.python-version == '3.13'
+        run: pip install "tables>=3.10.1"
       - name: Install -us package from PyPI
         run: python -m pip install policyengine-us
       - name: Run smoke tests only

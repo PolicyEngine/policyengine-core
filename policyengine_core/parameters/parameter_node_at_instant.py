@@ -72,6 +72,4 @@ class ParameterNodeAtInstant:
                 for name, value in self._children.items()
             ]
         )
-        if sys.version_info < (3, 0):
-            return result
         return result

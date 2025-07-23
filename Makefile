@@ -10,8 +10,6 @@ format:
 
 install:
 	pip install -e ".[dev]" --config-settings editable_mode=compat
-	pip install policyengine-us
-	pip install policyengine-uk
 
 test-country-template:
 	policyengine-core test policyengine_core/country_template/tests -c policyengine_core.country_template

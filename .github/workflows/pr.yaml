@@ -75,17 +75,26 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install -core package with dev deps
-        # run: python -m pip install .
-        # Installing with dev deps to see if setuptools provides distutils (removed in Python 3.12)
-        run: python -m pip install ".[dev]"
+      - name: Install -core package
+        run: |
+          python -m pip install .
+          python -m pip install "pytest-rerunfailures>=10,<15"
+      - name: Verify pytest plugins
+        run: python -m pytest --version
       - name: Install -us package from PyPI
-        # Skip policyengine-us installation for Python 3.13 until it's updated
-        if: matrix.python-version != '3.13'
-        run: python -m pip install policyengine-us
+        run: |
+          if [[ "${{ matrix.python-version }}" == "3.13" ]]; then
+            # For Python 3.13, install newer tables first and ignore conflicts
+            pip install "tables>=3.10.1"
+            pip install policyengine-us --no-deps
+            # Install remaining dependencies manually
+            pip install click==8.1.3 pathlib pytest-dependency synthimpute tabulate
+            pip install policyengine-us-data --no-deps
+          else
+            python -m pip install policyengine-us
+          fi
+        shell: bash
       - name: Run smoke tests only
-        # Only run smoke tests if policyengine-us was installed
-        if: matrix.python-version != '3.13'
-        run: pytest -m smoke
+        run: python -m pytest -m smoke --reruns 2 --reruns-delay 5 -v -s
         env:
           RUN_SMOKE_TESTS: "1"

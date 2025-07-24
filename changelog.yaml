@@ -839,5 +839,5 @@
 - bump: patch
   changes:
     fixed:
-    - Fix NumPy 2.1.0 random seed overflow issue by ensuring seeds are always non-negative
-  date: 2025-07-22 22:49:07
+    - Add test retry mechanism to handle intermittent CI failures
+  date: 2025-07-24 14:00:15

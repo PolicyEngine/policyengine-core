@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    fixed:
-    - Fix NumPy 2.1.0 random seed overflow issue by ensuring seeds are always non-negative

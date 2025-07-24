@@ -846,3 +846,10 @@
     fixed:
     - Fix NumPy 2.1.0 random seed overflow issue by ensuring seeds are always non-negative
   date: 2025-07-24 17:03:30
+- bump: patch
+  changes:
+    added:
+    - regression test ensuring base Projector.transform raises
+    fixed:
+    - Projector.transform now raises NotImplementedError
+  date: 2025-07-24 18:10:45

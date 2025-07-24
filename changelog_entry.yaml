@@ -1,6 +1,0 @@
-- bump: patch
-  changes:
-    fixed:
-    - Projector.transform now raises NotImplementedError
-    added:
-    - regression test ensuring base Projector.transform raises

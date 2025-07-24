@@ -79,6 +79,8 @@ jobs:
         run: |
           python -m pip install .
           python -m pip install "pytest-rerunfailures>=10,<15"
+      - name: Verify pytest plugins
+        run: python -m pytest --version
       - name: Install -us package from PyPI
         run: |
           if [[ "${{ matrix.python-version }}" == "3.13" ]]; then
@@ -93,6 +95,6 @@ jobs:
           fi
         shell: bash
       - name: Run smoke tests only
-        run: python -m pytest -m smoke --reruns 2 --reruns-delay 5 -v
+        run: python -m pytest -m smoke --reruns 2 --reruns-delay 5 -v -s
         env:
           RUN_SMOKE_TESTS: "1"

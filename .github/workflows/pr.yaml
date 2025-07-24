@@ -78,7 +78,7 @@ jobs:
       - name: Install -core package
         run: |
           python -m pip install .
-          python -m pip install pytest-rerunfailures>=10,<15
+          python -m pip install "pytest-rerunfailures>=10,<15"
       - name: Install -us package from PyPI
         run: |
           if [[ "${{ matrix.python-version }}" == "3.13" ]]; then

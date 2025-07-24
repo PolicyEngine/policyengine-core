@@ -98,3 +98,4 @@ jobs:
         run: python -m pytest -m smoke --reruns 2 --reruns-delay 5 -v -s
         env:
           RUN_SMOKE_TESTS: "1"
+          POLICYENGINE_GITHUB_MICRODATA_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

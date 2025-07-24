@@ -11,7 +11,7 @@ long_description = (this_directory / "README.md").read_text()
 
 general_requirements = [
     "pytest>=8,<9",
-    "numpy~=1.26.4",
+    "numpy~=2.1.0",
     "sortedcontainers<3",
     "numexpr<3",
     "dpath<3",
@@ -23,8 +23,9 @@ general_requirements = [
     "plotly>=5,<6",
     "ipython>=8,<9",
     "pyvis>=0.3.2",
-    "microdf_python>=0.4.3",
+    "microdf_python>=1.0.0",
     "huggingface_hub>=0.25.1",
+    "standard-imghdr",
 ]
 
 dev_requirements = [
@@ -45,11 +46,12 @@ dev_requirements = [
     "types-requests==2.28.11.7",
     "types-setuptools==65.6.0.2",
     "types-urllib3==1.26.25.4",
+    "pytest-rerunfailures>=10,<15",
 ]
 
 setup(
     name="policyengine-core",
-    version="3.16.3",
+    version="3.19.3",
     author="PolicyEngine",
     author_email="hello@policyengine.org",
     classifiers=[
@@ -60,6 +62,7 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
         "Topic :: Scientific/Engineering :: Information Analysis",
     ],
     description="Core microsimulation engine enabling country-specific policy models.",
@@ -77,6 +80,8 @@ setup(
     python_requires=">=3.10",
     extras_require={
         "dev": dev_requirements,
+        # Note: For Python 3.13, policyengine-us requires special installation
+        # due to tables==3.9.2 not having Python 3.13 wheels. See CI workflow for workaround.
     },
     include_package_data=True,  # Will read MANIFEST.in
     install_requires=general_requirements,

@@ -41,4 +41,4 @@ class Projector:
             return self.parent.transform_and_bubble_up(transformed_result)
 
     def transform(self, result: ArrayLike):
-        return NotImplementedError()
+        raise NotImplementedError()

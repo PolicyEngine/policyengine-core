@@ -92,6 +92,11 @@ def concat(this: ArrayLike[str], that: ArrayLike[str]) -> ArrayType[str]:
         array(['this1.0', 'that2.5']...)
 
     """
+    if isinstance(this, tuple):
+        raise TypeError("First argument must not be a tuple.")
+
+    if isinstance(that, tuple):
+        raise TypeError("Second argument must not be a tuple.")
 
     if isinstance(this, numpy.ndarray) and not numpy.issubdtype(
         this.dtype, numpy.str_
@@ -332,7 +337,9 @@ def random(population):
     values = np.array(
         [
             np.random.default_rng(
-                seed=id * 100 + population.simulation.count_random_calls
+                seed=int(
+                    abs(id * 100 + population.simulation.count_random_calls)
+                )
             ).random()
             for id in entity_ids
         ]

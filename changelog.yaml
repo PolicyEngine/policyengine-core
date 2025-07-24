@@ -800,3 +800,56 @@
     fixed:
     - Fix file writing on windows.
   date: 2025-02-06 15:38:10
+- bump: patch
+  changes:
+    fixed:
+    - Bug causing some reforms to fail.
+  date: 2025-03-25 15:06:42
+- bump: patch
+  changes:
+    fixed:
+    - Subsampling logic.
+  date: 2025-04-02 09:54:58
+- bump: patch
+  changes:
+    added:
+    - Error handling for HF downloads.
+  date: 2025-04-09 09:40:30
+- bump: minor
+  changes:
+    added:
+    - Default input and output periods to Simulation constructor.
+  date: 2025-06-05 20:14:47
+- bump: patch
+  changes:
+    fixed:
+    - Bug causing to_input_dataframe to include bad time periods.
+  date: 2025-07-12 14:22:53
+- bump: minor
+  changes:
+    changed:
+    - Update microdf_python dependency to >=1.0.0.
+  date: 2025-07-22 20:16:08
+- bump: minor
+  changes:
+    changed:
+    - added support for python 3.13.0
+    - upgraded dependency to numpy 2.1.0
+  date: 2025-07-23 00:48:51
+- bump: patch
+  changes:
+    fixed:
+    - Add test retry mechanism to handle intermittent CI failures
+  date: 2025-07-24 14:00:15
+- bump: patch
+  changes:
+    fixed:
+    - Fix NumPy 2.1.0 random seed overflow issue by ensuring seeds are always non-negative
+  date: 2025-07-24 17:03:30
+- bump: patch
+  changes:
+    added:
+    - regression test ensuring base Projector.transform raises
+    fixed:
+    - Projector.transform now raises NotImplementedError
+  date: 2025-07-24 18:10:45

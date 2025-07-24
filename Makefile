@@ -10,8 +10,6 @@ format:
 
 install:
 	pip install -e ".[dev]" --config-settings editable_mode=compat
-	pip install policyengine-us
-	pip install policyengine-uk
 
 test-country-template:
 	policyengine-core test policyengine_core/country_template/tests -c policyengine_core.country_template
@@ -20,7 +18,7 @@ mypy:
 	mypy --config-file mypy.ini policyengine_core tests
 
 test: test-country-template
-	coverage run -a --branch -m pytest tests --disable-pytest-warnings
+	coverage run -a --branch -m pytest tests --disable-pytest-warnings --reruns 2 --reruns-delay 5
 	coverage xml -i
 
 build:

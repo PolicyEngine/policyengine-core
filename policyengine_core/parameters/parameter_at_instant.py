@@ -41,7 +41,10 @@ class ParameterAtInstant:
 
         if metadata is not None:
             self.metadata.update(metadata)  # Inherit metadata from Parameter
-        self.metadata.update(data.get("metadata", {}))
+        try:
+            self.metadata.update(data.get("metadata", {}))
+        except Exception as e:
+            raise e
         self.validate(data)
         self.value: float = data["value"]
 

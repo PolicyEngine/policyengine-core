@@ -7,6 +7,7 @@ from huggingface_hub.errors import RepositoryNotFoundError
 from getpass import getpass
 import os
 import warnings
+import traceback
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -43,7 +44,7 @@ def download_huggingface_dataset(
         # Otherwise, there probably is just a download error
         raise Exception(
             f"Unable to download dataset {repo_filename} from Hugging Face. This may be because the repo "
-            + "is private, the URL is malformed, or the dataset does not exist."
+            + f"is private, the URL is malformed, or the dataset does not exist. The full error is {traceback.format_exc()}"
         )
 
     authentication_token: str = None

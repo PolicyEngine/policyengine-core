@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    fixed:
+    - Add test retry mechanism to handle intermittent CI failures

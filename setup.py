@@ -46,11 +46,12 @@ dev_requirements = [
     "types-requests==2.28.11.7",
     "types-setuptools==65.6.0.2",
     "types-urllib3==1.26.25.4",
+    "pytest-rerunfailures>=10,<15",
 ]
 
 setup(
     name="policyengine-core",
-    version="3.19.0",
+    version="3.19.1",
     author="PolicyEngine",
     author_email="hello@policyengine.org",
     classifiers=[
@@ -79,6 +80,8 @@ setup(
     python_requires=">=3.10",
     extras_require={
         "dev": dev_requirements,
+        # Note: For Python 3.13, policyengine-us requires special installation
+        # due to tables==3.9.2 not having Python 3.13 wheels. See CI workflow for workaround.
     },
     include_package_data=True,  # Will read MANIFEST.in
     install_requires=general_requirements,

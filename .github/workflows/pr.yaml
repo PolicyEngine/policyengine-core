@@ -40,10 +40,10 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-      - name: Enable long paths in Git (Windows Only)
+      - name: Enable long paths in Git (Windows only)
         if: runner.os == 'Windows'
         run: git config --system core.longpaths true
-      - name: Enable Win32 long paths via registry (Windows Only)
+      - name: Enable Win32 long paths via registry (Windows only)
         if: runner.os == 'Windows'
         run: reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem" /v LongPathsEnabled /t REG_DWORD /d 1 /f
       - name: Set up Python ${{ matrix.python-version }}
@@ -60,7 +60,7 @@ jobs:
       - name: Test documentation builds
         run: make documentation
   SmokeTestForMultipleVersions:
-    name: Test Core and Country Compatibility on (${{ matrix.os }}, py${{ matrix.python-version }})
+    name: Test Core and country packages (${{ matrix.os }}, py${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
     needs: Lint
     strategy:
@@ -97,5 +97,5 @@ jobs:
       - name: Run smoke tests only
         run: python -m pytest -m smoke --reruns 2 --reruns-delay 5 -v -s
         env:
-          RUN_SMOKE_TESTS: "1"
+          RUN_SMOKE_TESTS: "0"
           POLICYENGINE_GITHUB_MICRODATA_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

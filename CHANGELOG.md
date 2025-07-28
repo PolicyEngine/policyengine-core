@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.19.4] - 2025-07-28 09:17:29
+
+### Fixed
+
+- UK microsimulation class handling.
+
 ## [3.19.3] - 2025-07-24 18:10:45
 
 ### Added
@@ -1049,6 +1055,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[3.19.4]: https://github.com/PolicyEngine/policyengine-core/compare/3.19.3...3.19.4
 [3.19.3]: https://github.com/PolicyEngine/policyengine-core/compare/3.19.2...3.19.3
 [3.19.2]: https://github.com/PolicyEngine/policyengine-core/compare/3.19.1...3.19.2
 [3.19.1]: https://github.com/PolicyEngine/policyengine-core/compare/3.19.0...3.19.1

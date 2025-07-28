@@ -853,3 +853,8 @@
     fixed:
     - Projector.transform now raises NotImplementedError
   date: 2025-07-24 18:10:45
+- bump: patch
+  changes:
+    fixed:
+    - UK microsimulation class handling.
+  date: 2025-07-28 09:17:29

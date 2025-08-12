@@ -858,3 +858,8 @@
     fixed:
     - UK microsimulation class handling.
   date: 2025-07-28 09:17:29
+- bump: minor
+  changes:
+    added:
+    - Easy way to update parameters with uprating behaviour.
+  date: 2025-08-12 15:53:31

@@ -137,7 +137,14 @@ class Parameter(AtInstantLike):
         ]
         return clone
 
-    def update(self, value=None, period=None, start=None, stop=None):
+    def update(
+        self,
+        value=None,
+        period=None,
+        start=None,
+        stop=None,
+        remove_after: bool = False,
+    ):
         """
         Change the value for a given period.
 
@@ -145,6 +152,7 @@ class Parameter(AtInstantLike):
         :param start: Start of the period. Instance of `policyengine_core.Instant`. If set, `period` should be `None`.
         :param stop: Stop of the period. Instance of `policyengine_core.Instant`. If set, `period` should be `None`.
         :param value: New value. If `None`, the parameter is removed from the legislation parameters for the given period.
+        :param remove_after: If `True`, the value given here becomes the last value in the parameter history (uprating will apply on the next interval if only `start` given, or after the period if `period` given).
         """
         if period is not None:
             if start is not None or stop is not None:
@@ -166,7 +174,7 @@ class Parameter(AtInstantLike):
         i = 0
 
         # Future intervals : not affected
-        if stop_str:
+        if stop_str and not remove_after:
             while (i < n) and (old_values[i].instant_str >= stop_str):
                 new_values.append(old_values[i])
                 i += 1
@@ -175,7 +183,7 @@ class Parameter(AtInstantLike):
         if stop_str:
             if new_values and (stop_str == new_values[-1].instant_str):
                 pass  # such interval is empty
-            else:
+            elif not remove_after:
                 if i < n:
                     overlapped_value = old_values[i].value
                     value_name = _compose_name(self.name, item_name=stop_str)

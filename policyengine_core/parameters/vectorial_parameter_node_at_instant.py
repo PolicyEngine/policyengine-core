@@ -218,19 +218,59 @@ class VectorialParameterNodeAtInstant:
             names = list(
                 self.dtype.names
             )  # Get all the names of the subnodes, e.g. ['zone_1', 'zone_2']
-            default = numpy.full_like(
-                self.vector[key[0]], numpy.nan
-            )  # In case of unexpected key, we will set the corresponding value to NaN.
             conditions = [key == name for name in names]
             values = [self.vector[name] for name in names]
-            result = numpy.select(conditions, values, default)
+
+            # NumPy 2.x requires all arrays in numpy.select to have identical dtypes
+            # For structured arrays with different field sets, we need to normalize them
+            if len(values) > 0 and hasattr(values[0].dtype, 'names') and values[0].dtype.names:
+                # Check if all values have the same dtype
+                dtypes_match = all(val.dtype == values[0].dtype for val in values)
+
+                if not dtypes_match:
+                    # Find the union of all field names across all values, preserving first seen order
+                    all_fields = []
+                    seen = set()
+                    for val in values:
+                        for field in val.dtype.names:
+                            if field not in seen:
+                                all_fields.append(field)
+                                seen.add(field)
+
+                    # Create unified dtype with all fields
+                    unified_dtype = numpy.dtype([(f, '<f8') for f in all_fields])
+
+                    # Cast all values to unified dtype
+                    values_cast = []
+                    for val in values:
+                        casted = numpy.zeros(len(val), dtype=unified_dtype)
+                        for field in val.dtype.names:
+                            casted[field] = val[field]
+                        values_cast.append(casted)
+
+                    default = numpy.zeros(len(values_cast[0]), dtype=unified_dtype)
+                    # Fill with NaN
+                    for field in unified_dtype.names:
+                        default[field] = numpy.nan
+
+                    result = numpy.select(conditions, values_cast, default)
+                else:
+                    # All dtypes match, use original logic
+                    default = numpy.full_like(values[0], numpy.nan)
+                    result = numpy.select(conditions, values, default)
+            else:
+                # Non-structured array case
+                default = numpy.full_like(values[0] if values else self.vector[key[0]], numpy.nan)
+                result = numpy.select(conditions, values, default)
+
+            # Check for unexpected keys (NaN results from missing keys)
             if helpers.contains_nan(result):
-                unexpected_key = (
-                    set(key).difference(self.vector.dtype.names).pop()
-                )
-                raise ParameterNotFoundError(
-                    ".".join([self._name, unexpected_key]), self._instant_str
-                )
+                unexpected_keys = set(key).difference(self.vector.dtype.names)
+                if unexpected_keys:
+                    unexpected_key = unexpected_keys.pop()
+                    raise ParameterNotFoundError(
+                        ".".join([self._name, unexpected_key]), self._instant_str
+                    )
 
             # If the result is not a leaf, wrap the result in a vectorial node.
             if numpy.issubdtype(

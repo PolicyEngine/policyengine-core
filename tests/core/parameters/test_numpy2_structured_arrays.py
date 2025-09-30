@@ -44,7 +44,7 @@ def test_structured_array_with_numeric_string_fields():
 
     # Test with keys that will trigger alphabetic sorting issues
     # When you have '1', '2', '10', NumPy might sort them as '1', '10', '2'
-    keys = np.array(['1', '2', '10'])
+    keys = np.array(["1", "2", "10"])
 
     # This should work but may fail with NumPy 2.x due to dtype field ordering
     result = node[keys]
@@ -62,14 +62,14 @@ def test_structured_array_field_order_preservation():
     NumPy 2.x is stricter about dtype matching - field order must be identical.
     """
     # Create array with fields in non-alphabetical order
-    dtype = np.dtype([('z', float), ('a', float), ('m', float)])
+    dtype = np.dtype([("z", float), ("a", float), ("m", float)])
     data = np.array([(1.0, 2.0, 3.0), (4.0, 5.0, 6.0)], dtype=dtype)
     vector = data.view(np.recarray)
 
     node = VectorialParameterNodeAtInstant("test", vector, "2024-01-01")
 
     # Test with array key - must match vector length
-    keys = np.array(['z', 'm'])
+    keys = np.array(["z", "m"])
     result = node[keys]
 
     # Should return correct values

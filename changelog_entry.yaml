@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    fixed:
+    - NumPy 2.x structured array dtype compatibility when using axes with parameters that have different field subsets (e.g., ACA rating areas)

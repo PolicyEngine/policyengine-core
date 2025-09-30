@@ -223,9 +223,15 @@ class VectorialParameterNodeAtInstant:
 
             # NumPy 2.x requires all arrays in numpy.select to have identical dtypes
             # For structured arrays with different field sets, we need to normalize them
-            if len(values) > 0 and hasattr(values[0].dtype, 'names') and values[0].dtype.names:
+            if (
+                len(values) > 0
+                and hasattr(values[0].dtype, "names")
+                and values[0].dtype.names
+            ):
                 # Check if all values have the same dtype
-                dtypes_match = all(val.dtype == values[0].dtype for val in values)
+                dtypes_match = all(
+                    val.dtype == values[0].dtype for val in values
+                )
 
                 if not dtypes_match:
                     # Find the union of all field names across all values, preserving first seen order
@@ -238,7 +244,9 @@ class VectorialParameterNodeAtInstant:
                                 seen.add(field)
 
                     # Create unified dtype with all fields
-                    unified_dtype = numpy.dtype([(f, '<f8') for f in all_fields])
+                    unified_dtype = numpy.dtype(
+                        [(f, "<f8") for f in all_fields]
+                    )
 
                     # Cast all values to unified dtype
                     values_cast = []
@@ -248,7 +256,9 @@ class VectorialParameterNodeAtInstant:
                             casted[field] = val[field]
                         values_cast.append(casted)
 
-                    default = numpy.zeros(len(values_cast[0]), dtype=unified_dtype)
+                    default = numpy.zeros(
+                        len(values_cast[0]), dtype=unified_dtype
+                    )
                     # Fill with NaN
                     for field in unified_dtype.names:
                         default[field] = numpy.nan
@@ -260,7 +270,9 @@ class VectorialParameterNodeAtInstant:
                     result = numpy.select(conditions, values, default)
             else:
                 # Non-structured array case
-                default = numpy.full_like(values[0] if values else self.vector[key[0]], numpy.nan)
+                default = numpy.full_like(
+                    values[0] if values else self.vector[key[0]], numpy.nan
+                )
                 result = numpy.select(conditions, values, default)
 
             # Check for unexpected keys (NaN results from missing keys)
@@ -269,7 +281,8 @@ class VectorialParameterNodeAtInstant:
                 if unexpected_keys:
                     unexpected_key = unexpected_keys.pop()
                     raise ParameterNotFoundError(
-                        ".".join([self._name, unexpected_key]), self._instant_str
+                        ".".join([self._name, unexpected_key]),
+                        self._instant_str,
                     )
 
             # If the result is not a leaf, wrap the result in a vectorial node.

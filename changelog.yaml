@@ -863,3 +863,9 @@
     added:
     - Easy way to update parameters with uprating behaviour.
   date: 2025-08-12 15:53:31
+- bump: patch
+  changes:
+    fixed:
+    - NumPy 2.x structured array dtype compatibility when using axes with parameters
+      that have different field subsets (e.g., ACA rating areas)
+  date: 2025-10-01 17:01:19

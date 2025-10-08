@@ -59,7 +59,6 @@ setup(
         "License :: OSI Approved :: GNU Affero General Public License v3",
         "Operating System :: POSIX",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
@@ -78,7 +77,7 @@ setup(
             "policyengine-core=policyengine_core.scripts.policyengine_command:main",
         ],
     },
-    python_requires=">=3.10",
+    python_requires=">=3.11",
     extras_require={
         "dev": dev_requirements,
         # Note: For Python 3.13, policyengine-us requires special installation

@@ -31,7 +31,7 @@ general_requirements = [
 dev_requirements = [
     "black",
     "linecheck<1",
-    "jupyter-book<1",
+    "jupyter-book>=2.0.0a0",
     "yaml-changelog<1",
     "coverage",
     "furo<2025",

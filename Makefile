@@ -1,8 +1,8 @@
 all: install format test build changelog
 
 documentation:
-	jb clean docs
-	jb build docs
+	myst clean --all docs
+	myst build docs
 	python docs/add_plotly_to_book.py docs/_build
 
 format:

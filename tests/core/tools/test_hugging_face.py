@@ -1,11 +1,12 @@
 import os
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from huggingface_hub import ModelInfo
 from huggingface_hub.errors import RepositoryNotFoundError
 from policyengine_core.tools.hugging_face import (
     get_or_prompt_hf_token,
     download_huggingface_dataset,
+    parse_hf_url,
 )
 
 
@@ -55,8 +56,11 @@ class TestHuggingFaceDownload:
             with patch(
                 "policyengine_core.tools.hugging_face.model_info"
             ) as mock_model_info:
+                mock_response = MagicMock()
+                mock_response.status_code = 404
+                mock_response.headers = {}
                 mock_model_info.side_effect = RepositoryNotFoundError(
-                    "Test error"
+                    "Test error", response=mock_response
                 )
                 with patch(
                     "policyengine_core.tools.hugging_face.get_or_prompt_hf_token"
@@ -88,8 +92,11 @@ class TestHuggingFaceDownload:
             with patch(
                 "policyengine_core.tools.hugging_face.model_info"
             ) as mock_model_info:
+                mock_response = MagicMock()
+                mock_response.status_code = 404
+                mock_response.headers = {}
                 mock_model_info.side_effect = RepositoryNotFoundError(
-                    "Test error"
+                    "Test error", response=mock_response
                 )
                 with patch(
                     "policyengine_core.tools.hugging_face.get_or_prompt_hf_token"
@@ -156,3 +163,47 @@ class TestGetOrPromptHfToken:
 
             assert first_result == second_result == test_token
             assert os.environ.get("HUGGING_FACE_TOKEN") == test_token
+
+
+class TestParseHfUrl:
+    def test_basic_url(self):
+        owner, repo, file_path, version = parse_hf_url(
+            "hf://owner/repo/file.h5"
+        )
+        assert (owner, repo, file_path, version) == (
+            "owner",
+            "repo",
+            "file.h5",
+            None,
+        )
+
+    def test_subdirectory_url(self):
+        owner, repo, file_path, version = parse_hf_url(
+            "hf://owner/repo/data/2024/file.h5"
+        )
+        assert owner == "owner"
+        assert repo == "repo"
+        assert file_path == "data/2024/file.h5"
+        assert version is None
+
+    def test_url_with_version(self):
+        owner, repo, file_path, version = parse_hf_url(
+            "hf://owner/repo/file.h5@v1.0"
+        )
+        assert (file_path, version) == ("file.h5", "v1.0")
+
+    def test_subdirectory_with_version(self):
+        owner, repo, file_path, version = parse_hf_url(
+            "hf://owner/repo/path/to/file.h5@v2.0"
+        )
+        assert (file_path, version) == ("path/to/file.h5", "v2.0")
+
+    def test_deep_subdirectory(self):
+        owner, repo, file_path, version = parse_hf_url(
+            "hf://owner/repo/a/b/c/d/e/file.h5"
+        )
+        assert file_path == "a/b/c/d/e/file.h5"
+
+    def test_invalid_url_too_short(self):
+        with pytest.raises(ValueError, match="Invalid hf:// URL format"):
+            parse_hf_url("hf://owner/repo")

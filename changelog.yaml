@@ -869,3 +869,9 @@
     - NumPy 2.x structured array dtype compatibility when using axes with parameters
       that have different field subsets (e.g., ACA rating areas)
   date: 2025-10-01 17:01:19
+- bump: minor
+  changes:
+    added:
+    - Subdirectory support for hf:// URLs (e.g., hf://owner/repo/path/to/file.h5).
+    - Google Cloud Storage support with gs:// URL scheme (e.g., gs://bucket/path/to/file.h5).
+  date: 2025-11-27 16:18:36

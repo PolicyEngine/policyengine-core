@@ -1,5 +1,0 @@
-- bump: minor
-  changes:
-    added:
-    - Subdirectory support for hf:// URLs (e.g., hf://owner/repo/path/to/file.h5).
-    - Google Cloud Storage support with gs:// URL scheme (e.g., gs://bucket/path/to/file.h5).

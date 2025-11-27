@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.21.0] - 2025-11-27 16:18:36
+
+### Added
+
+- Subdirectory support for hf:// URLs (e.g., hf://owner/repo/path/to/file.h5).
+- Google Cloud Storage support with gs:// URL scheme (e.g., gs://bucket/path/to/file.h5).
+
 ## [3.20.1] - 2025-10-01 17:01:19
 
 ### Fixed
@@ -1067,6 +1074,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[3.21.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.20.1...3.21.0
 [3.20.1]: https://github.com/PolicyEngine/policyengine-core/compare/3.20.0...3.20.1
 [3.20.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.19.4...3.20.0
 [3.19.4]: https://github.com/PolicyEngine/policyengine-core/compare/3.19.3...3.19.4

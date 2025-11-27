@@ -23,6 +23,10 @@ from policyengine_core.tracers import (
 )
 import random
 from policyengine_core.tools.hugging_face import *
+from policyengine_core.tools.google_cloud import (
+    parse_gs_url,
+    download_gcs_file,
+)
 
 import json
 
@@ -160,15 +164,17 @@ class Simulation:
         if dataset is not None:
             if isinstance(dataset, str):
                 if "hf://" in dataset:
-                    owner, repo, filename = dataset.split("/")[-3:]
-                    if "@" in filename:
-                        version = filename.split("@")[-1]
-                        filename = filename.split("@")[0]
-                    else:
-                        version = None
+                    owner, repo, filename, version = parse_hf_url(dataset)
                     dataset = download_huggingface_dataset(
                         repo=f"{owner}/{repo}",
                         repo_filename=filename,
+                        version=version,
+                    )
+                elif "gs://" in dataset:
+                    bucket, file_path, version = parse_gs_url(dataset)
+                    dataset = download_gcs_file(
+                        bucket=bucket,
+                        file_path=file_path,
                         version=version,
                     )
                 datasets_by_name = {

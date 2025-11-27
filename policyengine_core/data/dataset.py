@@ -8,6 +8,11 @@ import requests
 import os
 import tempfile
 from policyengine_core.tools.hugging_face import *
+from policyengine_core.tools.google_cloud import (
+    parse_gs_url,
+    download_gcs_file,
+    upload_gcs_file,
+)
 import sys
 from policyengine_core.tools.win_file_manager import WindowsAtomicFileManager
 
@@ -353,9 +358,22 @@ class Dataset:
                     f"File {file_path} not found in release {release_tag} of {org}/{repo}."
                 )
         elif url.startswith("hf://"):
-            owner_name, model_name, file_name = url.split("/")[2:]
+            owner_name, model_name, file_name, hf_version = parse_hf_url(url)
             self.download_from_huggingface(
-                owner_name, model_name, file_name, version
+                owner_name, model_name, file_name, hf_version or version
+            )
+            return
+        elif url.startswith("gs://"):
+            bucket, file_path, gs_version = parse_gs_url(url)
+            print(
+                f"Downloading from GCS gs://{bucket}/{file_path}",
+                file=sys.stderr,
+            )
+            downloaded_path = download_gcs_file(
+                bucket=bucket,
+                file_path=file_path,
+                version=gs_version or version,
+                local_path=str(self.file_path),
             )
             return
         else:
@@ -386,8 +404,19 @@ class Dataset:
             url = self.url
 
         if url.startswith("hf://"):
-            owner_name, model_name, file_name = url.split("/")[2:]
+            owner_name, model_name, file_name, _ = parse_hf_url(url)
             self.upload_to_huggingface(owner_name, model_name, file_name)
+        elif url.startswith("gs://"):
+            bucket, file_path, _ = parse_gs_url(url)
+            print(
+                f"Uploading to GCS gs://{bucket}/{file_path}",
+                file=sys.stderr,
+            )
+            upload_gcs_file(
+                bucket=bucket,
+                file_path=file_path,
+                local_path=str(self.file_path),
+            )
 
     def remove(self):
         """Removes the dataset from disk."""

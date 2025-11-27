@@ -13,6 +13,36 @@ with warnings.catch_warnings():
     warnings.simplefilter("ignore")
 
 
+def parse_hf_url(url: str) -> tuple[str, str, str, str | None]:
+    """
+    Parse a Hugging Face URL into components.
+
+    Args:
+        url: URL in format hf://owner/repo/path/to/file[@version]
+
+    Returns:
+        Tuple of (owner, repo, file_path, version)
+        version is None if not specified
+    """
+    parts = url.split("/")[2:]
+
+    if len(parts) < 3:
+        raise ValueError(
+            f"Invalid hf:// URL format: {url}. "
+            "Expected format: hf://owner/repo/path/to/file[@version]"
+        )
+
+    owner = parts[0]
+    repo = parts[1]
+    file_path = "/".join(parts[2:])
+
+    version = None
+    if "@" in file_path:
+        file_path, version = file_path.rsplit("@", 1)
+
+    return owner, repo, file_path, version
+
+
 def download_huggingface_dataset(
     repo: str,
     repo_filename: str,

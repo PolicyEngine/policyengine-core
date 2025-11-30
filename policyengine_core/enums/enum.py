@@ -62,9 +62,12 @@ class Enum(enum.Enum):
         if isinstance(array, EnumArray):
             return array
 
-        # Handle Enum item arrays by extracting names
+        # Handle Enum item arrays by extracting indices directly
         if len(array) > 0 and isinstance(array[0], Enum):
-            array = np.array([item.name for item in array])
+            indices = np.array(
+                [item.index for item in array], dtype=ENUM_ARRAY_DTYPE
+            )
+            return EnumArray(indices, cls)
 
         # Convert byte-strings or object arrays to Unicode strings
         if array.dtype.kind == "S" or array.dtype == object:
@@ -74,17 +77,13 @@ class Enum(enum.Enum):
             # String array - use searchsorted for O(n log m) lookup
             sorted_names, sorted_indices = cls._get_sorted_lookup_arrays()
             positions = np.searchsorted(sorted_names, array)
+            # Clip positions to valid range to avoid IndexError
+            positions = np.clip(positions, 0, len(sorted_names) - 1)
+            # Validate that we found exact matches
+            if not np.all(sorted_names[positions] == array):
+                invalid = array[sorted_names[positions] != array]
+                raise ValueError(f"Invalid enum values: {invalid[:5]}")
             indices = sorted_indices[positions]
-        elif isinstance(array, np.ndarray) and array.dtype.kind == "O":
-            # Object array containing Enum items
-            if len(array) > 0:
-                first_item = array[0]
-                if cls.__name__ == type(first_item).__name__:
-                    cls = type(first_item)
-            # Extract indices directly from enum items
-            indices = np.array(
-                [item.index for item in array], dtype=ENUM_ARRAY_DTYPE
-            )
         elif array.dtype.kind in {"i", "u"}:
             # Integer array - already indices
             indices = array

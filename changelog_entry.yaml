@@ -1,0 +1,6 @@
+- bump: minor
+  changes:
+    changed:
+    - Optimised enum encoding using searchsorted instead of np.select.
+    - Optimised empty_clone using object.__new__() instead of dynamic type creation.
+    - Added lru_cache to period and instant string parsing.

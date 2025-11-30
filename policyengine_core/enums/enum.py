@@ -79,11 +79,9 @@ class Enum(enum.Enum):
             positions = np.searchsorted(sorted_names, array)
             # Clip positions to valid range to avoid IndexError
             positions = np.clip(positions, 0, len(sorted_names) - 1)
-            # Validate that we found exact matches
-            if not np.all(sorted_names[positions] == array):
-                invalid = array[sorted_names[positions] != array]
-                raise ValueError(f"Invalid enum values: {invalid[:5]}")
-            indices = sorted_indices[positions]
+            # For non-matches, return 0 (first enum value) to match old np.select behaviour
+            matches = sorted_names[positions] == array
+            indices = np.where(matches, sorted_indices[positions], 0)
         elif array.dtype.kind in {"i", "u"}:
             # Integer array - already indices
             indices = array

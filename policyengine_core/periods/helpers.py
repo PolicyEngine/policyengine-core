@@ -1,8 +1,27 @@
 import datetime
 import os
+from functools import lru_cache
 
 from policyengine_core import periods
 from policyengine_core.periods import config
+
+
+@lru_cache(maxsize=1024)
+def _instant_from_string(instant_str: str) -> "periods.Instant":
+    """Cached parsing of instant strings."""
+    if not config.INSTANT_PATTERN.match(instant_str):
+        raise ValueError(
+            "'{}' is not a valid instant. Instants are described using the 'YYYY-MM-DD' format, for instance '2015-06-15'.".format(
+                instant_str
+            )
+        )
+    parts = instant_str.split("-", 2)[:3]
+    if len(parts) == 1:
+        return periods.Instant((int(parts[0]), 1, 1))
+    elif len(parts) == 2:
+        return periods.Instant((int(parts[0]), int(parts[1]), 1))
+    else:
+        return periods.Instant((int(parts[0]), int(parts[1]), int(parts[2])))
 
 
 def instant(instant):
@@ -28,15 +47,7 @@ def instant(instant):
     if isinstance(instant, periods.Instant):
         return instant
     if isinstance(instant, str):
-        if not config.INSTANT_PATTERN.match(instant):
-            raise ValueError(
-                "'{}' is not a valid instant. Instants are described using the 'YYYY-MM-DD' format, for instance '2015-06-15'.".format(
-                    instant
-                )
-            )
-        instant = periods.Instant(
-            int(fragment) for fragment in instant.split("-", 2)[:3]
-        )
+        return _instant_from_string(instant)
     elif isinstance(instant, datetime.date):
         instant = periods.Instant((instant.year, instant.month, instant.day))
     elif isinstance(instant, int):
@@ -67,6 +78,98 @@ def instant_date(instant):
     return instant_date
 
 
+@lru_cache(maxsize=1024)
+def _parse_simple_period(value: str):
+    """Cached parsing of simple periods respecting the ISO format."""
+    try:
+        date = datetime.datetime.strptime(value, "%Y")
+    except ValueError:
+        try:
+            date = datetime.datetime.strptime(value, "%Y-%m")
+        except ValueError:
+            try:
+                date = datetime.datetime.strptime(value, "%Y-%m-%d")
+            except ValueError:
+                return None
+            else:
+                return periods.Period(
+                    (
+                        config.DAY,
+                        periods.Instant((date.year, date.month, date.day)),
+                        1,
+                    )
+                )
+        else:
+            return periods.Period(
+                (
+                    config.MONTH,
+                    periods.Instant((date.year, date.month, 1)),
+                    1,
+                )
+            )
+    else:
+        return periods.Period(
+            (config.YEAR, periods.Instant((date.year, date.month, 1)), 1)
+        )
+
+
+def _raise_period_error(value):
+    message = os.linesep.join(
+        [
+            "Expected a period (eg. '2017', '2017-01', '2017-01-01', ...); got: '{}'.".format(
+                value
+            ),
+            "Learn more about legal period formats in OpenFisca:",
+            "<https://openfisca.org/doc/coding-the-legislation/35_periods.html#periods-in-simulations>.",
+        ]
+    )
+    raise ValueError(message)
+
+
+@lru_cache(maxsize=1024)
+def _period_from_string(value: str) -> "periods.Period":
+    """Cached parsing of period strings."""
+    # try to parse as a simple period
+    result = _parse_simple_period(value)
+    if result is not None:
+        return result
+
+    # complex period must have a ':' in their strings
+    if ":" not in value:
+        _raise_period_error(value)
+
+    components = value.split(":")
+
+    # left-most component must be a valid unit
+    unit = components[0]
+    if unit not in (config.DAY, config.MONTH, config.YEAR):
+        _raise_period_error(value)
+
+    # middle component must be a valid iso period
+    base_period = _parse_simple_period(components[1])
+    if not base_period:
+        _raise_period_error(value)
+
+    # period like year:2015-03 have a size of 1
+    if len(components) == 2:
+        size = 1
+    # if provided, make sure the size is an integer
+    elif len(components) == 3:
+        try:
+            size = int(components[2])
+        except ValueError:
+            _raise_period_error(value)
+    # if there is more than 2 ":" in the string, the period is invalid
+    else:
+        _raise_period_error(value)
+
+    # reject ambiguous period such as month:2014
+    if unit_weight(base_period.unit) > unit_weight(unit):
+        _raise_period_error(value)
+
+    return periods.Period((unit, base_period.start, size))
+
+
 def period(value):
     """Return a new period, aka a triple (unit, start_instant, size).
 
@@ -91,53 +194,6 @@ def period(value):
     if isinstance(value, periods.Instant):
         return periods.Period((config.DAY, value, 1))
 
-    def parse_simple_period(value):
-        """
-        Parses simple periods respecting the ISO format, such as 2012 or 2015-03
-        """
-        try:
-            date = datetime.datetime.strptime(value, "%Y")
-        except ValueError:
-            try:
-                date = datetime.datetime.strptime(value, "%Y-%m")
-            except ValueError:
-                try:
-                    date = datetime.datetime.strptime(value, "%Y-%m-%d")
-                except ValueError:
-                    return None
-                else:
-                    return periods.Period(
-                        (
-                            config.DAY,
-                            periods.Instant((date.year, date.month, date.day)),
-                            1,
-                        )
-                    )
-            else:
-                return periods.Period(
-                    (
-                        config.MONTH,
-                        periods.Instant((date.year, date.month, 1)),
-                        1,
-                    )
-                )
-        else:
-            return periods.Period(
-                (config.YEAR, periods.Instant((date.year, date.month, 1)), 1)
-            )
-
-    def raise_error(value):
-        message = os.linesep.join(
-            [
-                "Expected a period (eg. '2017', '2017-01', '2017-01-01', ...); got: '{}'.".format(
-                    value
-                ),
-                "Learn more about legal period formats in OpenFisca:",
-                "<https://openfisca.org/doc/coding-the-legislation/35_periods.html#periods-in-simulations>.",
-            ]
-        )
-        raise ValueError(message)
-
     if value == "ETERNITY" or value == config.ETERNITY:
         return periods.Period(
             ("eternity", instant(datetime.date.min), float("inf"))
@@ -146,48 +202,11 @@ def period(value):
     # check the type
     if isinstance(value, int):
         return periods.Period((config.YEAR, periods.Instant((value, 1, 1)), 1))
-    if not isinstance(value, str):
-        raise_error(value)
 
-    # try to parse as a simple period
-    period = parse_simple_period(value)
-    if period is not None:
-        return period
+    if isinstance(value, str):
+        return _period_from_string(value)
 
-    # complex period must have a ':' in their strings
-    if ":" not in value:
-        raise_error(value)
-
-    components = value.split(":")
-
-    # left-most component must be a valid unit
-    unit = components[0]
-    if unit not in (config.DAY, config.MONTH, config.YEAR):
-        raise_error(value)
-
-    # middle component must be a valid iso period
-    base_period = parse_simple_period(components[1])
-    if not base_period:
-        raise_error(value)
-
-    # period like year:2015-03 have a size of 1
-    if len(components) == 2:
-        size = 1
-    # if provided, make sure the size is an integer
-    elif len(components) == 3:
-        try:
-            size = int(components[2])
-        except ValueError:
-            raise_error(value)
-    # if there is more than 2 ":" in the string, the period is invalid
-    else:
-        raise_error(value)
-
-    # reject ambiguous period such as month:2014
-    if unit_weight(base_period.unit) > unit_weight(unit):
-        raise_error(value)
-
-    return periods.Period((unit, base_period.start, size))
+    _raise_period_error(value)
 
 
 def key_period_size(period):

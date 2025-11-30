@@ -28,19 +28,7 @@ def empty_clone(original: T) -> T:
         True
 
     """
-
-    Dummy: object
-    new: T
-
-    Dummy = type(
-        "Dummy",
-        (original.__class__,),
-        {"__init__": lambda self: None},
-    )
-
-    new = Dummy()
-    new.__class__ = original.__class__
-    return new
+    return object.__new__(original.__class__)
 
 
 def stringify_array(array: ArrayType) -> str:

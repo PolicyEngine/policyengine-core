@@ -333,17 +333,19 @@ def random(population):
     # Get entity IDs for the period
     entity_ids = population(f"{population.entity.key}_id", period)
 
-    # Generate random values for each entity
-    values = np.array(
-        [
-            np.random.default_rng(
-                seed=int(
-                    abs(id * 100 + population.simulation.count_random_calls)
-                )
-            ).random()
-            for id in entity_ids
-        ]
-    )
+    # Generate deterministic random values using vectorised hash
+    seeds = np.abs(
+        entity_ids * 100 + population.simulation.count_random_calls
+    ).astype(np.uint64)
+
+    # PCG-style mixing function for high-quality pseudo-random generation
+    x = seeds * np.uint64(0x5851F42D4C957F2D)
+    x = x ^ (x >> np.uint64(33))
+    x = x * np.uint64(0xC4CEB9FE1A85EC53)
+    x = x ^ (x >> np.uint64(33))
+
+    # Convert to float in [0, 1) using upper 53 bits for full double precision
+    values = (x >> np.uint64(11)).astype(np.float64) / (2**53)
 
     return values
 

@@ -4,3 +4,4 @@
     - Optimised enum encoding using searchsorted instead of np.select.
     - Optimised empty_clone using object.__new__() instead of dynamic type creation.
     - Added lru_cache to period and instant string parsing.
+    - Vectorised random() function using PCG hash instead of per-entity RNG instantiation.

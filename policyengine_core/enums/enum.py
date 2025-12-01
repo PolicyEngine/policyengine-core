@@ -1,10 +1,13 @@
 from __future__ import annotations
 import enum
+import logging
 from functools import lru_cache
 from typing import Tuple, Union
 import numpy as np
 from .config import ENUM_ARRAY_DTYPE
 from .enum_array import EnumArray
+
+log = logging.getLogger(__name__)
 
 
 class Enum(enum.Enum):
@@ -82,6 +85,15 @@ class Enum(enum.Enum):
             # For non-matches, return 0 (first enum value) to match old np.select behaviour
             matches = sorted_names[positions] == array
             indices = np.where(matches, sorted_indices[positions], 0)
+            # Log warning for invalid values
+            invalid_mask = ~matches
+            if np.any(invalid_mask):
+                invalid_values = np.unique(array[invalid_mask])
+                log.warning(
+                    f"Invalid values for enum {cls.__name__}: "
+                    f"{invalid_values.tolist()}. "
+                    f"These will be encoded as index 0."
+                )
         elif array.dtype.kind in {"i", "u"}:
             # Integer array - already indices
             indices = array

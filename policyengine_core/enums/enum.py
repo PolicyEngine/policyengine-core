@@ -1,9 +1,13 @@
 from __future__ import annotations
 import enum
-from typing import Union
+import logging
+from functools import lru_cache
+from typing import Tuple, Union
 import numpy as np
 from .config import ENUM_ARRAY_DTYPE
 from .enum_array import EnumArray
+
+log = logging.getLogger(__name__)
 
 
 class Enum(enum.Enum):
@@ -22,6 +26,18 @@ class Enum(enum.Enum):
 
     __eq__ = object.__eq__
     __hash__ = object.__hash__
+
+    @classmethod
+    @lru_cache(maxsize=None)
+    def _get_sorted_lookup_arrays(cls) -> Tuple[np.ndarray, np.ndarray]:
+        """Build cached sorted arrays for fast searchsorted-based lookup."""
+        name_to_index = {item.name: item.index for item in cls}
+        sorted_names = sorted(name_to_index.keys())
+        sorted_names_arr = np.array(sorted_names)
+        sorted_indices = np.array(
+            [name_to_index[n] for n in sorted_names], dtype=ENUM_ARRAY_DTYPE
+        )
+        return sorted_names_arr, sorted_indices
 
     @classmethod
     def encode(cls, array: Union[EnumArray, np.ndarray]) -> EnumArray:
@@ -49,34 +65,37 @@ class Enum(enum.Enum):
         if isinstance(array, EnumArray):
             return array
 
-        # First, convert byte-string arrays to Unicode-string arrays
-        # Confusingly, Numpy uses "S" to refer to byte-string arrays
-        # and "U" to refer to Unicode-string arrays, which are also
-        # referred to as the "str" type
-        if isinstance(array[0], Enum):
-            array = np.array([item.name for item in array])
+        # Handle Enum item arrays by extracting indices directly
+        if len(array) > 0 and isinstance(array[0], Enum):
+            indices = np.array(
+                [item.index for item in array], dtype=ENUM_ARRAY_DTYPE
+            )
+            return EnumArray(indices, cls)
+
+        # Convert byte-strings or object arrays to Unicode strings
         if array.dtype.kind == "S" or array.dtype == object:
-            # Convert boolean array to string array
             array = array.astype(str)
+
         if isinstance(array, np.ndarray) and array.dtype.kind in {"U", "S"}:
-            # String array
-            indices = np.select(
-                [array == item.name for item in cls],
-                [item.index for item in cls],
-            )
-        elif isinstance(array, np.ndarray) and array.dtype.kind == "O":
-            # Enum items array
-            if len(array) > 0:
-                first_item = array[0]
-                if cls.__name__ == type(first_item).__name__:
-                    # Use the same Enum class as the array items
-                    cls = type(first_item)
-            indices = np.select(
-                [array == item for item in cls],
-                [item.index for item in cls],
-            )
+            # String array - use searchsorted for O(n log m) lookup
+            sorted_names, sorted_indices = cls._get_sorted_lookup_arrays()
+            positions = np.searchsorted(sorted_names, array)
+            # Clip positions to valid range to avoid IndexError
+            positions = np.clip(positions, 0, len(sorted_names) - 1)
+            # For non-matches, return 0 (first enum value) to match old np.select behaviour
+            matches = sorted_names[positions] == array
+            indices = np.where(matches, sorted_indices[positions], 0)
+            # Log warning for invalid values
+            invalid_mask = ~matches
+            if np.any(invalid_mask):
+                invalid_values = np.unique(array[invalid_mask])
+                log.warning(
+                    f"Invalid values for enum {cls.__name__}: "
+                    f"{invalid_values.tolist()}. "
+                    f"These will be encoded as index 0."
+                )
         elif array.dtype.kind in {"i", "u"}:
-            # Integer array
+            # Integer array - already indices
             indices = array
         else:
             raise ValueError(f"Unsupported array dtype: {array.dtype}")

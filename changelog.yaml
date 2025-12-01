@@ -875,3 +875,14 @@
     - Subdirectory support for hf:// URLs (e.g., hf://owner/repo/path/to/file.h5).
     - Google Cloud Storage support with gs:// URL scheme (e.g., gs://bucket/path/to/file.h5).
   date: 2025-11-27 16:18:36
+- bump: minor
+  changes:
+    changed:
+    - Optimised enum encoding using searchsorted instead of np.select.
+    - Optimised empty_clone using object.__new__() instead of dynamic type creation.
+    - Added lru_cache to period and instant string parsing.
+    - Vectorised random() function using PCG hash instead of per-entity RNG instantiation.
+      Note that this changes random value sequences - simulations using random() will
+      produce different (but still deterministic) values.
+    - Added warning logging for invalid enum string values during encoding.
+  date: 2025-12-01 15:19:17

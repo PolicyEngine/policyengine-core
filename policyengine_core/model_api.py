@@ -20,7 +20,7 @@ from policyengine_core.parameters import (
 )
 from policyengine_core.periods import DAY, ETERNITY, MONTH, YEAR, period
 from policyengine_core.populations import ADD, DIVIDE
-from policyengine_core.reforms import Reform
+from policyengine_core.reforms import Reform, StructuralReform
 from policyengine_core.simulations import (
     calculate_output_add,
     calculate_output_divide,

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.22.1] - 2025-12-02 15:43:09
+
+### Fixed
+
+- Issue of running on windows because of not having UTF-8 encoding.
+
 ## [3.22.0] - 2025-12-01 15:19:17
 
 ### Changed
@@ -1084,6 +1090,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[3.22.1]: https://github.com/PolicyEngine/policyengine-core/compare/3.22.0...3.22.1
 [3.22.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.21.0...3.22.0
 [3.21.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.20.1...3.21.0
 [3.20.1]: https://github.com/PolicyEngine/policyengine-core/compare/3.20.0...3.20.1

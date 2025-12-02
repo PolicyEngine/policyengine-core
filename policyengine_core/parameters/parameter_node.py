@@ -1,16 +1,16 @@
 import copy
 import os
 import typing
-from typing import Iterable, List, Type, Union
+from pathlib import Path
+from typing import Iterable, Union
+
+import yaml
+from collections import OrderedDict
 
 from policyengine_core import commons, parameters, tools
-from policyengine_core.data_structures import Reference
 from policyengine_core.periods.instant_ import Instant
 from policyengine_core.tracers import TracingParameterNodeAtInstant
-
 from .at_instant_like import AtInstantLike
-from .parameter import Parameter
-from .parameter_node_at_instant import ParameterNodeAtInstant
 from .config import COMMON_KEYS, FILE_EXTENSIONS
 from .helpers import (
     load_parameter_file,
@@ -19,6 +19,8 @@ from .helpers import (
     _parse_child,
     _load_yaml_file,
 )
+from .parameter import Parameter
+from .parameter_node_at_instant import ParameterNodeAtInstant
 
 EXCLUDED_PARAMETER_CHILD_NAMES = ["reference", "__pycache__"]
 
@@ -31,6 +33,9 @@ class ParameterNode(AtInstantLike):
     _allowed_keys: typing.Optional[typing.Iterable[str]] = (
         None  # By default, no restriction on the keys
     )
+
+    _exclusion_list = ["parent", "_at_instant_cache"]
+    """The keys to be excluded from the node when output to a yaml file."""
 
     parent: "ParameterNode" = None
     """The parent of the node, or None if the node is the root of the tree."""
@@ -274,3 +279,28 @@ class ParameterNode(AtInstantLike):
                     f"Could not find the parameter {path} (failed at {name})."
                 )
         return node
+
+    def get_attr_dict(self) -> dict:
+        data = OrderedDict(self.__dict__.copy())
+        for attr in self._exclusion_list:
+            if attr in data.keys():
+                del data[attr]
+        if "children" in data.keys():
+            child_dict = data.get("children")
+            for child_name, child in child_dict.items():
+                data[child_name] = child.get_attr_dict()
+                data.move_to_end(child_name)
+            del data["children"]
+        return dict(data)
+
+    class NoAliasDumper(yaml.SafeDumper):
+        def ignore_aliases(self, data):
+            return True
+
+    def write_yaml(self, file_path: Path) -> yaml:
+        data = self.get_attr_dict()
+        try:
+            with open(file_path, "w") as f:
+                yaml.dump(data, f, sort_keys=False, Dumper=self.NoAliasDumper)
+        except Exception as e:
+            print(f"Error when writing YAML file: {e}")

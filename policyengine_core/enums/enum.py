@@ -85,14 +85,14 @@ class Enum(enum.Enum):
             # For non-matches, return 0 (first enum value) to match old np.select behaviour
             matches = sorted_names[positions] == array
             indices = np.where(matches, sorted_indices[positions], 0)
-            # Log warning for invalid values
+            # Raise error for invalid values to prevent silent data corruption
             invalid_mask = ~matches
             if np.any(invalid_mask):
                 invalid_values = np.unique(array[invalid_mask])
-                log.warning(
-                    f"Invalid values for enum {cls.__name__}: "
-                    f"{invalid_values.tolist()}. "
-                    f"These will be encoded as index 0."
+                valid_names = [item.name for item in cls]
+                raise ValueError(
+                    f"Invalid value(s) {invalid_values.tolist()} for enum "
+                    f"{cls.__name__}. Valid values are: {valid_names}"
                 )
         elif array.dtype.kind in {"i", "u"}:
             # Integer array - already indices

@@ -891,3 +891,9 @@
     fixed:
     - Issue of running on windows because of not having UTF-8 encoding.
   date: 2025-12-02 15:43:09
+- bump: patch
+  changes:
+    fixed:
+    - Allow NumPy 2.3+ for Python 3.14 compatibility (fixes temporary elision bug
+      causing incorrect microsimulation results)
+  date: 2025-12-03 01:03:13

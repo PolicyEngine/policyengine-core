@@ -1,6 +1,5 @@
 import pytest
 import numpy as np
-import logging
 from policyengine_core.enums.enum import Enum
 from policyengine_core.enums.enum_array import EnumArray
 
@@ -40,8 +39,8 @@ def test_enum_creation():
     assert encoded_array.dtype.kind == "i"
 
 
-def test_enum_encode_invalid_values_logs_warning(caplog):
-    """Test that encoding invalid enum string values logs a warning."""
+def test_enum_encode_invalid_values_raises_error():
+    """Test that encoding invalid enum string values raises ValueError."""
 
     class Sample(Enum):
         MAXWELL = "maxwell"
@@ -50,22 +49,18 @@ def test_enum_encode_invalid_values_logs_warning(caplog):
     # Array with invalid values mixed in
     array_with_invalid = np.array(["MAXWELL", "INVALID_VALUE", "DWORKIN"])
 
-    with caplog.at_level(logging.WARNING):
-        encoded = Sample.encode(array_with_invalid)
+    with pytest.raises(ValueError) as exc_info:
+        Sample.encode(array_with_invalid)
 
-    # Should still return an array (with 0 for invalid)
-    assert len(encoded) == 3
-    assert encoded[0] == Sample.MAXWELL.index
-    assert encoded[1] == 0  # Invalid defaults to 0
-    assert encoded[2] == Sample.DWORKIN.index
-
-    # Should have logged a warning
-    assert any("INVALID_VALUE" in record.message for record in caplog.records)
-    assert any("Sample" in record.message for record in caplog.records)
+    error_message = str(exc_info.value)
+    assert "INVALID_VALUE" in error_message
+    assert "Sample" in error_message
+    assert "MAXWELL" in error_message  # Valid values listed
+    assert "DWORKIN" in error_message  # Valid values listed
 
 
-def test_enum_encode_all_invalid_logs_warning(caplog):
-    """Test that encoding all invalid values logs a warning."""
+def test_enum_encode_all_invalid_raises_error():
+    """Test that encoding all invalid values raises ValueError."""
 
     class Sample(Enum):
         MAXWELL = "maxwell"
@@ -73,11 +68,29 @@ def test_enum_encode_all_invalid_logs_warning(caplog):
 
     all_invalid = np.array(["FOO", "BAR", "BAZ"])
 
-    with caplog.at_level(logging.WARNING):
-        encoded = Sample.encode(all_invalid)
+    with pytest.raises(ValueError) as exc_info:
+        Sample.encode(all_invalid)
 
-    # All should be 0
-    assert all(encoded == 0)
+    error_message = str(exc_info.value)
+    # Should mention all unique invalid values
+    assert (
+        "FOO" in error_message
+        or "BAR" in error_message
+        or "BAZ" in error_message
+    )
 
-    # Should have logged warnings
-    assert len(caplog.records) > 0
+
+def test_enum_encode_empty_string_raises_error():
+    """Test that encoding empty strings raises ValueError."""
+
+    class Sample(Enum):
+        MAXWELL = "maxwell"
+        DWORKIN = "dworkin"
+
+    array_with_empty = np.array(["MAXWELL", "", "DWORKIN"])
+
+    with pytest.raises(ValueError) as exc_info:
+        Sample.encode(array_with_empty)
+
+    # Empty string should be in the error message (represented as '')
+    assert "''" in str(exc_info.value) or '""' in str(exc_info.value)

@@ -11,7 +11,9 @@ long_description = (this_directory / "README.md").read_text()
 
 general_requirements = [
     "pytest>=8,<9",
-    "numpy~=2.1.0",
+    # NumPy 2.3+ required for Python 3.14 due to temporary elision bug fix
+    # See: https://github.com/numpy/numpy/issues/28681
+    "numpy>=2.1.0,<3",
     "sortedcontainers<3",
     "numexpr<3",
     "dpath<3",

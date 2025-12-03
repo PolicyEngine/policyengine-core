@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    fixed:
+      - Allow NumPy 2.3+ for Python 3.14 compatibility (fixes temporary elision bug causing incorrect microsimulation results)

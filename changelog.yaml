@@ -897,3 +897,10 @@
     - Allow NumPy 2.3+ for Python 3.14 compatibility (fixes temporary elision bug
       causing incorrect microsimulation results)
   date: 2025-12-03 01:03:13
+- bump: minor
+  changes:
+    changed:
+    - Invalid enum values now raise ValueError instead of logging a warning and returning
+      index 0. This prevents silent data corruption when incorrect enum strings are
+      passed to simulations.
+  date: 2025-12-03 22:11:27

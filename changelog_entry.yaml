@@ -1,4 +1,0 @@
-- bump: minor
-  changes:
-    changed:
-      - Invalid enum values now raise ValueError instead of logging a warning and returning index 0. This prevents silent data corruption when incorrect enum strings are passed to simulations.

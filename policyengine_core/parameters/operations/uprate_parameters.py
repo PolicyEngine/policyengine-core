@@ -124,18 +124,25 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                             parameter.values_list[0].instant_str
                         )
 
+                    # Pre-compute values that don't change in the loop
+                    last_instant_str = str(last_instant)
+                    value_at_start = parameter(last_instant)
+                    uprater_at_start = uprating_parameter(last_instant)
+
+                    if uprater_at_start is None:
+                        raise ValueError(
+                            f"Failed to uprate using {uprating_parameter.name} at {last_instant} for {parameter.name} because the uprating parameter is not defined at {last_instant}."
+                        )
+
+                    # Pre-compute uprater values for all entries to avoid repeated lookups
+                    has_rounding = "rounding" in meta
+
                     # For each defined instant in the uprating parameter
                     for entry in uprating_parameter.values_list[::-1]:
                         entry_instant = instant(entry.instant_str)
                         # If the uprater instant is defined after the last parameter instant
                         if entry_instant > last_instant:
                             # Apply the uprater and add to the parameter
-                            value_at_start = parameter(last_instant)
-                            uprater_at_start = uprating_parameter(last_instant)
-                            if uprater_at_start is None:
-                                raise ValueError(
-                                    f"Failed to uprate using {uprating_parameter.name} at {last_instant} for {parameter.name} at {entry_instant} because the uprating parameter is not defined at {last_instant}."
-                                )
                             uprater_at_entry = uprating_parameter(
                                 entry_instant
                             )
@@ -143,7 +150,7 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                                 uprater_at_entry / uprater_at_start
                             )
                             uprated_value = value_at_start * uprater_change
-                            if "rounding" in meta:
+                            if has_rounding:
                                 uprated_value = round_uprated_value(
                                     meta, uprated_value
                                 )

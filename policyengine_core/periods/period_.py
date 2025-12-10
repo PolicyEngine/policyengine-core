@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import calendar
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from typing import List
 
 from policyengine_core import periods
@@ -463,15 +463,12 @@ class Period(tuple):
             return periods.Instant((float("inf"), float("inf"), float("inf")))
         if unit == "day":
             if size > 1:
-                day += size - 1
-                month_last_day = calendar.monthrange(year, month)[1]
-                while day > month_last_day:
-                    month += 1
-                    if month == 13:
-                        year += 1
-                        month = 1
-                    day -= month_last_day
-                    month_last_day = calendar.monthrange(year, month)[1]
+                # Use datetime arithmetic for efficient day calculation
+                start_date = date(year, month, day)
+                end_date = start_date + timedelta(days=size - 1)
+                return periods.Instant(
+                    (end_date.year, end_date.month, end_date.day)
+                )
         else:
             if unit == "month":
                 month += size

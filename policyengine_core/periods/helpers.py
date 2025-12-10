@@ -5,8 +5,11 @@ from functools import lru_cache
 from policyengine_core import periods
 from policyengine_core.periods import config
 
+# Global cache for instant objects to avoid repeated tuple creation
+_instant_cache: dict = {}
 
-@lru_cache(maxsize=1024)
+
+@lru_cache(maxsize=10000)
 def _instant_from_string(instant_str: str) -> "periods.Instant":
     """Cached parsing of instant strings."""
     if not config.INSTANT_PATTERN.match(instant_str):
@@ -48,18 +51,35 @@ def instant(instant):
         return instant
     if isinstance(instant, str):
         return _instant_from_string(instant)
+
+    # For other types, create a cache key and check the cache
+    cache_key = None
+    # Check Period before tuple since Period is a subclass of tuple
+    if isinstance(instant, periods.Period):
+        return instant.start
     elif isinstance(instant, datetime.date):
-        instant = periods.Instant((instant.year, instant.month, instant.day))
+        cache_key = (instant.year, instant.month, instant.day)
     elif isinstance(instant, int):
-        instant = (instant,)
-    elif isinstance(instant, list):
-        assert 1 <= len(instant) <= 3
-        instant = tuple(instant)
-    elif isinstance(instant, periods.Period):
-        instant = instant.start
-    else:
-        assert isinstance(instant, tuple), instant
-        assert 1 <= len(instant) <= 3
+        cache_key = (instant, 1, 1)
+    elif isinstance(instant, (tuple, list)):
+        if len(instant) == 1:
+            cache_key = (instant[0], 1, 1)
+        elif len(instant) == 2:
+            cache_key = (instant[0], instant[1], 1)
+        elif len(instant) == 3:
+            cache_key = tuple(instant)
+
+    if cache_key is not None:
+        cached = _instant_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        result = periods.Instant(cache_key)
+        _instant_cache[cache_key] = result
+        return result
+
+    # Fallback for unexpected types
+    assert isinstance(instant, tuple), instant
+    assert 1 <= len(instant) <= 3
     if len(instant) == 1:
         return periods.Instant((instant[0], 1, 1))
     if len(instant) == 2:

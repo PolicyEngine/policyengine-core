@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    fixed:
+    - Optimisation improvements for loading tax-benefit systems (caching).

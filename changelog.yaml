@@ -904,3 +904,8 @@
       index 0. This prevents silent data corruption when incorrect enum strings are
       passed to simulations.
   date: 2025-12-03 22:11:27
+- bump: patch
+  changes:
+    fixed:
+    - Optimisation improvements for loading tax-benefit systems (caching).
+  date: 2025-12-14 23:36:30

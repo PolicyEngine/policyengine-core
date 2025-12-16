@@ -36,6 +36,10 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                 if hasattr(bracket, allowed_key):
                     descendants.append(getattr(bracket, allowed_key))
 
+    # Global cache for uprating parameter values to avoid redundant lookups
+    # Key: (uprating_parameter.name, instant), Value: parameter value at that instant
+    uprating_cache = {}
+
     for parameter in descendants:
         if isinstance(parameter, Parameter):
             if parameter.metadata.get("uprating") is not None:
@@ -110,6 +114,7 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                         uprating_first_date,
                         uprating_last_date,
                         meta,
+                        uprating_cache,
                     )
 
                     # Append uprated data to parameter values list
@@ -127,7 +132,12 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                     # Pre-compute values that don't change in the loop
                     last_instant_str = str(last_instant)
                     value_at_start = parameter(last_instant)
-                    uprater_at_start = uprating_parameter(last_instant)
+
+                    # Use cache for uprating parameter lookup
+                    cache_key = (uprating_parameter.name, last_instant)
+                    if cache_key not in uprating_cache:
+                        uprating_cache[cache_key] = uprating_parameter(last_instant)
+                    uprater_at_start = uprating_cache[cache_key]
 
                     if uprater_at_start is None:
                         raise ValueError(
@@ -144,11 +154,13 @@ def uprate_parameters(root: ParameterNode) -> ParameterNode:
                         if entry_instant > last_instant:
                             uprating_entries.append((entry_instant, entry.instant_str))
 
-                    # Batch lookup of uprating parameter values
-                    uprater_values = {
-                        entry_instant: uprating_parameter(entry_instant)
-                        for entry_instant, _ in uprating_entries
-                    }
+                    # Batch lookup of uprating parameter values using global cache
+                    uprater_values = {}
+                    for entry_instant, _ in uprating_entries:
+                        cache_key = (uprating_parameter.name, entry_instant)
+                        if cache_key not in uprating_cache:
+                            uprating_cache[cache_key] = uprating_parameter(entry_instant)
+                        uprater_values[entry_instant] = uprating_cache[cache_key]
 
                     # For each defined instant in the uprating parameter
                     for entry_instant, entry_instant_str in uprating_entries:
@@ -351,6 +363,7 @@ def uprate_by_cadence(
     first_date: datetime,
     last_date: datetime,
     meta: dict,
+    uprating_cache: dict,
 ) -> list[ParameterAtInstant]:
     # Determine the frequency module to utilize within rrule
     interval = ""
@@ -388,25 +401,28 @@ def uprate_by_cadence(
         end_calc_date = enactment_date - enactment_end_offset
         calc_dates.append((enactment_date, start_calc_date, end_calc_date))
 
-    # Batch lookup all uprating parameter values to reduce repeated function calls
-    uprater_cache = {}
+    # Batch lookup all uprating parameter values using global cache
     for _, start_calc_date, end_calc_date in calc_dates:
         start_instant = instant(start_calc_date.date())
         end_instant = instant(end_calc_date.date())
-        if start_instant not in uprater_cache:
-            uprater_cache[start_instant] = uprating_parameter.get_at_instant(start_instant)
-        if end_instant not in uprater_cache:
-            uprater_cache[end_instant] = uprating_parameter.get_at_instant(end_instant)
+        start_key = (uprating_parameter.name, start_instant)
+        end_key = (uprating_parameter.name, end_instant)
+        if start_key not in uprating_cache:
+            uprating_cache[start_key] = uprating_parameter.get_at_instant(start_instant)
+        if end_key not in uprating_cache:
+            uprating_cache[end_key] = uprating_parameter.get_at_instant(end_instant)
 
     has_rounding = "rounding" in meta
 
     # For each entry (corresponding to an enactment date) in the iteration list...
     for enactment_date, start_calc_date, end_calc_date in calc_dates:
-        # Get pre-computed uprater values
+        # Get pre-computed uprater values from global cache
         start_instant = instant(start_calc_date.date())
         end_instant = instant(end_calc_date.date())
-        start_val = uprater_cache[start_instant]
-        end_val = uprater_cache[end_instant]
+        start_key = (uprating_parameter.name, start_instant)
+        end_key = (uprating_parameter.name, end_instant)
+        start_val = uprating_cache[start_key]
+        end_val = uprating_cache[end_key]
 
         # Ensure that earliest date exists within uprater
         if not start_val:

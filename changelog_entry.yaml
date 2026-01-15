@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    added:
-    - Documentation for Reform.from_dict() method with examples covering basic reforms, multiple parameters, bracket syntax, period formats, and Microsimulation integration.

@@ -909,3 +909,9 @@
     fixed:
     - Optimisation improvements for loading tax-benefit systems (caching).
   date: 2025-12-14 23:36:30
+- bump: patch
+  changes:
+    added:
+    - Documentation for Reform.from_dict() method with examples covering basic reforms,
+      multiple parameters, bracket syntax, period formats, and Microsimulation integration.
+  date: 2026-01-15 22:17:08

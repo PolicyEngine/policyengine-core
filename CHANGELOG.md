@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.23.2] - 2026-01-15 22:17:08
+
+### Added
+
+- Documentation for Reform.from_dict() method with examples covering basic reforms, multiple parameters, bracket syntax, period formats, and Microsimulation integration.
+
 ## [3.23.1] - 2025-12-14 23:36:30
 
 ### Fixed
@@ -1108,6 +1114,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[3.23.2]: https://github.com/PolicyEngine/policyengine-core/compare/3.23.1...3.23.2
 [3.23.1]: https://github.com/PolicyEngine/policyengine-core/compare/3.23.0...3.23.1
 [3.23.0]: https://github.com/PolicyEngine/policyengine-core/compare/3.22.2...3.23.0
 [3.22.2]: https://github.com/PolicyEngine/policyengine-core/compare/3.22.1...3.22.2

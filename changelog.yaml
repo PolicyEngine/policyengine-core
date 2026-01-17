@@ -915,3 +915,10 @@
     - Documentation for Reform.from_dict() method with examples covering basic reforms,
       multiple parameters, bracket syntax, period formats, and Microsimulation integration.
   date: 2026-01-15 22:17:08
+- bump: patch
+  changes:
+    fixed:
+    - Handle empty HUGGING_FACE_TOKEN gracefully in CI environments. Empty strings
+      are now treated the same as None, and non-interactive environments (like CI)
+      return None instead of hanging on getpass prompt.
+  date: 2026-01-17 18:14:48

@@ -124,39 +124,65 @@ class TestGetOrPromptHfToken:
         """Test retrieving token via user input when not in environment"""
         test_token = "user_input_token_456"
 
-        # Mock both empty environment and user input
+        # Mock empty environment, interactive mode, and user input
         with patch.dict(os.environ, {}, clear=True):
-            with patch(
-                "policyengine_core.tools.hugging_face.getpass",
-                return_value=test_token,
-            ):
-                result = get_or_prompt_hf_token()
-                assert result == test_token
+            with patch("os.isatty", return_value=True):
+                with patch(
+                    "policyengine_core.tools.hugging_face.getpass",
+                    return_value=test_token,
+                ):
+                    result = get_or_prompt_hf_token()
+                    assert result == test_token
 
-                # Verify token was stored in environment
-                assert os.environ.get("HUGGING_FACE_TOKEN") == test_token
+                    # Verify token was stored in environment
+                    assert os.environ.get("HUGGING_FACE_TOKEN") == test_token
 
     def test_empty_user_input(self):
-        """Test handling of empty user input"""
+        """Test handling of empty user input in interactive mode"""
         with patch.dict(os.environ, {}, clear=True):
-            with patch(
-                "policyengine_core.tools.hugging_face.getpass", return_value=""
-            ):
+            with patch("os.isatty", return_value=True):
+                with patch(
+                    "policyengine_core.tools.hugging_face.getpass",
+                    return_value="",
+                ):
+                    result = get_or_prompt_hf_token()
+                    # Empty input should return None (not stored)
+                    assert result is None
+                    # Empty token should not be stored
+                    assert os.environ.get("HUGGING_FACE_TOKEN") is None
+
+    def test_non_interactive_mode_returns_none(self):
+        """Test that non-interactive mode (CI) returns None without prompting"""
+        with patch.dict(os.environ, {}, clear=True):
+            with patch("os.isatty", return_value=False):
+                with patch(
+                    "policyengine_core.tools.hugging_face.getpass"
+                ) as mock_getpass:
+                    result = get_or_prompt_hf_token()
+                    assert result is None
+                    # getpass should not be called in non-interactive mode
+                    mock_getpass.assert_not_called()
+
+    def test_empty_env_token_treated_as_none(self):
+        """Test that empty string token in env is treated as missing"""
+        with patch.dict(os.environ, {"HUGGING_FACE_TOKEN": ""}, clear=True):
+            with patch("os.isatty", return_value=False):
                 result = get_or_prompt_hf_token()
-                assert result == ""
-                assert os.environ.get("HUGGING_FACE_TOKEN") == ""
+                # Empty string should be treated as None
+                assert result is None
 
     def test_environment_variable_persistence(self):
         """Test that environment variable persists across multiple calls"""
         test_token = "persistence_test_token"
 
-        # First call with no environment variable
+        # First call with no environment variable (interactive mode)
         with patch.dict(os.environ, {}, clear=True):
-            with patch(
-                "policyengine_core.tools.hugging_face.getpass",
-                return_value=test_token,
-            ):
-                first_result = get_or_prompt_hf_token()
+            with patch("os.isatty", return_value=True):
+                with patch(
+                    "policyengine_core.tools.hugging_face.getpass",
+                    return_value=test_token,
+                ):
+                    first_result = get_or_prompt_hf_token()
 
             # Second call should use environment variable
             second_result = get_or_prompt_hf_token()

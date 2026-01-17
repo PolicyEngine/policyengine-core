@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    fixed:
+      - Handle empty HUGGING_FACE_TOKEN gracefully in CI environments. Empty strings are now treated the same as None, and non-interactive environments (like CI) return None instead of hanging on getpass prompt.

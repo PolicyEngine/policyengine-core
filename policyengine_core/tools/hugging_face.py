@@ -91,21 +91,32 @@ def download_huggingface_dataset(
     )
 
 
-def get_or_prompt_hf_token() -> str:
+def get_or_prompt_hf_token() -> str | None:
     """
     Either get the Hugging Face token from the environment,
     or prompt the user for it and store it in the environment.
 
     Returns:
-        str: The Hugging Face token.
+        str | None: The Hugging Face token, or None if not available
+        and running non-interactively (e.g., in CI without secrets).
     """
 
     token = os.environ.get("HUGGING_FACE_TOKEN")
-    if token is None:
-        token = getpass(
-            "Enter your Hugging Face token (or set HUGGING_FACE_TOKEN environment variable): "
-        )
-        # Optionally store in env for subsequent calls in same session
-        os.environ["HUGGING_FACE_TOKEN"] = token
+    # Treat empty string same as None (handles CI with missing secrets)
+    if not token:
+        # Check if running interactively before prompting
+        if os.isatty(0):
+            token = getpass(
+                "Enter your Hugging Face token (or set HUGGING_FACE_TOKEN environment variable): "
+            )
+            # Store in env for subsequent calls in same session
+            if token:
+                os.environ["HUGGING_FACE_TOKEN"] = token
+            else:
+                # User entered empty string - return None
+                return None
+        else:
+            # Non-interactive (CI) - return None instead of prompting
+            return None
 
     return token

@@ -72,17 +72,13 @@ class Population:
         if period is None:
             stack = traceback.extract_stack()
             filename, line_number, function_name, line_of_code = stack[-3]
-            raise ValueError(
-                """
+            raise ValueError("""
 You requested computation of variable "{}", but you did not specify on which period in "{}:{}":
     {}
 When you request the computation of a variable within a formula, you must always specify the period as the second parameter. The convention is to call this parameter "period". For example:
     computed_salary = person('salary', period).
 See more information at <https://openfisca.org/doc/coding-the-legislation/35_periods.html#periods-in-variable-definition>.
-""".format(
-                    variable_name, filename, line_number, line_of_code
-                )
-            )
+""".format(variable_name, filename, line_number, line_of_code))
 
     def __call__(
         self,

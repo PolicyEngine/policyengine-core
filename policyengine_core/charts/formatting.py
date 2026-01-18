@@ -1,7 +1,6 @@
 import plotly.graph_objects as go
 from IPython.display import HTML
 
-
 GREEN = "#29d40f"
 LIGHT_GREEN = "#C5E1A5"
 DARK_GREEN = "#558B2F"

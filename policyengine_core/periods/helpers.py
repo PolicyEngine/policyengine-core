@@ -47,29 +47,50 @@ def instant(instant):
     """
     if instant is None:
         return None
+
+    # Fast path for already-instant objects (most common after string)
     if isinstance(instant, periods.Instant):
         return instant
+
+    # String is the most common input type during parameter loading
     if isinstance(instant, str):
         return _instant_from_string(instant)
 
-    # For other types, create a cache key and check the cache
-    cache_key = None
+    # Fast path for datetime.date objects (common in uprating)
+    if isinstance(instant, datetime.date):
+        cache_key = (instant.year, instant.month, instant.day)
+        cached = _instant_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        result = periods.Instant(cache_key)
+        _instant_cache[cache_key] = result
+        return result
+
     # Check Period before tuple since Period is a subclass of tuple
     if isinstance(instant, periods.Period):
         return instant.start
-    elif isinstance(instant, datetime.date):
-        cache_key = (instant.year, instant.month, instant.day)
-    elif isinstance(instant, int):
+
+    # Handle int input
+    if isinstance(instant, int):
         cache_key = (instant, 1, 1)
-    elif isinstance(instant, (tuple, list)):
+        cached = _instant_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        result = periods.Instant(cache_key)
+        _instant_cache[cache_key] = result
+        return result
+
+    # Handle tuple/list input
+    if isinstance(instant, (tuple, list)):
         if len(instant) == 1:
             cache_key = (instant[0], 1, 1)
         elif len(instant) == 2:
             cache_key = (instant[0], instant[1], 1)
         elif len(instant) == 3:
             cache_key = tuple(instant)
+        else:
+            raise AssertionError(f"Invalid instant length: {len(instant)}")
 
-    if cache_key is not None:
         cached = _instant_cache.get(cache_key)
         if cached is not None:
             return cached
@@ -78,13 +99,7 @@ def instant(instant):
         return result
 
     # Fallback for unexpected types
-    assert isinstance(instant, tuple), instant
-    assert 1 <= len(instant) <= 3
-    if len(instant) == 1:
-        return periods.Instant((instant[0], 1, 1))
-    if len(instant) == 2:
-        return periods.Instant((instant[0], instant[1], 1))
-    return periods.Instant(instant)
+    raise TypeError(f"Unexpected instant type: {type(instant)}")
 
 
 def instant_date(instant):

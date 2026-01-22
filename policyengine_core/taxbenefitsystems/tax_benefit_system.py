@@ -54,6 +54,9 @@ from policyengine_core.variables import Variable
 
 log = logging.getLogger(__name__)
 
+if TYPE_CHECKING:
+    from policyengine_core.reforms import StructuralReform
+
 
 class TaxBenefitSystem:
     """
@@ -94,6 +97,8 @@ class TaxBenefitSystem:
     """Short list of basic inputs to get medium accuracy."""
     modelled_policies: str = None
     """A YAML filepath containing metadata describing the modelled policies."""
+    possible_structural_reforms: List[StructuralReform] = None
+    """List of possible structural reforms that can be applied to the tax and benefit system."""
 
     def __init__(self, entities: Sequence[Entity] = None, reform=None) -> None:
         if entities is None:

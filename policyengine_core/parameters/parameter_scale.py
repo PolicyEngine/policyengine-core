@@ -2,7 +2,7 @@ import copy
 import os
 import typing
 from typing import Any, Iterable
-
+from collections import OrderedDict
 from policyengine_core import commons, parameters, tools
 from policyengine_core.errors import ParameterParsingError
 from policyengine_core.parameters import AtInstantLike, config, helpers
@@ -23,6 +23,9 @@ class ParameterScale(AtInstantLike):
 
     # 'unit' and 'reference' are only listed here for backward compatibility
     _allowed_keys = config.COMMON_KEYS.union({"brackets"})
+
+    _exclusion_list = ["parent", "_at_instant_cache"]
+    """The keys to be excluded from the node when output to a yaml file."""
 
     def __init__(self, name: str, data: dict, file_path: str):
         """
@@ -169,3 +172,18 @@ class ParameterScale(AtInstantLike):
                     threshold = bracket.threshold
                     scale.add_bracket(threshold, rate * base)
             return scale
+
+    def get_attr_dict(self) -> dict:
+        data = OrderedDict(self.__dict__.copy())
+        for attr in self._exclusion_list:
+            if attr in data.keys():
+                del data[attr]
+        if "brackets" in data.keys():
+            node_list = data["brackets"]
+            i = 0
+            for node in node_list:
+                node_list[i] = node.get_attr_dict()
+                i += 1
+            data["brackets"] = node_list
+            data.move_to_end("brackets")
+        return dict(data)

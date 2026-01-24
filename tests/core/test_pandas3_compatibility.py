@@ -24,7 +24,9 @@ class TestFilledArrayWithStringDtype:
         from policyengine_core.entities import Entity
 
         # Create a minimal entity for testing
-        entity = Entity(key="person", plural="people", label="Person", doc="Test person entity")
+        entity = Entity(
+            key="person", plural="people", label="Person", doc="Test person entity"
+        )
 
         # Create a population with some count
         population = Population(entity)
@@ -51,7 +53,9 @@ class TestFilledArrayWithStringDtype:
         from policyengine_core.populations.population import Population
         from policyengine_core.entities import Entity
 
-        entity = Entity(key="person", plural="people", label="Person", doc="Test person entity")
+        entity = Entity(
+            key="person", plural="people", label="Person", doc="Test person entity"
+        )
         population = Population(entity)
         population.count = 5
 

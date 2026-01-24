@@ -196,7 +196,10 @@ class VectorialParameterNodeAtInstant:
         if isinstance(key, str):
             return self.__getattr__(key)
         # If the key is a vector, e.g. ['zone_1', 'zone_2', 'zone_1']
-        elif isinstance(key, numpy.ndarray):
+        # Convert pandas arrays (e.g., StringArray from pandas 3) to numpy
+        if hasattr(key, "__array__") and not isinstance(key, numpy.ndarray):
+            key = numpy.asarray(key)
+        if isinstance(key, numpy.ndarray):
             if not numpy.issubdtype(key.dtype, numpy.str_):
                 # In case the key is not a string vector, stringify it
                 if key.dtype == object and issubclass(type(key[0]), Enum):

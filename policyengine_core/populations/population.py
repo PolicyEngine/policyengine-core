@@ -41,6 +41,12 @@ class Population:
         return numpy.zeros(self.count)
 
     def filled_array(self, value: Any, dtype: Any = None) -> numpy.ndarray:
+        import pandas as pd
+
+        # Handle pandas extension dtypes (e.g., StringDtype in pandas 3)
+        # numpy.full() cannot handle these, so convert to object dtype
+        if isinstance(dtype, pd.api.extensions.ExtensionDtype):
+            dtype = object
         return numpy.full(self.count, value, dtype)
 
     def __getattr__(self, attribute: str) -> Any:

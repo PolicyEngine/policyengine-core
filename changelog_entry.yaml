@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    fixed:
-      - Fixed pandas 3.0 compatibility issues with StringDtype and StringArray

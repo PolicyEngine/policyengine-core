@@ -922,3 +922,8 @@
       are now treated the same as None, and non-interactive environments (like CI)
       return None instead of hanging on getpass prompt.
   date: 2026-01-17 18:14:48
+- bump: patch
+  changes:
+    fixed:
+    - Fixed pandas 3.0 compatibility issues with StringDtype and StringArray
+  date: 2026-01-24 15:41:39

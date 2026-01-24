@@ -53,7 +53,7 @@ dev_requirements = [
 
 setup(
     name="policyengine-core",
-    version="3.23.4",
+    version="3.24.0",
     author="PolicyEngine",
     author_email="hello@policyengine.org",
     classifiers=[
@@ -65,6 +65,7 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
         "Topic :: Scientific/Engineering :: Information Analysis",
     ],
     description="Core microsimulation engine enabling country-specific policy models.",

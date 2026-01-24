@@ -25,7 +25,10 @@ class TestFilledArrayWithStringDtype:
 
         # Create a minimal entity for testing
         entity = Entity(
-            key="person", plural="people", label="Person", doc="Test person entity"
+            key="person",
+            plural="people",
+            label="Person",
+            doc="Test person entity",
         )
 
         # Create a population with some count
@@ -54,14 +57,19 @@ class TestFilledArrayWithStringDtype:
         from policyengine_core.entities import Entity
 
         entity = Entity(
-            key="person", plural="people", label="Person", doc="Test person entity"
+            key="person",
+            plural="people",
+            label="Person",
+            doc="Test person entity",
         )
         population = Population(entity)
         population.count = 5
 
         # PyArrow string dtype (proper way to create it)
         arrow_string_dtype = pd.ArrowDtype(pa.string())
-        result = population.filled_array("test_value", dtype=arrow_string_dtype)
+        result = population.filled_array(
+            "test_value", dtype=arrow_string_dtype
+        )
         assert len(result) == 5
 
 
@@ -164,5 +172,9 @@ class TestStringDtypeConversion:
         assert isinstance(pd.StringDtype(), pd.api.extensions.ExtensionDtype)
 
         # numpy dtypes are not
-        assert not isinstance(np.dtype("float64"), pd.api.extensions.ExtensionDtype)
-        assert not isinstance(np.dtype("object"), pd.api.extensions.ExtensionDtype)
+        assert not isinstance(
+            np.dtype("float64"), pd.api.extensions.ExtensionDtype
+        )
+        assert not isinstance(
+            np.dtype("object"), pd.api.extensions.ExtensionDtype
+        )

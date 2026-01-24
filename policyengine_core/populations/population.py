@@ -72,7 +72,9 @@ class Population:
                 )
             )
 
-    def check_period_validity(self, variable_name: str, period: Period) -> None:
+    def check_period_validity(
+        self, variable_name: str, period: Period
+    ) -> None:
         if period is None:
             stack = traceback.extract_stack()
             filename, line_number, function_name, line_of_code = stack[-3]
@@ -141,7 +143,9 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
                 variable_name, period, **calculate_kwargs
             )
         else:
-            return self.simulation.calculate(variable_name, period, **calculate_kwargs)
+            return self.simulation.calculate(
+                variable_name, period, **calculate_kwargs
+            )
 
     # Helpers
 
@@ -166,7 +170,9 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
             for holder_memory_usage in holders_memory_usage.values()
         )
 
-        return dict(total_nb_bytes=total_memory_usage, by_variable=holders_memory_usage)
+        return dict(
+            total_nb_bytes=total_memory_usage, by_variable=holders_memory_usage
+        )
 
     @projectors.projectable
     def has_role(self, role: Role) -> ArrayLike:
@@ -182,7 +188,10 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
         group_population = self.simulation.get_population(role.entity.plural)
         if role.subroles:
             return numpy.logical_or.reduce(
-                [group_population.members_role == subrole for subrole in role.subroles]
+                [
+                    group_population.members_role == subrole
+                    for subrole in role.subroles
+                ]
             )
         else:
             return group_population.members_role == role
@@ -230,7 +239,9 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
 
         # If entity is for instance 'person.household', we get the reference entity 'household' behind the projector
         entity = (
-            entity if not isinstance(entity, Projector) else entity.reference_entity
+            entity
+            if not isinstance(entity, Projector)
+            else entity.reference_entity
         )
 
         positions = entity.members_position
@@ -241,7 +252,9 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
         # Matrix: the value in line i and column j is the value of criteria for the jth person of the ith entity
         matrix = numpy.asarray(
             [
-                entity.value_nth_person(k, filtered_criteria, default=numpy.inf)
+                entity.value_nth_person(
+                    k, filtered_criteria, default=numpy.inf
+                )
                 for k in range(biggest_entity_size)
             ]
         ).transpose()

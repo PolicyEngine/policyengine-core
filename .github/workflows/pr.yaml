@@ -63,6 +63,8 @@ jobs:
     name: Test Core and country packages (${{ matrix.os }}, py${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
     needs: Lint
+    # Python 3.14 smoke tests allowed to fail until tables has 3.14 wheels
+    continue-on-error: ${{ matrix.python-version == '3.14' }}
     strategy:
       fail-fast: false
       matrix:

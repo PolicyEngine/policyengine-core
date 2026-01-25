@@ -120,7 +120,11 @@ class TestParameterLookupWithStringArray:
                 with open(zone_file, "w") as f:
                     yaml.dump(
                         {
-                            "values": {"2024-01-01": {"value": 1.0 if zone == "zone_1" else 2.0}},
+                            "values": {
+                                "2024-01-01": {
+                                    "value": 1.0 if zone == "zone_1" else 2.0
+                                }
+                            },
                             "metadata": {"unit": "currency-GBP"},
                         },
                         f,

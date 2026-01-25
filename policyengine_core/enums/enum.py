@@ -66,7 +66,14 @@ class Enum(enum.Enum):
             return array
 
         # Handle Enum item arrays by extracting indices directly
-        if len(array) > 0 and isinstance(array[0], Enum):
+        # Use .iloc[0] for pandas Series to avoid KeyError with non-integer index
+        # (pandas 3.0 uses StringDtype by default, causing array[0] to do
+        # label-based lookup instead of positional access)
+        if len(array) > 0:
+            first_elem = array.iloc[0] if hasattr(array, "iloc") else array[0]
+        else:
+            first_elem = None
+        if first_elem is not None and isinstance(first_elem, Enum):
             indices = np.array(
                 [item.index for item in array], dtype=ENUM_ARRAY_DTYPE
             )

@@ -94,3 +94,59 @@ def test_enum_encode_empty_string_raises_error():
 
     # Empty string should be in the error message (represented as '')
     assert "''" in str(exc_info.value) or '""' in str(exc_info.value)
+
+
+def test_enum_encode_pandas_series_with_enum_items():
+    """
+    Test that encoding a pandas Series containing Enum items works.
+
+    In pandas 3.0, Series may have StringDtype index. The encode() method
+    uses array[0] to check if items are Enum instances, but this fails
+    with KeyError when the Series has a non-integer index.
+
+    This test verifies the fix for GitHub issue #427.
+    """
+    import pandas as pd
+
+    class Sample(Enum):
+        MAXWELL = "maxwell"
+        DWORKIN = "dworkin"
+
+    # Create a pandas Series with Enum items (simulates what happens in
+    # policyengine-us county variable with pandas 3.0)
+    enum_items = [Sample.MAXWELL, Sample.DWORKIN, Sample.MAXWELL]
+    series = pd.Series(enum_items)
+
+    # This should work but fails with KeyError: 0 before the fix
+    encoded_array = Sample.encode(series)
+
+    assert len(encoded_array) == 3
+    assert isinstance(encoded_array, EnumArray)
+    assert encoded_array.dtype.kind == "i"
+    # Verify correct encoding
+    assert list(encoded_array) == [0, 1, 0]  # MAXWELL=0, DWORKIN=1
+
+
+def test_enum_encode_pandas_series_with_string_index():
+    """
+    Test that encoding a pandas Series with a string index works.
+
+    This specifically tests the pandas 3.0 case where StringDtype is used
+    and array[0] does label-based lookup instead of positional access.
+    """
+    import pandas as pd
+
+    class Sample(Enum):
+        MAXWELL = "maxwell"
+        DWORKIN = "dworkin"
+
+    # Create a Series with a string index (like pandas 3.0 StringDtype)
+    enum_items = [Sample.MAXWELL, Sample.DWORKIN, Sample.MAXWELL]
+    series = pd.Series(enum_items, index=["a", "b", "c"])
+
+    # This fails with KeyError: 0 when using array[0] instead of .iloc[0]
+    encoded_array = Sample.encode(series)
+
+    assert len(encoded_array) == 3
+    assert isinstance(encoded_array, EnumArray)
+    assert list(encoded_array) == [0, 1, 0]

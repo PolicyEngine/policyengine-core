@@ -927,3 +927,10 @@
     fixed:
     - Fixed pandas 3.0 compatibility issues with StringDtype and StringArray
   date: 2026-01-24 15:41:39
+- bump: patch
+  changes:
+    fixed:
+    - Fixed pandas 3.0 compatibility in Enum.encode() by using positional access (.iloc[0])
+      for pandas Series instead of label-based access (array[0]), which fails with
+      KeyError when Series has a non-integer index (fixes
+  date: 2026-01-25 04:19:17

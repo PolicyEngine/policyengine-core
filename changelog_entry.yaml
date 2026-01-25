@@ -1,4 +1,0 @@
-- bump: patch
-  changes:
-    fixed:
-      - Fixed pandas 3.0 compatibility in Enum.encode() by using positional access (.iloc[0]) for pandas Series instead of label-based access (array[0]), which fails with KeyError when Series has a non-integer index (fixes #427)

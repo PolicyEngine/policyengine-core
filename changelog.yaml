@@ -934,3 +934,9 @@
       for pandas Series instead of label-based access (array[0]), which fails with
       KeyError when Series has a non-integer index (fixes
   date: 2026-01-25 04:19:17
+- bump: patch
+  changes:
+    fixed:
+    - Fixed pandas 3.0 compatibility in ParameterNodeAtInstant.__getitem__() by converting
+      pandas StringArray to numpy array before using for fancy indexing (fixes
+  date: 2026-01-25 14:03:25

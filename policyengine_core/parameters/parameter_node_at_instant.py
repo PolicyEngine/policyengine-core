@@ -54,6 +54,10 @@ class ParameterNodeAtInstant:
         self, key: str
     ) -> Union["ParameterNodeAtInstant", VectorialParameterNodeAtInstant]:
         # If fancy indexing is used, cast to a vectorial node
+        # Convert pandas arrays (e.g., StringArray from pandas 3) to numpy
+        # before checking, since StringArray has __array__ but is not hashable
+        if hasattr(key, "__array__") and not isinstance(key, numpy.ndarray):
+            key = numpy.asarray(key)
         if isinstance(key, numpy.ndarray):
             return parameters.VectorialParameterNodeAtInstant.build_from_node(
                 self

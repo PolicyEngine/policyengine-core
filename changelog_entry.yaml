@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    fixed:
+      - Fixed pandas 3.0 compatibility in ParameterNodeAtInstant.__getitem__() by converting pandas StringArray to numpy array before using for fancy indexing (fixes #429)

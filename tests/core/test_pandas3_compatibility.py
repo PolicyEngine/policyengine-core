@@ -93,6 +93,61 @@ class TestParameterLookupWithStringArray:
         numpy_array = np.asarray(string_array)
         assert isinstance(numpy_array, np.ndarray)
 
+    def test_parameter_node_at_instant_getitem_with_string_array(self):
+        """
+        Regression test for pandas 3.0 StringArray compatibility.
+
+        ParameterNodeAtInstant.__getitem__ should handle pandas StringArray
+        by converting it to numpy array before using it for fancy indexing.
+        Without the fix, this raises: TypeError: unhashable type: 'StringArray'
+
+        This is issue #429.
+        """
+        from policyengine_core.parameters import ParameterNode
+        import tempfile
+        import os
+        import yaml
+
+        # Create a minimal parameter tree for testing
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create parameter YAML files
+            param_dir = os.path.join(tmpdir, "test_params")
+            os.makedirs(param_dir)
+
+            # Create zone parameters
+            for zone in ["zone_1", "zone_2"]:
+                zone_file = os.path.join(param_dir, f"{zone}.yaml")
+                with open(zone_file, "w") as f:
+                    yaml.dump(
+                        {
+                            "values": {
+                                "2024-01-01": {
+                                    "value": 1.0 if zone == "zone_1" else 2.0
+                                }
+                            },
+                            "metadata": {"unit": "currency-GBP"},
+                        },
+                        f,
+                    )
+
+            # Load the parameter node
+            node = ParameterNode(directory_path=param_dir)
+            node_at_instant = node("2024-01-01")
+
+            # Test with numpy array - should work
+            key_numpy = np.array(["zone_1", "zone_2"])
+            result_numpy = node_at_instant[key_numpy]
+            assert len(result_numpy) == 2
+
+            # Test with pandas StringArray - this was failing before the fix
+            # TypeError: unhashable type: 'StringArray'
+            key_string_array = pd.array(["zone_1", "zone_2"], dtype="string")
+            result_string_array = node_at_instant[key_string_array]
+            assert len(result_string_array) == 2
+
+            # Results should be the same
+            np.testing.assert_array_equal(result_numpy, result_string_array)
+
     def test_vectorial_parameter_node_with_string_array(self):
         """
         VectorialParameterNodeAtInstant.__getitem__ should handle pandas

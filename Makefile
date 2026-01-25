@@ -3,30 +3,30 @@ all: install format test build changelog
 documentation:
 	jb clean docs
 	jb build docs
-	python docs/add_plotly_to_book.py docs/_build
+	uv run python docs/add_plotly_to_book.py docs/_build
 
 format:
-	black . -l 79
+	uv run black . -l 79
 
 install:
-	pip install -e ".[dev]" --config-settings editable_mode=compat
+	uv sync --all-extras
 
 test-country-template:
-	policyengine-core test policyengine_core/country_template/tests -c policyengine_core.country_template
+	uv run policyengine-core test policyengine_core/country_template/tests -c policyengine_core.country_template
 
 mypy:
-	mypy --config-file mypy.ini policyengine_core tests
+	uv run mypy --config-file mypy.ini policyengine_core tests
 
 test: test-country-template
-	coverage run -a --branch -m pytest tests --disable-pytest-warnings --reruns 2 --reruns-delay 5
-	coverage xml -i
+	uv run coverage run -a --branch -m pytest tests --disable-pytest-warnings --reruns 2 --reruns-delay 5
+	uv run coverage xml -i
 
 build:
-	python setup.py sdist bdist_wheel
+	uv build
 
 changelog:
-	build-changelog changelog.yaml --output changelog.yaml --update-last-date --start-from 0.1.0 --append-file changelog_entry.yaml
-	build-changelog changelog.yaml --org PolicyEngine --repo policyengine-core --output CHANGELOG.md --template .github/changelog_template.md
-	bump-version changelog.yaml setup.py
+	uv run build-changelog changelog.yaml --output changelog.yaml --update-last-date --start-from 0.1.0 --append-file changelog_entry.yaml
+	uv run build-changelog changelog.yaml --org PolicyEngine --repo policyengine-core --output CHANGELOG.md --template .github/changelog_template.md
+	uv run bump-version changelog.yaml pyproject.toml
 	rm changelog_entry.yaml || true
 	touch changelog_entry.yaml

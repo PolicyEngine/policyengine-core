@@ -1,0 +1,4 @@
+- bump: minor
+  changes:
+    changed:
+      - Migrated from pip/setup.py to uv/pyproject.toml for faster dependency management and modern Python packaging

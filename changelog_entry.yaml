@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    removed:
+    - Stale smoke test workaround with unused dependencies (synthimpute, etc.).

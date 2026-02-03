@@ -35,6 +35,7 @@ jobs:
       matrix:
         os: [ ubuntu-latest, windows-latest ]
         python-version: [ "3.12", "3.13" ]
+        pandas-version: [ "2", "3" ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -52,6 +53,14 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install package
         run: make install
+      - name: Install pandas ${{ matrix.pandas-version }}
+        shell: bash
+        run: |
+          if [ "${{ matrix.pandas-version }}" = "2" ]; then
+            pip install "pandas>=2,<3"
+          else
+            pip install "pandas>=3,<4"
+          fi
       - name: Run tests
         run: make test
       - uses: codecov/codecov-action@v4

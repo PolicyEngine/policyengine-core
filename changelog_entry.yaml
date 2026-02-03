@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    added:
+      - Added pandas 2 and 3 CI matrix testing to ensure compatibility with both major versions.

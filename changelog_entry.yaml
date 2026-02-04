@@ -1,0 +1,4 @@
+- bump: major
+  changes:
+    changed:
+      - Replace global execution counter in random() with variable-name-based salting for order-independent reproducibility. This is a breaking change that will produce different random values for existing simulations.

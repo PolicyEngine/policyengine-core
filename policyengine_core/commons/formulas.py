@@ -314,7 +314,9 @@ def _stable_string_hash(s: str) -> np.uint64:
     import warnings
 
     with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", "overflow encountered", RuntimeWarning)
+        warnings.filterwarnings(
+            "ignore", "overflow encountered", RuntimeWarning
+        )
         h = np.uint64(0)
         for byte in s.encode("utf-8"):
             h = h * np.uint64(31) + np.uint64(byte)
@@ -382,7 +384,9 @@ def random(population, salt: str = None):
     entity_ids = population(f"{population.entity.key}_id", period)
 
     # Create deterministic seed from variable name + call count
-    base_seed = _stable_string_hash(f"{variable_name}:{call_count}:{salt or ''}")
+    base_seed = _stable_string_hash(
+        f"{variable_name}:{call_count}:{salt or ''}"
+    )
 
     # Combine with entity IDs via XOR
     seeds = (entity_ids.astype(np.uint64) ^ base_seed).astype(np.uint64)

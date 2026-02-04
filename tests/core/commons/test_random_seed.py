@@ -60,11 +60,13 @@ class TestRandomSeed:
     def test_random_with_large_entity_ids(self):
         """Test that random() handles large entity IDs without overflow."""
         population = create_mock_population()
-        large_ids = np.array([
-            np.iinfo(np.int64).max - 1000,
-            np.iinfo(np.int64).max // 2,
-            1234567890123456789,
-        ])
+        large_ids = np.array(
+            [
+                np.iinfo(np.int64).max - 1000,
+                np.iinfo(np.int64).max // 2,
+                1234567890123456789,
+            ]
+        )
         population.side_effect = lambda key, period: large_ids
 
         result = random(population)
@@ -176,7 +178,9 @@ class TestRandomSeed:
         ids = np.array([1, 2, 3])
         population.side_effect = lambda key, period: ids
 
-        with pytest.raises(ValueError, match="random\\(\\) called outside formula context"):
+        with pytest.raises(
+            ValueError, match="random\\(\\) called outside formula context"
+        ):
             random(population)
 
     def test_random_outside_formula_with_salt(self):

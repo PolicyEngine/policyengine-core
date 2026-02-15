@@ -65,6 +65,7 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
         "Topic :: Scientific/Engineering :: Information Analysis",
     ],
     description="Core microsimulation engine enabling country-specific policy models.",
@@ -82,8 +83,10 @@ setup(
     python_requires=">=3.10",
     extras_require={
         "dev": dev_requirements,
-        # Note: For Python 3.13, policyengine-us requires special installation
-        # due to tables==3.9.2 not having Python 3.13 wheels. See CI workflow for workaround.
+        # Note: For Python 3.13+, policyengine-us requires special installation
+        # due to tables not having Python 3.13+ wheels in stable releases.
+        # Python 3.14 requires installing tables from GitHub master until 3.11.0 releases.
+        # See CI workflow for workaround.
     },
     include_package_data=True,  # Will read MANIFEST.in
     install_requires=general_requirements,

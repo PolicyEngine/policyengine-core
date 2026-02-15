@@ -34,7 +34,7 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest, windows-latest ]
-        python-version: [ "3.12", "3.13" ]
+        python-version: [ "3.12", "3.13", "3.14" ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -67,7 +67,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ['3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -83,7 +83,15 @@ jobs:
         run: python -m pytest --version
       - name: Install -us package from PyPI
         run: |
-          if [[ "${{ matrix.python-version }}" == "3.13" ]]; then
+          if [[ "${{ matrix.python-version }}" == "3.14" ]]; then
+            # For Python 3.14, install PyTables from GitHub (3.11.0 not yet released)
+            # PyTables added Python 3.14 support in PR #1286 (merged Jan 7, 2026)
+            pip install git+https://github.com/PyTables/PyTables.git@master
+            pip install policyengine-us --no-deps
+            # Install remaining dependencies manually
+            pip install click==8.1.3 pathlib pytest-dependency synthimpute tabulate
+            pip install policyengine-us-data --no-deps
+          elif [[ "${{ matrix.python-version }}" == "3.13" ]]; then
             # For Python 3.13, install newer tables first and ignore conflicts
             pip install "tables>=3.10.1"
             pip install policyengine-us --no-deps

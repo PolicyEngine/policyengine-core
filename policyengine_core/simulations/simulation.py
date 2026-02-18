@@ -1227,7 +1227,13 @@ class Simulation:
         new_dict = new.__dict__
 
         for key, value in self.__dict__.items():
-            if key not in ("debug", "trace", "tracer", "branches", "_fast_cache"):
+            if key not in (
+                "debug",
+                "trace",
+                "tracer",
+                "branches",
+                "_fast_cache",
+            ):
                 new_dict[key] = value
         new._fast_cache = {}
 

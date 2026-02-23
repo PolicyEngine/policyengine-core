@@ -11,25 +11,20 @@ jobs:
         uses: "lgeiger/black-action@master"
         with:
           args: ". -l 79 --check"
-  check-version:
-    name: Check version
+  check-changelog:
+    name: Check changelog fragment
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.ref }}
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Build changelog
-        run: pip install yaml-changelog>=0.1.7 && make changelog
-      - name: Preview changelog update
-        run: ".github/get-changelog-diff.sh"
-      - name: Check version number has been properly updated
-        run: .github/is-version-number-acceptable.sh
+      - name: Check for changelog fragment
+        run: |
+          FRAGMENTS=$(find changelog.d -type f ! -name '.gitkeep' | wc -l)
+          if [ "$FRAGMENTS" -eq 0 ]; then
+            echo "::error::No changelog fragment found in changelog.d/"
+            echo "Add one with: echo 'Description.' > changelog.d/\$(git branch --show-current).<type>.md"
+            echo "Types: added, changed, fixed, removed, breaking"
+            exit 1
+          fi
   Test:
     strategy:
       matrix:

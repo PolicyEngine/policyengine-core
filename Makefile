@@ -22,7 +22,7 @@ test: test-country-template
 	coverage xml -i
 
 build:
-	python setup.py sdist bdist_wheel
+	python -m build
 
 changelog:
 	python .github/bump_version.py

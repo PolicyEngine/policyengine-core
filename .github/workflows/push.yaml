@@ -29,6 +29,10 @@ jobs:
         with:
           python-version: "3.13"
       - name: Build changelog
+        run: |
+          pip install towncrier
+          python .github/bump_version.py
+          towncrier build --yes --version $(python -c "import re; print(re.search(r'version = \"(.+?)\"', open('pyproject.toml').read()).group(1))")
       - name: Preview changelog update
         run: ".github/get-changelog-diff.sh"
       - name: Update changelog

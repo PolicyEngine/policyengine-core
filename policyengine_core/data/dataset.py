@@ -85,19 +85,21 @@ class Dataset:
 
         self.file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        assert (
-            self.name
-        ), "You tried to instantiate a Dataset object, but no name has been provided."
-        assert (
-            self.label
-        ), "You tried to instantiate a Dataset object, but no label has been provided."
+        assert self.name, (
+            "You tried to instantiate a Dataset object, but no name has been provided."
+        )
+        assert self.label, (
+            "You tried to instantiate a Dataset object, but no label has been provided."
+        )
 
         assert self.data_format in [
             Dataset.TABLES,
             Dataset.ARRAYS,
             Dataset.TIME_PERIOD_ARRAYS,
             Dataset.FLAT_FILE,
-        ], f"You tried to instantiate a Dataset object, but your data_format attribute is invalid ({self.data_format})."
+        ], (
+            f"You tried to instantiate a Dataset object, but your data_format attribute is invalid ({self.data_format})."
+        )
 
         self._table_cache = {}
 

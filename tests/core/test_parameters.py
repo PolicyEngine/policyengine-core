@@ -14,9 +14,9 @@ def test_get_at_instant(tax_benefit_system):
     parameters = tax_benefit_system.parameters
     assert isinstance(parameters, ParameterNode), parameters
     parameters_at_instant = parameters("2016-01-01")
-    assert isinstance(
-        parameters_at_instant, ParameterNodeAtInstant
-    ), parameters_at_instant
+    assert isinstance(parameters_at_instant, ParameterNodeAtInstant), (
+        parameters_at_instant
+    )
     assert parameters_at_instant.taxes.income_tax_rate == 0.15
     assert parameters_at_instant.benefits.basic_income == 600
 

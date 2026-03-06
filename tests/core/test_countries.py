@@ -86,9 +86,9 @@ def test_divide_option_with_complex_period(simulation):
     expected_words = ["DIVIDE", "one-year", "one-month", "period"]
 
     for word in expected_words:
-        assert (
-            word in error_message
-        ), f"Expected '{word}' in error message '{error_message}'"
+        assert word in error_message, (
+            f"Expected '{word}' in error message '{error_message}'"
+        )
 
 
 def test_variable_with_reference(make_simulation, isolated_tax_benefit_system):

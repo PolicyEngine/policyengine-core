@@ -73,9 +73,7 @@ class TaxBenefitSystem:
     _parameters_at_instant_cache: Optional[Dict[Any, Any]] = None
     person_key_plural: str = None
     preprocess_parameters: str = None
-    baseline: "TaxBenefitSystem" = (
-        None  # Baseline tax-benefit system. Used only by reforms. Note: Reforms can be chained.
-    )
+    baseline: "TaxBenefitSystem" = None  # Baseline tax-benefit system. Used only by reforms. Note: Reforms can be chained.
     cache_blacklist = None
     decomposition_file_path = None
     variable_module_metadata: dict = None
@@ -569,10 +567,10 @@ class TaxBenefitSystem:
         elif isinstance(instant, (str, int)):
             instant = periods.instant(instant)
         else:
-            assert isinstance(
-                instant, Instant
-            ), "Expected an Instant (e.g. Instant((2017, 1, 1)) ). Got: {}.".format(
-                instant
+            assert isinstance(instant, Instant), (
+                "Expected an Instant (e.g. Instant((2017, 1, 1)) ). Got: {}.".format(
+                    instant
+                )
             )
 
         parameters_at_instant = self._parameters_at_instant_cache.get(instant)

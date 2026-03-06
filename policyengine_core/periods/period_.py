@@ -99,9 +99,9 @@ class Period(tuple):
 
     @property
     def date(self) -> datetime.date:
-        assert (
-            self.size == 1
-        ), '"date" is undefined for a period of size > 1: {}'.format(self)
+        assert self.size == 1, (
+            '"date" is undefined for a period of size > 1: {}'.format(self)
+        )
         return self.start.date
 
     @property

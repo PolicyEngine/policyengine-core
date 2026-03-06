@@ -103,9 +103,9 @@ class Instant(tuple):
             config.MONTH,
             config.YEAR,
         ), "Invalid unit: {} of type {}".format(unit, type(unit))
-        assert (
-            isinstance(size, int) and size >= 1
-        ), "Invalid size: {} of type {}".format(size, type(size))
+        assert isinstance(size, int) and size >= 1, (
+            "Invalid size: {} of type {}".format(size, type(size))
+        )
         return periods.Period((unit, self, size))
 
     def offset(self, offset: int, unit: str) -> "Instant":
@@ -208,9 +208,9 @@ class Instant(tuple):
                 month = 12
                 day = 31
         else:
-            assert isinstance(
-                offset, int
-            ), "Invalid offset: {} of type {}".format(offset, type(offset))
+            assert isinstance(offset, int), (
+                "Invalid offset: {} of type {}".format(offset, type(offset))
+            )
             if unit == config.DAY:
                 day += offset
                 if offset < 0:

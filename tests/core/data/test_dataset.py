@@ -42,7 +42,6 @@ def test_atomic_write():
             file.flush()
             # Open the file before overwriting
             with open(file.name, "r") as file_original:
-
                 atomic_write(Path(file.name), "NOPE\n".encode())
 
                 # Open file descriptor still points to the old node
@@ -81,9 +80,9 @@ def test_atomic_write_windows():
 
         for i, results in enumerate(check_results):
             for expected, actual in results:
-                assert (
-                    expected == actual
-                ), f"Mismatch in file {i}: expected {expected}, got {actual}"
+                assert expected == actual, (
+                    f"Mismatch in file {i}: expected {expected}, got {actual}"
+                )
 
         for temp_file in temp_files:
             if temp_file.exists():

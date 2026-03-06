@@ -582,7 +582,9 @@ class Variable:
             return None
 
         if period is None:
-            return self.formulas.peekitem(index=0)[
+            return self.formulas.peekitem(
+                index=0
+            )[
                 1
             ]  # peekitem gets the 1st key-value tuple (the oldest start_date and formula). Return the formula.
 

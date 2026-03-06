@@ -319,9 +319,9 @@ class IndividualSim:
             pass
         x = x.astype(np.float32)
         y = y.astype(np.float32)
-        assert (
-            len(y) > 1 and len(x) > 1
-        ), "Simulation must vary on an axis to calculate derivatives."
+        assert len(y) > 1 and len(x) > 1, (
+            "Simulation must vary on an axis to calculate derivatives."
+        )
         deriv = (y[1:] - y[:-1]) / (x[1:] - x[:-1])
         deriv = np.append(deriv, deriv[-1])
         return deriv

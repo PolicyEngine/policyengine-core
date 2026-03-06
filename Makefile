@@ -6,7 +6,7 @@ documentation:
 	python docs/add_plotly_to_book.py docs/_build
 
 format:
-	black . -l 79
+	ruff format .
 
 install:
 	pip install -e ".[dev]" --config-settings editable_mode=compat

@@ -299,9 +299,9 @@ class Simulation:
             return data[name]
 
         if self.dataset.data_format != Dataset.FLAT_FILE:
-            assert (
-                entity_id_field in data
-            ), f"Missing {entity_id_field} column in the dataset. Each person entity must have an ID array defined for ETERNITY."
+            assert entity_id_field in data, (
+                f"Missing {entity_id_field} column in the dataset. Each person entity must have an ID array defined for ETERNITY."
+            )
         elif entity_id_field not in data:
             data[entity_id_field] = np.arange(
                 len(get_eternity_array("person_id"))
@@ -313,9 +313,9 @@ class Simulation:
         for group_entity in self.tax_benefit_system.group_entities:
             entity_id_field = f"{group_entity.key}_id"
             if self.dataset.data_format != Dataset.FLAT_FILE:
-                assert (
-                    entity_id_field in data
-                ), f"Missing {entity_id_field} column in the dataset. Each group entity must have an ID array defined for ETERNITY."
+                assert entity_id_field in data, (
+                    f"Missing {entity_id_field} column in the dataset. Each group entity must have an ID array defined for ETERNITY."
+                )
                 entity_ids = get_eternity_array(entity_id_field)
             elif entity_id_field not in data:
                 entity_id_field_values = get_eternity_array(
@@ -334,9 +334,9 @@ class Simulation:
                 f"{person_entity.key}_{group_entity.key}_id"
             )
             if self.dataset.data_format != Dataset.FLAT_FILE:
-                assert (
-                    person_membership_id_field in data
-                ), f"Missing {person_membership_id_field} column in the dataset. Each group entity must have a person membership array defined for ETERNITY."
+                assert person_membership_id_field in data, (
+                    f"Missing {person_membership_id_field} column in the dataset. Each group entity must have a person membership array defined for ETERNITY."
+                )
             elif person_membership_id_field not in data:
                 data[person_membership_id_field] = np.arange(len(data))
             person_membership_ids = get_eternity_array(

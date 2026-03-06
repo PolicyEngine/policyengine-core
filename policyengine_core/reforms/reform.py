@@ -90,9 +90,11 @@ class Reform(TaxBenefitSystem):
     @property
     def full_key(self) -> str:
         key = self.key
-        assert (
-            key is not None
-        ), "key was not set for reform {} (name: {!r})".format(self, self.name)
+        assert key is not None, (
+            "key was not set for reform {} (name: {!r})".format(
+                self, self.name
+            )
+        )
         if self.baseline is not None and hasattr(self.baseline, "key"):
             baseline_full_key = self.baseline.full_key
             key = ".".join([baseline_full_key, key])

@@ -2,7 +2,7 @@
 
 [![codecov](https://codecov.io/gh/PolicyEngine/policyengine-core/branch/master/graph/badge.svg?token=BLoCjCf5Qr)](https://codecov.io/gh/PolicyEngine/policyengine-core)
 [![PyPI version](https://badge.fury.io/py/policyengine-core.svg)](https://badge.fury.io/py/policyengine-core)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 This package, a fork of [OpenFisca-Core](https://github.com/OpenFisca/OpenFisca-Core), powers PolicyEngine country models and apps.
 
@@ -64,7 +64,7 @@ We also ask that you add tests for any new features or bug-fixes you add, so we 
 
 ### Step 2: Formatting
 
-In addition to the tests, we use [Black](https://github.com/psf/black) to lint our codebase, so before opening a pull request, Step 2 is to lint the code by running
+In addition to the tests, we use [Ruff](https://github.com/astral-sh/ruff) to format our codebase, so before opening a pull request, Step 2 is to format the code by running
 
 ```
 make format

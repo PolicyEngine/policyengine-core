@@ -10,12 +10,11 @@ import sortedcontainers
 from policyengine_core import periods, tools
 from policyengine_core.entities import Entity
 from policyengine_core.enums import Enum, EnumArray
-from policyengine_core.periods import Period
 from policyengine_core.holders import (
     set_input_dispatch_by_period,
     set_input_divide_by_period,
 )
-from policyengine_core.periods import DAY, ETERNITY
+from policyengine_core.periods import DAY, ETERNITY, Period
 
 from . import config, helpers
 

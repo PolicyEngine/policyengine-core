@@ -1,24 +1,23 @@
 import copy
 import os
 import typing
-from typing import Iterable, List, Type, Union
+from typing import Iterable, Union
 
 from policyengine_core import commons, parameters, tools
-from policyengine_core.data_structures import Reference
 from policyengine_core.periods.instant_ import Instant
 from policyengine_core.tracers import TracingParameterNodeAtInstant
 
 from .at_instant_like import AtInstantLike
-from .parameter import Parameter
-from .parameter_node_at_instant import ParameterNodeAtInstant
 from .config import COMMON_KEYS, FILE_EXTENSIONS
 from .helpers import (
-    load_parameter_file,
     _compose_name,
-    _validate_parameter,
-    _parse_child,
     _load_yaml_file,
+    _parse_child,
+    _validate_parameter,
+    load_parameter_file,
 )
+from .parameter import Parameter
+from .parameter_node_at_instant import ParameterNodeAtInstant
 
 EXCLUDED_PARAMETER_CHILD_NAMES = ["reference", "__pycache__"]
 

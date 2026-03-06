@@ -1,9 +1,11 @@
+from typing import Callable
+
+import numpy as np
 import pandas as pd
-from .formatting import *
 import plotly.express as px
 from microdf import MicroSeries
-from typing import Callable
-import numpy as np
+
+from .formatting import *
 
 
 def bar_chart(

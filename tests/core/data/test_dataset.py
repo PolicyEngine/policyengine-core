@@ -1,11 +1,11 @@
+import sys
+import tempfile
+import threading
+import uuid
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-import sys
-import threading
+
 from policyengine_core.tools.win_file_manager import WindowsAtomicFileManager
-import tempfile
-from pathlib import Path
-import uuid
 
 
 def test_dataset_class():

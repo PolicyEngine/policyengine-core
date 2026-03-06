@@ -11,6 +11,7 @@ from .. import tracers
 
 if typing.TYPE_CHECKING:
     from numpy.typing import ArrayLike
+
     from policyengine_core.parameters import (
         ParameterNodeAtInstant,
         VectorialParameterNodeAtInstant,

@@ -1,28 +1,26 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import sys
 import os
-import traceback
+import sys
 import textwrap
+import traceback
 from typing import Dict, List
 
 import pytest
 
 from policyengine_core.enums import EnumArray
-from policyengine_core.tools import (
-    assert_enum_equals,
-    assert_datetime_equals,
-    eval_expression,
-)
-from policyengine_core.simulations import SimulationBuilder
 from policyengine_core.errors import (
     SituationParsingError,
     VariableNotFoundError,
 )
-from policyengine_core.scripts import build_tax_benefit_system
 from policyengine_core.reforms import Reform, set_parameter
-from policyengine_core.populations import ADD, DIVIDE
+from policyengine_core.simulations import SimulationBuilder
+from policyengine_core.tools import (
+    assert_datetime_equals,
+    assert_enum_equals,
+    eval_expression,
+)
 
 log = logging.getLogger(__name__)
 
@@ -196,7 +194,7 @@ class YamlItem(pytest.Item):
                         key,
                         value,
                         return_modifier=True,
-                        period=f"year:2000:40",
+                        period="year:2000:40",
                     )
                 ]
                 parametric_reform_items.append((key, value))

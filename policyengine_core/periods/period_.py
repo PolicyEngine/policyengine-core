@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import calendar
-from datetime import datetime, date, timedelta
+from datetime import date, datetime, timedelta
 from typing import List
 
 from policyengine_core import periods

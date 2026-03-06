@@ -4,7 +4,6 @@ import pytest
 from policyengine_core.entities import build_entity
 from policyengine_core.model_api import ETERNITY, Enum, Variable
 from policyengine_core.simulations.simulation_builder import SimulationBuilder
-
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 
 

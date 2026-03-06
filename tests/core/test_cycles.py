@@ -3,7 +3,7 @@ import pytest
 from policyengine_core import periods, tools
 from policyengine_core.country_template import entities
 from policyengine_core.errors import CycleError
-from policyengine_core.simulations import SimulationBuilder, Simulation
+from policyengine_core.simulations import Simulation, SimulationBuilder
 from policyengine_core.variables import Variable
 
 

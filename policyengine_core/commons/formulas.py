@@ -1,24 +1,19 @@
 import logging
 from typing import Any, Callable, Dict, List, Sequence, Type, TypeVar, Union
+from warnings import warn
 
 import numpy
 import numpy as np
 import pandas as pd
-from numpy import logical_not as not_
 from numpy import maximum as max_
 from numpy import minimum as min_
-from numpy import round as round_
-from numpy import select, where
-
-from warnings import warn
+from numpy import select
 
 from policyengine_core.parameters.parameter_node import ParameterNode
 from policyengine_core.periods.period_ import Period
 from policyengine_core.populations.population import Population
 from policyengine_core.types import ArrayLike, ArrayType
 from policyengine_core.variables.variable import Variable
-
-import json
 
 T = TypeVar("T")
 
@@ -426,7 +421,7 @@ def sum_of_variables(variables: Union[List[str], str]) -> Callable:
     """
 
     warn(
-        f"Sum-of-variables formulas are deprecated- please use `adds` or `subtracts` instead."
+        "Sum-of-variables formulas are deprecated- please use `adds` or `subtracts` instead."
     )
 
     def sum_of_variables(entity, period, parameters):

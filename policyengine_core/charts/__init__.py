@@ -1,15 +1,14 @@
+from .api import *
+from .bar import *
 from .formatting import (
     BLUE,
     BLUE_COLOUR_SCALE,
-    DARK_GREEN,
-    LIGHT_GREEN,
     DARK_GRAY,
+    DARK_GREEN,
     GRAY,
     LIGHT_GRAY,
+    LIGHT_GREEN,
     WHITE,
-    format_fig,
     display_fig,
+    format_fig,
 )
-
-from .bar import *
-from .api import *

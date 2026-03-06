@@ -1,6 +1,6 @@
 from policyengine_core.country_template.constants import COUNTRY_DIR
 from policyengine_core.data import Dataset
-from policyengine_core.periods import ETERNITY, MONTH, period
+from policyengine_core.periods import ETERNITY, period
 
 
 class CountryTemplateDataset(Dataset):

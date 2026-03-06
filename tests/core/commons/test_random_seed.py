@@ -1,8 +1,9 @@
 """Test the random function with large entity IDs to ensure no overflow."""
 
-import numpy as np
-import pytest
 from unittest.mock import Mock
+
+import numpy as np
+
 from policyengine_core.commons.formulas import random
 
 

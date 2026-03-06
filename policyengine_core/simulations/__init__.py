@@ -6,7 +6,7 @@ from .helpers import (
     check_type,
     transform_to_strict_syntax,
 )
+from .individual_sim import IndividualSim
 from .microsimulation import Microsimulation
 from .simulation import Simulation
 from .simulation_builder import SimulationBuilder
-from .individual_sim import IndividualSim

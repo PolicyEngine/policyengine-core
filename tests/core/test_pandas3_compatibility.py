@@ -20,8 +20,8 @@ class TestFilledArrayWithStringDtype:
         In pandas 3.0.0, string columns use StringDtype by default.
         numpy.full() cannot handle StringDtype, so we need to handle this case.
         """
-        from policyengine_core.populations.population import Population
         from policyengine_core.entities import Entity
+        from policyengine_core.populations.population import Population
 
         # Create a minimal entity for testing
         entity = Entity(
@@ -53,8 +53,8 @@ class TestFilledArrayWithStringDtype:
         """
         pa = pytest.importorskip("pyarrow")
 
-        from policyengine_core.populations.population import Population
         from policyengine_core.entities import Entity
+        from policyengine_core.populations.population import Population
 
         entity = Entity(
             key="person",
@@ -101,10 +101,12 @@ class TestParameterLookupWithStringArray:
 
         This is issue #429.
         """
-        from policyengine_core.parameters import ParameterNode
-        import tempfile
         import os
+        import tempfile
+
         import yaml
+
+        from policyengine_core.parameters import ParameterNode
 
         # Create a minimal parameter tree for testing
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -6,13 +6,11 @@ import importlib
 import inspect
 import logging
 import os
-import yaml
-from pathlib import Path
 import sys
 import traceback
 import typing
+from pathlib import Path
 from typing import (
-    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
@@ -20,21 +18,20 @@ from typing import (
     Optional,
     Sequence,
     Type,
-    Union,
 )
-import importlib
+
+import yaml
 
 from policyengine_core import commons, periods, variables
-from policyengine_core.data_structures.reference import Reference
 from policyengine_core.entities import Entity
 from policyengine_core.errors import (
     VariableNameConflictError,
     VariableNotFoundError,
 )
 from policyengine_core.parameters import (
+    Parameter,
     ParameterNode,
     ParameterNodeAtInstant,
-    Parameter,
 )
 from policyengine_core.parameters.operations.homogenize_parameters import (
     homogenize_parameter_structures,
@@ -174,7 +171,7 @@ class TaxBenefitSystem:
                     "unit": "bool",
                 },
             }
-        if not "abolitions" in self.parameters.gov.children:
+        if "abolitions" not in self.parameters.gov.children:
             self.parameters.gov.add_child(
                 "abolitions",
                 ParameterNode(name="gov.abolitions", data=abolition_folder_data),

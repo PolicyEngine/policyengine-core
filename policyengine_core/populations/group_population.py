@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Container, Optional
 
 import numpy
 from numpy.typing import ArrayLike
@@ -6,9 +6,8 @@ from numpy.typing import ArrayLike
 from policyengine_core import projectors
 from policyengine_core.entities import Entity, Role
 from policyengine_core.enums import EnumArray
-from policyengine_core.populations.population import Population
 from policyengine_core.periods.period_ import Period
-from typing import Optional, Container
+from policyengine_core.populations.population import Population
 
 if TYPE_CHECKING:
     from policyengine_core.simulations import Simulation

@@ -2,10 +2,9 @@ from typing import Any, Callable
 
 import numpy as np
 from numpy.typing import ArrayLike
-from policyengine_core.entities import Entity
-from policyengine_core.populations import GroupPopulation, Population
-from policyengine_core.projectors import EntityToPersonProjector, Projector
-from policyengine_core.variables import Variable
+
+from policyengine_core.populations import Population
+from policyengine_core.projectors import EntityToPersonProjector
 
 
 class CallableSubset:

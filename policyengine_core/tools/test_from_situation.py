@@ -1,7 +1,6 @@
-import yaml
 from pathlib import Path
-import numpy as np
-import json
+
+import yaml
 
 
 def generate_test_from_situation(situation: dict, file_path: str):

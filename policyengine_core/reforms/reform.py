@@ -1,20 +1,21 @@
 from __future__ import annotations
 
 import copy
-from typing import Callable, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Union
 
-from policyengine_core.parameters import ParameterNode, Parameter
+from policyengine_core.parameters import Parameter, ParameterNode
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 
 if TYPE_CHECKING:
     from policyengine_core.simulations import Simulation
+import requests
+
+from policyengine_core.periods import (
+    instant as instant_,
+)
 from policyengine_core.periods import (
     period as period_,
-    instant as instant_,
-    Period,
 )
-
-import requests
 
 
 class classproperty(object):

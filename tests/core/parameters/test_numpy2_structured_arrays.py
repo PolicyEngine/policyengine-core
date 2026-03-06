@@ -10,7 +10,7 @@ rating areas, where different states have different numbers of rating areas.
 
 import numpy as np
 import pytest
-from policyengine_core.parameters import ParameterNode
+
 from policyengine_core.parameters.vectorial_parameter_node_at_instant import (
     VectorialParameterNodeAtInstant,
 )

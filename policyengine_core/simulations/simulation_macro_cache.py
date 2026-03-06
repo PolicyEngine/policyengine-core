@@ -1,8 +1,9 @@
+import importlib.metadata
 import shutil
 from pathlib import Path
+
 import h5py
 from numpy.typing import ArrayLike
-import importlib.metadata
 
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 

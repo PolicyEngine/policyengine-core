@@ -6,13 +6,11 @@ import typing
 from typing import Optional, Union
 
 import numpy
-from pyvis.node import Node
+from pyvis.network import Network
 
 from policyengine_core.enums import EnumArray
 
 from .. import tracers
-
-from pyvis.network import Network
 
 if typing.TYPE_CHECKING:
     from numpy.typing import ArrayLike

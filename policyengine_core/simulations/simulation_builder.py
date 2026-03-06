@@ -15,20 +15,21 @@ from policyengine_core.errors import (
 )
 from policyengine_core.periods import Period
 from policyengine_core.populations import GroupPopulation, Population
-from policyengine_core.simulations.simulation import Simulation
 from policyengine_core.simulations.helpers import (
-    check_type,
     _get_person_count,
+    check_type,
     transform_to_strict_syntax,
 )
+from policyengine_core.simulations.simulation import Simulation
 
 if TYPE_CHECKING:
     from policyengine_core.taxbenefitsystems.tax_benefit_system import (
         TaxBenefitSystem,
     )
 
-from policyengine_core.variables import Variable
 from datetime import datetime
+
+from policyengine_core.variables import Variable
 
 
 class SimulationBuilder:

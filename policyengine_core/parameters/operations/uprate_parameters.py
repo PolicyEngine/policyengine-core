@@ -1,11 +1,11 @@
-from numpy import ceil, floor
+from datetime import datetime
 
 # rrule is purposely imported this way to allow for programmatic
 # calling of rrule.YEARLY, rrule.MONTHLY, and rrule.DAILY
 from dateutil import rrule
-from dateutil.relativedelta import relativedelta
 from dateutil.parser import parse
-from datetime import datetime
+from dateutil.relativedelta import relativedelta
+from numpy import ceil, floor
 
 from policyengine_core.parameters.operations.get_parameter import get_parameter
 from policyengine_core.parameters.parameter import Parameter
@@ -14,7 +14,7 @@ from policyengine_core.parameters.parameter_at_instant import (
 )
 from policyengine_core.parameters.parameter_node import ParameterNode
 from policyengine_core.parameters.parameter_scale import ParameterScale
-from policyengine_core.periods import instant, Instant
+from policyengine_core.periods import instant
 
 
 def uprate_parameters(root: ParameterNode) -> ParameterNode:

@@ -1,7 +1,7 @@
 """Test the between function from commons.formulas."""
 
 import numpy as np
-import pytest
+
 from policyengine_core.commons.formulas import between
 
 

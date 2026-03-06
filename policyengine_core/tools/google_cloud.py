@@ -60,8 +60,8 @@ def download_gcs_file(
         The local path where the file was saved.
     """
     try:
-        from google.cloud import storage
         import google.auth
+        from google.cloud import storage
     except ImportError:
         raise ImportError(
             "google-cloud-storage is required for gs:// URLs. "
@@ -103,8 +103,8 @@ def upload_gcs_file(
         version_metadata: Optional version string to store in blob metadata.
     """
     try:
-        from google.cloud import storage
         import google.auth
+        from google.cloud import storage
     except ImportError:
         raise ImportError(
             "google-cloud-storage is required for gs:// URLs. "

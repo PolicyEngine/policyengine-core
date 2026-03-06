@@ -1,13 +1,14 @@
+import os
+import traceback
+import warnings
+from getpass import getpass
+
 from huggingface_hub import (
+    ModelInfo,
     hf_hub_download,
     model_info,
-    ModelInfo,
 )
 from huggingface_hub.errors import RepositoryNotFoundError
-from getpass import getpass
-import os
-import warnings
-import traceback
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -66,11 +67,11 @@ def download_huggingface_dataset(
     try:
         fetched_model_info: ModelInfo = model_info(repo)
         is_repo_private: bool = fetched_model_info.private
-    except RepositoryNotFoundError as e:
+    except RepositoryNotFoundError:
         # If this error type arises, it's likely the repo is private; see docs above
         is_repo_private = True
         pass
-    except Exception as e:
+    except Exception:
         # Otherwise, there probably is just a download error
         raise Exception(
             f"Unable to download dataset {repo_filename} from Hugging Face. This may be because the repo "

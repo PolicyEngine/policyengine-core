@@ -2,7 +2,6 @@ import warnings
 
 import pytest
 
-from policyengine_core import periods
 from policyengine_core.country_template.entities import Household, Person
 from policyengine_core.model_api import *
 from policyengine_core.parameters import ParameterNode

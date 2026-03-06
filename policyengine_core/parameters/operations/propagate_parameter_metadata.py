@@ -1,4 +1,3 @@
-from policyengine_core.parameters.parameter import Parameter
 from policyengine_core.parameters.parameter_node import ParameterNode
 
 

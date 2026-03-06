@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Dict, Any
+from typing import Any, Dict
 
 from policyengine_core import tools
 from policyengine_core.country_template import entities, situation_examples

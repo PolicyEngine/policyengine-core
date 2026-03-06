@@ -1,9 +1,12 @@
 from __future__ import annotations
+
 import enum
 import logging
 from functools import lru_cache
 from typing import Tuple, Union
+
 import numpy as np
+
 from .config import ENUM_ARRAY_DTYPE
 from .enum_array import EnumArray
 

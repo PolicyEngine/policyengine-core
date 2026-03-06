@@ -1,4 +1,3 @@
-import numpy as np
 
 from policyengine_core.entities import Entity
 from policyengine_core.model_api import *
@@ -32,5 +31,5 @@ def test_bad_subtracts_raises_error():
     try:
         simulation.calculate("some_income")
         raise Exception("Should have raised an error.")
-    except ValueError as e:
+    except ValueError:
         pass

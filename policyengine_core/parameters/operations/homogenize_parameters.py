@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List, Type
+from typing import Any, Dict, List
 
 from policyengine_core.enums import Enum
 from policyengine_core.parameters.parameter import Parameter

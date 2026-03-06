@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Dict
 
 import numpy
 from numpy.typing import ArrayLike

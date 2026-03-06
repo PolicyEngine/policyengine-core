@@ -1,11 +1,13 @@
 import os
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 from huggingface_hub import ModelInfo
 from huggingface_hub.errors import RepositoryNotFoundError
+
 from policyengine_core.tools.hugging_face import (
-    get_or_prompt_hf_token,
     download_huggingface_dataset,
+    get_or_prompt_hf_token,
     parse_hf_url,
 )
 

@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import csv
 import json
-import os
 
 import numpy as np
 from pytest import approx, fixture, mark, raises

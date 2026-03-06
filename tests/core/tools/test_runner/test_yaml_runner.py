@@ -1,9 +1,9 @@
 import os
+from pathlib import Path
 from typing import List
 
 import numpy as np
 import pytest
-from pathlib import Path
 
 from policyengine_core.entities import Entity
 from policyengine_core.errors import VariableNotFoundError

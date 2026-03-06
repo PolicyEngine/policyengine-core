@@ -1,5 +1,5 @@
 import traceback
-from typing import TYPE_CHECKING, Any, List, Optional, Container
+from typing import TYPE_CHECKING, Any, Container, List, Optional
 
 import numpy
 from numpy.typing import ArrayLike

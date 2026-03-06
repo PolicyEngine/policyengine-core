@@ -2,14 +2,15 @@ import copy
 import os
 from typing import Dict, List, Optional
 
-from policyengine_core.errors import ParameterParsingError
-from .at_instant_like import AtInstantLike
-from .parameter_at_instant import ParameterAtInstant
-
-from .helpers import _validate_parameter, _compose_name
-from .config import COMMON_KEYS
 from policyengine_core.commons.misc import empty_clone
-from policyengine_core.periods import INSTANT_PATTERN, period as get_period
+from policyengine_core.errors import ParameterParsingError
+from policyengine_core.periods import INSTANT_PATTERN
+from policyengine_core.periods import period as get_period
+
+from .at_instant_like import AtInstantLike
+from .config import COMMON_KEYS
+from .helpers import _compose_name, _validate_parameter
+from .parameter_at_instant import ParameterAtInstant
 
 
 class Parameter(AtInstantLike):

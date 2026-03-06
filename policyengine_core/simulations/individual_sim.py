@@ -3,14 +3,13 @@ IndividualSim and any other interfaces to intialising and running simulations on
 """
 
 from functools import partial
-from typing import Dict, List
 
 import numpy as np
 
 from policyengine_core.entities.entity import Entity
 from policyengine_core.periods import period
 from policyengine_core.reforms import Reform, set_parameter
-from policyengine_core.simulations import SimulationBuilder, Simulation
+from policyengine_core.simulations import Simulation, SimulationBuilder
 from policyengine_core.taxbenefitsystems.tax_benefit_system import (
     TaxBenefitSystem,
 )

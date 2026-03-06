@@ -1,5 +1,4 @@
-from typing import Sequence, TypeVar, Any
-from numpy.typing import NDArray as ArrayType
+from typing import Sequence, TypeVar
 
 T = TypeVar("T", bool, bytes, float, int, object, str)
 

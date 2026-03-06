@@ -1,8 +1,9 @@
+from test_variables import get_message
+
 import policyengine_core.country_template as country_template
 from policyengine_core.country_template.entities import Person
-from policyengine_core.variables import Variable
 from policyengine_core.periods import YEAR
-from test_variables import get_message
+from policyengine_core.variables import Variable
 
 tax_benefit_system = country_template.CountryTaxBenefitSystem()
 

@@ -1,11 +1,12 @@
+import json
+import random
 import tempfile
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Type, Union
 
 import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
-import logging
-from pathlib import Path
 
 from policyengine_core import commons, periods
 from policyengine_core.data.dataset import Dataset
@@ -14,34 +15,29 @@ from policyengine_core.enums import Enum, EnumArray
 from policyengine_core.errors import CycleError, SpiralError
 from policyengine_core.holders.holder import Holder
 from policyengine_core.periods import Period
-from policyengine_core.periods.config import ETERNITY, MONTH, YEAR
-from policyengine_core.periods.helpers import period
+from policyengine_core.periods.config import MONTH, YEAR
+from policyengine_core.tools.google_cloud import (
+    download_gcs_file,
+    parse_gs_url,
+)
+from policyengine_core.tools.hugging_face import *
 from policyengine_core.tracers import (
     FullTracer,
     SimpleTracer,
     TracingParameterNodeAtInstant,
 )
-import random
-from policyengine_core.tools.hugging_face import *
-from policyengine_core.tools.google_cloud import (
-    parse_gs_url,
-    download_gcs_file,
-)
-
-import json
 
 if TYPE_CHECKING:
     from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 
 from policyengine_core.experimental import MemoryConfig
-from policyengine_core.populations import Population, GroupPopulation
-from policyengine_core.tracers import SimpleTracer
-from policyengine_core.variables import Variable, QuantityType
-from policyengine_core.reforms.reform import Reform
 from policyengine_core.parameters import get_parameter
+from policyengine_core.populations import GroupPopulation, Population
+from policyengine_core.reforms.reform import Reform
 from policyengine_core.simulations.simulation_macro_cache import (
     SimulationMacroCache,
 )
+from policyengine_core.variables import QuantityType, Variable
 
 
 class Simulation:
@@ -592,7 +588,7 @@ class Simulation:
                 ]
             ):
                 return holder.default_array()
-        except Exception as e:
+        except Exception:
             pass
 
         # First look for a value already cached
@@ -735,7 +731,7 @@ class Simulation:
 
         except SpiralError:
             array = holder.default_array()
-        except RecursionError as e:
+        except RecursionError:
             if isinstance(self.tracer, FullTracer):
                 self.tracer.print_computation_log()
             stack = self.tracer.stack

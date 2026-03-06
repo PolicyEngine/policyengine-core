@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import os
-import re
 
 import numpy as np
 import pytest
 
 from policyengine_core.model_api import *
 from policyengine_core.parameters import (
-    Parameter,
     ParameterNode,
     ParameterNotFoundError,
 )

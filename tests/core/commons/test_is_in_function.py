@@ -1,7 +1,7 @@
 """Test the is_in function from commons.formulas."""
 
 import numpy as np
-import pytest
+
 from policyengine_core.commons.formulas import is_in
 
 

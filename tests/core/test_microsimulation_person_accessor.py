@@ -11,7 +11,6 @@ ensures consistent behavior across Python versions.
 """
 
 import numpy as np
-import pytest
 from microdf import MicroSeries
 
 from policyengine_core.country_template import Microsimulation

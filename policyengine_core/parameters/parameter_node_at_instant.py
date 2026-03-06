@@ -1,5 +1,4 @@
 import os
-import sys
 from typing import TYPE_CHECKING, Iterable, Union
 
 import numpy

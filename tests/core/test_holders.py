@@ -4,7 +4,6 @@ import pytest
 from policyengine_core import holders, periods, tools
 from policyengine_core.country_template import situation_examples
 from policyengine_core.country_template.variables import housing
-from policyengine_core.errors import PeriodMismatchError
 from policyengine_core.experimental import MemoryConfig
 from policyengine_core.holders import Holder
 from policyengine_core.simulations import SimulationBuilder

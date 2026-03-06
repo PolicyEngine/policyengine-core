@@ -1,12 +1,14 @@
-import requests
 import time
+
 import plotly.graph_objects as go
+import requests
+
 from .formatting import (
+    BLUE_LIGHT,
+    BLUE_PRIMARY,
     DARK_GRAY,
     MEDIUM_DARK_GRAY,
     WHITE,
-    BLUE_LIGHT,
-    BLUE_PRIMARY,
     format_fig,
 )
 

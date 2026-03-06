@@ -6,6 +6,7 @@ documentation:
 	python docs/add_plotly_to_book.py docs/_build
 
 format:
+	ruff check . --fix
 	ruff format .
 
 install:

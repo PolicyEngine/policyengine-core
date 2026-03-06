@@ -1,6 +1,5 @@
 import argparse
 import sys
-import warnings
 
 from policyengine_core.scripts import add_tax_benefit_system_arguments
 

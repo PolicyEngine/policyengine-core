@@ -7,6 +7,7 @@ documentation:
 
 format:
 	ruff format .
+	ruff check .
 
 install:
 	pip install -e ".[dev]" --config-settings editable_mode=compat

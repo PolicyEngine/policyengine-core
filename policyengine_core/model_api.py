@@ -1,5 +1,3 @@
-
-
 from policyengine_core.variables import (
     QuantityType,
     VariableCategory,

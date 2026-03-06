@@ -1,4 +1,3 @@
-
 from policyengine_core.entities import Entity
 from policyengine_core.model_api import *
 from policyengine_core.simulations import SimulationBuilder

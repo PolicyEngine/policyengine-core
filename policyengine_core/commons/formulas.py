@@ -98,14 +98,10 @@ def concat(this: ArrayLike[str], that: ArrayLike[str]) -> ArrayType[str]:
     if isinstance(that, tuple):
         raise TypeError("Second argument must not be a tuple.")
 
-    if isinstance(this, numpy.ndarray) and not numpy.issubdtype(
-        this.dtype, numpy.str_
-    ):
+    if isinstance(this, numpy.ndarray) and not numpy.issubdtype(this.dtype, numpy.str_):
         this = this.astype("str")
 
-    if isinstance(that, numpy.ndarray) and not numpy.issubdtype(
-        that.dtype, numpy.str_
-    ):
+    if isinstance(that, numpy.ndarray) and not numpy.issubdtype(that.dtype, numpy.str_):
         that = that.astype("str")
 
     return numpy.char.add(this, that)
@@ -139,13 +135,11 @@ def switch(
 
     """
 
-    assert (
-        len(value_by_condition) > 0
-    ), "'switch' must be called with at least one value."
+    assert len(value_by_condition) > 0, (
+        "'switch' must be called with at least one value."
+    )
 
-    condlist = [
-        conditions == condition for condition in value_by_condition.keys()
-    ]
+    condlist = [conditions == condition for condition in value_by_condition.keys()]
 
     return numpy.select(condlist, value_by_condition.values())
 
@@ -187,17 +181,13 @@ def for_each_variable(
         if variable_entity.key == entity.entity.key:
             values = entity(variable, period, options=options)
         elif variable_entity.is_person:
-            values = group_agg_func(
-                entity.members(variable, period, options=options)
-            )
+            values = group_agg_func(entity.members(variable, period, options=options))
         elif entity.entity.is_person:
             raise ValueError(
                 f"You requested to aggregate {variable} (defined for {variable_entity.plural}) to {entity.entity.plural}, but this is not yet implemented."
             )
         else:  # Group-to-group aggregation
-            variable_population = entity.simulation.populations[
-                variable_entity.key
-            ]
+            variable_population = entity.simulation.populations[variable_entity.key]
             person_shares = variable_population.project(
                 variable_population(variable, period)
             ) / variable_population.project(variable_population.nb_persons())
@@ -229,9 +219,7 @@ def add(
     Returns:
         ArrayLike: The result of the operation.
     """
-    return for_each_variable(
-        entity, period, variables, agg_func="add", options=options
-    )
+    return for_each_variable(entity, period, variables, agg_func="add", options=options)
 
 
 def and_(
@@ -283,9 +271,7 @@ def amount_over(amount: ArrayLike, threshold: float) -> ArrayLike:
     Returns:
         ArrayLike: The amounts over the threshold.
     """
-    logging.debug(
-        "amount_over(x, y) is deprecated, use max_(x - y, 0) instead."
-    )
+    logging.debug("amount_over(x, y) is deprecated, use max_(x - y, 0) instead.")
     return max_(0, amount - threshold)
 
 
@@ -334,9 +320,9 @@ def random(population):
     entity_ids = population(f"{population.entity.key}_id", period)
 
     # Generate deterministic random values using vectorised hash
-    seeds = np.abs(
-        entity_ids * 100 + population.simulation.count_random_calls
-    ).astype(np.uint64)
+    seeds = np.abs(entity_ids * 100 + population.simulation.count_random_calls).astype(
+        np.uint64
+    )
 
     # PCG-style mixing function for high-quality pseudo-random generation
     x = seeds * np.uint64(0x5851F42D4C957F2D)

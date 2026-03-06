@@ -17,24 +17,18 @@ def interpolate_parameters(root: ParameterNode) -> ParameterNode:
     """
     for parameter in root.get_descendants():
         if isinstance(parameter, Parameter):
-            if (
-                "interpolation" in parameter.metadata
-                and not parameter.metadata["interpolation"].get(
-                    "completed", False
-                )
-            ):
+            if "interpolation" in parameter.metadata and not parameter.metadata[
+                "interpolation"
+            ].get("completed", False):
                 interpolated_entries = []
                 for i in range(len(parameter.values_list) - 1):
                     # For each gap in parameter values
                     start = instant(parameter.values_list[::-1][i].instant_str)
                     num_intervals = 1
                     # Find the number of intervals to fill
-                    interval_size = parameter.metadata["interpolation"][
-                        "interval"
-                    ]
+                    interval_size = parameter.metadata["interpolation"]["interval"]
                     parameter_dates = [
-                        at_instant.instant_str
-                        for at_instant in parameter.values_list
+                        at_instant.instant_str for at_instant in parameter.values_list
                     ]
                     while (
                         str(start.offset(num_intervals, interval_size))
@@ -46,16 +40,13 @@ def interpolate_parameters(root: ParameterNode) -> ParameterNode:
                         start_str = str(
                             start.offset(
                                 j,
-                                parameter.metadata["interpolation"][
-                                    "interval"
-                                ],
+                                parameter.metadata["interpolation"]["interval"],
                             )
                         )
                         start_value = parameter.values_list[::-1][i].value
                         end_value = parameter.values_list[::-1][i + 1].value
                         new_value = (
-                            start_value
-                            + (end_value - start_value) * j / num_intervals
+                            start_value + (end_value - start_value) * j / num_intervals
                         )
                         interpolated_entries += [
                             ParameterAtInstant(
@@ -64,8 +55,6 @@ def interpolate_parameters(root: ParameterNode) -> ParameterNode:
                         ]
                 for entry in interpolated_entries:
                     parameter.values_list.append(entry)
-                parameter.values_list.sort(
-                    key=lambda x: x.instant_str, reverse=True
-                )
+                parameter.values_list.sort(key=lambda x: x.instant_str, reverse=True)
                 parameter.metadata["interpolation"]["completed"] = True
     return root

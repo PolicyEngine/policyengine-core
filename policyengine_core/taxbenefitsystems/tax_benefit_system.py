@@ -73,9 +73,7 @@ class TaxBenefitSystem:
     _parameters_at_instant_cache: Optional[Dict[Any, Any]] = None
     person_key_plural: str = None
     preprocess_parameters: str = None
-    baseline: "TaxBenefitSystem" = (
-        None  # Baseline tax-benefit system. Used only by reforms. Note: Reforms can be chained.
-    )
+    baseline: "TaxBenefitSystem" = None  # Baseline tax-benefit system. Used only by reforms. Note: Reforms can be chained.
     cache_blacklist = None
     decomposition_file_path = None
     variable_module_metadata: dict = None
@@ -108,13 +106,9 @@ class TaxBenefitSystem:
         self.variables: Dict[Any, Any] = {}
         # Tax benefit systems are mutable, so entities (which need to know about our variables) can't be shared among them
         if entities is None or len(entities) == 0:
-            raise Exception(
-                "A tax and benefit sytem must have at least an entity."
-            )
+            raise Exception("A tax and benefit sytem must have at least an entity.")
         self.entities = [copy.copy(entity) for entity in entities]
-        self.person_entity = [
-            entity for entity in self.entities if entity.is_person
-        ][0]
+        self.person_entity = [entity for entity in self.entities if entity.is_person][0]
         self.group_entities = [
             entity for entity in self.entities if not entity.is_person
         ]
@@ -183,9 +177,7 @@ class TaxBenefitSystem:
         if not "abolitions" in self.parameters.gov.children:
             self.parameters.gov.add_child(
                 "abolitions",
-                ParameterNode(
-                    name="gov.abolitions", data=abolition_folder_data
-                ),
+                ParameterNode(name="gov.abolitions", data=abolition_folder_data),
             )
 
     @property
@@ -293,14 +285,10 @@ class TaxBenefitSystem:
             #  As Python remembers loaded modules by name, in order to prevent collisions, we need to make sure that:
             #  - Files with the same name, but located in different directories, have a different module names. Hence the file path hash in the module name.
             #  - The same file, loaded by different tax and benefit systems, has distinct module names. Hence the `id(self)` in the module name.
-            module_name = (
-                f"{id(self)}_{hash(os.path.abspath(file_path))}_{file_name}"
-            )
+            module_name = f"{id(self)}_{hash(os.path.abspath(file_path))}_{file_name}"
 
             try:
-                spec = importlib.util.spec_from_file_location(
-                    module_name, file_path
-                )
+                spec = importlib.util.spec_from_file_location(module_name, file_path)
                 module = importlib.util.module_from_spec(spec)
                 sys.modules[module_name] = module
                 spec.loader.exec_module(module)
@@ -317,9 +305,7 @@ class TaxBenefitSystem:
             ]
 
             metadata = {}
-            metadata["label"] = module.__dict__.get(
-                "label", relative_file_path
-            )
+            metadata["label"] = module.__dict__.get("label", relative_file_path)
             metadata["description"] = module.__dict__.get("description", None)
             metadata["index"] = module.__dict__.get("index", 0)
             self.variable_module_metadata[relative_file_path] = metadata
@@ -338,9 +324,7 @@ class TaxBenefitSystem:
                     self.add_variable(pot_variable)
         except Exception:
             log.error(
-                'Unable to load OpenFisca variables from file "{}"'.format(
-                    file_path
-                )
+                'Unable to load OpenFisca variables from file "{}"'.format(file_path)
             )
             raise
 
@@ -370,9 +354,7 @@ class TaxBenefitSystem:
             self.variable_module_metadata[relative_file_path] = metadata
         except Exception:
             log.error(
-                'Unable to load OpenFisca metadata from file "{}"'.format(
-                    file_path
-                )
+                'Unable to load OpenFisca metadata from file "{}"'.format(file_path)
             )
             raise
 
@@ -388,9 +370,7 @@ class TaxBenefitSystem:
             py_files.remove(init_module)
             self.add_variable_metadata_from_folder(init_module)
         if "README.md" in os.listdir(directory):
-            self.add_variable_metadata_from_folder(
-                os.path.join(directory, "README.md")
-            )
+            self.add_variable_metadata_from_folder(os.path.join(directory, "README.md"))
         for py_file in py_files:
             self.add_variables_from_file(py_file)
         subdirectories = glob.glob(os.path.join(directory, "*/"))
@@ -480,9 +460,7 @@ class TaxBenefitSystem:
             )
         if not issubclass(reform, Reform):
             raise ValueError(
-                "`{}` does not seem to be a valid Openfisca reform.".format(
-                    reform_path
-                )
+                "`{}` does not seem to be a valid Openfisca reform.".format(reform_path)
             )
 
         return reform(self)
@@ -554,9 +532,7 @@ class TaxBenefitSystem:
             return self.get_parameters_at_instant(instant)
         return baseline._get_baseline_parameters_at_instant(instant)
 
-    def get_parameters_at_instant(
-        self, instant: Instant
-    ) -> ParameterNodeAtInstant:
+    def get_parameters_at_instant(self, instant: Instant) -> ParameterNodeAtInstant:
         """
         Get the parameters of the legislation at a given instant
 
@@ -569,17 +545,15 @@ class TaxBenefitSystem:
         elif isinstance(instant, (str, int)):
             instant = periods.instant(instant)
         else:
-            assert isinstance(
-                instant, Instant
-            ), "Expected an Instant (e.g. Instant((2017, 1, 1)) ). Got: {}.".format(
-                instant
+            assert isinstance(instant, Instant), (
+                "Expected an Instant (e.g. Instant((2017, 1, 1)) ). Got: {}.".format(
+                    instant
+                )
             )
 
         parameters_at_instant = self._parameters_at_instant_cache.get(instant)
         if parameters_at_instant is None and self.parameters is not None:
-            parameters_at_instant = self.parameters.get_at_instant(
-                str(instant)
-            )
+            parameters_at_instant = self.parameters.get_at_instant(str(instant))
             self._parameters_at_instant_cache[instant] = parameters_at_instant
         return parameters_at_instant
 
@@ -621,15 +595,11 @@ class TaxBenefitSystem:
         except importlib.metadata.PackageNotFoundError:
             return fallback_metadata
 
-        location = (
-            inspect.getsourcefile(module).split(package_name)[0].rstrip("/")
-        )
+        location = inspect.getsourcefile(module).split(package_name)[0].rstrip("/")
         try:
             home_page_metadatas = [
                 metadata.split(":", 1)[1].strip(" ")
-                for metadata in distribution._get_metadata(
-                    distribution.PKG_INFO
-                )
+                for metadata in distribution._get_metadata(distribution.PKG_INFO)
                 if "Home-page" in metadata
             ]
         except:

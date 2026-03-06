@@ -46,8 +46,7 @@ def test_without_annualize(monthly_variable):
     person = PopulationMock(monthly_variable)
 
     yearly_sum = sum(
-        person("monthly_variable", month)
-        for month in period.get_subperiods(MONTH)
+        person("monthly_variable", month) for month in period.get_subperiods(MONTH)
     )
 
     assert monthly_variable.calculation_count == 11
@@ -61,8 +60,7 @@ def test_with_annualize(monthly_variable):
     person = PopulationMock(annualized_variable)
 
     yearly_sum = sum(
-        person("monthly_variable", month)
-        for month in period.get_subperiods(MONTH)
+        person("monthly_variable", month) for month in period.get_subperiods(MONTH)
     )
 
     assert monthly_variable.calculation_count == 0
@@ -78,8 +76,7 @@ def test_with_partial_annualize(monthly_variable):
     person = PopulationMock(annualized_variable)
 
     yearly_sum = sum(
-        person("monthly_variable", month)
-        for month in period.get_subperiods(MONTH)
+        person("monthly_variable", month) for month in period.get_subperiods(MONTH)
     )
 
     assert monthly_variable.calculation_count == 11

@@ -7,9 +7,7 @@ class CountryTemplateDataset(Dataset):
     # Specify metadata used to describe and store the dataset.
     name = "country_template_dataset"
     label = "Country template dataset"
-    file_path = (
-        COUNTRY_DIR / "data" / "storage" / "country_template_dataset.h5"
-    )
+    file_path = COUNTRY_DIR / "data" / "storage" / "country_template_dataset.h5"
     data_format = Dataset.TIME_PERIOD_ARRAYS
 
     # The generation function is the most important part: it defines

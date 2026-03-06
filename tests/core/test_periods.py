@@ -133,17 +133,11 @@ def test_leap_month_size_in_days():
 
 
 def test_3_month_size_in_days():
-    assert (
-        Period(("month", Instant((2013, 1, 3)), 3)).size_in_days
-        == 31 + 28 + 31
-    )
+    assert Period(("month", Instant((2013, 1, 3)), 3)).size_in_days == 31 + 28 + 31
 
 
 def test_leap_3_month_size_in_days():
-    assert (
-        Period(("month", Instant((2012, 1, 3)), 3)).size_in_days
-        == 31 + 29 + 31
-    )
+    assert Period(("month", Instant((2012, 1, 3)), 3)).size_in_days == 31 + 29 + 31
 
 
 def test_year_size_in_days():

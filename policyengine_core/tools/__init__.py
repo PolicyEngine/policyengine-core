@@ -48,20 +48,20 @@ def assert_near(
     value = np.array(value).astype(np.float32)
     diff = abs(target_value - value)
     if absolute_error_margin is not None:
-        assert (
-            diff <= absolute_error_margin
-        ).all(), "{}{} differs from {} with an absolute margin {} > {}".format(
-            message, value, target_value, diff, absolute_error_margin
+        assert (diff <= absolute_error_margin).all(), (
+            "{}{} differs from {} with an absolute margin {} > {}".format(
+                message, value, target_value, diff, absolute_error_margin
+            )
         )
     if relative_error_margin is not None:
-        assert (
-            diff <= abs(relative_error_margin * target_value)
-        ).all(), "{}{} differs from {} with a relative margin {} > {}".format(
-            message,
-            value,
-            target_value,
-            diff,
-            abs(relative_error_margin * target_value),
+        assert (diff <= abs(relative_error_margin * target_value)).all(), (
+            "{}{} differs from {} with a relative margin {} > {}".format(
+                message,
+                value,
+                target_value,
+                diff,
+                abs(relative_error_margin * target_value),
+            )
         )
 
 

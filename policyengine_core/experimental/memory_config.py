@@ -25,6 +25,4 @@ class MemoryConfig:
         self.priority_variables = (
             set(priority_variables) if priority_variables else set()
         )
-        self.variables_to_drop = (
-            set(variables_to_drop) if variables_to_drop else set()
-        )
+        self.variables_to_drop = set(variables_to_drop) if variables_to_drop else set()

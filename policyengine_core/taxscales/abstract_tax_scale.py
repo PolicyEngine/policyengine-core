@@ -33,8 +33,7 @@ class AbstractTaxScale(TaxScaleLike):
 
     def __repr__(self) -> typing.NoReturn:
         raise NotImplementedError(
-            "Method '__repr__' is not implemented for "
-            f"{self.__class__.__name__}",
+            f"Method '__repr__' is not implemented for {self.__class__.__name__}",
         )
 
     def calc(
@@ -43,12 +42,10 @@ class AbstractTaxScale(TaxScaleLike):
         right: bool,
     ) -> typing.NoReturn:
         raise NotImplementedError(
-            "Method 'calc' is not implemented for "
-            f"{self.__class__.__name__}",
+            f"Method 'calc' is not implemented for {self.__class__.__name__}",
         )
 
     def to_dict(self) -> typing.NoReturn:
         raise NotImplementedError(
-            f"Method 'to_dict' is not implemented for "
-            f"{self.__class__.__name__}",
+            f"Method 'to_dict' is not implemented for {self.__class__.__name__}",
         )

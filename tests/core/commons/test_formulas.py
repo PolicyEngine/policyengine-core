@@ -85,7 +85,5 @@ def test_concat_tuple_inputs():
     with pytest.raises(TypeError, match="First argument must not be a tuple."):
         commons.concat(("a", "b"), numpy.array(["c", "d"]))
 
-    with pytest.raises(
-        TypeError, match="Second argument must not be a tuple."
-    ):
+    with pytest.raises(TypeError, match="Second argument must not be a tuple."):
         commons.concat(numpy.array(["a", "b"]), ("c", "d"))

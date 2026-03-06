@@ -68,8 +68,7 @@ def test_build_default_simulation(tax_benefit_system):
     assert one_person_simulation.household.count == 1
     assert one_person_simulation.household.members_entity_id == [0]
     assert (
-        one_person_simulation.household.members_role
-        == entities.Household.FIRST_PARENT
+        one_person_simulation.household.members_role == entities.Household.FIRST_PARENT
     )
 
     several_persons_simulation = SimulationBuilder().build_default_simulation(
@@ -116,9 +115,7 @@ def test_add_person_entity_with_values(persons):
     persons_json = {"Alicia": {"salary": {"2018-11": 3000}}, "Javier": {}}
     simulation_builder = SimulationBuilder()
     simulation_builder.add_person_entity(persons, persons_json)
-    tools.assert_near(
-        simulation_builder.get_input("salary", "2018-11"), [3000, 0]
-    )
+    tools.assert_near(simulation_builder.get_input("salary", "2018-11"), [3000, 0])
 
 
 def test_add_person_values_with_default_period(persons):
@@ -126,9 +123,7 @@ def test_add_person_values_with_default_period(persons):
     simulation_builder = SimulationBuilder()
     simulation_builder.set_default_period("2018-11")
     simulation_builder.add_person_entity(persons, persons_json)
-    tools.assert_near(
-        simulation_builder.get_input("salary", "2018-11"), [3000, 0]
-    )
+    tools.assert_near(simulation_builder.get_input("salary", "2018-11"), [3000, 0])
 
 
 def test_add_person_values_with_default_period_old_syntax(persons):
@@ -136,9 +131,7 @@ def test_add_person_values_with_default_period_old_syntax(persons):
     simulation_builder = SimulationBuilder()
     simulation_builder.set_default_period("month:2018-11")
     simulation_builder.add_person_entity(persons, persons_json)
-    tools.assert_near(
-        simulation_builder.get_input("salary", "2018-11"), [3000, 0]
-    )
+    tools.assert_near(simulation_builder.get_input("salary", "2018-11"), [3000, 0])
 
 
 def test_add_group_entity(households):
@@ -158,9 +151,12 @@ def test_add_group_entity(households):
         "Household_2",
     ]
     assert simulation_builder.get_memberships("households") == [0, 0, 1, 1]
-    assert [
-        role.key for role in simulation_builder.get_roles("households")
-    ] == ["parent", "parent", "child", "parent"]
+    assert [role.key for role in simulation_builder.get_roles("households")] == [
+        "parent",
+        "parent",
+        "child",
+        "parent",
+    ]
 
 
 def test_add_group_entity_loose_syntax(households):
@@ -180,9 +176,12 @@ def test_add_group_entity_loose_syntax(households):
         "Household_2",
     ]
     assert simulation_builder.get_memberships("households") == [0, 0, 1, 1]
-    assert [
-        role.key for role in simulation_builder.get_roles("households")
-    ] == ["parent", "parent", "child", "parent"]
+    assert [role.key for role in simulation_builder.get_roles("households")] == [
+        "parent",
+        "parent",
+        "child",
+        "parent",
+    ]
 
 
 def test_add_variable_value(persons):
@@ -288,9 +287,7 @@ def test_fail_on_date_parsing(persons, date_variable):
         )
     assert excinfo.value.error == {
         "persons": {
-            "Alicia": {
-                "datevar": {"2018-11": "Can't deal with date: '2019-02-30'."}
-            }
+            "Alicia": {"datevar": {"2018-11": "Can't deal with date: '2019-02-30'."}}
         }
     }
 
@@ -311,9 +308,7 @@ def test_finalize_person_entity(persons):
     simulation_builder.add_person_entity(persons, persons_json)
     population = Population(persons)
     simulation_builder.finalize_variables_init(population)
-    tools.assert_near(
-        population.get_holder("salary").get_array("2018-11"), [3000, 0]
-    )
+    tools.assert_near(population.get_holder("salary").get_array("2018-11"), [3000, 0])
     assert population.count == 2
     assert population.ids == ["Alicia", "Javier"]
 
@@ -324,9 +319,7 @@ def test_canonicalize_period_keys(persons):
     simulation_builder.add_person_entity(persons, persons_json)
     population = Population(persons)
     simulation_builder.finalize_variables_init(population)
-    tools.assert_near(
-        population.get_holder("salary").get_array("2018-12"), [100]
-    )
+    tools.assert_near(population.get_holder("salary").get_array("2018-12"), [100])
 
 
 def test_finalize_households(tax_benefit_system):
@@ -470,9 +463,7 @@ def test_nb_persons_in_households(tax_benefit_system):
     simulation_builder = SimulationBuilder()
     simulation_builder.create_entities(tax_benefit_system)
     simulation_builder.declare_person_entity("person", persons_ids)
-    household_instance = simulation_builder.declare_entity(
-        "household", households_ids
-    )
+    household_instance = simulation_builder.declare_entity("household", households_ids)
     simulation_builder.join_with_persons(
         household_instance, persons_households, ["first_parent"] * 5
     )
@@ -490,9 +481,7 @@ def test_nb_persons_no_role(tax_benefit_system):
     simulation_builder = SimulationBuilder()
     simulation_builder.create_entities(tax_benefit_system)
     simulation_builder.declare_person_entity("person", persons_ids)
-    household_instance = simulation_builder.declare_entity(
-        "household", households_ids
-    )
+    household_instance = simulation_builder.declare_entity("household", households_ids)
 
     simulation_builder.join_with_persons(
         household_instance, persons_households, ["first_parent"] * 5
@@ -523,9 +512,7 @@ def test_nb_persons_by_role(tax_benefit_system):
     simulation_builder = SimulationBuilder()
     simulation_builder.create_entities(tax_benefit_system)
     simulation_builder.declare_person_entity("person", persons_ids)
-    household_instance = simulation_builder.declare_entity(
-        "household", households_ids
-    )
+    household_instance = simulation_builder.declare_entity("household", households_ids)
 
     simulation_builder.join_with_persons(
         household_instance, persons_households, persons_households_roles
@@ -547,9 +534,7 @@ def test_integral_roles(tax_benefit_system):
     simulation_builder = SimulationBuilder()
     simulation_builder.create_entities(tax_benefit_system)
     simulation_builder.declare_person_entity("person", persons_ids)
-    household_instance = simulation_builder.declare_entity(
-        "household", households_ids
-    )
+    household_instance = simulation_builder.declare_entity("household", households_ids)
 
     simulation_builder.join_with_persons(
         household_instance, persons_households, persons_households_roles
@@ -579,9 +564,7 @@ def test_from_person_variable_to_group(tax_benefit_system):
     simulation_builder.create_entities(tax_benefit_system)
     simulation_builder.declare_person_entity("person", persons_ids)
 
-    household_instance = simulation_builder.declare_entity(
-        "household", households_ids
-    )
+    household_instance = simulation_builder.declare_entity("household", households_ids)
     simulation_builder.join_with_persons(
         household_instance, persons_households, ["first_parent"] * 5
     )
@@ -592,9 +575,7 @@ def test_from_person_variable_to_group(tax_benefit_system):
 
     total_taxes = simulation.calculate("total_taxes", period)
     assert total_taxes == pytest.approx(households_rents)
-    assert total_taxes / simulation.calculate("rent", period) == pytest.approx(
-        1
-    )
+    assert total_taxes / simulation.calculate("rent", period) == pytest.approx(1)
 
 
 def test_simulation(tax_benefit_system):
@@ -622,9 +603,7 @@ def test_vectorial_input(tax_benefit_system):
         tax_benefit_system, test_runner.yaml.safe_load(input_yaml)
     )
 
-    tools.assert_near(
-        simulation.get_array("salary", "2016-10"), [12000, 20000]
-    )
+    tools.assert_near(simulation.get_array("salary", "2016-10"), [12000, 20000])
     simulation.calculate("income_tax", "2016-10")
     simulation.calculate("total_taxes", "2016-10")
 

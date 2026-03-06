@@ -31,9 +31,7 @@ def test_on_leaf():
 
 
 def test_on_node():
-    housing_occupancy_status = np.asarray(
-        ["owner", "owner", "tenant", "tenant"]
-    )
+    housing_occupancy_status = np.asarray(["owner", "owner", "tenant", "tenant"])
     node = P.single[housing_occupancy_status]
     assert_near(node.z1, [100, 100, 300, 300])
     assert_near(node["z1"], [100, 100, 300, 300])
@@ -41,17 +39,13 @@ def test_on_node():
 
 def test_double_fancy_indexing():
     zone = np.asarray(["z1", "z2", "z2", "z1"])
-    housing_occupancy_status = np.asarray(
-        ["owner", "owner", "tenant", "tenant"]
-    )
+    housing_occupancy_status = np.asarray(["owner", "owner", "tenant", "tenant"])
     assert_near(P.single[housing_occupancy_status][zone], [100, 200, 400, 300])
 
 
 def test_double_fancy_indexing_on_node():
     family_status = np.asarray(["single", "couple", "single", "couple"])
-    housing_occupancy_status = np.asarray(
-        ["owner", "owner", "tenant", "tenant"]
-    )
+    housing_occupancy_status = np.asarray(["owner", "owner", "tenant", "tenant"])
     node = P[family_status][housing_occupancy_status]
     assert_near(node.z1, [100, 500, 300, 700])
     assert_near(node["z1"], [100, 500, 300, 700])
@@ -115,9 +109,6 @@ def test_with_enum():
         z2 = "Zone 2"
 
     zone = np.asarray(
-        [
-            z.name
-            for z in [TypesZone.z1, TypesZone.z2, TypesZone.z2, TypesZone.z1]
-        ]
+        [z.name for z in [TypesZone.z1, TypesZone.z2, TypesZone.z2, TypesZone.z1]]
     )
     assert_near(P.single.owner[zone], [100, 200, 200, 100])

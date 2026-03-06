@@ -41,38 +41,28 @@ class IndividualSim:
         self.sim_builder = SimulationBuilder()
         self.parametric_vary = False
         self.entities = {var.key: var for var in self.system.entities}
-        self.situation_data = {
-            entity.plural: {} for entity in self.system.entities
-        }
+        self.situation_data = {entity.plural: {} for entity in self.system.entities}
         self.varying = False
         self.num_points = None
         self.group_entity_names = [
-            entity.key
-            for entity in self.system.entities
-            if not entity.is_person
+            entity.key for entity in self.system.entities if not entity.is_person
         ]
 
         # Add add_entity functions
 
         for entity in self.entities:
-            setattr(
-                self, f"add_{entity}", partial(self.add_data, entity=entity)
-            )
+            setattr(self, f"add_{entity}", partial(self.add_data, entity=entity))
 
     def build(self):
         if self.required_entities is not None:
             # Check for missing entities
             entities = {entity.key: entity for entity in self.system.entities}
-            person_entity = list(
-                filter(lambda x: x.is_person, entities.values())
-            )[0]
+            person_entity = list(filter(lambda x: x.is_person, entities.values()))[0]
             for entity in self.required_entities:
                 entity_metadata = entities[entity]
                 roles = {role.key: role for role in entities[entity].roles}
                 default_role = roles[self.default_roles[entity]]
-                no_entity_plural = (
-                    entity_metadata.plural not in self.situation_data
-                )
+                no_entity_plural = entity_metadata.plural not in self.situation_data
                 if (
                     no_entity_plural
                     or len(self.situation_data[entity_metadata.plural]) == 0
@@ -113,25 +103,17 @@ class IndividualSim:
         input_period = input_period or self.year
         entity_plural = self.entities[entity].plural
         if name is None:
-            name = (
-                entity + "_" + str(len(self.situation_data[entity_plural]) + 1)
-            )
+            name = entity + "_" + str(len(self.situation_data[entity_plural]) + 1)
         if auto_period:
             data = {}
             for var, value in kwargs.items():
                 try:
-                    def_period = self.system.get_variable(
-                        var
-                    ).definition_period
+                    def_period = self.system.get_variable(var).definition_period
                     if def_period in ["eternity", "year"]:
                         input_periods = [input_period]
                     else:
-                        input_periods = period(input_period).get_subperiods(
-                            def_period
-                        )
-                    data[var] = {
-                        str(subperiod): value for subperiod in input_periods
-                    }
+                        input_periods = period(input_period).get_subperiods(def_period)
+                    data[var] = {str(subperiod): value for subperiod in input_periods}
                 except:
                     data[var] = value
         self.situation_data[entity_plural][name] = data
@@ -152,9 +134,7 @@ class IndividualSim:
         ][0]
         return entity_type
 
-    def map_to(
-        self, arr: np.array, entity: str, target_entity: str, how: str = None
-    ):
+    def map_to(self, arr: np.array, entity: str, target_entity: str, how: str = None):
         """Maps values from one entity to another.
 
         Args:
@@ -265,10 +245,7 @@ class IndividualSim:
                 result = self.sim.calculate_add(var, period)
             except:
                 result = self.simulation.calculate_divide(var, period)
-        if (
-            target is not None
-            and target not in self.situation_data[entity.plural]
-        ):
+        if target is not None and target not in self.situation_data[entity.plural]:
             map_to = self.get_entity(target).key
         if map_to is not None:
             result = self.map_to(result, entity.key, map_to)
@@ -319,9 +296,9 @@ class IndividualSim:
             pass
         x = x.astype(np.float32)
         y = y.astype(np.float32)
-        assert (
-            len(y) > 1 and len(x) > 1
-        ), "Simulation must vary on an axis to calculate derivatives."
+        assert len(y) > 1 and len(x) > 1, (
+            "Simulation must vary on an axis to calculate derivatives."
+        )
         deriv = (y[1:] - y[:-1]) / (x[1:] - x[:-1])
         deriv = np.append(deriv, deriv[-1])
         return deriv

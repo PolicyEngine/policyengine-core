@@ -24,9 +24,7 @@ def homogenize_parameter_structures(
     for node in root.get_descendants():
         if isinstance(node, ParameterNode):
             breakdown = get_breakdown_variables(node)
-            node = homogenize_parameter_node(
-                node, breakdown, variables, default_value
-            )
+            node = homogenize_parameter_node(node, breakdown, variables, default_value)
     return root
 
 

@@ -37,14 +37,12 @@ class TaxScaleLike(abc.ABC):
 
     def __eq__(self, _other: object) -> typing.NoReturn:
         raise NotImplementedError(
-            "Method '__eq__' is not implemented for "
-            f"{self.__class__.__name__}",
+            f"Method '__eq__' is not implemented for {self.__class__.__name__}",
         )
 
     def __ne__(self, _other: object) -> typing.NoReturn:
         raise NotImplementedError(
-            "Method '__ne__' is not implemented for "
-            f"{self.__class__.__name__}",
+            f"Method '__ne__' is not implemented for {self.__class__.__name__}",
         )
 
     @abc.abstractmethod

@@ -87,9 +87,7 @@ def test_calc():
 
 
 def test_calc_without_round():
-    tax_base = numpy.array(
-        [200, 200.2, 200.002, 200.6, 200.006, 200.5, 200.005]
-    )
+    tax_base = numpy.array([200, 200.2, 200.002, 200.6, 200.006, 200.5, 200.005])
     tax_scale = taxscales.MarginalRateTaxScale()
     tax_scale.add_bracket(0, 0)
     tax_scale.add_bracket(100, 0.1)
@@ -104,9 +102,7 @@ def test_calc_without_round():
 
 
 def test_calc_when_round_is_1():
-    tax_base = numpy.array(
-        [200, 200.2, 200.002, 200.6, 200.006, 200.5, 200.005]
-    )
+    tax_base = numpy.array([200, 200.2, 200.002, 200.6, 200.006, 200.5, 200.005])
     tax_scale = taxscales.MarginalRateTaxScale()
     tax_scale.add_bracket(0, 0)
     tax_scale.add_bracket(100, 0.1)
@@ -121,9 +117,7 @@ def test_calc_when_round_is_1():
 
 
 def test_calc_when_round_is_2():
-    tax_base = numpy.array(
-        [200, 200.2, 200.002, 200.6, 200.006, 200.5, 200.005]
-    )
+    tax_base = numpy.array([200, 200.2, 200.002, 200.6, 200.006, 200.5, 200.005])
     tax_scale = taxscales.MarginalRateTaxScale()
     tax_scale.add_bracket(0, 0)
     tax_scale.add_bracket(100, 0.1)
@@ -138,9 +132,7 @@ def test_calc_when_round_is_2():
 
 
 def test_calc_when_round_is_3():
-    tax_base = numpy.array(
-        [200, 200.2, 200.002, 200.6, 200.006, 200.5, 200.005]
-    )
+    tax_base = numpy.array([200, 200.2, 200.002, 200.6, 200.006, 200.5, 200.005])
     tax_scale = taxscales.MarginalRateTaxScale()
     tax_scale.add_bracket(0, 0)
     tax_scale.add_bracket(100, 0.1)
@@ -208,9 +200,7 @@ def test_inverse_scaled_marginal_tax_scales():
 
     result = scaled_tax_scale.inverse()
 
-    tools.assert_near(
-        result.calc(scaled_net_tax_base), scaled_gross_tax_base, 1e-13
-    )
+    tools.assert_near(result.calc(scaled_net_tax_base), scaled_gross_tax_base, 1e-13)
 
 
 def test_to_average():

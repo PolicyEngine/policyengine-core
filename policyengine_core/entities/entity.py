@@ -26,14 +26,10 @@ class Entity:
             raise ValueError("{} is not a valid role".format(role))
 
     def get_variable(self, variable_name: str, check_existence: bool = False):
-        return self._tax_benefit_system.get_variable(
-            variable_name, check_existence
-        )
+        return self._tax_benefit_system.get_variable(variable_name, check_existence)
 
     def check_variable_defined_for_entity(self, variable_name: str) -> None:
-        variable_entity = self.get_variable(
-            variable_name, check_existence=True
-        ).entity
+        variable_entity = self.get_variable(variable_name, check_existence=True).entity
         # Should be this:
         # if variable_entity is not self:
         if variable_entity.key != self.key:

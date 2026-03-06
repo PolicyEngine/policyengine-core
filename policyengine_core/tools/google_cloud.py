@@ -70,9 +70,7 @@ def download_gcs_file(
 
     credentials, project_id = _get_gcs_credentials()
 
-    storage_client = storage.Client(
-        credentials=credentials, project=project_id
-    )
+    storage_client = storage.Client(credentials=credentials, project=project_id)
 
     bucket_obj = storage_client.bucket(bucket)
     blob = bucket_obj.blob(file_path)
@@ -115,9 +113,7 @@ def upload_gcs_file(
 
     credentials, project_id = _get_gcs_credentials()
 
-    storage_client = storage.Client(
-        credentials=credentials, project=project_id
-    )
+    storage_client = storage.Client(credentials=credentials, project=project_id)
 
     bucket_obj = storage_client.bucket(bucket)
     blob = bucket_obj.blob(file_path)

@@ -56,9 +56,7 @@ def restore_simulation(directory, tax_benefit_system, **kwargs):
         population.count = person_count
 
     variables_to_restore = (
-        variable
-        for variable in os.listdir(directory)
-        if variable != "__entities__"
+        variable for variable in os.listdir(directory) if variable != "__entities__"
     )
     for variable in variables_to_restore:
         _restore_holder(simulation, variable, directory)
@@ -81,9 +79,7 @@ def _dump_entity(population, directory):
     if population.entity.is_person:
         return
 
-    np.save(
-        os.path.join(path, "members_position.npy"), population.members_position
-    )
+    np.save(os.path.join(path, "members_position.npy"), population.members_position)
     np.save(
         os.path.join(path, "members_entity_id.npy"),
         population.members_entity_id,
@@ -109,12 +105,8 @@ def _restore_entity(population, directory):
     if population.entity.is_person:
         return
 
-    population.members_position = np.load(
-        os.path.join(path, "members_position.npy")
-    )
-    population.members_entity_id = np.load(
-        os.path.join(path, "members_entity_id.npy")
-    )
+    population.members_position = np.load(os.path.join(path, "members_position.npy"))
+    population.members_entity_id = np.load(os.path.join(path, "members_entity_id.npy"))
     encoded_roles = np.load(os.path.join(path, "members_role.npy"))
 
     flattened_roles = population.entity.flattened_roles

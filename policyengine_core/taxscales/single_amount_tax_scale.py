@@ -20,9 +20,7 @@ class SingleAmountTaxScale(AmountTaxScaleLike):
         Matches the input amount to a set of brackets and returns the single
         cell value that fits within that bracket.
         """
-        guarded_thresholds = numpy.array(
-            [-numpy.inf] + self.thresholds + [numpy.inf]
-        )
+        guarded_thresholds = numpy.array([-numpy.inf] + self.thresholds + [numpy.inf])
 
         bracket_indices = numpy.digitize(
             tax_base,

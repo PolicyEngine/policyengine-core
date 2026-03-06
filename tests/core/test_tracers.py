@@ -60,9 +60,7 @@ def tracer():
 def test_stack_one_level(tracer):
     tracer.record_calculation_start("a", 2017)
     assert len(tracer.stack) == 1
-    assert tracer.stack == [
-        {"name": "a", "period": 2017, "branch_name": "default"}
-    ]
+    assert tracer.stack == [{"name": "a", "period": 2017, "branch_name": "default"}]
 
     tracer.record_calculation_end()
     assert tracer.stack == []
@@ -80,9 +78,7 @@ def test_stack_two_levels(tracer):
 
     tracer.record_calculation_end()
     assert len(tracer.stack) == 1
-    assert tracer.stack == [
-        {"name": "a", "period": 2017, "branch_name": "default"}
-    ]
+    assert tracer.stack == [{"name": "a", "period": 2017, "branch_name": "default"}]
 
 
 @mark.parametrize("tracer", [SimpleTracer(), FullTracer()])
@@ -213,9 +209,7 @@ def test_flat_trace(tracer):
     trace = tracer.get_flat_trace()
 
     assert len(trace) == 2
-    assert trace["a<2019, (default)>"]["dependencies"] == [
-        "b<2019, (default)>"
-    ]
+    assert trace["a<2019, (default)>"]["dependencies"] == ["b<2019, (default)>"]
     assert trace["b<2019, (default)>"]["dependencies"] == []
 
 
@@ -260,9 +254,7 @@ def test_flat_trace_with_cache(tracer):
 
     trace = tracer.get_flat_trace()
 
-    assert trace["b<2019, (default)>"]["dependencies"] == [
-        "c<2019, (default)>"
-    ]
+    assert trace["b<2019, (default)>"]["dependencies"] == ["c<2019, (default)>"]
 
 
 def test_calculation_time():
@@ -344,9 +336,7 @@ def test_rounding():
     node_a.start = 1.23456789
     node_a.end = node_a.start + 1.23456789e-03
 
-    assert (
-        node_a.calculation_time() == 1.235e-03
-    )  # Keep only 3 significant figures
+    assert node_a.calculation_time() == 1.235e-03  # Keep only 3 significant figures
 
     node_b = TraceNode("b", 2017)
     node_b.start = node_a.start
@@ -428,10 +418,7 @@ def test_log_aggregate_with_strings(tracer):
     tracer._exit_calculation()
 
     lines = tracer.computation_log.lines(aggregate=True)
-    assert (
-        lines[0]
-        == "  A<2017, (default)> = {'avg': '?', 'max': '?', 'min': '?'}"
-    )
+    assert lines[0] == "  A<2017, (default)> = {'avg': '?', 'max': '?', 'min': '?'}"
 
 
 def test_log_max_depth(tracer):

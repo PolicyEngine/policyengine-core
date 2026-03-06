@@ -85,19 +85,21 @@ class Dataset:
 
         self.file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        assert (
-            self.name
-        ), "You tried to instantiate a Dataset object, but no name has been provided."
-        assert (
-            self.label
-        ), "You tried to instantiate a Dataset object, but no label has been provided."
+        assert self.name, (
+            "You tried to instantiate a Dataset object, but no name has been provided."
+        )
+        assert self.label, (
+            "You tried to instantiate a Dataset object, but no label has been provided."
+        )
 
         assert self.data_format in [
             Dataset.TABLES,
             Dataset.ARRAYS,
             Dataset.TIME_PERIOD_ARRAYS,
             Dataset.FLAT_FILE,
-        ], f"You tried to instantiate a Dataset object, but your data_format attribute is invalid ({self.data_format})."
+        ], (
+            f"You tried to instantiate a Dataset object, but your data_format attribute is invalid ({self.data_format})."
+        )
 
         self._table_cache = {}
 
@@ -251,9 +253,7 @@ class Dataset:
                         data[variable][time_period] = np.array(f[key])
         elif self.data_format == Dataset.ARRAYS:
             with h5py.File(file, "r") as f:
-                data = {
-                    variable: np.array(f[variable]) for variable in f.keys()
-                }
+                data = {variable: np.array(f[variable]) for variable in f.keys()}
         return data
 
     def generate(self):
@@ -342,7 +342,9 @@ class Dataset:
 
         if url.startswith("release://"):
             org, repo, release_tag, file_path = url.split("/")[2:]
-            url = f"https://api.github.com/repos/{org}/{repo}/releases/tags/{release_tag}"
+            url = (
+                f"https://api.github.com/repos/{org}/{repo}/releases/tags/{release_tag}"
+            )
             response = requests.get(url, headers=auth_headers)
             if response.status_code != 200:
                 raise ValueError(
@@ -486,9 +488,7 @@ class Dataset:
 
         return dataset
 
-    def upload_to_huggingface(
-        self, owner_name: str, model_name: str, file_name: str
-    ):
+    def upload_to_huggingface(self, owner_name: str, model_name: str, file_name: str):
         """Uploads the dataset to HuggingFace.
 
         Args:

@@ -10,10 +10,10 @@ jobs:
       && (github.event.head_commit.message == 'Update PolicyEngine Core')
     steps:
       - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
       - name: Check formatting
-        uses: "lgeiger/black-action@master"
-        with:
-          args: ". -l 79 --check"
+        run: uvx ruff format --check .
   versioning:
     name: Update versioning
     if: |

@@ -98,9 +98,7 @@ def marginal_rate(
     """
 
     marginal_rate: ArrayType[float]
-    marginal_rate = +1 - (target[:-1] - target[1:]) / (
-        varying[:-1] - varying[1:]
-    )
+    marginal_rate = +1 - (target[:-1] - target[1:]) / (varying[:-1] - varying[1:])
 
     if trim is not None:
         marginal_rate = numpy.where(

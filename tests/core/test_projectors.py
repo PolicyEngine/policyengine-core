@@ -176,9 +176,7 @@ def test_enum_projects_downwards():
     )
 
     assert (
-        simulation.calculate(
-            "projected_enum_variable", "2021-01-01"
-        ).decode_to_str()
+        simulation.calculate("projected_enum_variable", "2021-01-01").decode_to_str()
         == np.array(["SECOND_OPTION"] * 3)
     ).all()
 
@@ -243,9 +241,7 @@ def test_enum_projects_upwards():
         system,
         {
             "people": {
-                "person1": {
-                    "person_enum_variable": {"ETERNITY": "SECOND_OPTION"}
-                },
+                "person1": {"person_enum_variable": {"ETERNITY": "SECOND_OPTION"}},
                 "person2": {},
                 "person3": {},
             },
@@ -337,9 +333,7 @@ def test_enum_projects_between_containing_groups():
         label = "decoded projected family level variable"
 
         def formula(family, period):
-            return family.household(
-                "household_level_variable", period
-            ).decode_to_str()
+            return family.household("household_level_variable", period).decode_to_str()
 
     system.add_variables(
         household_level_variable,
@@ -371,8 +365,6 @@ def test_enum_projects_between_containing_groups():
         == np.array(["SECOND_OPTION"])
     ).all()
     assert (
-        simulation.calculate(
-            "decoded_projected_family_level_variable", "2021-01-01"
-        )
+        simulation.calculate("decoded_projected_family_level_variable", "2021-01-01")
         == np.array(["SECOND_OPTION"])
     ).all()

@@ -96,22 +96,15 @@ class Simulation:
         default_input_period: str = None,
         default_calculation_period: str = None,
     ):
-        self.default_input_period = (
-            default_input_period or self.default_input_period
-        )
+        self.default_input_period = default_input_period or self.default_input_period
         self.default_calculation_period = (
             default_calculation_period or self.default_calculation_period
         )
         if tax_benefit_system is None:
-            if (
-                self.default_tax_benefit_system_instance is not None
-                and reform is None
-            ):
+            if self.default_tax_benefit_system_instance is not None and reform is None:
                 tax_benefit_system = self.default_tax_benefit_system_instance
             else:
-                tax_benefit_system = self.default_tax_benefit_system(
-                    reform=reform
-                )
+                tax_benefit_system = self.default_tax_benefit_system(reform=reform)
             self.tax_benefit_system = tax_benefit_system
 
         self.reform = reform
@@ -127,9 +120,7 @@ class Simulation:
         self.invalidated_caches = set()
         self.debug: bool = False
         self.trace: bool = trace
-        self.tracer: SimpleTracer = (
-            SimpleTracer() if not trace else FullTracer()
-        )
+        self.tracer: SimpleTracer = SimpleTracer() if not trace else FullTracer()
         self.opt_out_cache: bool = False
         # controls the spirals detection; check for performance impact if > 1
         self.max_spiral_loops: int = 10
@@ -146,9 +137,7 @@ class Simulation:
                 raise ValueError(
                     "You provided both a situation and a dataset. Only one input method is allowed."
                 )
-            self.build_from_populations(
-                self.tax_benefit_system.instantiate_entities()
-            )
+            self.build_from_populations(self.tax_benefit_system.instantiate_entities())
             from policyengine_core.simulations.simulation_builder import (
                 SimulationBuilder,
             )  # Import here to avoid circular dependency
@@ -177,15 +166,11 @@ class Simulation:
                         file_path=file_path,
                         version=version,
                     )
-                datasets_by_name = {
-                    dataset.name: dataset for dataset in self.datasets
-                }
+                datasets_by_name = {dataset.name: dataset for dataset in self.datasets}
                 if dataset in datasets_by_name:
                     dataset = datasets_by_name.get(dataset)
                 elif Path(dataset).exists():
-                    dataset = Dataset.from_file(
-                        dataset, self.default_input_period
-                    )
+                    dataset = Dataset.from_file(dataset, self.default_input_period)
             if isinstance(dataset, type):
                 self.dataset: Dataset = dataset(require=True)
             elif isinstance(dataset, pd.DataFrame):
@@ -225,9 +210,7 @@ class Simulation:
             self.baseline = self.get_branch("baseline")
             self.baseline.trace = self.trace
             self.baseline.tracer = self.tracer
-            self.baseline.tax_benefit_system = (
-                self.default_tax_benefit_system_instance
-            )
+            self.baseline.tax_benefit_system = self.default_tax_benefit_system_instance
         else:
             self.baseline = None
 
@@ -242,9 +225,7 @@ class Simulation:
                 reform = Reform.from_dict(reform)
             reform.apply(self.tax_benefit_system)
 
-    def build_from_populations(
-        self, populations: Dict[str, Population]
-    ) -> None:
+    def build_from_populations(self, populations: Dict[str, Population]) -> None:
         """This method of initialisation requires the populations to be pre-initialised.
 
         Args:
@@ -263,9 +244,7 @@ class Simulation:
 
     def build_from_dataset(self) -> None:
         """Build a simulation from a dataset."""
-        self.build_from_populations(
-            self.tax_benefit_system.instantiate_entities()
-        )
+        self.build_from_populations(self.tax_benefit_system.instantiate_entities())
         from policyengine_core.simulations.simulation_builder import (
             SimulationBuilder,
         )  # Import here to avoid circular dependency
@@ -299,13 +278,11 @@ class Simulation:
             return data[name]
 
         if self.dataset.data_format != Dataset.FLAT_FILE:
-            assert (
-                entity_id_field in data
-            ), f"Missing {entity_id_field} column in the dataset. Each person entity must have an ID array defined for ETERNITY."
-        elif entity_id_field not in data:
-            data[entity_id_field] = np.arange(
-                len(get_eternity_array("person_id"))
+            assert entity_id_field in data, (
+                f"Missing {entity_id_field} column in the dataset. Each person entity must have an ID array defined for ETERNITY."
             )
+        elif entity_id_field not in data:
+            data[entity_id_field] = np.arange(len(get_eternity_array("person_id")))
 
         entity_ids = get_eternity_array(entity_id_field)
         builder.declare_person_entity(person_entity.key, entity_ids)
@@ -313,35 +290,29 @@ class Simulation:
         for group_entity in self.tax_benefit_system.group_entities:
             entity_id_field = f"{group_entity.key}_id"
             if self.dataset.data_format != Dataset.FLAT_FILE:
-                assert (
-                    entity_id_field in data
-                ), f"Missing {entity_id_field} column in the dataset. Each group entity must have an ID array defined for ETERNITY."
+                assert entity_id_field in data, (
+                    f"Missing {entity_id_field} column in the dataset. Each group entity must have an ID array defined for ETERNITY."
+                )
                 entity_ids = get_eternity_array(entity_id_field)
             elif entity_id_field not in data:
                 entity_id_field_values = get_eternity_array(
                     f"person_{group_entity.key}_id"
                 )
                 if entity_id_field_values is not None:
-                    entity_ids = np.arange(
-                        len(np.unique(entity_id_field_values))
-                    )
+                    entity_ids = np.arange(len(np.unique(entity_id_field_values)))
                 else:
                     entity_ids = np.arange(len(data[list(data.keys())[0]]))
 
             builder.declare_entity(group_entity.key, entity_ids)
 
-            person_membership_id_field = (
-                f"{person_entity.key}_{group_entity.key}_id"
-            )
+            person_membership_id_field = f"{person_entity.key}_{group_entity.key}_id"
             if self.dataset.data_format != Dataset.FLAT_FILE:
-                assert (
-                    person_membership_id_field in data
-                ), f"Missing {person_membership_id_field} column in the dataset. Each group entity must have a person membership array defined for ETERNITY."
+                assert person_membership_id_field in data, (
+                    f"Missing {person_membership_id_field} column in the dataset. Each group entity must have a person membership array defined for ETERNITY."
+                )
             elif person_membership_id_field not in data:
                 data[person_membership_id_field] = np.arange(len(data))
-            person_membership_ids = get_eternity_array(
-                person_membership_id_field
-            )
+            person_membership_ids = get_eternity_array(person_membership_id_field)
 
             person_role_field = f"{person_entity.key}_{group_entity.key}_role"
             if person_role_field in data:
@@ -389,16 +360,12 @@ class Simulation:
                     variable_name, time_period = variable.split("__")
                 else:
                     variable_name = variable
-                    time_period = (
-                        self.dataset.time_period or self.default_input_period
-                    )
+                    time_period = self.dataset.time_period or self.default_input_period
 
                 if variable_name not in self.tax_benefit_system.variables:
                     continue
 
-                variable_meta = self.tax_benefit_system.get_variable(
-                    variable_name
-                )
+                variable_meta = self.tax_benefit_system.get_variable(variable_name)
                 entity = variable_meta.entity
                 population = self.get_population(entity.plural)
 
@@ -481,9 +448,7 @@ class Simulation:
         elif period is None and self.default_calculation_period is not None:
             period = periods.period(self.default_calculation_period)
 
-        self.tracer.record_calculation_start(
-            variable_name, period, self.branch_name
-        )
+        self.tracer.record_calculation_start(variable_name, period, self.branch_name)
 
         np.random.seed(hash(variable_name + str(period)) % 1000000)
 
@@ -599,9 +564,7 @@ class Simulation:
             df[variable_name] = self.calculate(variable_name, period, map_to)
         return df
 
-    def _calculate(
-        self, variable_name: str, period: Period = None
-    ) -> ArrayLike:
+    def _calculate(self, variable_name: str, period: Period = None) -> ArrayLike:
         """
         Calculate the variable ``variable_name`` for the period ``period``, using the variable formula if it exists.
 
@@ -651,10 +614,7 @@ class Simulation:
             )
             cache_path = smc.get_cache_path()
             if cache_path.exists():
-                if (
-                    not self.macro_cache_read
-                    or self.tax_benefit_system.data_modified
-                ):
+                if not self.macro_cache_read or self.tax_benefit_system.data_modified:
                     value = None
                 else:
                     value = smc.get_cache_value(cache_path)
@@ -663,18 +623,14 @@ class Simulation:
                     return value
 
         if variable.requires_computation_after is not None:
-            variables_in_stack = [
-                node.get("name") for node in self.tracer.stack
-            ]
+            variables_in_stack = [node.get("name") for node in self.tracer.stack]
             variable_in_stack = (
                 variable.requires_computation_after in variables_in_stack
             )
             required_is_known_periods = self.get_holder(
                 variable.requires_computation_after
             ).get_known_periods()
-            if (not variable_in_stack) and (
-                not len(required_is_known_periods) > 0
-            ):
+            if (not variable_in_stack) and (not len(required_is_known_periods) > 0):
                 raise ValueError(
                     f"Variable {variable_name} requires {variable.requires_computation_after} to be requested first. That variable is known in: {required_is_known_periods}. The full stack is: {variables_in_stack}. {variable_in_stack, len(required_is_known_periods) > 0}"
                 )
@@ -702,9 +658,7 @@ class Simulation:
 
         if variable.defined_for is not None:
             mask = (
-                self.calculate(
-                    variable.defined_for, period, map_to=variable.entity.key
-                )
+                self.calculate(variable.defined_for, period, map_to=variable.entity.key)
                 > 0
             )
             if np.all(~mask):
@@ -731,9 +685,7 @@ class Simulation:
                     and known_period.start < period.start
                 ]
                 if variable.uprating is not None and len(start_instants) > 0:
-                    latest_known_period = known_periods[
-                        np.argmax(start_instants)
-                    ]
+                    latest_known_period = known_periods[np.argmax(start_instants)]
                     try:
                         uprating_parameter = get_parameter(
                             self.tax_benefit_system.parameters,
@@ -743,16 +695,12 @@ class Simulation:
                         raise ValueError(
                             f"Could not find uprating parameter {variable.uprating} when trying to uprate {variable_name}."
                         )
-                    value_in_last_period = uprating_parameter(
-                        latest_known_period.start
-                    )
+                    value_in_last_period = uprating_parameter(latest_known_period.start)
                     value_in_this_period = uprating_parameter(period.start)
                     if value_in_last_period == 0:
                         uprating_factor = 1
                     else:
-                        uprating_factor = (
-                            value_in_this_period / value_in_last_period
-                        )
+                        uprating_factor = value_in_this_period / value_in_last_period
 
                     array = (
                         holder.get_array(latest_known_period, self.branch_name)
@@ -829,9 +777,9 @@ class Simulation:
             period = periods.period(period)
 
         # Check that the requested period matches definition_period
-        if periods.unit_weight(
-            variable.definition_period
-        ) > periods.unit_weight(period.unit):
+        if periods.unit_weight(variable.definition_period) > periods.unit_weight(
+            period.unit
+        ):
             raise ValueError(
                 "Unable to compute variable '{0}' for period {1}: '{0}' can only be computed for {2}-long periods. You can use the DIVIDE option to get an estimate of {0} by dividing the yearly value by 12, or change the requested period to 'period.this_year'.".format(
                     variable.name, period, variable.definition_period
@@ -885,9 +833,7 @@ class Simulation:
 
         if period.unit == periods.MONTH:
             computation_period = period.this_year
-            result = (
-                self.calculate(variable_name, period=computation_period) / 12.0
-            )
+            result = self.calculate(variable_name, period=computation_period) / 12.0
             holder = self.get_holder(variable.name)
             holder.put_in_cache(result, period, self.branch_name)
             return result
@@ -900,9 +846,7 @@ class Simulation:
             )
         )
 
-    def calculate_output(
-        self, variable_name: str, period: Period = None
-    ) -> ArrayLike:
+    def calculate_output(self, variable_name: str, period: Period = None) -> ArrayLike:
         """
         Calculate the value of a variable using the ``calculate_output`` attribute of the variable.
         """
@@ -974,10 +918,7 @@ class Simulation:
                 if values is None:
                     values = 0
                 for subtracted_variable in subtracts_list:
-                    if (
-                        subtracted_variable
-                        in self.tax_benefit_system.variables
-                    ):
+                    if subtracted_variable in self.tax_benefit_system.variables:
                         values = values - self.calculate(
                             subtracted_variable,
                             period,
@@ -1012,29 +953,21 @@ class Simulation:
 
         return array
 
-    def _check_period_consistency(
-        self, period: Period, variable: Variable
-    ) -> None:
+    def _check_period_consistency(self, period: Period, variable: Variable) -> None:
         """
         Check that a period matches the variable definition_period
         """
         if variable.definition_period == periods.ETERNITY:
             return  # For variables which values are constant in time, all periods are accepted
 
-        if (
-            variable.definition_period == periods.MONTH
-            and period.unit != periods.MONTH
-        ):
+        if variable.definition_period == periods.MONTH and period.unit != periods.MONTH:
             raise ValueError(
                 "Unable to compute variable '{0}' for period {1}: '{0}' must be computed for a whole month. You can use the ADD option to sum '{0}' over the requested period, or change the requested period to 'period.first_month'.".format(
                     variable.name, period
                 )
             )
 
-        if (
-            variable.definition_period == periods.YEAR
-            and period.unit != periods.YEAR
-        ):
+        if variable.definition_period == periods.YEAR and period.unit != periods.YEAR:
             raise ValueError(
                 "Unable to compute variable '{0}' for period {1}: '{0}' must be computed for a whole year. You can use the DIVIDE option to get an estimate of {0} by dividing the yearly value by 12, or change the requested period to 'period.this_year'.".format(
                     variable.name, period
@@ -1080,8 +1013,7 @@ class Simulation:
         previous_periods = [
             frame["period"]
             for frame in self.tracer.stack[:-1]
-            if frame["name"] == variable
-            and frame["branch_name"] == self.branch_name
+            if frame["name"] == variable and frame["branch_name"] == self.branch_name
         ]
         if period in previous_periods:
             found_last_frame = False
@@ -1140,17 +1072,13 @@ class Simulation:
         """
         if period is not None and not isinstance(period, Period):
             period = periods.period(period)
-        return self.get_holder(variable_name).get_array(
-            period, self.branch_name
-        )
+        return self.get_holder(variable_name).get_array(period, self.branch_name)
 
     def get_holder(self, variable_name: str) -> Holder:
         """
         Get the :obj:`.Holder` associated with the variable ``variable_name`` for the simulation
         """
-        return self.get_variable_population(variable_name).get_holder(
-            variable_name
-        )
+        return self.get_variable_population(variable_name).get_holder(variable_name)
 
     def get_memory_usage(self, variables: List[str] = None) -> dict:
         """
@@ -1211,9 +1139,7 @@ class Simulation:
         """
         return self.get_holder(variable).get_known_periods()
 
-    def set_input(
-        self, variable_name: str, period: Period, value: ArrayLike
-    ) -> None:
+    def set_input(self, variable_name: str, period: Period, value: ArrayLike) -> None:
         """
         Set a variable's value for a given period
 
@@ -1238,9 +1164,7 @@ class Simulation:
         )
         if (variable.end is not None) and (period.start.date > variable.end):
             return
-        self.get_holder(variable_name).set_input(
-            period, value, self.branch_name
-        )
+        self.get_holder(variable_name).set_input(period, value, self.branch_name)
 
     def get_variable_population(self, variable_name: str) -> Population:
         variable = self.tax_benefit_system.get_variable(
@@ -1391,10 +1315,7 @@ class Simulation:
 
         for population in self.populations.values():
             entity = population.entity
-            if (
-                not population.entity.is_person
-                and entity.key not in exclude_entities
-            ):
+            if not population.entity.is_person and entity.key not in exclude_entities:
                 situation[entity.plural] = {
                     entity.key: {
                         "members": [],
@@ -1412,19 +1333,15 @@ class Simulation:
                 people_indices_by_entity[entity.key] = other_people_indices
                 for variable in self.input_variables:
                     if (
-                        self.tax_benefit_system.get_variable(
-                            variable
-                        ).entity.key
+                        self.tax_benefit_system.get_variable(variable).entity.key
                         == entity.key
                     ):
-                        known_periods = self.get_holder(
-                            variable
-                        ).get_known_periods()
+                        known_periods = self.get_holder(variable).get_known_periods()
                         if len(known_periods) > 0:
                             first_known_period = known_periods[0]
-                            value = self.calculate(
-                                variable, first_known_period
-                            )[group_index]
+                            value = self.calculate(variable, first_known_period)[
+                                group_index
+                            ]
                             situation[entity.plural][entity.key][variable] = {
                                 str(known_periods[0]): value
                             }
@@ -1436,18 +1353,14 @@ class Simulation:
             for entity_key in people_indices_by_entity:
                 entity = self.populations[entity_key].entity
                 if person_index in people_indices_by_entity[entity.key]:
-                    situation[entity.plural][entity.key]["members"].append(
-                        person_name
-                    )
+                    situation[entity.plural][entity.key]["members"].append(person_name)
             situation[person.plural][person_name] = {}
             for variable in self.input_variables:
                 if (
                     self.tax_benefit_system.get_variable(variable).entity.key
                     == person.key
                 ):
-                    known_periods = self.get_holder(
-                        variable
-                    ).get_known_periods()
+                    known_periods = self.get_holder(variable).get_known_periods()
                     if len(known_periods) > 0:
                         first_known_period = known_periods[0]
                         value = self.calculate(variable, first_known_period)[
@@ -1488,9 +1401,7 @@ class Simulation:
             return False
 
         for parameter in parameter_deps:
-            param = get_parameter(
-                self.tax_benefit_system.parameters, parameter
-            )
+            param = get_parameter(self.tax_benefit_system.parameters, parameter)
             if param.modified:
                 return False
 
@@ -1624,9 +1535,7 @@ class Simulation:
                 household_id_to_count[household_id] = 0
             household_id_to_count[household_id] += 1
 
-        subset_df = df[
-            df[df_household_id_column].isin(chosen_household_ids)
-        ].copy()
+        subset_df = df[df[df_household_id_column].isin(chosen_household_ids)].copy()
 
         household_counts = subset_df[df_household_id_column].map(
             lambda x: household_id_to_count.get(x, 0)
@@ -1641,9 +1550,7 @@ class Simulation:
                     subset_df[col] *= household_counts.values
                 else:
                     subset_df[col] = household_counts.values
-                subset_df[col] *= (
-                    target_total_weight / subset_df[col].values.sum()
-                )
+                subset_df[col] *= target_total_weight / subset_df[col].values.sum()
 
         df = subset_df
 
@@ -1653,9 +1560,7 @@ class Simulation:
 
         # Ensure the baseline branch has the new data.
         if "baseline" in self.branches:
-            baseline_tax_benefit_system = self.branches[
-                "baseline"
-            ].tax_benefit_system
+            baseline_tax_benefit_system = self.branches["baseline"].tax_benefit_system
             self.branches["baseline"] = self.clone()
             self.branches["tax_benefit_system"] = baseline_tax_benefit_system
 

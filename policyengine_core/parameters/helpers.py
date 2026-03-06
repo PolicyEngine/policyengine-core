@@ -73,9 +73,7 @@ def _parse_child(child_name, child, child_path):
     ):
         return parameters.Parameter(child_name, child, child_path)
     else:
-        return parameters.ParameterNode(
-            child_name, data=child, file_path=child_path
-        )
+        return parameters.ParameterNode(child_name, data=child, file_path=child_path)
 
 
 def _validate_parameter(parameter, data, data_type=None, allowed_keys=None):
@@ -86,8 +84,6 @@ def _validate_parameter(parameter, data, data_type=None, allowed_keys=None):
 
     if data_type is not None and not isinstance(data, data_type):
         raise ParameterParsingError(
-            "'{}' must be of type {}.".format(
-                parameter.name, type_map[data_type]
-            ),
+            "'{}' must be of type {}.".format(parameter.name, type_map[data_type]),
             parameter.file_path,
         )

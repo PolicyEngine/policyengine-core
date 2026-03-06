@@ -40,7 +40,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "build",
-    "black",
+    "ruff>=0.9.0",
     "coverage",
     "furo",
     "jupyter-book<1",

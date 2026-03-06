@@ -25,9 +25,7 @@ class VariableNotFoundError(Exception):
                 "You tried to calculate or to set a value for variable '{0}', but it was not found in the loaded tax and benefit system ({1}).".format(
                     variable_name, country_package_id
                 ),
-                "Are you sure you spelled '{0}' correctly?".format(
-                    variable_name
-                ),
+                "Are you sure you spelled '{0}' correctly?".format(variable_name),
                 "If this code used to work and suddenly does not, this is most probably linked to an update of the tax and benefit system.",
                 "Look at its changelog to learn about renames and removals and update your code. If it is an official package,",
                 "it is probably available on <https://github.com/openfisca/{0}/blob/master/CHANGELOG.md>.".format(

@@ -21,9 +21,7 @@ def get_api_chart_data(
     version: str = None,
 ) -> dict:
     if baseline_policy_id is None or version is None:
-        response = requests.get(
-            f"https://api.policyengine.org/{country_id}/metadata"
-        )
+        response = requests.get(f"https://api.policyengine.org/{country_id}/metadata")
         result = response.json().get("result", {})
         baseline_policy_id = result.get("current_law_id")
         version = result.get("version")
@@ -92,9 +90,7 @@ def intra_decile_chart(
                     "color": outcome_colour,
                 },
                 "orientation": "h",
-                "text": [
-                    f"{impact['intra_decile']['all'][outcome_label] * 100:.0f}%"
-                ],
+                "text": [f"{impact['intra_decile']['all'][outcome_label] * 100:.0f}%"],
                 "textposition": "inside",
                 "textangle": 0,
                 "xaxis": "x",
@@ -117,9 +113,7 @@ def intra_decile_chart(
                 "orientation": "h",
                 "text": [
                     f"{value * 100:.0f}%"
-                    for value in impact["intra_decile"]["deciles"][
-                        outcome_label
-                    ]
+                    for value in impact["intra_decile"]["deciles"][outcome_label]
                 ],
                 "textposition": "inside",
                 "textangle": 0,
@@ -201,8 +195,7 @@ def decile_chart(
             "type": "bar",
             "marker": {
                 "color": [
-                    DARK_GRAY if value < 0 else BLUE_PRIMARY
-                    for value in decile_values
+                    DARK_GRAY if value < 0 else BLUE_PRIMARY for value in decile_values
                 ],
             },
             "text": [f"{value:+.1%}" for value in decile_values],

@@ -72,19 +72,19 @@ class Population:
                 )
             )
 
-    def check_period_validity(
-        self, variable_name: str, period: Period
-    ) -> None:
+    def check_period_validity(self, variable_name: str, period: Period) -> None:
         if period is None:
             stack = traceback.extract_stack()
             filename, line_number, function_name, line_of_code = stack[-3]
-            raise ValueError("""
+            raise ValueError(
+                """
 You requested computation of variable "{}", but you did not specify on which period in "{}:{}":
     {}
 When you request the computation of a variable within a formula, you must always specify the period as the second parameter. The convention is to call this parameter "period". For example:
     computed_salary = person('salary', period).
 See more information at <https://openfisca.org/doc/coding-the-legislation/35_periods.html#periods-in-variable-definition>.
-""".format(variable_name, filename, line_number, line_of_code))
+""".format(variable_name, filename, line_number, line_of_code)
+            )
 
     def __call__(
         self,
@@ -112,9 +112,7 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
             raise ValueError(
                 "Options  config.ADD and  config.DIVIDE are incompatible (trying to compute variable {})".format(
                     variable_name
-                ).encode(
-                    "utf-8"
-                )
+                ).encode("utf-8")
             )
 
         from policyengine_core.simulations.microsimulation import (
@@ -139,9 +137,7 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
                 variable_name, period, **calculate_kwargs
             )
         else:
-            return self.simulation.calculate(
-                variable_name, period, **calculate_kwargs
-            )
+            return self.simulation.calculate(variable_name, period, **calculate_kwargs)
 
     # Helpers
 
@@ -166,9 +162,7 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
             for holder_memory_usage in holders_memory_usage.values()
         )
 
-        return dict(
-            total_nb_bytes=total_memory_usage, by_variable=holders_memory_usage
-        )
+        return dict(total_nb_bytes=total_memory_usage, by_variable=holders_memory_usage)
 
     @projectors.projectable
     def has_role(self, role: Role) -> ArrayLike:
@@ -184,10 +178,7 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
         group_population = self.simulation.get_population(role.entity.plural)
         if role.subroles:
             return numpy.logical_or.reduce(
-                [
-                    group_population.members_role == subrole
-                    for subrole in role.subroles
-                ]
+                [group_population.members_role == subrole for subrole in role.subroles]
             )
         else:
             return group_population.members_role == role
@@ -235,9 +226,7 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
 
         # If entity is for instance 'person.household', we get the reference entity 'household' behind the projector
         entity = (
-            entity
-            if not isinstance(entity, Projector)
-            else entity.reference_entity
+            entity if not isinstance(entity, Projector) else entity.reference_entity
         )
 
         positions = entity.members_position
@@ -248,9 +237,7 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
         # Matrix: the value in line i and column j is the value of criteria for the jth person of the ith entity
         matrix = numpy.asarray(
             [
-                entity.value_nth_person(
-                    k, filtered_criteria, default=numpy.inf
-                )
+                entity.value_nth_person(k, filtered_criteria, default=numpy.inf)
                 for k in range(biggest_entity_size)
             ]
         ).transpose()

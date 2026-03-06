@@ -37,17 +37,13 @@ def test_formula_neutralization(make_simulation, tax_benefit_system):
 
     basic_income = simulation.calculate("basic_income", period=period)
     assert_near(basic_income, 600)
-    disposable_income = simulation.calculate(
-        "disposable_income", period=period
-    )
+    disposable_income = simulation.calculate("disposable_income", period=period)
     assert disposable_income > 0
 
     reform_simulation = make_simulation(reform, {}, period)
     reform_simulation.debug = True
 
-    basic_income_reform = reform_simulation.calculate(
-        "basic_income", period="2013-01"
-    )
+    basic_income_reform = reform_simulation.calculate("basic_income", period="2013-01")
     assert_near(basic_income_reform, 0, absolute_error_margin=0)
     disposable_income_reform = reform_simulation.calculate(
         "disposable_income", period=period
@@ -83,9 +79,7 @@ def test_input_variable_neutralization(make_simulation, tax_benefit_system):
     reform = test_salary_neutralization(tax_benefit_system)
 
     with warnings.catch_warnings(record=True) as raised_warnings:
-        reform_simulation = make_simulation(
-            reform, {"salary": [1200, 1000]}, period
-        )
+        reform_simulation = make_simulation(reform, {"salary": [1200, 1000]}, period)
         assert (
             "You cannot set a value for the variable"
             in raised_warnings[0].message.args[0]
@@ -101,9 +95,7 @@ def test_input_variable_neutralization(make_simulation, tax_benefit_system):
     assert_near(disposable_income_reform, [600, 600])
 
 
-def test_permanent_variable_neutralization(
-    make_simulation, tax_benefit_system
-):
+def test_permanent_variable_neutralization(make_simulation, tax_benefit_system):
     class test_date_naissance_neutralization(Reform):
         def apply(self):
             self.neutralize_variable("birth")
@@ -115,9 +107,7 @@ def test_permanent_variable_neutralization(
         reform.base_tax_benefit_system, {"birth": "1980-01-01"}, period
     )
     with warnings.catch_warnings(record=True) as raised_warnings:
-        reform_simulation = make_simulation(
-            reform, {"birth": "1980-01-01"}, period
-        )
+        reform_simulation = make_simulation(reform, {"birth": "1980-01-01"}, period)
         assert (
             "You cannot set a value for the variable"
             in raised_warnings[0].message.args[0]
@@ -145,9 +135,7 @@ def test_add_variable(make_simulation, tax_benefit_system):
     assert tax_benefit_system.get_variable("new_variable") is None
     reform_simulation = make_simulation(reform, {}, 2013)
     reform_simulation.debug = True
-    new_variable1 = reform_simulation.calculate(
-        "new_variable", period="2013-01"
-    )
+    new_variable1 = reform_simulation.calculate("new_variable", period="2013-01")
     assert_near(new_variable1, 10, absolute_error_margin=0)
 
 
@@ -192,9 +180,7 @@ def test_update_variable(make_simulation, tax_benefit_system):
     reform = test_update_variable(tax_benefit_system)
 
     disposable_income_reform = reform.get_variable("disposable_income")
-    disposable_income_baseline = tax_benefit_system.get_variable(
-        "disposable_income"
-    )
+    disposable_income_baseline = tax_benefit_system.get_variable("disposable_income")
 
     assert disposable_income_reform is not None
     assert (
@@ -301,14 +287,9 @@ def test_attributes_conservation(tax_benefit_system):
     assert reform_variable.value_type == baseline_variable.value_type
     assert reform_variable.entity == baseline_variable.entity
     assert reform_variable.label == baseline_variable.label
-    assert (
-        reform_variable.definition_period
-        == baseline_variable.definition_period
-    )
+    assert reform_variable.definition_period == baseline_variable.definition_period
     assert reform_variable.set_input == baseline_variable.set_input
-    assert (
-        reform_variable.calculate_output == baseline_variable.calculate_output
-    )
+    assert reform_variable.calculate_output == baseline_variable.calculate_output
 
 
 def test_formulas_removal(tax_benefit_system):

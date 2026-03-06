@@ -9,9 +9,7 @@ from pathlib import Path
 
 
 def test_calculate_full_tracer(tax_benefit_system):
-    simulation = SimulationBuilder().build_default_simulation(
-        tax_benefit_system
-    )
+    simulation = SimulationBuilder().build_default_simulation(tax_benefit_system)
     simulation.trace = True
     simulation.calculate("income_tax", "2017-01")
 
@@ -26,9 +24,7 @@ def test_calculate_full_tracer(tax_benefit_system):
 
 
 def test_get_entity_not_found(tax_benefit_system):
-    simulation = SimulationBuilder().build_default_simulation(
-        tax_benefit_system
-    )
+    simulation = SimulationBuilder().build_default_simulation(tax_benefit_system)
     assert simulation.get_entity(plural="no_such_entities") is None
 
 
@@ -60,9 +56,7 @@ def test_clone(tax_benefit_system):
 
 
 def test_get_memory_usage(tax_benefit_system):
-    simulation = SimulationBuilder().build_from_entities(
-        tax_benefit_system, single
-    )
+    simulation = SimulationBuilder().build_from_entities(tax_benefit_system, single)
     simulation.calculate("disposable_income", "2017-01")
     memory_usage = simulation.get_memory_usage(variables=["salary"])
     assert memory_usage["total_nb_bytes"] > 0
@@ -70,14 +64,10 @@ def test_get_memory_usage(tax_benefit_system):
 
 
 def test_macro_cache(tax_benefit_system):
-    simulation = SimulationBuilder().build_from_entities(
-        tax_benefit_system, single
-    )
+    simulation = SimulationBuilder().build_from_entities(tax_benefit_system, single)
 
     cache = SimulationMacroCache(tax_benefit_system)
-    assert cache.core_version == importlib.metadata.version(
-        "policyengine-core"
-    )
+    assert cache.core_version == importlib.metadata.version("policyengine-core")
     assert cache.country_version == "0.0.0"
 
     cache.set_cache_path(

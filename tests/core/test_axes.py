@@ -343,6 +343,4 @@ def test_simulation_with_axes(tax_benefit_system):
     assert simulation.get_array("salary", "2018-11") == pytest.approx(
         [0, 0, 0, 0, 0, 0]
     )
-    assert simulation.get_array("rent", "2018-11") == pytest.approx(
-        [0, 0, 3000, 0]
-    )
+    assert simulation.get_array("rent", "2018-11") == pytest.approx([0, 0, 3000, 0])

@@ -30,9 +30,7 @@ class Period(tuple):
         >>> repr(period('day', '2014-2-3'))
         "Period(('day', Instant((2014, 2, 3)), 1))"
         """
-        return "{}({})".format(
-            self.__class__.__name__, super(Period, self).__repr__()
-        )
+        return "{}({})".format(self.__class__.__name__, super(Period, self).__repr__())
 
     def __str__(self) -> str:
         """
@@ -67,12 +65,7 @@ class Period(tuple):
         year, month, day = start_instant
 
         # 1 year long period
-        if (
-            unit == config.MONTH
-            and size == 12
-            or unit == config.YEAR
-            and size == 1
-        ):
+        if unit == config.MONTH and size == 12 or unit == config.YEAR and size == 1:
             if month == 1:
                 # civil year starting from january
                 return str(year)
@@ -90,18 +83,16 @@ class Period(tuple):
             if size == 1:
                 return "{}-{:02d}-{:02d}".format(year, month, day)
             else:
-                return "{}:{}-{:02d}-{:02d}:{}".format(
-                    unit, year, month, day, size
-                )
+                return "{}:{}-{:02d}-{:02d}:{}".format(unit, year, month, day, size)
 
         # complex period
         return "{}:{}-{:02d}:{}".format(unit, year, month, size)
 
     @property
     def date(self) -> datetime.date:
-        assert (
-            self.size == 1
-        ), '"date" is undefined for a period of size > 1: {}'.format(self)
+        assert self.size == 1, (
+            '"date" is undefined for a period of size > 1: {}'.format(self)
+        )
         return self.start.date
 
     @property
@@ -145,10 +136,7 @@ class Period(tuple):
             return None
         intersection_start = max(period_start, start)
         intersection_stop = min(period_stop, stop)
-        if (
-            intersection_start == period_start
-            and intersection_stop == period_stop
-        ):
+        if intersection_start == period_start and intersection_stop == period_stop:
             return self
         if (
             intersection_start.day == 1
@@ -166,9 +154,7 @@ class Period(tuple):
         if (
             intersection_start.day == 1
             and intersection_stop.day
-            == calendar.monthrange(
-                intersection_stop.year, intersection_stop.month
-            )[1]
+            == calendar.monthrange(intersection_stop.year, intersection_stop.month)[1]
         ):
             return self.__class__(
                 (
@@ -203,14 +189,10 @@ class Period(tuple):
         >>> [period('2014'), period('2015')]
         """
         if helpers.unit_weight(self.unit) < helpers.unit_weight(unit):
-            raise ValueError(
-                "Cannot subdivide {0} into {1}".format(self.unit, unit)
-            )
+            raise ValueError("Cannot subdivide {0} into {1}".format(self.unit, unit))
 
         if unit == config.YEAR:
-            return [
-                self.this_year.offset(i, config.YEAR) for i in range(self.size)
-            ]
+            return [self.this_year.offset(i, config.YEAR) for i in range(self.size)]
 
         if unit == config.MONTH:
             return [
@@ -220,8 +202,7 @@ class Period(tuple):
 
         if unit == config.DAY:
             return [
-                self.first_day.offset(i, config.DAY)
-                for i in range(self.size_in_days)
+                self.first_day.offset(i, config.DAY) for i in range(self.size_in_days)
             ]
 
     def offset(self, offset: int, unit: str = None) -> "Period":
@@ -397,9 +378,7 @@ class Period(tuple):
             return self[2]
         if self[0] == config.YEAR:
             return self[2] * 12
-        raise ValueError(
-            "Cannot calculate number of months in {0}".format(self[0])
-        )
+        raise ValueError("Cannot calculate number of months in {0}".format(self[0]))
 
     @property
     def size_in_days(self) -> int:
@@ -466,9 +445,7 @@ class Period(tuple):
                 # Use datetime arithmetic for efficient day calculation
                 start_date = date(year, month, day)
                 end_date = start_date + timedelta(days=size - 1)
-                return periods.Instant(
-                    (end_date.year, end_date.month, end_date.day)
-                )
+                return periods.Instant((end_date.year, end_date.month, end_date.day))
         else:
             if unit == "month":
                 month += size

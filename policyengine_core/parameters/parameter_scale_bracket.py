@@ -7,9 +7,7 @@ class ParameterScaleBracket(ParameterNode):
     A parameter scale bracket.
     """
 
-    _allowed_keys = set(
-        ["amount", "threshold", "rate", "average_rate", "base"]
-    )
+    _allowed_keys = set(["amount", "threshold", "rate", "average_rate", "base"])
 
     @staticmethod
     def allowed_unit_keys():
@@ -20,13 +18,11 @@ class ParameterScaleBracket(ParameterNode):
             if key in self.children:
                 yield self.children[key]
 
-    def propagate_uprating(
-        self, uprating: str, threshold: bool = False
-    ) -> None:
+    def propagate_uprating(self, uprating: str, threshold: bool = False) -> None:
         for key in self._allowed_keys:
             if key in self.children:
                 if key == "threshold" and not threshold:
                     continue
-                self.children[key].metadata["uprating"] = (
-                    uprating or self.children[key].metadata.get("uprating")
-                )
+                self.children[key].metadata["uprating"] = uprating or self.children[
+                    key
+                ].metadata.get("uprating")

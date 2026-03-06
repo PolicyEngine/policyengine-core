@@ -70,8 +70,7 @@ class PerformanceLog:
             calculation_count = len(calculations)
 
             calculation_time = sum(
-                calculation[1]["calculation_time"]
-                for calculation in calculations
+                calculation[1]["calculation_time"] for calculation in calculations
             )
 
             formula_time = sum(

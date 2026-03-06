@@ -29,9 +29,7 @@ def date_constructor(_loader, node):
     return node.value
 
 
-yaml.add_constructor(
-    "tag:yaml.org,2002:timestamp", date_constructor, Loader=Loader
-)
+yaml.add_constructor("tag:yaml.org,2002:timestamp", date_constructor, Loader=Loader)
 
 
 def dict_no_duplicate_constructor(loader, node, deep=False):

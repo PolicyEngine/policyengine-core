@@ -74,9 +74,7 @@ class Enum(enum.Enum):
         else:
             first_elem = None
         if first_elem is not None and isinstance(first_elem, Enum):
-            indices = np.array(
-                [item.index for item in array], dtype=ENUM_ARRAY_DTYPE
-            )
+            indices = np.array([item.index for item in array], dtype=ENUM_ARRAY_DTYPE)
             return EnumArray(indices, cls)
 
         # Convert byte-strings or object arrays to Unicode strings

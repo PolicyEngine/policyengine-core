@@ -12,18 +12,14 @@ class Singleton(type):
 
     def __call__(cls, *args, **kwargs):
         if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(
-                *args, **kwargs
-            )
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
 
 
 class SimulationMacroCache(metaclass=Singleton):
     def __init__(self, tax_benefit_system: TaxBenefitSystem):
         self.core_version = importlib.metadata.version("policyengine-core")
-        self.country_package_metadata = (
-            tax_benefit_system.get_package_metadata()
-        )
+        self.country_package_metadata = tax_benefit_system.get_package_metadata()
         self.country_version = self.country_package_metadata["version"]
         self.cache_folder_path = None
         self.cache_file_path = None
@@ -61,13 +57,9 @@ class SimulationMacroCache(metaclass=Singleton):
     def get_cache_value(self, cache_file_path: Path):
         with h5py.File(cache_file_path, "r") as f:
             # Validate both core version and country package metadata are up-to-date, otherwise flush the cache
-            if (
-                "metadata:core_version" in f
-                and "metadata:country_version" in f
-            ):
+            if "metadata:core_version" in f and "metadata:country_version" in f:
                 if (
-                    f["metadata:core_version"][()].decode("utf-8")
-                    != self.core_version
+                    f["metadata:core_version"][()].decode("utf-8") != self.core_version
                     or f["metadata:country_version"][()].decode("utf-8")
                     != self.country_version
                 ):

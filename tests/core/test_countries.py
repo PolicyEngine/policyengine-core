@@ -11,25 +11,19 @@ from policyengine_core.variables import Variable
 PERIOD = periods.period("2016-01")
 
 
-@pytest.mark.parametrize(
-    "simulation", [({"salary": 2000}, PERIOD)], indirect=True
-)
+@pytest.mark.parametrize("simulation", [({"salary": 2000}, PERIOD)], indirect=True)
 def test_input_variable(simulation):
     result = simulation.calculate("salary", PERIOD)
     tools.assert_near(result, [2000], absolute_error_margin=0.01)
 
 
-@pytest.mark.parametrize(
-    "simulation", [({"salary": 2000}, PERIOD)], indirect=True
-)
+@pytest.mark.parametrize("simulation", [({"salary": 2000}, PERIOD)], indirect=True)
 def test_basic_calculation(simulation):
     result = simulation.calculate("income_tax", PERIOD)
     tools.assert_near(result, [300], absolute_error_margin=0.01)
 
 
-@pytest.mark.parametrize(
-    "simulation", [({"salary": 24000}, PERIOD)], indirect=True
-)
+@pytest.mark.parametrize("simulation", [({"salary": 24000}, PERIOD)], indirect=True)
 def test_calculate_add(simulation):
     result = simulation.calculate_add("income_tax", PERIOD)
     tools.assert_near(result, [3600], absolute_error_margin=0.01)
@@ -50,9 +44,7 @@ def test_calculate_divide(simulation):
     tools.assert_near(result, [1000 / 12.0], absolute_error_margin=0.01)
 
 
-@pytest.mark.parametrize(
-    "simulation", [({"salary": 20000}, PERIOD)], indirect=True
-)
+@pytest.mark.parametrize("simulation", [({"salary": 20000}, PERIOD)], indirect=True)
 def test_bareme(simulation):
     result = simulation.calculate("social_security_contribution", PERIOD)
     expected = [0.02 * 6000 + 0.06 * 6400 + 0.12 * 7600]
@@ -68,9 +60,7 @@ def test_non_existing_variable(simulation):
 @pytest.mark.parametrize("simulation", [({}, PERIOD)], indirect=True)
 def test_divide_option_on_month_defined_variable(simulation):
     with pytest.raises(ValueError):
-        simulation.person(
-            "disposable_income", PERIOD, options=[populations.DIVIDE]
-        )
+        simulation.person("disposable_income", PERIOD, options=[populations.DIVIDE])
 
 
 @pytest.mark.parametrize("simulation", [({}, PERIOD)], indirect=True)
@@ -78,9 +68,7 @@ def test_divide_option_with_complex_period(simulation):
     quarter = PERIOD.last_3_months
 
     with pytest.raises(ValueError) as error:
-        simulation.household(
-            "housing_tax", quarter, options=[populations.DIVIDE]
-        )
+        simulation.household("housing_tax", quarter, options=[populations.DIVIDE])
 
     error_message = str(error.value)
     expected_words = ["DIVIDE", "one-year", "one-month", "period"]
@@ -93,9 +81,7 @@ def test_divide_option_with_complex_period(simulation):
 
 def test_variable_with_reference(make_simulation, isolated_tax_benefit_system):
     variables = {"salary": 4000}
-    simulation = make_simulation(
-        isolated_tax_benefit_system, variables, PERIOD
-    )
+    simulation = make_simulation(isolated_tax_benefit_system, variables, PERIOD)
 
     result = simulation.calculate("disposable_income", PERIOD)
 
@@ -108,9 +94,7 @@ def test_variable_with_reference(make_simulation, isolated_tax_benefit_system):
             return household.empty_array()
 
     isolated_tax_benefit_system.update_variable(disposable_income)
-    simulation = make_simulation(
-        isolated_tax_benefit_system, variables, PERIOD
-    )
+    simulation = make_simulation(isolated_tax_benefit_system, variables, PERIOD)
 
     result = simulation.calculate("disposable_income", PERIOD)
 

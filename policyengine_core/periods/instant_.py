@@ -17,9 +17,7 @@ class Instant(tuple):
         >>> repr(instant('2014-2-3'))
         'Instant((2014, 2, 3))'
         """
-        return "{}({})".format(
-            self.__class__.__name__, super(Instant, self).__repr__()
-        )
+        return "{}({})".format(self.__class__.__name__, super(Instant, self).__repr__())
 
     def __str__(self) -> str:
         """
@@ -35,9 +33,7 @@ class Instant(tuple):
         """
         instant_str = config.str_by_instant_cache.get(self)
         if instant_str is None:
-            config.str_by_instant_cache[self] = instant_str = (
-                self.date.isoformat()
-            )
+            config.str_by_instant_cache[self] = instant_str = self.date.isoformat()
         return instant_str
 
     @property
@@ -54,9 +50,7 @@ class Instant(tuple):
         """
         instant_date = config.date_by_instant_cache.get(self)
         if instant_date is None:
-            config.date_by_instant_cache[self] = instant_date = datetime.date(
-                *self
-            )
+            config.date_by_instant_cache[self] = instant_date = datetime.date(*self)
         return instant_date
 
     @property
@@ -208,8 +202,8 @@ class Instant(tuple):
                 month = 12
                 day = 31
         else:
-            assert isinstance(offset, int), (
-                "Invalid offset: {} of type {}".format(offset, type(offset))
+            assert isinstance(offset, int), "Invalid offset: {} of type {}".format(
+                offset, type(offset)
             )
             if unit == config.DAY:
                 day += offset

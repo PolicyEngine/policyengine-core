@@ -8,17 +8,13 @@ class TestParseGsUrl:
         assert (bucket, file_path, version) == ("my-bucket", "file.h5", None)
 
     def test_subdirectory_url(self):
-        bucket, file_path, version = parse_gs_url(
-            "gs://my-bucket/data/2024/file.h5"
-        )
+        bucket, file_path, version = parse_gs_url("gs://my-bucket/data/2024/file.h5")
         assert bucket == "my-bucket"
         assert file_path == "data/2024/file.h5"
         assert version is None
 
     def test_url_with_version(self):
-        bucket, file_path, version = parse_gs_url(
-            "gs://my-bucket/file.h5@12345"
-        )
+        bucket, file_path, version = parse_gs_url("gs://my-bucket/file.h5@12345")
         assert (file_path, version) == ("file.h5", "12345")
 
     def test_subdirectory_with_version(self):
@@ -29,9 +25,7 @@ class TestParseGsUrl:
         assert (file_path, version) == ("path/to/file.h5", "67890")
 
     def test_deep_subdirectory(self):
-        bucket, file_path, version = parse_gs_url(
-            "gs://my-bucket/a/b/c/d/e/file.h5"
-        )
+        bucket, file_path, version = parse_gs_url("gs://my-bucket/a/b/c/d/e/file.h5")
         assert file_path == "a/b/c/d/e/file.h5"
 
     def test_invalid_url_no_gs_prefix(self):

@@ -38,9 +38,7 @@ class ParameterNodeAtInstant:
             if child_at_instant is not None:
                 self.add_child(child_name, child_at_instant)
 
-    def add_child(
-        self, child_name: str, child_at_instant: "ParameterNodeAtInstant"
-    ):
+    def add_child(self, child_name: str, child_at_instant: "ParameterNodeAtInstant"):
         self._children[child_name] = child_at_instant
         setattr(self, child_name, child_at_instant)
 
@@ -59,9 +57,7 @@ class ParameterNodeAtInstant:
         if hasattr(key, "__array__") and not isinstance(key, numpy.ndarray):
             key = numpy.asarray(key)
         if isinstance(key, numpy.ndarray):
-            return parameters.VectorialParameterNodeAtInstant.build_from_node(
-                self
-            )[key]
+            return parameters.VectorialParameterNodeAtInstant.build_from_node(self)[key]
         return self._children[key]
 
     def __iter__(self) -> Iterable:
@@ -70,9 +66,7 @@ class ParameterNodeAtInstant:
     def __repr__(self) -> str:
         result = os.linesep.join(
             [
-                os.linesep.join(["{}:", "{}"]).format(
-                    name, tools.indent(repr(value))
-                )
+                os.linesep.join(["{}:", "{}"]).format(name, tools.indent(repr(value)))
                 for name, value in self._children.items()
             ]
         )

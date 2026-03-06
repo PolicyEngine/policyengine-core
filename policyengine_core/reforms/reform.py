@@ -72,9 +72,7 @@ class Reform(TaxBenefitSystem):
         super().__init__(baseline.entities)
         self.baseline = baseline
         self.parameters = baseline.parameters
-        self._parameters_at_instant_cache = (
-            baseline._parameters_at_instant_cache
-        )
+        self._parameters_at_instant_cache = baseline._parameters_at_instant_cache
         self.variables = baseline.variables.copy()
         self.decomposition_file_path = baseline.decomposition_file_path
         self.key = self.__class__.__name__
@@ -90,10 +88,8 @@ class Reform(TaxBenefitSystem):
     @property
     def full_key(self) -> str:
         key = self.key
-        assert key is not None, (
-            "key was not set for reform {} (name: {!r})".format(
-                self, self.name
-            )
+        assert key is not None, "key was not set for reform {} (name: {!r})".format(
+            self, self.name
         )
         if self.baseline is not None and hasattr(self.baseline, "key"):
             baseline_full_key = self.baseline.full_key
@@ -143,16 +139,12 @@ class Reform(TaxBenefitSystem):
                 for path, period_values in parameter_values.items():
                     parameter = self.parameters.get_child(path)
                     if not isinstance(period_values, dict):
-                        parameter.update(
-                            period="year:2000:100", value=period_values
-                        )
+                        parameter.update(period="year:2000:100", value=period_values)
                     else:
                         for period, value in period_values.items():
                             try:
                                 period = period_(period)
-                                parameter = parameter.update(
-                                    period=period, value=value
-                                )
+                                parameter = parameter.update(period=period, value=value)
                             except:
                                 if "." in period:
                                     start, stop = period.split(".")
@@ -231,9 +223,7 @@ class Reform(TaxBenefitSystem):
             sanitised_period_values = {}
             for period, value in period_values.items():
                 period = period_(period)
-                sanitised_period_values[f"{period.start}.{period.stop}"] = (
-                    value
-                )
+                sanitised_period_values[f"{period.start}.{period.stop}"] = value
             sanitised_parameter_values[path] = sanitised_period_values
 
         response = requests.post(

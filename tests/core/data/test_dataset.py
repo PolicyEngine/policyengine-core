@@ -54,9 +54,7 @@ def test_atomic_write():
 def test_atomic_write_windows():
     if sys.platform == "win32":
         temp_dir = Path(tempfile.gettempdir())
-        temp_files = [
-            temp_dir / f"tempfile_{uuid.uuid4().hex}.tmp" for _ in range(5)
-        ]
+        temp_files = [temp_dir / f"tempfile_{uuid.uuid4().hex}.tmp" for _ in range(5)]
 
         managers = [WindowsAtomicFileManager(path) for path in temp_files]
 

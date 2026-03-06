@@ -41,10 +41,7 @@ class Holder:
             ):
                 self._disk_storage = self.create_disk_storage()
                 self._on_disk_storable = True
-            if (
-                self.variable.name
-                in self.simulation.memory_config.variables_to_drop
-            ):
+            if self.variable.name in self.simulation.memory_config.variables_to_drop:
                 self._do_not_store = True
 
     def clone(self, population: "Population") -> "Holder":
@@ -97,9 +94,7 @@ class Holder:
         if self._disk_storage:
             self._disk_storage.delete(period, branch_name)
 
-    def get_array(
-        self, period: Period, branch_name: str = "default"
-    ) -> ArrayLike:
+    def get_array(self, period: Period, branch_name: str = "default") -> ArrayLike:
         """
         Get the value of the variable for the given period.
 
@@ -151,9 +146,7 @@ class Holder:
         usage.update(self._memory_storage.get_memory_usage())
 
         if self.simulation.trace:
-            nb_requests = self.simulation.tracer.get_nb_requests(
-                self.variable.name
-            )
+            nb_requests = self.simulation.tracer.get_nb_requests(self.variable.name)
             usage.update(
                 dict(
                     nb_requests=nb_requests,
@@ -173,11 +166,7 @@ class Holder:
         """
 
         return list(self._memory_storage.get_known_periods()) + list(
-            (
-                self._disk_storage.get_known_periods()
-                if self._disk_storage
-                else []
-            )
+            (self._disk_storage.get_known_periods() if self._disk_storage else [])
         )
 
     def get_known_branch_periods(self) -> List[Tuple[str, Period]]:
@@ -236,10 +225,7 @@ class Holder:
             return warnings.warn(warning_message, Warning)
         if self.variable.value_type in (float, int) and isinstance(array, str):
             array = tools.eval_expression(array)
-        if (
-            self.variable.set_input
-            and period.unit != self.variable.definition_period
-        ):
+        if self.variable.set_input and period.unit != self.variable.definition_period:
             return self.variable.set_input(self, period, array)
         return self._set(period, array, branch_name)
 
@@ -263,9 +249,7 @@ class Holder:
             original_value = value
             value = self.variable.possible_values.encode(value)
             if value.shape != original_value.shape:
-                value = self.variable.possible_values.encode(
-                    original_value.astype("O")
-                )
+                value = self.variable.possible_values.encode(original_value.astype("O"))
         if value.dtype != self.variable.dtype:
             try:
                 value = value.astype(self.variable.dtype)
@@ -311,8 +295,7 @@ class Holder:
         if (
             self.simulation.opt_out_cache
             and self.simulation.tax_benefit_system.cache_blacklist
-            and self.variable.name
-            in self.simulation.tax_benefit_system.cache_blacklist
+            and self.variable.name in self.simulation.tax_benefit_system.cache_blacklist
         ):
             return
 

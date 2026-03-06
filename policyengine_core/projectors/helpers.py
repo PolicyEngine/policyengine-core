@@ -27,9 +27,7 @@ def get_projector_from_shortcut(population, shortcut, parent=None):
             None,
         )
         if role:
-            return projectors.UniqueRoleToEntityProjector(
-                population, role, parent
-            )
+            return projectors.UniqueRoleToEntityProjector(population, role, parent)
         if shortcut in population.entity.containing_entities:
             return getattr(
                 projectors.FirstPersonToEntityProjector(population, parent),

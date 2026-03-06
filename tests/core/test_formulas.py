@@ -86,9 +86,7 @@ def test_switch(simulation, month):
 
 
 def test_multiplication(simulation, month):
-    uses_multiplication = simulation.calculate(
-        "uses_multiplication", period=month
-    )
+    uses_multiplication = simulation.calculate("uses_multiplication", period=month)
     assert isinstance(uses_multiplication, numpy.ndarray)
 
 
@@ -99,9 +97,7 @@ def test_broadcast_scalar(simulation, month):
 
 
 def test_compare_multiplication_and_switch(simulation, month):
-    uses_multiplication = simulation.calculate(
-        "uses_multiplication", period=month
-    )
+    uses_multiplication = simulation.calculate("uses_multiplication", period=month)
     uses_switch = simulation.calculate("uses_switch", period=month)
     assert numpy.all(uses_switch == uses_multiplication)
 
@@ -169,9 +165,7 @@ def test_group_encapsulation():
         def formula(family, period):
             return family.household("household_level_variable", period)
 
-    system.add_variables(
-        household_level_variable, projected_family_level_variable
-    )
+    system.add_variables(household_level_variable, projected_family_level_variable)
 
     simulation = SimulationBuilder().build_from_dict(
         system,
@@ -191,6 +185,5 @@ def test_group_encapsulation():
     )
 
     assert (
-        simulation.calculate("projected_family_level_variable", "2021-01-01")
-        == 5
+        simulation.calculate("projected_family_level_variable", "2021-01-01") == 5
     ).all()

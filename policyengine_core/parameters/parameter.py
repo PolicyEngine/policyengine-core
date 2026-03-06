@@ -45,9 +45,7 @@ class Parameter(AtInstantLike):
 
     """
 
-    def __init__(
-        self, name: str, data: dict, file_path: Optional[str] = None
-    ) -> None:
+    def __init__(self, name: str, data: dict, file_path: Optional[str] = None) -> None:
         self.name: str = name
         self.file_path: Optional[str] = file_path
         _validate_parameter(self, data, data_type=dict)
@@ -59,9 +57,7 @@ class Parameter(AtInstantLike):
         if data.get("values"):
             # 'unit' and 'reference' are only listed here for backward compatibility
             self.metadata.update(data.get("metadata", {}))
-            _validate_parameter(
-                self, data, allowed_keys=COMMON_KEYS.union({"values"})
-            )
+            _validate_parameter(self, data, allowed_keys=COMMON_KEYS.union({"values"}))
             self.description = data.get("description")
 
             _validate_parameter(self, data["values"], data_type=dict)
@@ -122,9 +118,7 @@ class Parameter(AtInstantLike):
         )
 
     def __eq__(self, other):
-        return (self.name == other.name) and (
-            self.values_list == other.values_list
-        )
+        return (self.name == other.name) and (self.values_list == other.values_list)
 
     def clone(self):
         clone = empty_clone(self)
@@ -132,8 +126,7 @@ class Parameter(AtInstantLike):
 
         clone.metadata = copy.deepcopy(self.metadata)
         clone.values_list = [
-            parameter_at_instant.clone()
-            for parameter_at_instant in self.values_list
+            parameter_at_instant.clone() for parameter_at_instant in self.values_list
         ]
         return clone
 
@@ -200,9 +193,7 @@ class Parameter(AtInstantLike):
 
         # Insert new interval
         value_name = _compose_name(self.name, item_name=start_str)
-        new_interval = ParameterAtInstant(
-            value_name, start_str, data={"value": value}
-        )
+        new_interval = ParameterAtInstant(value_name, start_str, data={"value": value})
         new_values.append(new_interval)
 
         # Remove covered intervals

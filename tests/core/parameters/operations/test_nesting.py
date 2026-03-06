@@ -85,8 +85,8 @@ def test_parameter_homogenization():
     family_sizes = np.array([1, 2, 3])
 
     assert (
-        system.parameters("2021-01-01").value_by_country_and_region[countries][
-            regions
-        ][family_sizes]
+        system.parameters("2021-01-01").value_by_country_and_region[countries][regions][
+            family_sizes
+        ]
         == [1, 0, 0]
     ).all()

@@ -29,9 +29,7 @@ class AmountTaxScaleLike(TaxScaleLike, abc.ABC):
             os.linesep.join(
                 [
                     f"- threshold: {threshold}{os.linesep}  amount: {amount}"
-                    for (threshold, amount) in zip(
-                        self.thresholds, self.amounts
-                    )
+                    for (threshold, amount) in zip(self.thresholds, self.amounts)
                 ]
             )
         )

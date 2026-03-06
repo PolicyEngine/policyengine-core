@@ -93,9 +93,7 @@ def test_mismatched_structured_array_fields():
     dtype_ny = np.dtype([("10", float), ("11", float)])  # Different fields
 
     # Create data for 2 rows (age brackets)
-    data_ca = np.array(
-        [(100.0, 110.0, 120.0), (200.0, 210.0, 220.0)], dtype=dtype_ca
-    )
+    data_ca = np.array([(100.0, 110.0, 120.0), (200.0, 210.0, 220.0)], dtype=dtype_ca)
     data_ny = np.array([(300.0, 310.0), (400.0, 410.0)], dtype=dtype_ny)
 
     # Create parent structure with both states
@@ -106,9 +104,7 @@ def test_mismatched_structured_array_fields():
     )
     parent_vector = parent_data.view(np.recarray)
 
-    node = VectorialParameterNodeAtInstant(
-        "states", parent_vector, "2024-01-01"
-    )
+    node = VectorialParameterNodeAtInstant("states", parent_vector, "2024-01-01")
 
     # Access both states - this triggers dtype mismatch handling
     keys = np.array(["CA", "NY"])

@@ -103,6 +103,3 @@ showcontent = true
 directory = "removed"
 name = "Removed"
 showcontent = true
-
-[tool.ruff]
-line-length = 79

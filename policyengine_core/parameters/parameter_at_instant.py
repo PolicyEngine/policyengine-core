@@ -33,9 +33,7 @@ class ParameterAtInstant:
         self.metadata: typing.Dict = {}
 
         # Accept { 2015-01-01: 4000 }
-        if not isinstance(data, dict) and isinstance(
-            data, ALLOWED_PARAM_TYPES
-        ):
+        if not isinstance(data, dict) and isinstance(data, ALLOWED_PARAM_TYPES):
             self.value = data
             return
 
@@ -49,9 +47,7 @@ class ParameterAtInstant:
         self.value: float = data["value"]
 
     def validate(self, data: dict) -> None:
-        _validate_parameter(
-            self, data, data_type=dict, allowed_keys=self._allowed_keys
-        )
+        _validate_parameter(self, data, data_type=dict, allowed_keys=self._allowed_keys)
         try:
             value = data["value"]
         except KeyError:

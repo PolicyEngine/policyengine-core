@@ -155,9 +155,7 @@ class Variable:
         )
 
         for property_name in INHERITED_ALLOWED_PROPERTIES:
-            if not attr.get(property_name) and property_name in dir(
-                self.__class__
-            ):
+            if not attr.get(property_name) and property_name in dir(self.__class__):
                 attr[property_name] = getattr(self, property_name)
 
         self.baseline_variable = baseline_variable
@@ -194,9 +192,7 @@ class Variable:
                 allowed_type=self.value_type,
                 default=config.VALUE_TYPES[self.value_type].get("default"),
             )
-        self.entity = self.set(
-            attr, "entity", required=True, setter=self.set_entity
-        )
+        self.entity = self.set(attr, "entity", required=True, setter=self.set_entity)
         self.definition_period = self.set(
             attr,
             "definition_period",
@@ -208,20 +204,14 @@ class Variable:
                 periods.ETERNITY,
             ),
         )
-        self.label = self.set(
-            attr, "label", allowed_type=str, setter=self.set_label
-        )
+        self.label = self.set(attr, "label", allowed_type=str, setter=self.set_label)
 
         if self.label is None:
-            raise ValueError(
-                'Variable "{name}" has no label'.format(name=self.name)
-            )
+            raise ValueError('Variable "{name}" has no label'.format(name=self.name))
 
         self.end = self.set(attr, "end", allowed_type=str, setter=self.set_end)
         self.reference = self.set(attr, "reference", setter=self.set_reference)
-        self.cerfa_field = self.set(
-            attr, "cerfa_field", allowed_type=(str, dict)
-        )
+        self.cerfa_field = self.set(attr, "cerfa_field", allowed_type=(str, dict))
         self.unit = self.set(attr, "unit", allowed_type=str)
         self.quantity_type = self.set(
             attr,
@@ -262,9 +252,7 @@ class Variable:
             attr,
             "is_period_size_independent",
             allowed_type=bool,
-            default=config.VALUE_TYPES[self.value_type][
-                "is_period_size_independent"
-            ],
+            default=config.VALUE_TYPES[self.value_type]["is_period_size_independent"],
         )
 
         self.defined_for = self.set_defined_for(attr.pop("defined_for", None))
@@ -360,11 +348,7 @@ class Variable:
                     attribute_name, self.name
                 )
             )
-        if (
-            required
-            and allowed_values is not None
-            and value not in allowed_values
-        ):
+        if required and allowed_values is not None and value not in allowed_values:
             raise ValueError(
                 "Invalid value '{}' for attribute '{}' in variable '{}'. Allowed values are '{}'.".format(
                     value, attribute_name, self.name, allowed_values
@@ -463,9 +447,7 @@ class Variable:
 
         # If the variable is reforming a baseline variable, keep the formulas from the latter when they are not overridden by new formulas.
         if self.baseline_variable is not None:
-            first_reform_formula_date = (
-                formulas.peekitem(0)[0] if formulas else None
-            )
+            first_reform_formula_date = formulas.peekitem(0)[0] if formulas else None
             formulas.update(
                 {
                     baseline_start_date: baseline_formula
@@ -637,13 +619,17 @@ class Variable:
             if self.value_type == datetime.date:
                 error_message = "Can't deal with date: '{}'.".format(value)
             else:
-                error_message = "Can't deal with value: expected type {}, received '{}'.".format(
-                    self.json_type, value
+                error_message = (
+                    "Can't deal with value: expected type {}, received '{}'.".format(
+                        self.json_type, value
+                    )
                 )
             raise ValueError(error_message)
         except OverflowError:
-            error_message = "Can't deal with value: '{}', it's too large for type '{}'.".format(
-                value, self.json_type
+            error_message = (
+                "Can't deal with value: '{}', it's too large for type '{}'.".format(
+                    value, self.json_type
+                )
             )
             raise ValueError(error_message)
 

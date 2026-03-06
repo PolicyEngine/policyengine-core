@@ -16,9 +16,7 @@ if typing.TYPE_CHECKING:
         VectorialParameterNodeAtInstant,
     )
 
-    ParameterNode = Union[
-        ParameterNodeAtInstant, VectorialParameterNodeAtInstant
-    ]
+    ParameterNode = Union[ParameterNodeAtInstant, VectorialParameterNodeAtInstant]
 
     Child = Union[ParameterNode, ArrayLike]
 
@@ -62,9 +60,7 @@ class TracingParameterNodeAtInstant:
                 parameters.VectorialParameterNodeAtInstant,
             ),
         ):
-            return TracingParameterNodeAtInstant(
-                child, self.tracer, self.branch_name
-            )
+            return TracingParameterNodeAtInstant(child, self.tracer, self.branch_name)
 
         if not isinstance(key, str) or isinstance(
             self.parameter_node_at_instant,
@@ -78,11 +74,7 @@ class TracingParameterNodeAtInstant:
         else:
             name = ".".join([self.parameter_node_at_instant._name, key])
 
-        if isinstance(
-            child, (numpy.ndarray,) + parameters.ALLOWED_PARAM_TYPES
-        ):
-            self.tracer.record_parameter_access(
-                name, period, self.branch_name, child
-            )
+        if isinstance(child, (numpy.ndarray,) + parameters.ALLOWED_PARAM_TYPES):
+            self.tracer.record_parameter_access(name, period, self.branch_name, child)
 
         return child

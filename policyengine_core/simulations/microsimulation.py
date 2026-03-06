@@ -20,9 +20,7 @@ class Microsimulation(Simulation):
         variable = self.tax_benefit_system.get_variable(variable_name)
         entity_key = map_to or variable.entity.key
         weight_variable_name = f"{entity_key}_weight"
-        weight_variable = self.tax_benefit_system.get_variable(
-            weight_variable_name
-        )
+        weight_variable = self.tax_benefit_system.get_variable(weight_variable_name)
         weights = None
 
         if time_period.unit == weight_variable.definition_period:

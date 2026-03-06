@@ -20,9 +20,7 @@ class TraceNode:
     branch_name: str = "default"
     parent: typing.Optional[TraceNode] = None
     children: typing.List[TraceNode] = dataclasses.field(default_factory=list)
-    parameters: typing.List[TraceNode] = dataclasses.field(
-        default_factory=list
-    )
+    parameters: typing.List[TraceNode] = dataclasses.field(default_factory=list)
     value: typing.Optional[Array] = None
     start: float = 0
     end: float = 0
@@ -40,9 +38,7 @@ class TraceNode:
             child.calculation_time(round_=False) for child in self.children
         )
 
-        result = (
-            +self.calculation_time(round_=False) - children_calculation_time
-        )
+        result = +self.calculation_time(round_=False) - children_calculation_time
 
         return self.round(result)
 

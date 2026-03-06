@@ -53,8 +53,6 @@ def main(parser: ArgumentParser):
             print("Saved datasets:")
             for year in years:
                 filepath = dataset.file(year).absolute()
-                print(
-                    "  * " + filepath.name + "  | " + str(filepath.absolute())
-                )
+                print("  * " + filepath.name + "  | " + str(filepath.absolute()))
     else:
         raise ValueError(f"Action {args.action} not recognised.")

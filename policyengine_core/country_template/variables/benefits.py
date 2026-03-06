@@ -19,7 +19,9 @@ class basic_income(Variable):
     entity = Person
     definition_period = MONTH
     label = "Basic income provided to adults"
-    reference = "https://law.gov.example/basic_income"  # Always use the most official source
+    reference = (
+        "https://law.gov.example/basic_income"  # Always use the most official source
+    )
 
     def formula_2016_12(person, period, parameters):
         """
@@ -46,9 +48,7 @@ class basic_income(Variable):
         )
         salary_condition = person("salary", period) == 0
         return (
-            age_condition
-            * salary_condition
-            * parameters(period).benefits.basic_income
+            age_condition * salary_condition * parameters(period).benefits.basic_income
         )  # The '*' is also used as a vectorial 'and'. See https://openfisca.org/doc/coding-the-legislation/25_vectorial_computing.html#boolean-operations
 
 
@@ -75,10 +75,7 @@ class housing_allowance(Variable):
         To compute this allowance, the 'rent' value must be provided for the same month,
         but 'housing_occupancy_status' is not necessary.
         """
-        return (
-            household("rent", period)
-            * parameters(period).benefits.housing_allowance
-        )
+        return household("rent", period) * parameters(period).benefits.housing_allowance
 
 
 # By default, you can use utf-8 characters in a variable. OpenFisca web API manages utf-8 encoding.
@@ -101,8 +98,7 @@ class pension(Variable):
         In Arabic: تقاعد.
         """
         age_condition = (
-            person("age", period)
-            >= parameters(period).general.age_of_retirement
+            person("age", period) >= parameters(period).general.age_of_retirement
         )
         return age_condition
 
@@ -135,9 +131,7 @@ class parenting_allowance(Variable):
         under_8 = household.any(ages < 8)
         under_6 = household.any(ages < 6)
 
-        allowance_condition = income_condition * (
-            (is_single * under_8) + under_6
-        )
+        allowance_condition = income_condition * ((is_single * under_8) + under_6)
         allowance_amount = parenting_allowance.amount
 
         return allowance_condition * allowance_amount

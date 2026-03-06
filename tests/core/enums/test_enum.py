@@ -18,9 +18,7 @@ def test_enum_creation():
         DWORKIN = "dworkin"
 
     sample_string_array = np.array(test_simple_array)
-    sample_item_array = np.array(
-        [Sample.MAXWELL, Sample.DWORKIN, Sample.MAXWELL]
-    )
+    sample_item_array = np.array([Sample.MAXWELL, Sample.DWORKIN, Sample.MAXWELL])
     explicit_s_array = np.array(test_simple_array, "S")
 
     encoded_array = Sample.encode(sample_string_array)
@@ -73,11 +71,7 @@ def test_enum_encode_all_invalid_raises_error():
 
     error_message = str(exc_info.value)
     # Should mention all unique invalid values
-    assert (
-        "FOO" in error_message
-        or "BAR" in error_message
-        or "BAZ" in error_message
-    )
+    assert "FOO" in error_message or "BAR" in error_message or "BAZ" in error_message
 
 
 def test_enum_encode_empty_string_raises_error():

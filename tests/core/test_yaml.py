@@ -27,40 +27,31 @@ def test_success(tax_benefit_system):
 
 
 def test_fail(tax_benefit_system):
-    assert (
-        run_yaml_test(tax_benefit_system, "test_failure.yaml")
-        == EXIT_TESTSFAILED
-    )
+    assert run_yaml_test(tax_benefit_system, "test_failure.yaml") == EXIT_TESTSFAILED
 
 
 def test_relative_error_margin_success(tax_benefit_system):
     assert (
-        run_yaml_test(tax_benefit_system, "test_relative_error_margin.yaml")
-        == EXIT_OK
+        run_yaml_test(tax_benefit_system, "test_relative_error_margin.yaml") == EXIT_OK
     )
 
 
 def test_relative_error_margin_fail(tax_benefit_system):
     assert (
-        run_yaml_test(
-            tax_benefit_system, "failing_test_relative_error_margin.yaml"
-        )
+        run_yaml_test(tax_benefit_system, "failing_test_relative_error_margin.yaml")
         == EXIT_TESTSFAILED
     )
 
 
 def test_absolute_error_margin_success(tax_benefit_system):
     assert (
-        run_yaml_test(tax_benefit_system, "test_absolute_error_margin.yaml")
-        == EXIT_OK
+        run_yaml_test(tax_benefit_system, "test_absolute_error_margin.yaml") == EXIT_OK
     )
 
 
 def test_absolute_error_margin_fail(tax_benefit_system):
     assert (
-        run_yaml_test(
-            tax_benefit_system, "failing_test_absolute_error_margin.yaml"
-        )
+        run_yaml_test(tax_benefit_system, "failing_test_absolute_error_margin.yaml")
         == EXIT_TESTSFAILED
     )
 
@@ -71,28 +62,19 @@ def test_run_tests_from_directory(tax_benefit_system):
 
 
 def test_with_reform(tax_benefit_system):
-    assert (
-        run_yaml_test(tax_benefit_system, "test_with_reform.yaml") == EXIT_OK
-    )
+    assert run_yaml_test(tax_benefit_system, "test_with_reform.yaml") == EXIT_OK
 
 
 def test_with_extension(tax_benefit_system):
-    assert (
-        run_yaml_test(tax_benefit_system, "test_with_extension.yaml")
-        == EXIT_OK
-    )
+    assert run_yaml_test(tax_benefit_system, "test_with_extension.yaml") == EXIT_OK
 
 
 def test_with_anchors(tax_benefit_system):
-    assert (
-        run_yaml_test(tax_benefit_system, "test_with_anchors.yaml") == EXIT_OK
-    )
+    assert run_yaml_test(tax_benefit_system, "test_with_anchors.yaml") == EXIT_OK
 
 
 def test_run_tests_from_directory_fail(tax_benefit_system):
-    assert (
-        run_yaml_test(tax_benefit_system, yaml_tests_dir) == EXIT_TESTSFAILED
-    )
+    assert run_yaml_test(tax_benefit_system, yaml_tests_dir) == EXIT_TESTSFAILED
 
 
 def test_name_filter(tax_benefit_system):

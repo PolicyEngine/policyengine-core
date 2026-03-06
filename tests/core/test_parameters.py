@@ -31,26 +31,20 @@ def test_param_values(tax_benefit_system):
 
     for date, value in dated_values.items():
         assert (
-            tax_benefit_system.get_parameters_at_instant(
-                date
-            ).taxes.income_tax_rate
+            tax_benefit_system.get_parameters_at_instant(date).taxes.income_tax_rate
             == value
         )
 
 
 def test_param_before_it_is_defined(tax_benefit_system):
     with pytest.raises(ParameterNotFoundError):
-        tax_benefit_system.get_parameters_at_instant(
-            "1997-12-31"
-        ).taxes.income_tax_rate
+        tax_benefit_system.get_parameters_at_instant("1997-12-31").taxes.income_tax_rate
 
 
 # The placeholder should have no effect on the parameter computation
 def test_param_with_placeholder(tax_benefit_system):
     assert (
-        tax_benefit_system.get_parameters_at_instant(
-            "2018-01-01"
-        ).taxes.income_tax_rate
+        tax_benefit_system.get_parameters_at_instant("2018-01-01").taxes.income_tax_rate
         == 0.15
     )
 
@@ -94,8 +88,7 @@ def test_parameter_repr(tax_benefit_system):
 def test_parameters_metadata(tax_benefit_system):
     parameter = tax_benefit_system.parameters.benefits.basic_income
     assert (
-        parameter.metadata["reference"]
-        == "https://law.gov.example/basic-income/amount"
+        parameter.metadata["reference"] == "https://law.gov.example/basic-income/amount"
     )
     assert parameter.metadata["unit"] == "currency-EUR"
     assert (
@@ -126,8 +119,7 @@ def test_parameter_documentation(tax_benefit_system):
 
 def test_get_descendants(tax_benefit_system):
     all_parameters = {
-        parameter.name
-        for parameter in tax_benefit_system.parameters.get_descendants()
+        parameter.name for parameter in tax_benefit_system.parameters.get_descendants()
     }
     assert all_parameters.issuperset(
         {"taxes", "taxes.housing_tax", "taxes.housing_tax.minimal_amount"}

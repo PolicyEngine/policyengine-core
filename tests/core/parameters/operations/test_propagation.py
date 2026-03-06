@@ -53,6 +53,6 @@ def test_parameter_interpolation():
         "Existing descendent metadata not preserved"
     )
 
-    assert (
-        propagated.a.c.d.metadata["example_field"] != "value_to_be_overwritten"
-    ), "Existing descendent metadata field not overwritten"
+    assert propagated.a.c.d.metadata["example_field"] != "value_to_be_overwritten", (
+        "Existing descendent metadata field not overwritten"
+    )

@@ -85,9 +85,9 @@ class ParameterScale(AtInstantLike):
                     child_key in bracket.children
                     and "unit" not in bracket.children[child_key].metadata
                 ):
-                    bracket.children[child_key].metadata["unit"] = (
-                        self.metadata[unit_key]
-                    )
+                    bracket.children[child_key].metadata["unit"] = self.metadata[
+                        unit_key
+                    ]
 
     def propagate_uprating(self) -> None:
         for bracket in self.brackets:
@@ -111,17 +111,12 @@ class ParameterScale(AtInstantLike):
         return clone
 
     def _get_at_instant(self, instant: Instant) -> TaxScaleLike:
-        brackets = [
-            bracket.get_at_instant(instant) for bracket in self.brackets
-        ]
+        brackets = [bracket.get_at_instant(instant) for bracket in self.brackets]
 
         if self.metadata.get("type") == "single_amount":
             scale = SingleAmountTaxScale()
             for bracket in brackets:
-                if (
-                    "amount" in bracket._children
-                    and "threshold" in bracket._children
-                ):
+                if "amount" in bracket._children and "threshold" in bracket._children:
                     amount = bracket.amount
                     threshold = bracket.threshold
                     scale.add_bracket(threshold, amount)
@@ -129,10 +124,7 @@ class ParameterScale(AtInstantLike):
         elif any("amount" in bracket._children for bracket in brackets):
             scale = MarginalAmountTaxScale()
             for bracket in brackets:
-                if (
-                    "amount" in bracket._children
-                    and "threshold" in bracket._children
-                ):
+                if "amount" in bracket._children and "threshold" in bracket._children:
                     amount = bracket.amount
                     threshold = bracket.threshold
                     scale.add_bracket(threshold, amount)
@@ -161,10 +153,7 @@ class ParameterScale(AtInstantLike):
                     base = bracket.base
                 else:
                     base = 1.0
-                if (
-                    "rate" in bracket._children
-                    and "threshold" in bracket._children
-                ):
+                if "rate" in bracket._children and "threshold" in bracket._children:
                     rate = bracket.rate
                     threshold = bracket.threshold
                     scale.add_bracket(threshold, rate * base)

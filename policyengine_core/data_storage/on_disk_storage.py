@@ -58,9 +58,7 @@ class OnDiskStorage:
         numpy.save(path, value)
         self._files[filename] = path
 
-    def delete(
-        self, period: Period = None, branch_name: str = "default"
-    ) -> None:
+    def delete(self, period: Period = None, branch_name: str = "default") -> None:
         if period is None:
             self._files = {}
             return
@@ -77,16 +75,12 @@ class OnDiskStorage:
             }
 
     def get_known_periods(self) -> list:
-        return list(
-            [periods.period(x.split("_")[1]) for x in self._files.keys()]
-        )
+        return list([periods.period(x.split("_")[1]) for x in self._files.keys()])
 
     def get_known_branch_periods(self) -> list:
         return [
             (branch_name, periods.period(period))
-            for branch_name, period in map(
-                lambda x: x.split("_"), self._files.keys()
-            )
+            for branch_name, period in map(lambda x: x.split("_"), self._files.keys())
         ]
 
     def restore(self) -> None:

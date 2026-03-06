@@ -27,9 +27,7 @@ class SimpleTracer:
     def record_calculation_result(self, value: ArrayLike) -> None:
         pass  # ignore calculation result
 
-    def record_parameter_access(
-        self, parameter: str, period, branch_name: str, value
-    ):
+    def record_parameter_access(self, parameter: str, period, branch_name: str, value):
         pass
 
     def record_calculation_end(self) -> None:

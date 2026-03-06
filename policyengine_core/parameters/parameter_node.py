@@ -84,9 +84,7 @@ class ParameterNode(AtInstantLike):
         self.trace: bool = False
         self.tracer = None
         self.branch_name = None
-        self._at_instant_cache: typing.Dict[
-            Instant, ParameterNodeAtInstant
-        ] = {}
+        self._at_instant_cache: typing.Dict[Instant, ParameterNodeAtInstant] = {}
         self.parent = None
 
         if directory_path:
@@ -104,12 +102,8 @@ class ParameterNode(AtInstantLike):
                         with open(child_path, "r") as f:
                             # Get the header as the label (making sure to remove the leading hash), and the rest as the description
                             lines = f.readlines()
-                            metadata["label"] = (
-                                lines[0].replace("# ", "").strip()
-                            )
-                            metadata["description"] = "".join(
-                                lines[1:]
-                            ).strip()
+                            metadata["label"] = lines[0].replace("# ", "").strip()
+                            metadata["description"] = "".join(lines[1:]).strip()
 
                         self.metadata.update(metadata)
 
@@ -118,17 +112,13 @@ class ParameterNode(AtInstantLike):
 
                     if child_name == "index":
                         data = _load_yaml_file(child_path) or {}
-                        _validate_parameter(
-                            self, data, allowed_keys=COMMON_KEYS
-                        )
+                        _validate_parameter(self, data, allowed_keys=COMMON_KEYS)
                         self.description = data.get("description")
                         self.documentation = data.get("documentation")
                         self.metadata.update(data.get("metadata", {}))
                     elif child_name not in EXCLUDED_PARAMETER_CHILD_NAMES:
                         child_name_expanded = _compose_name(name, child_name)
-                        child = load_parameter_file(
-                            child_path, child_name_expanded
-                        )
+                        child = load_parameter_file(child_path, child_name_expanded)
                         self.add_child(child_name, child)
 
                 elif os.path.isdir(child_path):
@@ -178,9 +168,7 @@ class ParameterNode(AtInstantLike):
         :param child: The new child, an instance of :class:`.ParameterScale` or :class:`.Parameter` or :class:`.ParameterNode`.
         """
         if name in self.children:
-            raise ValueError(
-                "{} has already a child named {}".format(self.name, name)
-            )
+            raise ValueError("{} has already a child named {}".format(self.name, name))
         if not (
             isinstance(child, ParameterNode)
             or isinstance(child, Parameter)
@@ -198,9 +186,7 @@ class ParameterNode(AtInstantLike):
     def __repr__(self) -> str:
         result = os.linesep.join(
             [
-                os.linesep.join(["{}:", "{}"]).format(
-                    name, tools.indent(repr(value))
-                )
+                os.linesep.join(["{}:", "{}"]).format(name, tools.indent(repr(value)))
                 for name, value in sorted(self.children.items())
             ]
         )
@@ -219,9 +205,7 @@ class ParameterNode(AtInstantLike):
         clone.__dict__ = self.__dict__.copy()
 
         clone.metadata = copy.deepcopy(self.metadata)
-        clone.children = {
-            key: child.clone() for key, child in self.children.items()
-        }
+        clone.children = {key: child.clone() for key, child in self.children.items()}
         for child_key, child in clone.children.items():
             setattr(clone, child_key, child)
         clone._at_instant_cache = {}

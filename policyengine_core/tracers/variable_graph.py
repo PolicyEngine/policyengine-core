@@ -121,9 +121,7 @@ class VariableGraph:
 
                 continue
 
-            net.add_node(
-                id, color=node.color(), title=node.value, label=node.name
-            )
+            net.add_node(id, color=node.color(), title=node.value, label=node.name)
 
             for child in node.children:
                 edge = (id, child.name)

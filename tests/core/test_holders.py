@@ -49,9 +49,7 @@ def test_set_input_enum_int(couple):
 
 def test_set_input_enum_item(couple):
     simulation = couple
-    status_occupancy = numpy.asarray(
-        [housing.HousingOccupancyStatus.free_lodger]
-    )
+    status_occupancy = numpy.asarray([housing.HousingOccupancyStatus.free_lodger])
     simulation.household.get_holder("housing_occupancy_status").set_input(
         period, status_occupancy
     )
@@ -136,9 +134,7 @@ def test_get_memory_usage_with_trace(single):
 
 def test_set_input_dispatch_by_period(single):
     simulation = single
-    variable = simulation.tax_benefit_system.get_variable(
-        "housing_occupancy_status"
-    )
+    variable = simulation.tax_benefit_system.get_variable("housing_occupancy_status")
     entity = simulation.household
     holder = Holder(variable, entity)
     holders.set_input_dispatch_by_period(holder, periods.period(2019), "owner")
@@ -195,9 +191,7 @@ def test_cache_enum_on_disk(single):
     simulation = single
     simulation.memory_config = force_storage_on_disk
     month = periods.period("2017-01")
-    simulation.calculate(
-        "housing_occupancy_status", month
-    )  # First calculation
+    simulation.calculate("housing_occupancy_status", month)  # First calculation
     housing_occupancy_status = simulation.calculate(
         "housing_occupancy_status", month
     )  # Read from cache

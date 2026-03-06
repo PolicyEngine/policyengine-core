@@ -12,9 +12,7 @@ from policyengine_core.scripts import add_tax_benefit_system_arguments
 def get_parser():
     parser = argparse.ArgumentParser()
 
-    subparsers = parser.add_subparsers(
-        help="Available commands", dest="command"
-    )
+    subparsers = parser.add_subparsers(help="Available commands", dest="command")
     subparsers.required = (
         True  # Can be added as an argument of add_subparsers in Python 3
     )
@@ -107,9 +105,7 @@ def get_parser():
 
         return parser
 
-    parser_test = subparsers.add_parser(
-        "test", help="Run OpenFisca YAML tests"
-    )
+    parser_test = subparsers.add_parser("test", help="Run OpenFisca YAML tests")
     parser_test = build_test_parser(parser_test)
 
     parser_data = subparsers.add_parser("data", help="Manage OpenFisca data")

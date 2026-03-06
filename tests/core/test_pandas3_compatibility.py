@@ -67,9 +67,7 @@ class TestFilledArrayWithStringDtype:
 
         # PyArrow string dtype (proper way to create it)
         arrow_string_dtype = pd.ArrowDtype(pa.string())
-        result = population.filled_array(
-            "test_value", dtype=arrow_string_dtype
-        )
+        result = population.filled_array("test_value", dtype=arrow_string_dtype)
         assert len(result) == 5
 
 
@@ -227,9 +225,5 @@ class TestStringDtypeConversion:
         assert isinstance(pd.StringDtype(), pd.api.extensions.ExtensionDtype)
 
         # numpy dtypes are not
-        assert not isinstance(
-            np.dtype("float64"), pd.api.extensions.ExtensionDtype
-        )
-        assert not isinstance(
-            np.dtype("object"), pd.api.extensions.ExtensionDtype
-        )
+        assert not isinstance(np.dtype("float64"), pd.api.extensions.ExtensionDtype)
+        assert not isinstance(np.dtype("object"), pd.api.extensions.ExtensionDtype)

@@ -26,9 +26,7 @@ class TestHuggingFaceDownload:
             ) as mock_model_info:
                 # Create mock ModelInfo object emulating public repo
                 test_id = 0
-                mock_model_info.return_value = ModelInfo(
-                    id=test_id, private=False
-                )
+                mock_model_info.return_value = ModelInfo(id=test_id, private=False)
 
                 download_huggingface_dataset(
                     test_repo, test_filename, test_version, test_dir
@@ -114,9 +112,7 @@ class TestGetOrPromptHfToken:
     def test_get_token_from_environment(self):
         """Test retrieving token when it exists in environment variables"""
         test_token = "test_token_123"
-        with patch.dict(
-            os.environ, {"HUGGING_FACE_TOKEN": test_token}, clear=True
-        ):
+        with patch.dict(os.environ, {"HUGGING_FACE_TOKEN": test_token}, clear=True):
             result = get_or_prompt_hf_token()
             assert result == test_token
 
@@ -193,9 +189,7 @@ class TestGetOrPromptHfToken:
 
 class TestParseHfUrl:
     def test_basic_url(self):
-        owner, repo, file_path, version = parse_hf_url(
-            "hf://owner/repo/file.h5"
-        )
+        owner, repo, file_path, version = parse_hf_url("hf://owner/repo/file.h5")
         assert (owner, repo, file_path, version) == (
             "owner",
             "repo",
@@ -213,9 +207,7 @@ class TestParseHfUrl:
         assert version is None
 
     def test_url_with_version(self):
-        owner, repo, file_path, version = parse_hf_url(
-            "hf://owner/repo/file.h5@v1.0"
-        )
+        owner, repo, file_path, version = parse_hf_url("hf://owner/repo/file.h5@v1.0")
         assert (file_path, version) == ("file.h5", "v1.0")
 
     def test_subdirectory_with_version(self):

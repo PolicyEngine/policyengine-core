@@ -29,22 +29,17 @@ class GroupPopulation(Population):
         period: Period = None,
         options: Optional[Container[str]] = None,
     ):
-        variable = self.simulation.tax_benefit_system.variables.get(
-            variable_name
-        )
+        variable = self.simulation.tax_benefit_system.variables.get(variable_name)
         if variable.entity.is_person:
             return self.sum(self.members(variable_name, period, options))
         else:
             return super().__call__(variable_name, period, options)
 
-    def clone(
-        self, simulation: "Simulation", members: Population
-    ) -> "GroupPopulation":
+    def clone(self, simulation: "Simulation", members: Population) -> "GroupPopulation":
         result = GroupPopulation(self.entity, members)
         result.simulation = simulation
         result._holders = {
-            variable: holder.clone(self)
-            for (variable, holder) in self._holders.items()
+            variable: holder.clone(self) for (variable, holder) in self._holders.items()
         }
         result.count = self.count
         result.ids = self.ids
@@ -56,10 +51,7 @@ class GroupPopulation(Population):
 
     @property
     def members_position(self) -> ArrayLike:
-        if (
-            self._members_position is None
-            and self.members_entity_id is not None
-        ):
+        if self._members_position is None and self.members_entity_id is not None:
             # We could use self.count and self.members.count , but with the current initilization, we are not sure count will be set before members_position is called
             nb_entities = numpy.max(self.members_entity_id) + 1
             nb_persons = len(self.members_entity_id)
@@ -88,9 +80,7 @@ class GroupPopulation(Population):
     def members_role(self) -> ArrayLike:
         if self._members_role is None:
             default_role = self.entity.flattened_roles[0]
-            self._members_role = numpy.repeat(
-                default_role, len(self.members_entity_id)
-            )
+            self._members_role = numpy.repeat(default_role, len(self.members_entity_id))
         return self._members_role
 
     @members_role.setter
@@ -110,11 +100,7 @@ class GroupPopulation(Population):
 
     def get_role(self, role_name: str) -> Role:
         return next(
-            (
-                role
-                for role in self.entity.flattened_roles
-                if role.key == role_name
-            ),
+            (role for role in self.entity.flattened_roles if role.key == role_name),
             None,
         )
 
@@ -188,9 +174,7 @@ class GroupPopulation(Population):
         biggest_entity_size = numpy.max(position_in_entity) + 1
 
         for p in range(biggest_entity_size):
-            values = self.value_nth_person(
-                p, filtered_array, default=neutral_element
-            )
+            values = self.value_nth_person(p, filtered_array, default=neutral_element)
             result = reducer(result, values)
 
         return result
@@ -313,9 +297,7 @@ class GroupPopulation(Population):
         return result
 
     @projectors.projectable
-    def value_nth_person(
-        self, n: int, array: ArrayLike, default: Any = 0
-    ) -> ArrayLike:
+    def value_nth_person(self, n: int, array: ArrayLike, default: Any = 0) -> ArrayLike:
         """
         Get the value of array for the person whose position in the entity is n.
 
@@ -354,6 +336,4 @@ class GroupPopulation(Population):
             return array[self.members_entity_id]
         else:
             role_condition = self.members.has_role(role)
-            return numpy.where(
-                role_condition, array[self.members_entity_id], 0
-            )
+            return numpy.where(role_condition, array[self.members_entity_id], 0)

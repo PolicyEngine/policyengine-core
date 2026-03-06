@@ -73,9 +73,7 @@ def format_fig(fig: go.Figure) -> go.Figure:
 
 
 def display_fig(fig: go.Figure) -> HTML:
-    return HTML(
-        format_fig(fig).to_html(full_html=False, include_plotlyjs="cdn")
-    )
+    return HTML(format_fig(fig).to_html(full_html=False, include_plotlyjs="cdn"))
 
 
 def cardinal(n: int) -> int:

@@ -8,9 +8,7 @@ def test_load_extension(tax_benefit_system):
     tbs.load_extension("policyengine_core.extension_template")
 
     assert tbs.get_variable("local_town_child_allowance") is not None
-    assert (
-        tax_benefit_system.get_variable("local_town_child_allowance") is None
-    )
+    assert tax_benefit_system.get_variable("local_town_child_allowance") is None
 
 
 def test_access_to_parameters(tax_benefit_system):

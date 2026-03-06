@@ -36,10 +36,7 @@ def test_clone_parameter_node(tax_benefit_system):
 
     assert clone is not node
     assert clone.income_tax_rate is not node.income_tax_rate
-    assert (
-        clone.children["income_tax_rate"]
-        is not node.children["income_tax_rate"]
-    )
+    assert clone.children["income_tax_rate"] is not node.children["income_tax_rate"]
 
 
 def test_clone_scale(tax_benefit_system):

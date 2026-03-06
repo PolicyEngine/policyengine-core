@@ -21,9 +21,7 @@ class InMemoryStorage:
 
     def clone(self) -> "InMemoryStorage":
         clone = InMemoryStorage(self.is_eternal)
-        clone._arrays = {
-            period: array.copy() for period, array in self._arrays.items()
-        }
+        clone._arrays = {period: array.copy() for period, array in self._arrays.items()}
         return clone
 
     def get(self, period: Period, branch_name: str = "default") -> ArrayLike:
@@ -44,9 +42,7 @@ class InMemoryStorage:
 
         self._arrays[f"{branch_name}:{period}"] = value
 
-    def delete(
-        self, period: Period = None, branch_name: str = "default"
-    ) -> None:
+    def delete(self, period: Period = None, branch_name: str = "default") -> None:
         if period is None:
             self._arrays = {}
             return
@@ -62,16 +58,12 @@ class InMemoryStorage:
         }
 
     def get_known_periods(self) -> list:
-        return list(
-            map(lambda x: periods.period(x.split(":")[1]), self._arrays.keys())
-        )
+        return list(map(lambda x: periods.period(x.split(":")[1]), self._arrays.keys()))
 
     def get_known_branch_periods(self) -> list:
         return [
             (branch_name, periods.period(period))
-            for branch_name, period in map(
-                lambda x: x.split(":"), self._arrays.keys()
-            )
+            for branch_name, period in map(lambda x: x.split(":"), self._arrays.keys())
         ]
 
     def get_memory_usage(self) -> dict:

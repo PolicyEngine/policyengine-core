@@ -83,9 +83,7 @@ class TestMicrosimulationPersonAccessor:
         result_person = sim.person("salary", "2022-01")
 
         # Call calculate() with use_weights=False directly
-        result_calculate = sim.calculate(
-            "salary", "2022-01", use_weights=False
-        )
+        result_calculate = sim.calculate("salary", "2022-01", use_weights=False)
 
         # Both should return numpy arrays with the same values
         assert isinstance(result_person, np.ndarray)

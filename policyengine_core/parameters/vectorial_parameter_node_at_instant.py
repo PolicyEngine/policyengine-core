@@ -31,9 +31,7 @@ class VectorialParameterNodeAtInstant:
                     VectorialParameterNodeAtInstant.build_from_node(
                         node[subnode_name]
                     ).vector
-                    if isinstance(
-                        node[subnode_name], parameters.ParameterNodeAtInstant
-                    )
+                    if isinstance(node[subnode_name], parameters.ParameterNodeAtInstant)
                     else node[subnode_name]
                 )
                 for subnode_name in subnodes_name
@@ -46,15 +44,9 @@ class VectorialParameterNodeAtInstant:
             dtype=[
                 (
                     subnode_name,
-                    (
-                        subnode.dtype
-                        if isinstance(subnode, numpy.recarray)
-                        else "float"
-                    ),
+                    (subnode.dtype if isinstance(subnode, numpy.recarray) else "float"),
                 )
-                for (subnode_name, subnode) in zip(
-                    subnodes_name, vectorial_subnodes
-                )
+                for (subnode_name, subnode) in zip(subnodes_name, vectorial_subnodes)
             ],
         )
 
@@ -68,12 +60,12 @@ class VectorialParameterNodeAtInstant:
         Check that a node can be casted to a vectorial node, in order to be able to use fancy indexing.
         """
         MESSAGE_PART_1 = "Cannot use fancy indexing on parameter node '{}', as"
-        MESSAGE_PART_3 = "To use fancy indexing on parameter node, its children must be homogenous."
+        MESSAGE_PART_3 = (
+            "To use fancy indexing on parameter node, its children must be homogenous."
+        )
         MESSAGE_PART_4 = "See more at <https://openfisca.org/doc/coding-the-legislation/legislation_parameters#computing-a-parameter-that-depends-on-a-variable-fancy-indexing>."
 
-        def raise_key_inhomogeneity_error(
-            node_with_key, node_without_key, missing_key
-        ):
+        def raise_key_inhomogeneity_error(node_with_key, node_without_key, missing_key):
             message = " ".join(
                 [
                     MESSAGE_PART_1,
@@ -146,24 +138,16 @@ class VectorialParameterNodeAtInstant:
                     first_node_keys = first_node._children.keys()
                     node_keys = node._children.keys()
                     if not first_node_keys == node_keys:
-                        missing_keys = set(first_node_keys).difference(
-                            node_keys
-                        )
-                        if (
-                            missing_keys
-                        ):  # If the first_node has a key that node hasn't
+                        missing_keys = set(first_node_keys).difference(node_keys)
+                        if missing_keys:  # If the first_node has a key that node hasn't
                             raise_key_inhomogeneity_error(
                                 first_name, name, missing_keys.pop()
                             )
                         else:  # If If the node has a key that first_node doesn't have
                             missing_key = (
-                                set(node_keys)
-                                .difference(first_node_keys)
-                                .pop()
+                                set(node_keys).difference(first_node_keys).pop()
                             )
-                            raise_key_inhomogeneity_error(
-                                name, first_name, missing_key
-                            )
+                            raise_key_inhomogeneity_error(name, first_name, missing_key)
                     children.update(extract_named_children(node))
                 check_nodes_homogeneous(children)
             elif isinstance(first_node, float) or isinstance(first_node, int):
@@ -232,9 +216,7 @@ class VectorialParameterNodeAtInstant:
                 and values[0].dtype.names
             ):
                 # Check if all values have the same dtype
-                dtypes_match = all(
-                    val.dtype == values[0].dtype for val in values
-                )
+                dtypes_match = all(val.dtype == values[0].dtype for val in values)
 
                 if not dtypes_match:
                     # Find the union of all field names across all values, preserving first seen order
@@ -247,9 +229,7 @@ class VectorialParameterNodeAtInstant:
                                 seen.add(field)
 
                     # Create unified dtype with all fields
-                    unified_dtype = numpy.dtype(
-                        [(f, "<f8") for f in all_fields]
-                    )
+                    unified_dtype = numpy.dtype([(f, "<f8") for f in all_fields])
 
                     # Cast all values to unified dtype
                     values_cast = []
@@ -259,9 +239,7 @@ class VectorialParameterNodeAtInstant:
                             casted[field] = val[field]
                         values_cast.append(casted)
 
-                    default = numpy.zeros(
-                        len(values_cast[0]), dtype=unified_dtype
-                    )
+                    default = numpy.zeros(len(values_cast[0]), dtype=unified_dtype)
                     # Fill with NaN
                     for field in unified_dtype.names:
                         default[field] = numpy.nan
@@ -289,9 +267,9 @@ class VectorialParameterNodeAtInstant:
                     )
 
             # If the result is not a leaf, wrap the result in a vectorial node.
-            if numpy.issubdtype(
-                result.dtype, numpy.record
-            ) or numpy.issubdtype(result.dtype, numpy.void):
+            if numpy.issubdtype(result.dtype, numpy.record) or numpy.issubdtype(
+                result.dtype, numpy.void
+            ):
                 return VectorialParameterNodeAtInstant(
                     self._name, result.view(numpy.recarray), self._instant_str
                 )

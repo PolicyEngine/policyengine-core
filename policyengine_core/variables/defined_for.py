@@ -9,9 +9,7 @@ from policyengine_core.variables import Variable
 
 
 class CallableSubset:
-    def __init__(
-        self, population: Population, callable: Callable, mask: ArrayLike
-    ):
+    def __init__(self, population: Population, callable: Callable, mask: ArrayLike):
         self.population = population
         self.callable = callable
         self.mask = mask

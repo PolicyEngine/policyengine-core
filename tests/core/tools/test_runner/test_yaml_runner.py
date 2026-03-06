@@ -119,21 +119,15 @@ def test_reforms_formats():
     baseline = TaxBenefitSystem()
 
     lonely_reform_tbs = _get_tax_benefit_system(baseline, "lonely_reform", [])
-    list_lonely_reform_tbs = _get_tax_benefit_system(
-        baseline, ["lonely_reform"], []
-    )
+    list_lonely_reform_tbs = _get_tax_benefit_system(baseline, ["lonely_reform"], [])
     assert lonely_reform_tbs == list_lonely_reform_tbs
 
 
 def test_reforms_order():
     baseline = TaxBenefitSystem()
 
-    abba_tax_benefit_system = _get_tax_benefit_system(
-        baseline, ["ab", "ba"], []
-    )
-    baab_tax_benefit_system = _get_tax_benefit_system(
-        baseline, ["ba", "ab"], []
-    )
+    abba_tax_benefit_system = _get_tax_benefit_system(baseline, ["ab", "ba"], [])
+    baab_tax_benefit_system = _get_tax_benefit_system(baseline, ["ba", "ab"], [])
     assert (
         abba_tax_benefit_system != baab_tax_benefit_system
     )  # keep reforms order in cache
@@ -150,9 +144,7 @@ def test_tax_benefit_systems_with_extensions_cache():
 def test_extensions_formats():
     baseline = TaxBenefitSystem()
 
-    lonely_extension_tbs = _get_tax_benefit_system(
-        baseline, [], "lonely_extension"
-    )
+    lonely_extension_tbs = _get_tax_benefit_system(baseline, [], "lonely_extension")
     list_lonely_extension_tbs = _get_tax_benefit_system(
         baseline, [], ["lonely_extension"]
     )

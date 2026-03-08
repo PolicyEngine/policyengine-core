@@ -57,7 +57,17 @@ class ParameterNodeAtInstant:
         if hasattr(key, "__array__") and not isinstance(key, numpy.ndarray):
             key = numpy.asarray(key)
         if isinstance(key, numpy.ndarray):
-            return parameters.VectorialParameterNodeAtInstant.build_from_node(self)[key]
+            # Cache the vectorial node to avoid rebuilding the recarray on
+            # every call -- build_from_node is expensive (walks the full
+            # parameter subtree each time).
+            try:
+                vectorial = self._vectorial_node
+            except AttributeError:
+                vectorial = parameters.VectorialParameterNodeAtInstant.build_from_node(
+                    self
+                )
+                self._vectorial_node = vectorial
+            return vectorial[key]
         return self._children[key]
 
     def __iter__(self) -> Iterable:

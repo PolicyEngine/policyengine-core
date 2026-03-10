@@ -106,6 +106,8 @@ class ParameterScale(AtInstantLike):
         clone.__dict__ = self.__dict__.copy()
 
         clone.brackets = [bracket.clone() for bracket in self.brackets]
+        for bracket in clone.brackets:
+            bracket.parent = clone
         clone.metadata = copy.deepcopy(self.metadata)
 
         return clone

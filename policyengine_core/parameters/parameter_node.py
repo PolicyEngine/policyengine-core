@@ -208,6 +208,7 @@ class ParameterNode(AtInstantLike):
         clone.children = {key: child.clone() for key, child in self.children.items()}
         for child_key, child in clone.children.items():
             setattr(clone, child_key, child)
+            child.parent = clone
         clone._at_instant_cache = {}
 
         return clone
@@ -229,9 +230,9 @@ class ParameterNode(AtInstantLike):
         self.parent = parent
 
     def clear_parent_cache(self):
+        self._at_instant_cache.clear()
         if self.parent is not None:
             self.parent.clear_parent_cache()
-            self._at_instant_cache.clear()
 
     def mark_as_modified(self):
         self.modified = True

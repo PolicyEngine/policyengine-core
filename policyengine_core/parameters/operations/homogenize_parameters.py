@@ -96,17 +96,24 @@ def homogenize_parameter_node(
                     {"0000-01-01": default_value, "2040-01-01": default_value},
                 ),
             )
+    possible_values_str = {str(v) for v in possible_values}
+    extra_children = []
     for child in node.children:
-        if child.split(".")[-1] not in possible_values:
-            try:
-                int(child)
-                is_int = True
-            except:
-                is_int = False
-            if not is_int or str(child) not in node.children:
-                logging.warning(
-                    f"Parameter {node.name} has a child {child} that is not in the possible values of {first_breakdown}, ignoring."
-                )
+        child_key = child.split(".")[-1]
+        if (
+            child_key not in possible_values_str
+            and str(child_key) not in possible_values_str
+        ):
+            extra_children.append(child_key)
+    if extra_children:
+        raise ValueError(
+            f"Parameter {node.name} has children {extra_children} "
+            f"that are not in the possible values of the breakdown "
+            f"variable '{first_breakdown}'. Check that the breakdown "
+            f"metadata references the correct variable and that all "
+            f"parameter keys are valid enum values."
+        )
+    for child in node.children:
         if further_breakdown:
             node.children[child] = homogenize_parameter_node(
                 node.children[child], breakdown[1:], variables, default_value

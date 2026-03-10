@@ -233,8 +233,6 @@ class ParameterNode(AtInstantLike):
         self._at_instant_cache.clear()
         if self.parent is not None:
             self.parent.clear_parent_cache()
-<<<<<<< HEAD
-            self._at_instant_cache.clear()
 
     def mark_as_modified(self):
         self.modified = True
@@ -261,5 +259,3 @@ class ParameterNode(AtInstantLike):
                     f"Could not find the parameter {path} (failed at {name})."
                 )
         return node
-=======
->>>>>>> 30e2c4f1 (Fix clear_parent_cache to also clear root node's cache)

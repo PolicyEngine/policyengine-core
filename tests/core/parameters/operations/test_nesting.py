@@ -1,3 +1,6 @@
+import pytest
+
+
 def test_parameter_homogenization():
     import numpy as np
 
@@ -85,8 +88,102 @@ def test_parameter_homogenization():
     family_sizes = np.array([1, 2, 3])
 
     assert (
-        system.parameters("2021-01-01").value_by_country_and_region[countries][
-            regions
-        ][family_sizes]
+        system.parameters("2021-01-01").value_by_country_and_region[countries][regions][
+            family_sizes
+        ]
         == [1, 0, 0]
     ).all()
+
+
+def test_breakdown_mismatch_raises_error():
+    """Extra parameter keys not in the breakdown enum should raise ValueError."""
+    from policyengine_core.entities import Entity
+    from policyengine_core.model_api import ETERNITY, Enum, Variable
+    from policyengine_core.parameters import (
+        ParameterNode,
+        homogenize_parameter_structures,
+    )
+    from policyengine_core.taxbenefitsystems import TaxBenefitSystem
+
+    Person = Entity("person", "people", "Person", "A person")
+
+    class Color(Enum):
+        RED = "Red"
+        BLUE = "Blue"
+
+    class color(Variable):
+        value_type = Enum
+        entity = Person
+        definition_period = ETERNITY
+        possible_values = Color
+        default_value = Color.RED
+        label = "color"
+
+    # "GREEN" is not in the Color enum — should raise ValueError
+    root = ParameterNode(
+        data={
+            "value_by_color": {
+                "RED": {"2021-01-01": 1},
+                "GREEN": {"2021-01-01": 2},
+                "metadata": {
+                    "breakdown": ["color"],
+                },
+            }
+        }
+    )
+
+    system = TaxBenefitSystem([Person])
+    system.add_variables(color)
+    system.parameters = root
+
+    with pytest.raises(ValueError, match="GREEN"):
+        homogenize_parameter_structures(
+            system.parameters, system.variables, default_value=0
+        )
+
+
+def test_breakdown_partial_coverage_is_ok():
+    """Missing enum values in parameter YAML should NOT raise an error."""
+    from policyengine_core.entities import Entity
+    from policyengine_core.model_api import ETERNITY, Enum, Variable
+    from policyengine_core.parameters import (
+        ParameterNode,
+        homogenize_parameter_structures,
+    )
+    from policyengine_core.taxbenefitsystems import TaxBenefitSystem
+
+    Person = Entity("person", "people", "Person", "A person")
+
+    class Color(Enum):
+        RED = "Red"
+        BLUE = "Blue"
+        GREEN = "Green"
+
+    class color(Variable):
+        value_type = Enum
+        entity = Person
+        definition_period = ETERNITY
+        possible_values = Color
+        default_value = Color.RED
+        label = "color"
+
+    # Only RED is present — BLUE and GREEN are missing but that's fine
+    root = ParameterNode(
+        data={
+            "value_by_color": {
+                "RED": {"2021-01-01": 1},
+                "metadata": {
+                    "breakdown": ["color"],
+                },
+            }
+        }
+    )
+
+    system = TaxBenefitSystem([Person])
+    system.add_variables(color)
+    system.parameters = root
+
+    # Should not raise — partial coverage is allowed
+    homogenize_parameter_structures(
+        system.parameters, system.variables, default_value=0
+    )

@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    changed:
+    - Upgrade breakdown enum mismatch from WARNING to ERROR. Parameters with keys not in the breakdown variable's possible values now raise ValueError instead of logging a warning and silently ignoring the data.

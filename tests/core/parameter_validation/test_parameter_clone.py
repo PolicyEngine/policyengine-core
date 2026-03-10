@@ -1,6 +1,7 @@
 import os
 
 from policyengine_core.parameters import ParameterNode
+from policyengine_core.periods import instant
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 year = 2016
@@ -65,3 +66,53 @@ def test_deep_edit(tax_benefit_system):
     clone_scale.brackets[0].rate.values_list[0].value = 10
 
     assert scale.brackets[0].rate.values_list[0].value == original_scale_value
+
+
+def test_clone_parent_references(tax_benefit_system):
+    """Cloned children should reference the cloned parent, not the original."""
+    parameters = tax_benefit_system.parameters
+    clone = parameters.clone()
+
+    # Parameter's parent should be the cloned node, not the original
+    assert clone.taxes.income_tax_rate.parent is clone.taxes
+    assert clone.taxes.income_tax_rate.parent is not parameters.taxes
+
+    # Nested node's parent should be the cloned root, not the original
+    assert clone.taxes.parent is clone
+    assert clone.taxes.parent is not parameters
+
+
+def test_clone_scale_parent_references(tax_benefit_system):
+    """Cloned scale brackets should reference the cloned scale, not the original."""
+    scale = tax_benefit_system.parameters.taxes.social_security_contribution
+    clone = scale.clone()
+
+    for bracket in clone.brackets:
+        assert bracket.parent is clone
+        assert bracket.parent is not scale
+
+
+def test_clone_update_invalidates_cloned_cache(tax_benefit_system):
+    """parameter.update() on a cloned tree should invalidate the clone's cache,
+    not the original's. This is the bug that caused NJ reform calculations to
+    silently return null on the API (PolicyEngine/policyengine-us#7742)."""
+    parameters = tax_benefit_system.parameters
+    clone = parameters.clone()
+
+    # Read the original value to populate the clone's cache
+    original_rate = clone("2015-01-01").taxes.income_tax_rate
+    assert original_rate == 0.15
+
+    # Update the cloned parameter (simulating the API's reform path)
+    clone.taxes.income_tax_rate.update(
+        start=instant("2015-01-01"),
+        stop=instant("2015-12-31"),
+        value=0.42,
+    )
+
+    # The clone should reflect the updated value, not serve stale cache
+    updated_rate = clone("2015-01-01").taxes.income_tax_rate
+    assert updated_rate == 0.42
+
+    # The original should be unaffected
+    assert parameters("2015-01-01").taxes.income_tax_rate == 0.15

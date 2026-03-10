@@ -208,6 +208,7 @@ class ParameterNode(AtInstantLike):
         clone.children = {key: child.clone() for key, child in self.children.items()}
         for child_key, child in clone.children.items():
             setattr(clone, child_key, child)
+            child.parent = clone
         clone._at_instant_cache = {}
 
         return clone
@@ -229,8 +230,10 @@ class ParameterNode(AtInstantLike):
         self.parent = parent
 
     def clear_parent_cache(self):
+        self._at_instant_cache.clear()
         if self.parent is not None:
             self.parent.clear_parent_cache()
+<<<<<<< HEAD
             self._at_instant_cache.clear()
 
     def mark_as_modified(self):
@@ -258,3 +261,5 @@ class ParameterNode(AtInstantLike):
                     f"Could not find the parameter {path} (failed at {name})."
                 )
         return node
+=======
+>>>>>>> 30e2c4f1 (Fix clear_parent_cache to also clear root node's cache)

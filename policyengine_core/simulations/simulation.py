@@ -452,8 +452,8 @@ class Simulation:
         # Fast path: skip tracer, random seed and all _calculate() machinery for
         # already-computed values. map_to and decode_enums are NOT cached here —
         # they are post-processing steps that vary per call site.
-        if map_to is None and not decode_enums and not getattr(self, "_trace", False):
-            _fast_key = (variable_name, str(period))
+        if map_to is None and not decode_enums and not getattr(self, "trace", False):
+            _fast_key = (variable_name, period)
             _fast_cache = getattr(self, "_fast_cache", None)
             if _fast_cache is not None:
                 _cached = _fast_cache.get(_fast_key)
@@ -765,7 +765,7 @@ class Simulation:
             smc.set_cache_value(cache_path, array)
 
         if hasattr(self, "_fast_cache"):
-            self._fast_cache[(variable_name, str(period))] = array
+            self._fast_cache[(variable_name, period)] = array
 
         return array
 
@@ -776,7 +776,7 @@ class Simulation:
         for _name, _period in self.invalidated_caches:
             holder = self.get_holder(_name)
             holder.delete_arrays(_period)
-            self._fast_cache.pop((_name, str(_period)), None)
+            self._fast_cache.pop((_name, _period), None)
         self.invalidated_caches = set()
 
     def calculate_add(
@@ -1142,7 +1142,9 @@ class Simulation:
                 k: v for k, v in self._fast_cache.items() if k[0] != variable
             }
         else:
-            self._fast_cache.pop((variable, str(period)), None)
+            if not isinstance(period, Period):
+                period = periods.period(period)
+            self._fast_cache.pop((variable, period), None)
 
     def get_known_periods(self, variable: str) -> List[Period]:
         """
@@ -1187,6 +1189,7 @@ class Simulation:
         if (variable.end is not None) and (period.start.date > variable.end):
             return
         self.get_holder(variable_name).set_input(period, value, self.branch_name)
+        self._fast_cache.pop((variable_name, period), None)
 
     def get_variable_population(self, variable_name: str) -> Population:
         variable = self.tax_benefit_system.get_variable(

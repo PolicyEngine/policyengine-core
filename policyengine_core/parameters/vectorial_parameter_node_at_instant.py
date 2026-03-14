@@ -12,6 +12,45 @@ if TYPE_CHECKING:
     from policyengine_core.parameters.parameter_node import ParameterNode
 
 
+def _build_enum_lut(enum, name_to_child_idx, sentinel, stringify_names=False):
+    """Build a lookup table mapping enum int codes to child indices."""
+    enum_items = list(enum)
+    max_code = max(item.index for item in enum_items) + 1
+    lut = numpy.full(max_code, sentinel, dtype=numpy.intp)
+    for item in enum_items:
+        name = str(item.name) if stringify_names else item.name
+        child_idx = name_to_child_idx.get(name)
+        if child_idx is not None:
+            lut[item.index] = child_idx
+    return lut
+
+
+def _unify_structured_dtypes(values):
+    """Compute a unified dtype across structured arrays with potentially
+    different fields, and cast all values to that dtype.
+
+    Returns (unified_dtype, all_fields, casted_values).
+    """
+    all_fields = []
+    seen = set()
+    for val in values:
+        for field in val.dtype.names:
+            if field not in seen:
+                all_fields.append(field)
+                seen.add(field)
+
+    unified_dtype = numpy.dtype([(f, "<f8") for f in all_fields])
+
+    casted_values = []
+    for val in values:
+        casted = numpy.zeros(len(val), dtype=unified_dtype)
+        for field in val.dtype.names:
+            casted[field] = val[field]
+        casted_values.append(casted)
+
+    return unified_dtype, all_fields, casted_values
+
+
 class VectorialParameterNodeAtInstant:
     """
     Parameter node of the legislation at a given instant which has been vectorized.
@@ -205,13 +244,7 @@ class VectorialParameterNodeAtInstant:
                     self._enum_lut_cache = {}
                 lut = self._enum_lut_cache.get(cache_key)
                 if lut is None:
-                    enum_items = list(enum)
-                    max_code = max(item.index for item in enum_items) + 1
-                    lut = numpy.full(max_code, SENTINEL, dtype=numpy.intp)
-                    for item in enum_items:
-                        child_idx = name_to_child_idx.get(item.name)
-                        if child_idx is not None:
-                            lut[item.index] = child_idx
+                    lut = _build_enum_lut(enum, name_to_child_idx, SENTINEL)
                     self._enum_lut_cache[cache_key] = lut
                 idx = lut[numpy.asarray(key)]
             elif (
@@ -224,13 +257,9 @@ class VectorialParameterNodeAtInstant:
                     self._enum_lut_cache = {}
                 lut = self._enum_lut_cache.get(cache_key)
                 if lut is None:
-                    enum_items = list(enum)
-                    max_code = max(item.index for item in enum_items) + 1
-                    lut = numpy.full(max_code, SENTINEL, dtype=numpy.intp)
-                    for item in enum_items:
-                        child_idx = name_to_child_idx.get(str(item.name))
-                        if child_idx is not None:
-                            lut[item.index] = child_idx
+                    lut = _build_enum_lut(
+                        enum, name_to_child_idx, SENTINEL, stringify_names=True
+                    )
                     self._enum_lut_cache[cache_key] = lut
                 codes = numpy.array([v.index for v in key], dtype=numpy.intp)
                 idx = lut[codes]
@@ -262,23 +291,9 @@ class VectorialParameterNodeAtInstant:
                 if v0_len <= 1:
                     # 1-element structured arrays: simple concat + index
                     if not dtypes_match:
-                        all_fields = []
-                        seen = set()
-                        for val in values:
-                            for field in val.dtype.names:
-                                if field not in seen:
-                                    all_fields.append(field)
-                                    seen.add(field)
-
-                        unified_dtype = numpy.dtype([(f, "<f8") for f in all_fields])
-
-                        values_cast = []
-                        for val in values:
-                            casted = numpy.zeros(len(val), dtype=unified_dtype)
-                            for field in val.dtype.names:
-                                casted[field] = val[field]
-                            values_cast.append(casted)
-
+                        unified_dtype, all_fields, values_cast = (
+                            _unify_structured_dtypes(values)
+                        )
                         default = numpy.zeros(1, dtype=unified_dtype)
                         for field in unified_dtype.names:
                             default[field] = numpy.nan
@@ -302,22 +317,9 @@ class VectorialParameterNodeAtInstant:
                         # Nested structured: fall back to numpy.select
                         conditions = [idx == i for i in range(len(values))]
                         if not dtypes_match:
-                            all_fields = []
-                            seen = set()
-                            for val in values:
-                                for field in val.dtype.names:
-                                    if field not in seen:
-                                        all_fields.append(field)
-                                        seen.add(field)
-                            unified_dtype = numpy.dtype(
-                                [(f, "<f8") for f in all_fields]
+                            unified_dtype, all_fields, values_cast = (
+                                _unify_structured_dtypes(values)
                             )
-                            values_cast = []
-                            for val in values:
-                                casted = numpy.zeros(len(val), dtype=unified_dtype)
-                                for field in val.dtype.names:
-                                    casted[field] = val[field]
-                                values_cast.append(casted)
                             default = numpy.zeros(v0_len, dtype=unified_dtype)
                             for field in unified_dtype.names:
                                 default[field] = numpy.nan
@@ -328,22 +330,9 @@ class VectorialParameterNodeAtInstant:
                     else:
                         # Flat structured: fast per-field indexing
                         if not dtypes_match:
-                            all_fields = []
-                            seen = set()
-                            for val in values:
-                                for field in val.dtype.names:
-                                    if field not in seen:
-                                        all_fields.append(field)
-                                        seen.add(field)
-                            unified_dtype = numpy.dtype(
-                                [(f, "<f8") for f in all_fields]
+                            unified_dtype, all_fields, values_unified = (
+                                _unify_structured_dtypes(values)
                             )
-                            values_unified = []
-                            for val in values:
-                                casted = numpy.zeros(len(val), dtype=unified_dtype)
-                                for field in val.dtype.names:
-                                    casted[field] = val[field]
-                                values_unified.append(casted)
                             field_names = all_fields
                             result_dtype = unified_dtype
                         else:

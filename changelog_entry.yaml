@@ -1,0 +1,4 @@
+- bump: patch
+  changes:
+    changed:
+    - Migrate from pip to uv for dependency management.

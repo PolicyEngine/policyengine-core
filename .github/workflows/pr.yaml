@@ -24,8 +24,10 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.10"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
       - name: Build changelog
-        run: pip install yaml-changelog>=0.1.7 && make changelog
+        run: uv pip install --system yaml-changelog>=0.1.7 && make changelog
       - name: Preview changelog update
         run: ".github/get-changelog-diff.sh"
       - name: Check version number has been properly updated
@@ -42,6 +44,8 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.10"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
       - name: Install package
         run: make install
       - name: Run tests

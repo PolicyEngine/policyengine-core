@@ -215,9 +215,7 @@ class VectorialParameterNodeAtInstant:
                     self._enum_lut_cache[cache_key] = lut
                 idx = lut[numpy.asarray(key)]
             elif (
-                key.dtype == object
-                and len(key) > 0
-                and issubclass(type(key[0]), Enum)
+                key.dtype == object and len(key) > 0 and issubclass(type(key[0]), Enum)
             ):
                 # Object array of Enum instances
                 enum = type(key[0])
@@ -371,9 +369,7 @@ class VectorialParameterNodeAtInstant:
                     v0 = numpy.asarray(values[0])
                     if v0.ndim == 0 or v0.shape[0] <= 1:
                         # Scalar per child: 1D lookup
-                        scalar_vals = numpy.empty(
-                            len(values) + 1, dtype=numpy.float64
-                        )
+                        scalar_vals = numpy.empty(len(values) + 1, dtype=numpy.float64)
                         for i, v in enumerate(values):
                             scalar_vals[i] = float(v)
                         scalar_vals[-1] = numpy.nan
@@ -381,9 +377,7 @@ class VectorialParameterNodeAtInstant:
                     else:
                         # N-element vectors: stack into (K+1, N) matrix
                         m = v0.shape[0]
-                        stacked = numpy.empty(
-                            (len(values) + 1, m), dtype=numpy.float64
-                        )
+                        stacked = numpy.empty((len(values) + 1, m), dtype=numpy.float64)
                         for i, v in enumerate(values):
                             stacked[i] = v
                         stacked[-1] = numpy.nan

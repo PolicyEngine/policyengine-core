@@ -452,7 +452,7 @@ class Simulation:
         # Fast path: skip tracer, random seed and all _calculate() machinery for
         # already-computed values. map_to and decode_enums are NOT cached here —
         # they are post-processing steps that vary per call site.
-        if map_to is None and not decode_enums and not self.trace:
+        if map_to is None and not decode_enums and not getattr(self, "_trace", False):
             _fast_key = (variable_name, str(period))
             _fast_cache = getattr(self, "_fast_cache", None)
             if _fast_cache is not None:

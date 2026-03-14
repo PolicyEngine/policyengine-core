@@ -371,7 +371,7 @@ class VectorialParameterNodeAtInstant:
                         # Scalar per child: 1D lookup
                         scalar_vals = numpy.empty(len(values) + 1, dtype=numpy.float64)
                         for i, v in enumerate(values):
-                            scalar_vals[i] = float(v)
+                            scalar_vals[i] = float(numpy.asarray(v).flat[0])
                         scalar_vals[-1] = numpy.nan
                         result = scalar_vals[idx]
                     else:

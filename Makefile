@@ -10,7 +10,7 @@ format:
 	ruff check .
 
 install:
-	pip install -e ".[dev]" --config-settings editable_mode=compat
+	uv pip install -e ".[dev]" --config-settings editable_mode=compat
 
 test-country-template:
 	policyengine-core test policyengine_core/country_template/tests -c policyengine_core.country_template

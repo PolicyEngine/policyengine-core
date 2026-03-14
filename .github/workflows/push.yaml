@@ -28,9 +28,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.14"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
       - name: Build changelog
         run: |
-          pip install towncrier
+          uv pip install --system towncrier
           python .github/bump_version.py
           towncrier build --yes --version $(python -c "import re; print(re.search(r'version = \"(.+?)\"', open('pyproject.toml').read()).group(1))")
       - name: Preview changelog update
@@ -54,6 +56,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.14"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
       - name: Install package
         run: make install
       - name: Run tests
@@ -80,6 +84,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.14"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
       - name: Publish a git tag
         run: ".github/publish-git-tag.sh || true"
       - name: Install package

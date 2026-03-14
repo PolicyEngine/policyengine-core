@@ -45,6 +45,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
       - name: Install package
         run: make install
       - name: Run tests
@@ -70,23 +72,25 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
       - name: Install -core package
         run: |
-          python -m pip install .
-          python -m pip install "pytest-rerunfailures>=10,<15"
+          uv pip install --system .
+          uv pip install --system "pytest-rerunfailures>=10,<15"
       - name: Verify pytest plugins
         run: python -m pytest --version
       - name: Install -us package from PyPI
         run: |
           if [[ "${{ matrix.python-version }}" == "3.13" || "${{ matrix.python-version }}" == "3.14" ]]; then
             # For Python 3.13+, install newer tables first and ignore conflicts
-            pip install "tables>=3.11.0"
-            pip install policyengine-us --no-deps
+            uv pip install --system "tables>=3.11.0"
+            uv pip install --system policyengine-us --no-deps
             # Install remaining dependencies manually (skip pytest-dependency which has build issues)
-            pip install click pathlib synthimpute tabulate
-            pip install policyengine-us-data --no-deps
+            uv pip install --system click pathlib synthimpute tabulate
+            uv pip install --system policyengine-us-data --no-deps
           else
-            python -m pip install policyengine-us
+            uv pip install --system policyengine-us
           fi
         shell: bash
       - name: Run smoke tests only

@@ -203,6 +203,113 @@ def test_performance_tables_option_output():
     clean_performance_files(paths)
 
 
+def test_yaml_runner_rejects_python_object_tags(tmp_path, monkeypatch):
+    calls = []
+    yaml_path = tmp_path / "malicious.yaml"
+    yaml_path.write_text(
+        '!!python/object/apply:os.system ["echo pwned"]\n',
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        "os.system",
+        lambda command: calls.append(command) or 0,
+    )
+
+    malicious_yaml_file = object.__new__(YamlFile)
+    malicious_yaml_file.path = yaml_path
+    malicious_yaml_file.options = {}
+    malicious_yaml_file.tax_benefit_system = TaxBenefitSystem()
+
+    with pytest.raises(ValueError):
+        list(malicious_yaml_file.collect())
+
+    assert calls == []
+
+
+def test_yaml_runner_wraps_composer_errors(tmp_path):
+    yaml_path = tmp_path / "invalid-anchor.yaml"
+    yaml_path.write_text("value: *missing_anchor\n", encoding="utf-8")
+
+    invalid_yaml_file = object.__new__(YamlFile)
+    invalid_yaml_file.path = yaml_path
+    invalid_yaml_file.options = {}
+    invalid_yaml_file.tax_benefit_system = TaxBenefitSystem()
+
+    with pytest.raises(ValueError, match="not a valid YAML file"):
+        list(invalid_yaml_file.collect())
+
+
+def test_yaml_runner_rejects_scalar_roots(tmp_path):
+    yaml_path = tmp_path / "scalar.yaml"
+    yaml_path.write_text("foo\n", encoding="utf-8")
+
+    scalar_yaml_file = object.__new__(YamlFile)
+    scalar_yaml_file.path = yaml_path
+    scalar_yaml_file.options = {}
+    scalar_yaml_file.tax_benefit_system = TaxBenefitSystem()
+
+    with pytest.raises(ValueError, match="list of mappings"):
+        list(scalar_yaml_file.collect())
+
+
+def test_yaml_runner_rejects_scalar_keywords(tmp_path):
+    yaml_path = tmp_path / "invalid-keywords.yaml"
+    yaml_path.write_text(
+        "name: Example\nkeywords: 0\noutput: {}\n",
+        encoding="utf-8",
+    )
+
+    invalid_yaml_file = object.__new__(YamlFile)
+    invalid_yaml_file.path = yaml_path
+    invalid_yaml_file.options = {"name_filter": "missing"}
+    invalid_yaml_file.tax_benefit_system = TaxBenefitSystem()
+
+    with pytest.raises(ValueError, match="'keywords' must be a list"):
+        list(invalid_yaml_file.collect())
+
+
+def test_yaml_runner_allows_yaml_merge_anchors(tmp_path):
+    yaml_path = tmp_path / "anchors.yaml"
+    yaml_path.write_text(
+        """
+- name: define anchor
+  input:
+    persons: &persons
+      Alicia:
+        salary: 4000
+    households:
+      household:
+        parents: [Alicia]
+  output:
+    salary: 4000
+
+- name: merge anchor
+  input:
+    persons:
+      <<: *persons
+    households:
+      household:
+        parents: [Alicia]
+  output:
+    salary: 4000
+""".strip(),
+        encoding="utf-8",
+    )
+
+    yaml_file = object.__new__(YamlFile)
+    yaml_file.config = None
+    yaml_file.session = None
+    yaml_file._nodeid = "anchors"
+    yaml_file.path = yaml_path
+    yaml_file.options = {}
+    yaml_file.tax_benefit_system = TaxBenefitSystem()
+
+    collected = list(yaml_file.collect())
+
+    assert len(collected) == 2
+
+
 def clean_performance_files(paths: List[str]):
     for path in paths:
         if os.path.isfile(path):

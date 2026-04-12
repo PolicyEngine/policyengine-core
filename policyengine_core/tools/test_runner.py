@@ -31,7 +31,7 @@ def import_yaml():
     import yaml
 
     try:
-        from yaml import CLoader as Loader
+        from yaml import CSafeLoader as Loader
     except ImportError:
         log.warning(
             " "
@@ -119,7 +119,12 @@ class YamlFile(pytest.File):
     def collect(self):
         try:
             tests = yaml.load(self.path.open(), Loader=Loader)
-        except (yaml.scanner.ScannerError, yaml.parser.ParserError, TypeError):
+        except (
+            yaml.scanner.ScannerError,
+            yaml.parser.ParserError,
+            yaml.constructor.ConstructorError,
+            TypeError,
+        ):
             message = os.linesep.join(
                 [
                     traceback.format_exc(),

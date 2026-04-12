@@ -37,8 +37,8 @@ class ParameterNodeMetadata:
         metadata:
             breakdown:
                 - region # If `region` is an Enum-type variable with possible values `[ENGLAND, WALES]` then these children will be added.
-                - range(1, 7) # This code is `eval`uated to produce the list `[1, 2, 3, 4, 5, 6]` which are then added as grandchildren.
-                - [True, False] # This list is added as great-grandchildren (using the same `eval` method as above).
+                - range(1, 7) # Safe dynamic form producing `[1, 2, 3, 4, 5, 6]`, which are then added as grandchildren.
+                - [True, False] # Literal collection form added as great-grandchildren.
     
     """
 

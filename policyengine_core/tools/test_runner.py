@@ -126,12 +126,7 @@ class YamlFile(pytest.File):
     def collect(self):
         try:
             tests = yaml.load(self.path.open(), Loader=Loader)
-        except (
-            yaml.scanner.ScannerError,
-            yaml.parser.ParserError,
-            yaml.constructor.ConstructorError,
-            TypeError,
-        ):
+        except (yaml.YAMLError, TypeError):
             message = os.linesep.join(
                 [
                     traceback.format_exc(),
@@ -144,6 +139,11 @@ class YamlFile(pytest.File):
             tests: List[Dict] = [tests]
 
         for test in tests:
+            if not isinstance(test, dict):
+                raise ValueError(
+                    f"'{self.path}' is not a valid YAML test file. "
+                    "Expected a mapping or a list of mappings."
+                )
             if not self.should_ignore(test):
                 yield YamlItem.from_parent(
                     self,
@@ -155,11 +155,19 @@ class YamlFile(pytest.File):
 
     def should_ignore(self, test):
         name_filter = self.options.get("name_filter")
+        keywords = test.get("keywords", [])
+        if keywords is None:
+            keywords = []
+        if not isinstance(keywords, list):
+            raise ValueError(
+                f"'{self.path}' is not a valid YAML test file. "
+                "'keywords' must be a list."
+            )
         return (
             name_filter is not None
             and name_filter not in os.path.splitext(self.fspath.basename)[0]
             and name_filter not in test.get("name", "")
-            and name_filter not in test.get("keywords", [])
+            and name_filter not in keywords
         )
 
 

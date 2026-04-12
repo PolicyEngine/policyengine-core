@@ -1,3 +1,4 @@
+import ast
 import logging
 from typing import Any, Dict, List, Type
 
@@ -71,8 +72,7 @@ def homogenize_parameter_node(
         elif dtype == bool:
             possible_values = [True, False]
     else:
-        # Try to execute the breakdown as Python code
-        possible_values = list(eval(first_breakdown))
+        possible_values = evaluate_dynamic_breakdown(first_breakdown)
     if not hasattr(node, "children"):
         node = ParameterNode(
             node.name,
@@ -119,3 +119,53 @@ def homogenize_parameter_node(
                 node.children[child], breakdown[1:], variables, default_value
             )
     return node
+
+
+def evaluate_dynamic_breakdown(expression: str) -> List[Any]:
+    """Safely evaluate a dynamic breakdown expression.
+
+    The parameter metadata only needs literal collections and the documented
+    ``range(...)`` / ``list(range(...))`` forms. Anything else is rejected.
+    """
+
+    parsed = ast.parse(expression, mode="eval")
+    evaluated = evaluate_dynamic_breakdown_node(parsed.body)
+    if isinstance(evaluated, range):
+        return list(evaluated)
+    if isinstance(evaluated, (list, tuple)):
+        return list(evaluated)
+    if isinstance(evaluated, set):
+        return list(evaluated)
+    raise ValueError(
+        f"Invalid dynamic breakdown expression '{expression}'. "
+        "Only literal collections and range() calls are allowed."
+    )
+
+
+def evaluate_dynamic_breakdown_node(node: ast.AST) -> Any:
+    if isinstance(node, ast.Constant):
+        return node.value
+    if isinstance(node, ast.List):
+        return [evaluate_dynamic_breakdown_node(element) for element in node.elts]
+    if isinstance(node, ast.Tuple):
+        return tuple(evaluate_dynamic_breakdown_node(element) for element in node.elts)
+    if isinstance(node, ast.Set):
+        return {evaluate_dynamic_breakdown_node(element) for element in node.elts}
+    if isinstance(node, ast.UnaryOp) and isinstance(
+        node.op, (ast.UAdd, ast.USub)
+    ):
+        operand = evaluate_dynamic_breakdown_node(node.operand)
+        return operand if isinstance(node.op, ast.UAdd) else -operand
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+        if node.func.id == "range":
+            args = [evaluate_dynamic_breakdown_node(arg) for arg in node.args]
+            if node.keywords:
+                raise ValueError("range() keyword arguments are not allowed")
+            return range(*args)
+        if node.func.id == "list":
+            if len(node.args) != 1 or node.keywords:
+                raise ValueError("list() must contain a single positional argument")
+            return list(evaluate_dynamic_breakdown_node(node.args[0]))
+    raise ValueError(
+        f"Unsupported dynamic breakdown expression: {ast.unparse(node) if hasattr(ast, 'unparse') else type(node).__name__}"
+    )

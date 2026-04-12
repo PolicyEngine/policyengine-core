@@ -7,7 +7,7 @@ import yaml
 from policyengine_core.warnings import LibYAMLWarning
 
 try:
-    from yaml import CLoader as Loader
+    from yaml import CSafeLoader as Loader
 except ImportError:
     message = [
         "libyaml is not installed in your environment.",
@@ -17,7 +17,7 @@ except ImportError:
     ]
     warnings.warn(" ".join(message), LibYAMLWarning)
     from yaml import (
-        Loader,
+        SafeLoader as Loader,
     )  # type: ignore # (see https://github.com/python/mypy/issues/1153#issuecomment-455802270)
 
 ALLOWED_PARAM_TYPES = (float, int, bool, type(None), typing.List)

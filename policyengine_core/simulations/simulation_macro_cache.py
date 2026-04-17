@@ -7,16 +7,20 @@ import importlib.metadata
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 
 
-class Singleton(type):
-    _instances = {}
+class SimulationMacroCache:
+    """Per-call helper for reading/writing macro-level variable caches.
 
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
+    This used to be a process-wide ``Singleton`` that captured
+    ``country_version`` and ``country_package_metadata`` from whichever
+    ``TaxBenefitSystem`` happened to construct it first, and reused
+    ``cache_folder_path`` / ``cache_file_path`` across calls. In pipelines
+    that touched more than one simulation that silently wrote one
+    variable's cache into another dataset's folder, and cache invalidation
+    on country-package version bumps was missed because the version had
+    already been memoized for the *first* TBS (bug C3). Construct a fresh
+    instance per call instead.
+    """
 
-
-class SimulationMacroCache(metaclass=Singleton):
     def __init__(self, tax_benefit_system: TaxBenefitSystem):
         self.core_version = importlib.metadata.version("policyengine-core")
         self.country_package_metadata = tax_benefit_system.get_package_metadata()

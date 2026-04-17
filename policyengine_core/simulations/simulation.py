@@ -742,10 +742,17 @@ class Simulation:
                     and len(known_periods) > 0
                 ):
                     # Variables with a calculate-output property specify
-                    last_known_period = sorted(known_periods)[-1]
+                    # Sort by period.start (temporal order). Sorting Period
+                    # tuples lexicographically puts "year" before "month"
+                    # alphabetically, so a known "2023" annual value would
+                    # win over a later "2024-06" monthly value (bug H1).
+                    last_known_period = max(known_periods, key=lambda p: p.start)
                     if last_known_period.start > period.start:
                         return holder.default_array()
-                    array = holder.get_array(last_known_period)
+                    # Pass branch_name through so auto-carry-over respects the
+                    # active branch instead of reaching for the "default"
+                    # branch's cache (bug H2).
+                    array = holder.get_array(last_known_period, self.branch_name)
                 else:
                     array = holder.default_array()
 

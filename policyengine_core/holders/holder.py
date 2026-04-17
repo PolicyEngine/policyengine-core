@@ -103,15 +103,15 @@ class Holder:
         if self.variable.is_neutralized:
             return self.default_array()
         value = self._memory_storage.get(period, branch_name)
-        if value is None and period in self.get_known_periods():
-            # If the value is on a different branch, use that.
-            branch_periods = self.get_known_branch_periods()
-            branches = [
-                branch
-                for branch, branch_period in branch_periods
-                if period == branch_period
-            ]
-            return self.get_array(period, branches[0])
+        if value is None and branch_name != "default":
+            # Fall back to the ``default`` branch only. Previously the fallback
+            # returned *any* branch that happened to have this period (the
+            # first one in dict-insertion order), which silently swapped
+            # values between unrelated branches (reform vs baseline) and
+            # produced wrong reform deltas. See holder.get_array bug C1.
+            default_value = self._memory_storage.get(period, "default")
+            if default_value is not None:
+                return default_value
         if value is not None:
             return value
         if self._disk_storage:

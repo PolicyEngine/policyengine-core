@@ -341,11 +341,14 @@ class Dataset:
         # Use the GitHub API to get the download URL for the release asset
 
         if url.startswith("release://"):
-            org, repo, release_tag, file_path = url.split("/")[2:]
+            # ``release://org/repo/tag/file-with/possibly/slashes`` —
+            # only split out the first 4 segments; everything after the
+            # tag is the (possibly-nested) file path (bug M10).
+            org, repo, release_tag, file_path = url[len("release://") :].split("/", 3)
             url = (
                 f"https://api.github.com/repos/{org}/{repo}/releases/tags/{release_tag}"
             )
-            response = requests.get(url, headers=auth_headers)
+            response = requests.get(url, headers=auth_headers, timeout=60)
             if response.status_code != 200:
                 raise ValueError(
                     f"Invalid response code {response.status_code} for url {url}."
@@ -387,6 +390,9 @@ class Dataset:
                 "Accept": "application/octet-stream",
                 **auth_headers,
             },
+            # Add a generous timeout so a stalled remote endpoint can't
+            # hang the caller indefinitely (bug M11).
+            timeout=300,
         )
 
         if response.status_code != 200:

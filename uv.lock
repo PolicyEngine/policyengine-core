@@ -2384,7 +2384,7 @@ wheels = [
 
 [[package]]
 name = "policyengine-core"
-version = "3.24.1"
+version = "3.24.2"
 source = { editable = "." }
 dependencies = [
     { name = "dpath" },

@@ -1,1 +1,0 @@
-Compare `assert_near` operands at float32 when one operand is already float32, otherwise at float64. Keeps the H6 fix that catches dollar-level differences on multi-million-dollar float64 values, without surfacing float32 storage rounding (e.g. `8.91` stored as float32 vs the Python literal `8.91`) as spurious test failures in YAML tests against float-typed Variables.

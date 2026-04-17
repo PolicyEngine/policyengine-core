@@ -1,3 +1,11 @@
+## [3.24.2] - 2026-04-17
+
+### Fixed
+
+- Guard all `_fast_cache` mutation sites in `Simulation` against the attribute being missing. `Simulation.__init__` initialises `self._fast_cache = {}`, but country-package subclasses (e.g. `policyengine_uk.Simulation`) legitimately override `__init__` without calling `super().__init__`, so `set_input`, `delete_arrays`, and `purge_cache_of_invalid_values` were raising `AttributeError` on those subclasses.
+- Compare `assert_near` operands at float32 when one operand is already float32, otherwise at float64. Keeps the H6 fix that catches dollar-level differences on multi-million-dollar float64 values, without surfacing float32 storage rounding (e.g. `8.91` stored as float32 vs the Python literal `8.91`) as spurious test failures in YAML tests against float-typed Variables.
+
+
 ## [3.24.1] - 2026-04-17
 
 ### Fixed

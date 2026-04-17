@@ -1,3 +1,4 @@
+import hashlib
 import tempfile
 from typing import TYPE_CHECKING, Any, Dict, List, Type, Union
 
@@ -29,6 +30,18 @@ from policyengine_core.tools.google_cloud import (
 )
 
 import json
+
+
+def _stable_hash_to_seed(value: str) -> int:
+    """Deterministically hash a string to an int suitable for numpy.random.seed.
+
+    Python's built-in ``hash()`` is randomized per process (PYTHONHASHSEED) for
+    strings, which makes seeds derived from it non-reproducible across runs.
+    Use a stable cryptographic hash truncated to the seed range instead.
+    """
+    digest = hashlib.sha256(value.encode("utf-8")).digest()
+    return int.from_bytes(digest[:4], "big") % 1000000
+
 
 if TYPE_CHECKING:
     from policyengine_core.taxbenefitsystems import TaxBenefitSystem
@@ -203,8 +216,13 @@ class Simulation:
             if original_input.get("axes") is not None:
                 original_input["axes"] = {}
             # Hash the situation input to a random number, so situations with axes behave the
-            # same ways as the same situations without axes.
-            hashed_input = hash(json.dumps(original_input)) % 1000000
+            # same ways as the same situations without axes. ``sort_keys=True``
+            # keeps the hash stable across equivalent inputs built from differently
+            # ordered dicts, and ``_stable_hash_to_seed`` keeps it stable across
+            # Python processes (built-in ``hash`` is randomized per process).
+            hashed_input = _stable_hash_to_seed(
+                json.dumps(original_input, sort_keys=True)
+            )
             np.random.seed(hashed_input)
 
         if reform is not None:
@@ -462,7 +480,7 @@ class Simulation:
 
         self.tracer.record_calculation_start(variable_name, period, self.branch_name)
 
-        np.random.seed(hash(variable_name + str(period)) % 1000000)
+        np.random.seed(_stable_hash_to_seed(variable_name + str(period)))
 
         try:
             result = self._calculate(variable_name, period)

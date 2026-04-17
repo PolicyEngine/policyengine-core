@@ -1,0 +1,1 @@
+Use a stable hash (SHA-256) when seeding ``numpy.random`` from situation inputs and variable names, so ``random()`` produces reproducible results across Python processes regardless of ``PYTHONHASHSEED``. Also sort keys when hashing situation inputs so equivalent situations built in different dict orders produce the same seed.

@@ -43,13 +43,24 @@ def assert_near(
     if isinstance(target_value, str):
         target_value = eval_expression(target_value)
 
-    # Use float64 here so we don't silently lose precision on values
-    # above ~16M (float32 only carries ~7 decimal digits). Under float32,
-    # ``25_000_001`` and ``25_000_000`` round to the same number and a
-    # test expecting one would pass on the other (bug H6).
-    target_value = np.array(target_value).astype(np.float64)
-
-    value = np.array(value).astype(np.float64)
+    # Choose comparison dtype:
+    # - Default to float64 so we don't silently lose precision on values
+    #   above ~16M (float32 only carries ~7 decimal digits). Under
+    #   float32, ``25_000_001`` and ``25_000_000`` round to the same
+    #   number and a test expecting one would pass on the other (bug H6).
+    # - But if ``value`` is already float32 (because it came out of a
+    #   float-typed Variable, which PolicyEngine stores as float32),
+    #   promoting to float64 would surface the float32 rounding that's
+    #   baked into storage — ``8.91`` stored as float32 compares unequal
+    #   to the Python-literal ``8.91``. That rounding is not a regression
+    #   surfaced by the H6 fix; it's a property of the storage dtype.
+    #   Compare at float32 in that case to keep H6's coverage for real
+    #   precision bugs (float64/int operands) without surfacing
+    #   pre-existing float32 storage artefacts.
+    _value_array = np.asarray(value)
+    _compare_dtype = np.float32 if _value_array.dtype == np.float32 else np.float64
+    target_value = np.array(target_value).astype(_compare_dtype)
+    value = _value_array.astype(_compare_dtype)
     diff = abs(target_value - value)
     if absolute_error_margin is not None:
         assert (diff <= absolute_error_margin).all(), (

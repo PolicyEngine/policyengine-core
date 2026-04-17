@@ -1,0 +1,1 @@
+Raise a descriptive ``ValueError`` when calling ``Period.get_subperiods`` on an ``ETERNITY`` period. Previously the call crashed with ``TypeError: 'float' object cannot be interpreted as an integer`` because ``size`` is ``float("inf")`` for ETERNITY periods, and the YEAR subperiod branch passed it straight to ``range(...)``.

@@ -1,0 +1,1 @@
+Add `clear_parent_cache` and `mark_as_modified` to `ParameterScale` so `Parameter.update()` no longer raises `AttributeError` when backdating parameters that live inside a scale bracket. Regression surfaced by `policyengine_uk.backdate_parameters(... "2015-01-01")` after the `_fast_cache` work in #448/#436.

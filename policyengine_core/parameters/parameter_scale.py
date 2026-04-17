@@ -101,6 +101,19 @@ class ParameterScale(AtInstantLike):
             yield bracket
             yield from bracket.get_descendants()
 
+    def clear_parent_cache(self):
+        # ParameterScale itself caches nothing, but it sits between a
+        # Parameter (inside a ParameterScaleBracket) and the surrounding
+        # ParameterNode, so Parameter.update()'s recursive cache-clear has
+        # to pass through it. Propagate upward.
+        if getattr(self, "parent", None) is not None:
+            self.parent.clear_parent_cache()
+
+    def mark_as_modified(self):
+        self.modified = True
+        if getattr(self, "parent", None) is not None:
+            self.parent.mark_as_modified()
+
     def clone(self) -> "ParameterScale":
         clone = commons.empty_clone(self)
         clone.__dict__ = self.__dict__.copy()

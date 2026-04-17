@@ -1,0 +1,1 @@
+Key ``_tax_benefit_system_cache`` in ``policyengine_core.tools.test_runner`` on the baseline object itself (via ``weakref.WeakKeyDictionary``) instead of ``id(baseline)``. CPython reuses object ids after GC, so a collected baseline could hit a stale cache entry belonging to a completely different TBS, silently sharing test setup across unrelated baselines.

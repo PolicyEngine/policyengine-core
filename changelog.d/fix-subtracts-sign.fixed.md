@@ -1,0 +1,1 @@
+Correctly subtract parameter values when a ``subtracts`` list element refers to a parameter (previously the parameter value was added instead of subtracted, making the formula off by 2x the parameter value).

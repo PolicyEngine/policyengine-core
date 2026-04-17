@@ -225,6 +225,33 @@ class Simulation:
             if isinstance(reform, dict):
                 reform = Reform.from_dict(reform)
             reform.apply(self.tax_benefit_system)
+        # Invalidate every cached value so the simulation recomputes under
+        # the new tax-benefit system. Previously ``apply_reform`` left
+        # ``_fast_cache``, in-memory holder storage, and on-disk holder
+        # storage populated with pre-reform values, so the next
+        # ``calculate`` call returned stale values (bug H3).
+        self._invalidate_all_caches()
+
+    def _invalidate_all_caches(self) -> None:
+        """Purge every cached calculation on this simulation.
+
+        Called after ``apply_reform`` and any other operation that changes
+        the tax-benefit system underneath an already-calculated simulation.
+        Also cascades into any branches created via ``get_branch`` so those
+        don't keep returning stale pre-reform values either.
+        """
+        self._fast_cache = {}
+        self.invalidated_caches = set()
+        for variable in list(self.tax_benefit_system.variables):
+            holder = self.get_holder(variable)
+            # ``Holder.delete_arrays`` with ``period=None`` wipes every
+            # period on both memory and disk storage. After the storage-delete
+            # bug fix (C2) that now respects branch_name, so wipe both.
+            holder._memory_storage._arrays = {}
+            if holder._disk_storage is not None:
+                holder._disk_storage._files = {}
+        for branch in self.branches.values():
+            branch._invalidate_all_caches()
 
     def build_from_populations(self, populations: Dict[str, Population]) -> None:
         """This method of initialisation requires the populations to be pre-initialised.

@@ -1,1 +1,0 @@
-``Simulation.apply_reform`` now invalidates every cached value (``_fast_cache``, in-memory holder storage, on-disk holder storage, ``invalidated_caches``) and cascades the invalidation into every branch. Previously those caches still contained pre-reform values, so subsequent ``calculate`` calls returned stale values even though the tax-benefit system had been mutated.

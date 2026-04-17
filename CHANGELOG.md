@@ -1,3 +1,44 @@
+## [3.24.0] - 2026-04-17
+
+### Added
+
+- Added ruff check linting configuration with E and F rules to catch common Python errors.
+- Support Python 3.9 and 3.10 (in addition to 3.11–3.14). On Python 3.9, NumPy is pinned to `<2.1`.
+- Support for Python 3.14.
+
+### Changed
+
+- Upgrade breakdown enum mismatch from WARNING to ValueError for early detection of parameter key errors.
+- Migrated from changelog_entry.yaml to towncrier fragments to eliminate merge conflicts.
+- Migrate from pip to uv for dependency management in Makefile and CI workflows.
+- Optimize simulation calculate with fast cache and vectorial parameter lookups.
+- Switched code formatter from black to ruff format.
+
+### Fixed
+
+- ``Simulation.apply_reform`` now invalidates every cached value (``_fast_cache``, in-memory holder storage, on-disk holder storage, ``invalidated_caches``) and cascades the invalidation into every branch. Previously those caches still contained pre-reform values, so subsequent ``calculate`` calls returned stale values even though the tax-benefit system had been mutated.
+- Compare values in ``float64`` instead of ``float32`` inside ``assert_near`` and ``tools.assert_near``. Previously both operands were downcast to ``float32`` before the diff, so values above ~16M silently lost precision and tests expecting, e.g., 25_000_001 happily passed on 25_000_000. Note: one existing tax-scale test relied on the 0.3-is-representable-in-float32 accident and has been updated to request a tolerance of 1e-10.
+- Pass ``minlength=self.count`` to ``numpy.bincount`` in ``GroupPopulation.sum`` (no-role branch) and ``GroupPopulation.nb_persons`` (no-role branch) so the result always has one cell per entity. Previously, when the highest-indexed entity had zero members, ``bincount`` returned a shorter array that silently misaligned downstream broadcasting.
+- Fix clone() to update parent references and clear_parent_cache to invalidate root node cache.
+- Refuse to interpret introspection / dunder attribute lookups as dataset-key loads in ``Dataset.__getattr__``. Previously any missing attribute (``hasattr``, ``copy.deepcopy``, ``pickle.dumps``, debugger ``repr``) triggered a real H5 / CSV load — leaking file handles, triggering network downloads for ``FLAT_FILE`` + ``url`` pipelines, and crashing during serialization with cryptic errors. ``__getattr__`` now raises ``AttributeError`` for names starting with ``_``.
+- Raise a descriptive ``ValueError`` when calling ``Period.get_subperiods`` on an ``ETERNITY`` period. Previously the call crashed with ``TypeError: 'float' object cannot be interpreted as an integer`` because ``size`` is ``float("inf")`` for ETERNITY periods, and the YEAR subperiod branch passed it straight to ``range(...)``.
+- Fix _fast_cache invalidation bug in set_input and add cache tests.
+- Use a stable hash (SHA-256) when seeding ``numpy.random`` from situation inputs and variable names, so ``random()`` produces reproducible results across Python processes regardless of ``PYTHONHASHSEED``. Also sort keys when hashing situation inputs so equivalent situations built in different dict orders produce the same seed.
+- Stop ``Holder.get_array`` from silently returning values stored under an arbitrary branch when the requested branch has no value for the period. The fallback now only returns the ``default`` branch's value (or ``None`` if that is also empty), preventing reform vs. baseline cross-contamination. Also pass ``branch_name`` through the auto-carry-over path and sort known periods temporally (by ``period.start``) instead of lexicographically.
+- Drop the ``Singleton`` metaclass from ``SimulationMacroCache``. Each simulation now constructs a fresh cache instance instead of mutating a process-wide one, so ``cache_folder_path`` / ``cache_file_path`` from one simulation can no longer overwrite another's, and ``country_version`` is read from the actual ``TaxBenefitSystem`` currently being cached (instead of whichever one constructed the singleton first).
+- Fix invalid YAML in push workflow (`with:` and `token:` on the same line) that was causing all post-merge runs to fail with zero jobs, blocking version bumps and PyPI publishes.
+- Isolate reform parameters from the baseline by cloning the parameter tree and resetting ``_parameters_at_instant_cache`` when a ``Reform`` is constructed. Previously both were shared by reference, so any direct ``self.parameters.path.update(...)`` in ``Reform.apply()`` mutated the baseline in place and stale cached ``ParameterNodeAtInstant`` objects kept returning the baseline's pre-reform view.
+- Fix several surgical Medium-severity bugs: ``@uprated`` now uses ``numpy.all(old == 0)`` instead of Python ``all(old)`` when deciding whether to fall back to the previous formula (bug M1); single-point axes in ``SimulationBuilder`` no longer divide by zero (bug M8); ``Dataset.download(release://org/repo/tag/file-with/slashes)`` parses file paths containing slashes correctly (bug M10); every ``requests.get/post`` in the core now has an explicit timeout (bug M11); and the default ``datetime.date`` variable value is a fixed ``datetime.date(1970, 1, 1)`` instead of the timezone-dependent ``datetime.date.fromtimestamp(0)`` (bug M13).
+- Respect ``branch_name`` in ``InMemoryStorage.delete`` and ``OnDiskStorage.delete``. Previously these wiped every branch's data regardless of the requested ``branch_name`` (either entirely when ``period`` was ``None``, or by period containment only when ``period`` was set), so reform cache invalidation also cleared the baseline's cache.
+- Correctly subtract parameter values when a ``subtracts`` list element refers to a parameter (previously the parameter value was added instead of subtracted, making the formula off by 2x the parameter value).
+- Key ``_tax_benefit_system_cache`` in ``policyengine_core.tools.test_runner`` on the baseline object itself (via ``weakref.WeakKeyDictionary``) instead of ``id(baseline)``. CPython reuses object ids after GC, so a collected baseline could hit a stale cache entry belonging to a completely different TBS, silently sharing test setup across unrelated baselines.
+- Migrate push workflow to use GitHub App token (APP_ID / APP_PRIVATE_KEY) instead of the expired `POLICYENGINE_GITHUB` PAT, so the `versioning` job can push the "Update PolicyEngine Core" commit that triggers Test + Publish. Matches the pattern already used by policyengine-us, policyengine-api, and several other PolicyEngine repos.
+
+### Removed
+
+- Support for Python 3.10 (following SPEC 0 policy).
+
+
 # Changelog
 
 All notable changes to this project will be documented in this file.

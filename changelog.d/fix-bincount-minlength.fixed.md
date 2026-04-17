@@ -1,1 +1,0 @@
-Pass ``minlength=self.count`` to ``numpy.bincount`` in ``GroupPopulation.sum`` (no-role branch) and ``GroupPopulation.nb_persons`` (no-role branch) so the result always has one cell per entity. Previously, when the highest-indexed entity had zero members, ``bincount`` returned a shorter array that silently misaligned downstream broadcasting.

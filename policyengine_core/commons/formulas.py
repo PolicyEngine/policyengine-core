@@ -398,7 +398,13 @@ def uprated(by: str = None, start_year: int = 2015) -> Callable:
                     last_year_parameter = getattr(last_year_parameter, name)
                 uprating = current_parameter / last_year_parameter
                 old = entity(variable.__name__, period.last_year)
-                if (formula is not None) and (all(old) == 0):
+                # Use numpy.all on the element-wise equality with 0; Python's
+                # ``all(old)`` checks truthiness of each element, so a single
+                # non-zero value makes the guard ``False`` even when every
+                # other value is zero — which defeated the "no values were
+                # inputted" short-circuit and caused uprating to run on top
+                # of a formula fall-back output (bug M1).
+                if (formula is not None) and np.all(old == 0):
                     # If no values have been inputted, don't uprate and
                     # instead use the previous formula on the current period.
                     return formula(entity, period, parameters)

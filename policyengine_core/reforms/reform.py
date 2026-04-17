@@ -189,7 +189,10 @@ class Reform(TaxBenefitSystem):
         """
 
         data = requests.get(
-            f"https://api.policyengine.org/{country_id}/policy/{api_id}"
+            f"https://api.policyengine.org/{country_id}/policy/{api_id}",
+            # Timeout so a stalled API can't hang the caller forever
+            # (bug M11).
+            timeout=30,
         ).json()
 
         parameter_values = data.get("result", {}).get("policy_json", {})
@@ -242,6 +245,9 @@ class Reform(TaxBenefitSystem):
                 "data": sanitised_parameter_values,
                 "name": self.name,
             },
+            # Timeout so a stalled API can't hang the caller forever
+            # (bug M11).
+            timeout=30,
         )
 
         return response.json().get("result", {}).get("policy_id")

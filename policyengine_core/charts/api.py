@@ -21,18 +21,23 @@ def get_api_chart_data(
     version: str = None,
 ) -> dict:
     if baseline_policy_id is None or version is None:
-        response = requests.get(f"https://api.policyengine.org/{country_id}/metadata")
+        response = requests.get(
+            f"https://api.policyengine.org/{country_id}/metadata",
+            # Add timeouts so stalled API responses can't hang us forever
+            # (bug M11).
+            timeout=30,
+        )
         result = response.json().get("result", {})
         baseline_policy_id = result.get("current_law_id")
         version = result.get("version")
     url = f"https://api.policyengine.org/{country_id}/economy/{reform_policy_id}/over/{baseline_policy_id}?region={region}&time_period={time_period}&version={version}"
-    response = requests.get(url)
+    response = requests.get(url, timeout=60)
     if not response.ok:
         raise ValueError(response.text)
     json = response.json()
     while json.get("status") == "computing":
         time.sleep(1)
-        response = requests.get(url)
+        response = requests.get(url, timeout=60)
         if not response.ok:
             raise ValueError(response.text)
         json = response.json()

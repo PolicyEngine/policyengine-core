@@ -42,7 +42,12 @@ VALUE_TYPES = {
     },
     datetime.date: {
         "dtype": "datetime64[D]",
-        "default": datetime.date.fromtimestamp(0),  # 0 == 1970-01-01
+        # ``datetime.date.fromtimestamp(0)`` is timezone-dependent (returns
+        # ``1970-01-01`` in UTC, ``1969-12-31`` in any zone west of UTC), so
+        # the default value for ``datetime.date`` variables changed
+        # depending on the deployment timezone. Use an explicit literal
+        # (bug M13).
+        "default": datetime.date(1970, 1, 1),
         "json_type": "string",
         "formatted_value_type": "Date",
         "is_period_size_independent": True,

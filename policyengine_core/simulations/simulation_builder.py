@@ -738,11 +738,17 @@ class SimulationBuilder:
                         )
                     elif array.size == axis_entity_step_size:
                         array = np.tile(array, cell_count)
-                    array[axis_index::axis_entity_step_size] = axis[
-                        "min"
-                    ] + mesh.reshape(cell_count) * (axis["max"] - axis["min"]) / (
-                        axis_count - 1
-                    )
+                    if axis_count == 1:
+                        # Single-point axes: just return the min value for
+                        # that axis (previously this divided by zero and
+                        # crashed on single-point axes — bug M8).
+                        array[axis_index::axis_entity_step_size] = axis["min"]
+                    else:
+                        array[axis_index::axis_entity_step_size] = axis[
+                            "min"
+                        ] + mesh.reshape(cell_count) * (axis["max"] - axis["min"]) / (
+                            axis_count - 1
+                        )
                     self.input_buffer[axis_name][str(axis_period)] = array
 
         self.has_axes = True

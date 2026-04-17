@@ -188,6 +188,15 @@ class Period(tuple):
         >>> period('year:2014:2').get_subperiods(YEAR)
         >>> [period('2014'), period('2015')]
         """
+        if self.unit == config.ETERNITY:
+            # ``ETERNITY`` periods carry ``size=float("inf")``; any attempt
+            # to build ``range(self.size)`` below would crash with a
+            # cryptic ``TypeError: 'float' object cannot be interpreted as
+            # an integer``. Fail fast with a clear message instead (bug H7).
+            raise ValueError(
+                "ETERNITY periods cannot be subdivided into finite periods."
+            )
+
         if helpers.unit_weight(self.unit) < helpers.unit_weight(unit):
             raise ValueError("Cannot subdivide {0} into {1}".format(self.unit, unit))
 

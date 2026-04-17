@@ -825,10 +825,12 @@ class Simulation:
         # We wait for the end of calculate(), signalled by an empty stack, before purging the cache
         if self.tracer.stack:
             return
+        _fast_cache = getattr(self, "_fast_cache", None)
         for _name, _period in self.invalidated_caches:
             holder = self.get_holder(_name)
             holder.delete_arrays(_period)
-            self._fast_cache.pop((_name, _period), None)
+            if _fast_cache is not None:
+                _fast_cache.pop((_name, _period), None)
         self.invalidated_caches = set()
 
     def calculate_add(
@@ -1189,14 +1191,17 @@ class Simulation:
         True
         """
         self.get_holder(variable).delete_arrays(period)
+        _fast_cache = getattr(self, "_fast_cache", None)
         if period is None:
-            self._fast_cache = {
-                k: v for k, v in self._fast_cache.items() if k[0] != variable
-            }
+            if _fast_cache is not None:
+                self._fast_cache = {
+                    k: v for k, v in _fast_cache.items() if k[0] != variable
+                }
         else:
             if not isinstance(period, Period):
                 period = periods.period(period)
-            self._fast_cache.pop((variable, period), None)
+            if _fast_cache is not None:
+                _fast_cache.pop((variable, period), None)
 
     def get_known_periods(self, variable: str) -> List[Period]:
         """
@@ -1241,7 +1246,9 @@ class Simulation:
         if (variable.end is not None) and (period.start.date > variable.end):
             return
         self.get_holder(variable_name).set_input(period, value, self.branch_name)
-        self._fast_cache.pop((variable_name, period), None)
+        _fast_cache = getattr(self, "_fast_cache", None)
+        if _fast_cache is not None:
+            _fast_cache.pop((variable_name, period), None)
 
     def get_variable_population(self, variable_name: str) -> Population:
         variable = self.tax_benefit_system.get_variable(

@@ -476,8 +476,12 @@ def assert_near(
         target_value = eval_expression(target_value)
 
     try:
-        target_value = np.array(target_value).astype(np.float32)
-        value = np.array(value).astype(np.float32)
+        # Use float64 here so we don't silently lose precision on values
+        # above ~16M (float32 only carries ~7 decimal digits). Under float32,
+        # ``25_000_001`` and ``25_000_000`` round to the same number and a
+        # test expecting one would pass on the other (bug H6).
+        target_value = np.array(target_value).astype(np.float64)
+        value = np.array(value).astype(np.float64)
     except ValueError:
         # Data type not translatable to floating point, assert complete equality
         assert np.array(value) == np.array(target_value), "{}{} differs from {}".format(

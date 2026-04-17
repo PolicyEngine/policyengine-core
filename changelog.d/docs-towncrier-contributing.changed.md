@@ -1,1 +1,0 @@
-Update `CONTRIBUTING.md` and `README.md` to document the towncrier `changelog.d/` workflow. The old `changelog_entry.yaml` + `make changelog` flow was deprecated some time ago; the contributor docs still instructed new contributors to use it, so PRs kept adding `changelog_entry.yaml` that the PR CI's "Check changelog fragment" step rejects.

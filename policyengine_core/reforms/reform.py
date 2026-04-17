@@ -71,8 +71,18 @@ class Reform(TaxBenefitSystem):
         """
         super().__init__(baseline.entities)
         self.baseline = baseline
-        self.parameters = baseline.parameters
-        self._parameters_at_instant_cache = baseline._parameters_at_instant_cache
+        # Clone the parameter tree so in-place mutations inside ``apply()``
+        # (``set_parameter(...)`` or ``self.parameters.path.update(...)``)
+        # don't leak into the baseline. ``modify_parameters()`` was already
+        # deep-copying, but plenty of reforms mutate ``self.parameters``
+        # directly (bug C4).
+        if baseline.parameters is not None:
+            self.parameters = baseline.parameters.clone()
+        else:
+            self.parameters = None
+        # Use a fresh at-instant cache so reform mutations aren't shadowed
+        # by previously-computed baseline ``ParameterNodeAtInstant`` objects.
+        self._parameters_at_instant_cache = {}
         self.variables = baseline.variables.copy()
         self.decomposition_file_path = baseline.decomposition_file_path
         self.key = self.__class__.__name__

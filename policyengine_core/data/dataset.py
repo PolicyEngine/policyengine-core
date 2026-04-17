@@ -304,6 +304,14 @@ class Dataset:
         Returns:
             Union[np.array, pd.DataFrame]: The dataset.
         """
+        # Refuse to interpret introspection/dunder attribute lookups as
+        # dataset-key loads. Without this guard, a typo or a debugger
+        # ``hasattr(ds, ...)`` / ``repr(ds)`` / ``copy.deepcopy(ds)`` /
+        # ``pickle.dumps(ds)`` probe triggers a real H5 / CSV load (and
+        # in the ``FLAT_FILE`` + ``url`` pipeline, a network download)
+        # and can leak an open ``h5py.File`` — see bug H8.
+        if name.startswith("_") or name.startswith("__"):
+            raise AttributeError(f"{type(self).__name__!s} has no attribute {name!r}")
         return self.load(name)
 
     def store_file(self, file_path: str):

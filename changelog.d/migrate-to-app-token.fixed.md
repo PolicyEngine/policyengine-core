@@ -1,0 +1,1 @@
+Migrate push workflow to use GitHub App token (APP_ID / APP_PRIVATE_KEY) instead of the expired `POLICYENGINE_GITHUB` PAT, so the `versioning` job can push the "Update PolicyEngine Core" commit that triggers Test + Publish. Matches the pattern already used by policyengine-us, policyengine-api, and several other PolicyEngine repos.

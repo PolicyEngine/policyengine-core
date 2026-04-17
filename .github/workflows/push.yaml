@@ -21,10 +21,17 @@ jobs:
       && !(github.event.head_commit.message == 'Update PolicyEngine Core')
     runs-on: ubuntu-latest
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.POLICYENGINE_GITHUB }}
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -45,6 +52,8 @@ jobs:
           committer_name: Github Actions[bot]
           author_name: Github Actions[bot]
           message: Update PolicyEngine Core
+          github_token: ${{ steps.app-token.outputs.token }}
+          fetch: false
   Test:
     runs-on: ubuntu-latest
     if: |

@@ -946,7 +946,7 @@ class Simulation:
                                 self.tax_benefit_system.parameters,
                                 subtracted_variable,
                             )
-                            values = values + parameter(period.start)
+                            values = values - parameter(period.start)
                         except:
                             raise ValueError(
                                 f"In the variable '{variable.name}', the 'subtracts' attribute is a list that contains a string '{subtracted_variable}' that does not match any variable or parameter."

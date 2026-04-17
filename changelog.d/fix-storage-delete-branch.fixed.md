@@ -1,0 +1,1 @@
+Respect ``branch_name`` in ``InMemoryStorage.delete`` and ``OnDiskStorage.delete``. Previously these wiped every branch's data regardless of the requested ``branch_name`` (either entirely when ``period`` was ``None``, or by period containment only when ``period`` was set), so reform cache invalidation also cleared the baseline's cache.

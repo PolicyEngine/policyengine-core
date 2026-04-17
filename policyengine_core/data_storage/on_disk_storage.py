@@ -60,7 +60,15 @@ class OnDiskStorage:
 
     def delete(self, period: Period = None, branch_name: str = "default") -> None:
         if period is None:
-            self._files = {}
+            # Only wipe files belonging to the requested branch (previously
+            # this wiped every branch regardless of ``branch_name`` — same
+            # class of bug as C2 in InMemoryStorage).
+            branch_prefix = f"{branch_name}_"
+            self._files = {
+                period_item: value
+                for period_item, value in self._files.items()
+                if not period_item.startswith(branch_prefix)
+            }
             return
 
         if self.is_eternal:

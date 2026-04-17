@@ -61,7 +61,14 @@ TEST_KEYWORDS = {
 
 yaml, Loader = import_yaml()
 
-_tax_benefit_system_cache: Dict = {}
+# Key the cache on the baseline object itself (via ``WeakKeyDictionary``) so
+# that when a baseline is garbage-collected its cache entries disappear with
+# it. Previously the cache was keyed on ``id(baseline)``, which Python
+# reuses after GC — a collected baseline could produce the same id as a
+# completely unrelated new baseline and hit a stale cache entry (bug H9).
+import weakref
+
+_tax_benefit_system_cache: "weakref.WeakKeyDictionary" = weakref.WeakKeyDictionary()
 
 
 def run_tests(tax_benefit_system, paths, options=None):
@@ -410,17 +417,19 @@ def _get_tax_benefit_system(
     if not isinstance(extensions, list):
         extensions = [extensions]
 
-    # keep reforms order in cache, ignore extensions order
-    key = hash(
-        (
-            id(baseline),
-            ":".join([reform if isinstance(reform, str) else "" for reform in reforms]),
-            reform_key,
-            frozenset(extensions),
-        )
+    # Inner key is (reforms in order, reform_key, extensions as a frozenset).
+    # The outer cache is keyed on the baseline *object* so its entries are
+    # tied to the baseline's lifetime (see bug H9 above).
+    inner_key = (
+        ":".join([reform if isinstance(reform, str) else "" for reform in reforms]),
+        reform_key,
+        frozenset(extensions),
     )
-    if _tax_benefit_system_cache.get(key):
-        return _tax_benefit_system_cache.get(key)
+    baseline_entry = _tax_benefit_system_cache.get(baseline)
+    if baseline_entry is not None:
+        cached = baseline_entry.get(inner_key)
+        if cached is not None:
+            return cached
 
     current_tax_benefit_system = baseline.clone()
 
@@ -437,7 +446,10 @@ def _get_tax_benefit_system(
         current_tax_benefit_system = current_tax_benefit_system.clone()
         current_tax_benefit_system.load_extension(extension)
 
-    _tax_benefit_system_cache[key] = current_tax_benefit_system
+    if baseline_entry is None:
+        baseline_entry = {}
+        _tax_benefit_system_cache[baseline] = baseline_entry
+    baseline_entry[inner_key] = current_tax_benefit_system
 
     return current_tax_benefit_system
 

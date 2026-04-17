@@ -131,7 +131,13 @@ class GroupPopulation(Population):
                 minlength=self.count,
             )
         else:
-            return numpy.bincount(self.members_entity_id, weights=array)
+            # Pass ``minlength=self.count`` so the result has one cell per
+            # entity even when the highest-indexed entity has zero members.
+            # Without it, ``bincount`` returns a shorter array that
+            # misaligns downstream broadcasting (bug H4).
+            return numpy.bincount(
+                self.members_entity_id, weights=array, minlength=self.count
+            )
 
     @projectors.projectable
     def any(self, array: ArrayLike, role: Role = None) -> ArrayLike:
@@ -260,7 +266,10 @@ class GroupPopulation(Population):
                 role_condition = self.members_role == role
             return self.sum(role_condition)
         else:
-            return numpy.bincount(self.members_entity_id)
+            # ``minlength=self.count`` ensures the returned array has one
+            # cell per entity even when the highest-indexed entity has
+            # zero members (bug H4).
+            return numpy.bincount(self.members_entity_id, minlength=self.count)
 
     # Projection person -> entity
 

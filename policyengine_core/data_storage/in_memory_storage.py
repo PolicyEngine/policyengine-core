@@ -44,17 +44,30 @@ class InMemoryStorage:
 
     def delete(self, period: Period = None, branch_name: str = "default") -> None:
         if period is None:
-            self._arrays = {}
+            # Only wipe arrays belonging to the requested branch (previously
+            # this wiped every branch regardless of ``branch_name`` — bug C2).
+            branch_prefix = f"{branch_name}:"
+            self._arrays = {
+                period_item: value
+                for period_item, value in self._arrays.items()
+                if not period_item.startswith(branch_prefix)
+            }
             return
 
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
 
+        # Filter by BOTH period containment AND branch_name. Previously the
+        # branch_name was silently ignored so deleting a period for one
+        # branch deleted it for every branch (bug C2).
         self._arrays = {
             period_item: value
             for period_item, value in self._arrays.items()
-            if not period.contains(periods.period(period_item.split(":")[1]))
+            if not (
+                period_item.startswith(f"{branch_name}:")
+                and period.contains(periods.period(period_item.split(":", 1)[1]))
+            )
         }
 
     def get_known_periods(self) -> list:

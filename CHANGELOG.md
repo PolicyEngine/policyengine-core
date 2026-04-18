@@ -1,3 +1,14 @@
+## [3.25.0] - 2026-04-18
+
+### Added
+
+- Add a downstream preflight smoke test (`tests/smoke/test_country_init.py`) that instantiates `CountryTaxBenefitSystem()` from the currently-published `policyengine-us` and `policyengine-uk` against the core under test. Catches the class of cross-repo regressions that the existing `RUN_SMOKE_TESTS`-gated microsimulation smoke test misses — breakdown-validator errors at parameter load, `_fast_cache`-init assumptions, and any other init-time changes that happen to break downstream country models. Also extends the smoke job in `.github/workflows/pr.yaml` to install `policyengine-uk` alongside `policyengine-us`.
+
+### Fixed
+
+- Guard `invalidated_caches` mutation sites in `Simulation` against the attribute being missing, matching the pattern used for `_fast_cache` in #474. Country-package subclasses that override `__init__` without calling `super().__init__` can skip initialising this private attribute, so `purge_cache_of_invalid_values` and `invalidate_cache_entry` now fall back gracefully instead of raising `AttributeError`.
+
+
 ## [3.24.4] - 2026-04-18
 
 ### Fixed

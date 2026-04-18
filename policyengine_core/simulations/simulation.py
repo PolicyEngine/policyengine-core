@@ -283,14 +283,17 @@ class Simulation:
             stored_value = holder._memory_storage._arrays.get(storage_key)
             if stored_value is not None:
                 preserved.setdefault(variable_name, {})[storage_key] = stored_value
-        for variable in list(self.tax_benefit_system.variables):
-            holder = self.get_holder(variable)
-            # Wipe formula outputs and on-disk caches on both memory and
-            # disk storage. After the storage-delete bug fix (C2) that
-            # respects branch_name, so wipe both.
-            holder._memory_storage._arrays = {}
-            if holder._disk_storage is not None:
-                holder._disk_storage._files = {}
+        # Iterate only over holders that already exist on each population —
+        # lazy-creating a holder for every variable in the tax-benefit
+        # system (thousands in policyengine-us) inflated the cost of
+        # ``apply_reform`` from milliseconds to seconds and broke the
+        # YAML full-suite on downstream repos. Untouched variables have
+        # no holder and therefore nothing to wipe.
+        for population in self.populations.values():
+            for holder in population._holders.values():
+                holder._memory_storage._arrays = {}
+                if holder._disk_storage is not None:
+                    holder._disk_storage._files = {}
         # Replay preserved user inputs so ``calculate`` still sees them.
         for variable_name, key_to_array in preserved.items():
             holder = self.get_holder(variable_name)

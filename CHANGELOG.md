@@ -1,3 +1,11 @@
+## [3.24.4] - 2026-04-18
+
+### Fixed
+
+- Preserve `set_input` values across `apply_reform`. The H3 cache invalidation wiped every variable's `_memory_storage._arrays`, which also wiped user-provided dataset inputs loaded via `set_input`. Country-package subclasses calling `set_input` during construction and then applying a structural reform (the `policyengine-uk` pattern) silently lost their datasets. Now tracks `set_input` provenance and replays those values after the invalidation wipe; formula-output caches are still invalidated as before.
+- Restore nested-branch input inheritance and cover situation-dict `set_input`. Three follow-ups on top of the `Simulation.set_input` preservation: (1) `Holder.set_input` also records `_user_input_keys` so situation-dict inputs routed through `SimulationBuilder.finalize_variables_init` survive `apply_reform`, not only inputs set via `Simulation.set_input`; (2) `Holder.get_array` walks up `simulation.parent_branch` before falling back to `default`, so a sub-branch (e.g. `no_salt` cloned from `itemizing`) still sees inputs set on its ancestor — the C1 fallback-to-`default`-only broke the country-package nested-branch pattern; (3) `GroupPopulation.clone` now passes the cloned population (not the source) to `holder.clone`, so group-entity holders on a `get_branch` clone point at the cloned simulation and branch-aware lookups resolve correctly. Unblocks `PolicyEngine/policyengine-us#8066` (the `tax_unit_itemizes` integration test crashing with `TypeError: int() argument ... not 'NoneType'` under core 3.24.x because `state_fips` got wiped, plus a follow-up infinite recursion in `tax_liability_if_itemizing` once the state_fips wipe was resolved).
+
+
 ## [3.24.3] - 2026-04-17
 
 ### Changed

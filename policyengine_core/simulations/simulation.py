@@ -132,6 +132,12 @@ class Simulation:
 
         self.invalidated_caches = set()
         self._fast_cache: dict = {}
+        # ``set_input`` records each (variable_name, branch_name, period) it
+        # populates so ``_invalidate_all_caches`` can tell user-provided
+        # source data apart from formula-computed caches. Without this the
+        # post-``apply_reform`` cache wipe would also wipe the dataset the
+        # simulation was loaded from.
+        self._user_input_keys: set[tuple[str, str, Period]] = set()
         self.debug: bool = False
         self.trace: bool = trace
         self.tracer: SimpleTracer = SimpleTracer() if not trace else FullTracer()
@@ -251,23 +257,44 @@ class Simulation:
         self._invalidate_all_caches()
 
     def _invalidate_all_caches(self) -> None:
-        """Purge every cached calculation on this simulation.
+        """Purge cached formula output, preserving user-provided inputs.
 
         Called after ``apply_reform`` and any other operation that changes
         the tax-benefit system underneath an already-calculated simulation.
-        Also cascades into any branches created via ``get_branch`` so those
-        don't keep returning stale pre-reform values either.
+
+        Every (variable, branch, period) that was populated via
+        ``set_input`` is preserved — those are source data, not stale
+        formula output — so a structural reform applied after dataset
+        load doesn't silently discard the dataset. Everything else
+        (formula outputs, cached short-path results, on-disk caches) is
+        wiped so the next ``calculate`` recomputes under the new
+        tax-benefit system.
         """
         self._fast_cache = {}
         self.invalidated_caches = set()
+        # Snapshot user-provided inputs before wiping so they can be
+        # replayed into the fresh storage. Storage keys each entry as
+        # f"{branch_name}:{period}"; preserve exactly those keys.
+        preserved: dict[str, dict[str, object]] = {}
+        user_input_keys = getattr(self, "_user_input_keys", None) or set()
+        for variable_name, branch_name, period in user_input_keys:
+            holder = self.get_holder(variable_name)
+            storage_key = f"{branch_name}:{period}"
+            stored_value = holder._memory_storage._arrays.get(storage_key)
+            if stored_value is not None:
+                preserved.setdefault(variable_name, {})[storage_key] = stored_value
         for variable in list(self.tax_benefit_system.variables):
             holder = self.get_holder(variable)
-            # ``Holder.delete_arrays`` with ``period=None`` wipes every
-            # period on both memory and disk storage. After the storage-delete
-            # bug fix (C2) that now respects branch_name, so wipe both.
+            # Wipe formula outputs and on-disk caches on both memory and
+            # disk storage. After the storage-delete bug fix (C2) that
+            # respects branch_name, so wipe both.
             holder._memory_storage._arrays = {}
             if holder._disk_storage is not None:
                 holder._disk_storage._files = {}
+        # Replay preserved user inputs so ``calculate`` still sees them.
+        for variable_name, key_to_array in preserved.items():
+            holder = self.get_holder(variable_name)
+            holder._memory_storage._arrays.update(key_to_array)
         for branch in self.branches.values():
             branch._invalidate_all_caches()
 
@@ -1253,6 +1280,12 @@ class Simulation:
         if (variable.end is not None) and (period.start.date > variable.end):
             return
         self.get_holder(variable_name).set_input(period, value, self.branch_name)
+        # Lazy-init ``_user_input_keys`` so country-package subclasses that
+        # override ``__init__`` without calling ``super().__init__`` still
+        # benefit from the set-input preservation across ``apply_reform``.
+        if not hasattr(self, "_user_input_keys"):
+            self._user_input_keys = set()
+        self._user_input_keys.add((variable_name, self.branch_name, period))
         _fast_cache = getattr(self, "_fast_cache", None)
         if _fast_cache is not None:
             _fast_cache.pop((variable_name, period), None)

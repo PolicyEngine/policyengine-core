@@ -11,6 +11,12 @@ calculate against the loaded data.
 See:
 - https://github.com/PolicyEngine/policyengine.py/issues/1628 (symptom
   surfaced here — UK household-impact tests returning 0 after reform apply)
+- https://github.com/PolicyEngine/policyengine-us/issues/8058 (symptom
+  surfaced here — US ``tax_unit_itemizes`` integration test and many
+  others crashing with ``TypeError: int() argument must be a string,
+  a bytes-like object or a real number, not 'NoneType'`` because
+  ``state_fips`` got wiped and the downstream
+  ``state_name``/``state_code`` chain returned ``None``)
 - bug H3 in the existing ``test_apply_reform_invalidates_cache.py``
   (the cache invalidation that over-reached)
 """
@@ -21,7 +27,7 @@ import numpy as np
 
 from policyengine_core.model_api import Reform
 from policyengine_core.country_template import situation_examples
-from policyengine_core.simulations import SimulationBuilder
+from policyengine_core.simulations import Simulation, SimulationBuilder
 
 
 def test_apply_reform_preserves_set_input_values(tax_benefit_system):
@@ -81,6 +87,57 @@ def test_apply_reform_preserves_inputs_across_multiple_variables(tax_benefit_sys
 
     assert np.allclose(sim.calculate("salary", period=period), [1_234.0])
     assert sim.calculate("age", period=period)[0] == 27
+
+
+def test_apply_reform_preserves_situation_dict_inputs(tax_benefit_system):
+    """Situation-dict inputs must survive ``apply_reform`` too.
+
+    ``Simulation(situation=...)`` routes inputs through
+    ``SimulationBuilder.finalize_variables_init``, which calls
+    ``holder.set_input`` directly — bypassing ``Simulation.set_input``.
+    The preservation tracking must cover that path too, otherwise
+    country-package subclasses that build from a situation dict and then
+    apply a structural reform during construction (the
+    ``policyengine-us`` pattern) silently lose every household input.
+    Surfaced in ``PolicyEngine/policyengine-us#8058``.
+    """
+    situation = {
+        "persons": {
+            "Alicia": {
+                "salary": {"2017-01": 3_000.0},
+                "age": {"2017-01": 42},
+            }
+        },
+        "households": {
+            "_": {"parents": ["Alicia"]},
+        },
+    }
+    sim = Simulation(
+        tax_benefit_system=tax_benefit_system,
+        situation=situation,
+    )
+
+    assert sim.get_holder("salary").get_known_periods(), (
+        "precondition failure: situation dict did not register salary"
+    )
+    assert sim.get_holder("age").get_known_periods(), (
+        "precondition failure: situation dict did not register age"
+    )
+
+    class NoOpReform(Reform):
+        def apply(self):
+            pass
+
+    sim.apply_reform(NoOpReform)
+
+    # Both inputs were set through ``holder.set_input`` via the builder,
+    # not through ``Simulation.set_input``. They must still survive.
+    assert np.allclose(sim.calculate("salary", period="2017-01"), [3_000.0]), (
+        "apply_reform wiped the situation-dict salary input"
+    )
+    assert sim.calculate("age", period="2017-01")[0] == 42, (
+        "apply_reform wiped the situation-dict age input"
+    )
 
 
 def test_apply_reform_still_invalidates_formula_caches(tax_benefit_system):

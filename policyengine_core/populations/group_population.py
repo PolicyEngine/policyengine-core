@@ -38,8 +38,16 @@ class GroupPopulation(Population):
     def clone(self, simulation: "Simulation", members: Population) -> "GroupPopulation":
         result = GroupPopulation(self.entity, members)
         result.simulation = simulation
+        # Pass ``result`` (the cloned population) to ``holder.clone`` so the
+        # holder's ``.simulation`` reference points at the clone — not at
+        # the source. Previously this was ``holder.clone(self)``, which
+        # left every group-entity holder on a ``get_branch`` clone
+        # pointing back at its parent simulation; that broke ``branch_name``
+        # and ``parent_branch`` lookups for group-entity variables
+        # (e.g. ``tax_unit_itemizes``) on nested branches.
         result._holders = {
-            variable: holder.clone(self) for (variable, holder) in self._holders.items()
+            variable: holder.clone(result)
+            for (variable, holder) in self._holders.items()
         }
         result.count = self.count
         result.ids = self.ids

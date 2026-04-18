@@ -93,6 +93,9 @@ jobs:
             uv pip install --system policyengine-us
           fi
         shell: bash
+      - name: Install -uk package from PyPI
+        run: uv pip install --system policyengine-uk
+        shell: bash
       - name: Run smoke tests only
         run: python -m pytest -m smoke --reruns 2 --reruns-delay 5 -v -s
         env:

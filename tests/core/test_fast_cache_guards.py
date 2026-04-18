@@ -1,19 +1,22 @@
 """Regression tests: cache-manipulation methods on ``Simulation`` must not
-crash when ``_fast_cache`` is missing.
+crash when private cache attributes are missing.
 
-``Simulation.__init__`` sets ``self._fast_cache = {}`` as the first step of
-initialisation. Country-package subclasses (e.g. ``policyengine_uk.Simulation``)
-can legitimately override ``__init__`` without calling ``super().__init__``
-— instead they set the handful of attributes they need directly. In that
-case ``_fast_cache`` never gets initialised, so any cache-mutation path
-that assumes the attribute exists raised ``AttributeError`` during
-``build_from_single_year_dataset`` / ``set_input`` / ``delete_arrays``.
+``Simulation.__init__`` sets ``self._fast_cache = {}`` and
+``self.invalidated_caches = set()`` as part of initialisation.
+Country-package subclasses (e.g. ``policyengine_uk.Simulation``) can
+legitimately override ``__init__`` without calling ``super().__init__``
+— instead they set the handful of attributes they need directly. In
+that case the skipped attribute never gets initialised, so any
+cache-mutation path that assumes the attribute exists raised
+``AttributeError`` during ``build_from_single_year_dataset`` /
+``set_input`` / ``delete_arrays`` / ``purge_cache_of_invalid_values`` /
+``invalidate_cache_entry``.
 
-The defensive fix is to guard the bare ``.pop`` / ``.items`` / re-assign
-sites the same way the read-side fast path in ``calculate()`` already does
-— ``getattr(self, "_fast_cache", None)`` and skip the cache write when
-it's ``None``. Core owns this protection so every downstream subclass
-doesn't have to mirror the attribute.
+The defensive fix is to guard the bare ``.pop`` / ``.items`` / ``.add``
+sites the same way the read-side fast path in ``calculate()`` already
+does — ``getattr(self, "<attr>", None)`` and skip or lazily initialise
+when it's missing. Core owns this protection so every downstream
+subclass doesn't have to mirror the attributes.
 """
 
 from __future__ import annotations
@@ -74,3 +77,27 @@ def test_purge_cache_of_invalid_values_without_fast_cache_attribute():
 
     sim.purge_cache_of_invalid_values()
     assert sim.invalidated_caches == set()
+
+
+def test_purge_cache_of_invalid_values_without_invalidated_caches_attribute():
+    sim = _bare_simulation()
+    sim.tracer = types.SimpleNamespace(stack=[])
+    # No invalidated_caches, no _fast_cache — must not crash
+    sim.get_holder = lambda name: types.SimpleNamespace(
+        delete_arrays=lambda period: None
+    )
+
+    sim.purge_cache_of_invalid_values()
+
+
+def test_invalidate_cache_entry_without_invalidated_caches_attribute():
+    sim = _bare_simulation()
+    # No invalidated_caches — method should lazily initialise it
+    sim.invalidate_cache_entry("variable_name", "2024")
+    assert sim.invalidated_caches == {("variable_name", "2024")}
+    # Subsequent invalidations should accumulate
+    sim.invalidate_cache_entry("other_variable", "2025")
+    assert sim.invalidated_caches == {
+        ("variable_name", "2024"),
+        ("other_variable", "2025"),
+    }

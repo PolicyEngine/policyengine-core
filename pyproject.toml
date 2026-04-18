@@ -1,6 +1,6 @@
 [project]
 name = "policyengine-core"
-version = "3.25.0"
+version = "3.25.1"
 description = "Core microsimulation engine enabling country-specific policy models."
 readme = "README.md"
 authors = [

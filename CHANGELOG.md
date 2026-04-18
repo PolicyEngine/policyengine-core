@@ -1,3 +1,10 @@
+## [3.25.1] - 2026-04-18
+
+### Fixed
+
+- Iterate only existing holders in `_invalidate_all_caches`. The 3.24.4-era implementation walked every variable in the tax-benefit system and lazy-created a `Holder` for each one, inflating `apply_reform` from milliseconds to seconds in downstream packages with thousands of variables (policyengine-us YAML full-suite went from ~17 min to ~51 min per job and started timing out at the 1-hour GitHub Actions limit). Untouched variables have no holder and therefore nothing to wipe, so iterating `population._holders.values()` on each population recovers the original performance while keeping the set_input preservation behaviour introduced in #475.
+
+
 ## [3.25.0] - 2026-04-18
 
 ### Added

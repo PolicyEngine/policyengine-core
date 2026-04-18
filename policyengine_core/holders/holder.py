@@ -104,11 +104,27 @@ class Holder:
             return self.default_array()
         value = self._memory_storage.get(period, branch_name)
         if value is None and branch_name != "default":
-            # Fall back to the ``default`` branch only. Previously the fallback
-            # returned *any* branch that happened to have this period (the
-            # first one in dict-insertion order), which silently swapped
-            # values between unrelated branches (reform vs baseline) and
-            # produced wrong reform deltas. See holder.get_array bug C1.
+            # Walk up ``simulation.parent_branch`` so nested branches inherit
+            # values from their parent (e.g. a ``no_salt`` branch cloned
+            # from an ``itemizing`` branch still sees ``tax_unit_itemizes``
+            # set on the ``itemizing`` branch). Fall back to ``default``
+            # only if no ancestor branch has a value. Previously the
+            # fallback returned the first branch in dict-insertion order
+            # (bug C1) — silently swapping values between unrelated
+            # sibling branches (reform vs baseline) and producing wrong
+            # reform deltas. The post-C1 behavior only fell back to
+            # ``default``, which broke country-package nested-branch
+            # patterns that relied on the ancestor's input being visible.
+            parent = (
+                getattr(self.simulation, "parent_branch", None)
+                if self.simulation
+                else None
+            )
+            while parent is not None:
+                ancestor_value = self._memory_storage.get(period, parent.branch_name)
+                if ancestor_value is not None:
+                    return ancestor_value
+                parent = getattr(parent, "parent_branch", None)
             default_value = self._memory_storage.get(period, "default")
             if default_value is not None:
                 return default_value
@@ -225,6 +241,18 @@ class Holder:
             return warnings.warn(warning_message, Warning)
         if self.variable.value_type in (float, int) and isinstance(array, str):
             array = tools.eval_expression(array)
+        # Track user-provided inputs on the simulation so
+        # ``Simulation._invalidate_all_caches`` can preserve them across
+        # ``apply_reform``. ``Simulation.set_input`` also records this, but
+        # ``SimulationBuilder.finalize_variables_init`` (the situation-dict
+        # path) and country-package dataset loaders call
+        # ``holder.set_input`` directly, bypassing the simulation-level hook.
+        # Recording here covers both paths.
+        simulation = getattr(self, "simulation", None)
+        if simulation is not None:
+            if not hasattr(simulation, "_user_input_keys"):
+                simulation._user_input_keys = set()
+            simulation._user_input_keys.add((self.variable.name, branch_name, period))
         if self.variable.set_input and period.unit != self.variable.definition_period:
             return self.variable.set_input(self, period, array)
         return self._set(period, array, branch_name)

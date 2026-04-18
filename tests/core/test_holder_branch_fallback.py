@@ -60,3 +60,70 @@ def test_get_array_falls_back_to_default_branch(tax_benefit_system):
     result = holder.get_array(period, "baseline")
     assert result is not None
     assert result[0] == 42.0
+
+
+def test_get_array_falls_back_through_parent_branch_chain(tax_benefit_system):
+    """Nested branches must inherit values from their parent branch.
+
+    ``policyengine-us`` uses a two-level branch pattern:
+
+    1. ``tax_liability_if_itemizing`` creates an ``itemizing`` branch from
+       the default simulation and calls ``branch.set_input("tax_unit_itemizes", True)``.
+    2. Calculating ``income_tax`` on that branch reaches
+       ``ctc_limiting_tax_liability``, which creates a ``no_salt`` sub-branch
+       from the ``itemizing`` branch and calls
+       ``no_salt.calculate("income_tax_before_credits")``.
+
+    The ``no_salt`` branch must see ``tax_unit_itemizes=True`` inherited
+    from its parent ``itemizing`` branch — otherwise ``tax_unit_itemizes``
+    re-runs its formula on ``no_salt``, which calls
+    ``tax_liability_if_itemizing`` again, creating a circular definition
+    / infinite recursion. Surfaced in ``PolicyEngine/policyengine-us#8058``.
+    """
+    sim = _build_single(tax_benefit_system)
+    itemizing_branch = sim.get_branch("itemizing")
+    no_salt_branch = itemizing_branch.get_branch("no_salt")
+
+    holder = no_salt_branch.person.get_holder("salary")
+    period = periods.period("2017-01")
+
+    # Simulate ``itemizing_branch.set_input("salary", ...)``: the storage
+    # key lives under the ``itemizing`` branch name. The cloned ``no_salt``
+    # holder starts with the same storage dict because ``Population.clone``
+    # deep-copies ``_arrays`` from the source.
+    holder._memory_storage.put(np.asarray([7_777.0]), period, "itemizing")
+
+    # Asking the ``no_salt`` branch for this value must walk up the
+    # ``parent_branch`` chain and return the itemizing branch's value.
+    result = holder.get_array(period, "no_salt")
+    assert result is not None, (
+        "get_array on a nested branch must fall back through parent_branch "
+        "to the ancestor that actually has the value"
+    )
+    assert result[0] == 7_777.0
+
+
+def test_group_population_clone_sets_holder_simulation_to_clone(tax_benefit_system):
+    """``GroupPopulation.clone`` must point holders at the cloned simulation.
+
+    Previously ``GroupPopulation.clone`` called ``holder.clone(self)``
+    (the *source* population), so every cloned holder's
+    ``.simulation`` reference pointed back at the source simulation. That
+    broke branch-aware lookups: the holder thought it belonged to the
+    parent branch even when the clone was a nested branch, so
+    ``parent_branch`` walks started from the wrong simulation and missed
+    the ancestor's inputs.
+    """
+    sim = _build_single(tax_benefit_system)
+    branch = sim.get_branch("nested")
+
+    # Find a group-entity variable (household-level).
+    household = branch.household
+    holder = household.get_holder("housing_tax")
+
+    assert holder.simulation is branch, (
+        "GroupPopulation.clone must pass the CLONED population to "
+        "holder.clone so holder.simulation points at the new branch, "
+        "not the source simulation"
+    )
+    assert holder.simulation.branch_name == "nested"

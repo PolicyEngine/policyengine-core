@@ -853,7 +853,10 @@ class Simulation:
         if self.tracer.stack:
             return
         _fast_cache = getattr(self, "_fast_cache", None)
-        for _name, _period in self.invalidated_caches:
+        invalidated_caches = getattr(self, "invalidated_caches", None)
+        if invalidated_caches is None:
+            return
+        for _name, _period in invalidated_caches:
             holder = self.get_holder(_name)
             holder.delete_arrays(_period)
             if _fast_cache is not None:
@@ -1144,7 +1147,11 @@ class Simulation:
             raise SpiralError(message, variable)
 
     def invalidate_cache_entry(self, variable: str, period: Period) -> None:
-        self.invalidated_caches.add((variable, period))
+        invalidated_caches = getattr(self, "invalidated_caches", None)
+        if invalidated_caches is None:
+            self.invalidated_caches = {(variable, period)}
+            return
+        invalidated_caches.add((variable, period))
 
     def invalidate_spiral_variables(self, variable: str) -> None:
         # Visit the stack, from the bottom (most recent) up; we know that we'll find

@@ -87,11 +87,14 @@ jobs:
             uv pip install --system "tables>=3.11.0"
             uv pip install --system policyengine-us --no-deps
             # Install remaining dependencies manually (skip pytest-dependency which has build issues)
-            uv pip install --system click pathlib synthimpute tabulate
+            uv pip install --system click pathlib synthimpute tabulate spm-calculator
             uv pip install --system policyengine-us-data --no-deps
           else
             uv pip install --system policyengine-us
           fi
+        shell: bash
+      - name: Install -uk package from PyPI
+        run: uv pip install --system policyengine-uk
         shell: bash
       - name: Run smoke tests only
         run: python -m pytest -m smoke --reruns 2 --reruns-delay 5 -v -s

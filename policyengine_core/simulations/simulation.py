@@ -1692,6 +1692,17 @@ class Simulation:
         self.dataset = Dataset.from_dataframe(df, self.dataset.time_period)
         self.build_from_dataset()
 
+        # Purge ``_fast_cache`` entries populated by ``to_input_dataframe``
+        # above. Those arrays were computed against the pre-subsample
+        # populations, so their shapes (e.g. 41314 households) no longer
+        # match the rebuilt populations (e.g. 669 after subsample).
+        # ``build_from_dataset`` only rebuilds populations and holders;
+        # the simulation-level fast cache is independent and must be
+        # cleared explicitly or the stale entries bypass ``_calculate``
+        # (see the short-circuit at the top of ``calculate``) and surface
+        # as "size X != Y = count" projection errors.
+        self._invalidate_all_caches()
+
         # Ensure the baseline branch has the new data.
         if "baseline" in self.branches:
             baseline_tax_benefit_system = self.branches["baseline"].tax_benefit_system

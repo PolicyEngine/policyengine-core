@@ -1,3 +1,10 @@
+## [3.25.2] - 2026-04-21
+
+### Fixed
+
+- `Simulation.subsample` now invalidates `_fast_cache`. Previously, entries populated by `to_input_dataframe` held pre-subsample arrays that survived `build_from_dataset` and were returned by the fast-path short-circuit in `Simulation.calculate` whenever a caller passed `decode_enums=False`, triggering "size X != Y = count" projection errors in downstream code (e.g. `person.household("household_weight", period)` inside `person_weight`).
+
+
 ## [3.25.1] - 2026-04-18
 
 ### Fixed

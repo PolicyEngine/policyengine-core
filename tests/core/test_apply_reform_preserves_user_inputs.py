@@ -89,6 +89,60 @@ def test_apply_reform_preserves_inputs_across_multiple_variables(tax_benefit_sys
     assert sim.calculate("age", period=period)[0] == 27
 
 
+def test_apply_reform_preserves_eternity_inputs_set_for_a_period(
+    tax_benefit_system,
+):
+    """ETERNITY inputs set for ordinary periods must survive reform apply."""
+    sim = SimulationBuilder().build_from_entities(
+        tax_benefit_system, situation_examples.single
+    )
+    period = "2017"
+    expected_person_id = np.array([123], dtype=np.int32)
+
+    sim.set_input("person_id", period, expected_person_id)
+
+    class NoOpReform(Reform):
+        def apply(self):
+            pass
+
+    sim.apply_reform(NoOpReform)
+
+    result = sim.calculate("person_id", period=period)
+    assert np.array_equal(result, expected_person_id), (
+        "apply_reform lost an ETERNITY input set through Simulation.set_input "
+        f"for {period}; got {result} instead of {expected_person_id}."
+    )
+
+
+def test_apply_reform_preserves_eternity_inputs_set_through_holder(
+    tax_benefit_system,
+):
+    """ETERNITY preservation must also cover direct ``holder.set_input``."""
+    sim = SimulationBuilder().build_from_entities(
+        tax_benefit_system, situation_examples.single
+    )
+    period = "2017"
+    expected_person_id = np.array([456], dtype=np.int32)
+
+    sim.get_holder("person_id").set_input(
+        period,
+        expected_person_id,
+        sim.branch_name,
+    )
+
+    class NoOpReform(Reform):
+        def apply(self):
+            pass
+
+    sim.apply_reform(NoOpReform)
+
+    result = sim.calculate("person_id", period=period)
+    assert np.array_equal(result, expected_person_id), (
+        "apply_reform lost an ETERNITY input set through Holder.set_input "
+        f"for {period}; got {result} instead of {expected_person_id}."
+    )
+
+
 def test_apply_reform_preserves_situation_dict_inputs(tax_benefit_system):
     """Situation-dict inputs must survive ``apply_reform`` too.
 

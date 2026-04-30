@@ -1,5 +1,6 @@
 import hashlib
 import tempfile
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Type, Union
 
 import numpy as np
@@ -55,6 +56,14 @@ from policyengine_core.parameters import get_parameter
 from policyengine_core.simulations.simulation_macro_cache import (
     SimulationMacroCache,
 )
+
+
+@dataclass(frozen=True)
+class PreservedUserInput:
+    variable_name: str
+    branch_name: str
+    period: Period
+    value: object
 
 
 class Simulation:
@@ -276,14 +285,19 @@ class Simulation:
         # replayed into the fresh storage. Use the storage API instead of
         # hand-building keys, since ETERNITY variables canonicalize every
         # period to the single ETERNITY storage key.
-        preserved: dict[str, list[tuple[str, Period, object]]] = {}
+        preserved: list[PreservedUserInput] = []
         user_input_keys = getattr(self, "_user_input_keys", None) or set()
         for variable_name, branch_name, period in user_input_keys:
             holder = self.get_holder(variable_name)
             stored_value = holder._memory_storage.get(period, branch_name)
             if stored_value is not None:
-                preserved.setdefault(variable_name, []).append(
-                    (branch_name, period, stored_value)
+                preserved.append(
+                    PreservedUserInput(
+                        variable_name=variable_name,
+                        branch_name=branch_name,
+                        period=period,
+                        value=stored_value,
+                    )
                 )
         # Iterate only over holders that already exist on each population —
         # lazy-creating a holder for every variable in the tax-benefit
@@ -297,10 +311,13 @@ class Simulation:
                 if holder._disk_storage is not None:
                     holder._disk_storage._files = {}
         # Replay preserved user inputs so ``calculate`` still sees them.
-        for variable_name, inputs in preserved.items():
-            holder = self.get_holder(variable_name)
-            for branch_name, period, stored_value in inputs:
-                holder._memory_storage.put(stored_value, period, branch_name)
+        for user_input in preserved:
+            holder = self.get_holder(user_input.variable_name)
+            holder._memory_storage.put(
+                user_input.value,
+                user_input.period,
+                user_input.branch_name,
+            )
         for branch in self.branches.values():
             branch._invalidate_all_caches()
 

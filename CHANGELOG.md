@@ -1,3 +1,10 @@
+## [3.25.4] - 2026-04-30
+
+### Fixed
+
+- Preserve user-provided ETERNITY inputs across cache invalidation when they were set for an ordinary period.
+
+
 ## [3.25.3] - 2026-04-28
 
 ### Changed

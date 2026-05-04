@@ -1,3 +1,10 @@
+## [3.26.0] - 2026-05-04
+
+### Added
+
+- Added dependency-free runtime metadata for bundle validation.
+
+
 ## [3.25.4] - 2026-04-30
 
 ### Fixed

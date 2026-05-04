@@ -2,13 +2,10 @@ from __future__ import annotations
 
 import importlib.metadata
 import json
-import subprocess
-from pathlib import Path
 from typing import Any, Dict, Optional
 
 
 PACKAGE_NAME = "policyengine-core"
-_PACKAGE_DIR = Path(__file__).resolve().parent
 
 __all__ = ["get_runtime_metadata"]
 
@@ -27,13 +24,9 @@ def get_runtime_metadata() -> Dict[str, Any]:
         "version": _get_package_version(distribution),
     }
 
-    git_sha = _get_direct_url_git_sha(distribution) or _get_local_git_sha()
+    git_sha = _get_direct_url_git_sha(distribution)
     if git_sha is not None:
         metadata["git_sha"] = git_sha
-
-    source_path = _get_source_path()
-    if source_path is not None:
-        metadata["source_path"] = source_path
 
     return metadata
 
@@ -51,28 +44,7 @@ def _get_package_version(
     if distribution is not None:
         return distribution.version
 
-    version = _get_pyproject_version()
-    if version is not None:
-        return version
-
     raise importlib.metadata.PackageNotFoundError(PACKAGE_NAME)
-
-
-def _get_pyproject_version() -> Optional[str]:
-    git_root = _find_git_root(_PACKAGE_DIR)
-    if git_root is None:
-        return None
-
-    pyproject_path = git_root / "pyproject.toml"
-    if not pyproject_path.exists():
-        return None
-
-    for line in pyproject_path.read_text().splitlines():
-        stripped = line.strip()
-        if stripped.startswith("version = "):
-            return stripped.split("=", 1)[1].strip().strip('"')
-
-    return None
 
 
 def _get_direct_url_git_sha(
@@ -110,40 +82,5 @@ def _read_direct_url(
 
     if isinstance(direct_url, dict):
         return direct_url
-
-    return None
-
-
-def _get_local_git_sha() -> Optional[str]:
-    git_root = _find_git_root(_PACKAGE_DIR)
-    if git_root is None:
-        return None
-
-    try:
-        result = subprocess.run(
-            ["git", "-C", str(git_root), "rev-parse", "HEAD"],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-    except (OSError, subprocess.CalledProcessError):
-        return None
-
-    git_sha = result.stdout.strip()
-    return git_sha or None
-
-
-def _get_source_path() -> Optional[str]:
-    git_root = _find_git_root(_PACKAGE_DIR)
-    if git_root is None:
-        return None
-
-    return str(_PACKAGE_DIR)
-
-
-def _find_git_root(start: Path) -> Optional[Path]:
-    for path in (start, *start.parents):
-        if (path / ".git").exists():
-            return path
 
     return None

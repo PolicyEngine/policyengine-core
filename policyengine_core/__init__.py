@@ -1,2 +1,3 @@
+from policyengine_core.build_metadata import get_runtime_metadata
 from policyengine_core.simulations import Microsimulation, Simulation
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem

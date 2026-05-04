@@ -18,10 +18,10 @@ def get_runtime_metadata() -> Dict[str, Any]:
     available in release or integration-test workflows.
     """
 
-    distribution = _get_distribution()
+    distribution = importlib.metadata.distribution(PACKAGE_NAME)
     metadata: Dict[str, Any] = {
         "name": PACKAGE_NAME,
-        "version": _get_package_version(distribution),
+        "version": distribution.version,
     }
 
     git_sha = _get_direct_url_git_sha(distribution)
@@ -31,28 +31,9 @@ def get_runtime_metadata() -> Dict[str, Any]:
     return metadata
 
 
-def _get_distribution() -> Optional[importlib.metadata.Distribution]:
-    try:
-        return importlib.metadata.distribution(PACKAGE_NAME)
-    except importlib.metadata.PackageNotFoundError:
-        return None
-
-
-def _get_package_version(
-    distribution: Optional[importlib.metadata.Distribution],
-) -> str:
-    if distribution is not None:
-        return distribution.version
-
-    raise importlib.metadata.PackageNotFoundError(PACKAGE_NAME)
-
-
 def _get_direct_url_git_sha(
-    distribution: Optional[importlib.metadata.Distribution],
+    distribution: importlib.metadata.Distribution,
 ) -> Optional[str]:
-    if distribution is None:
-        return None
-
     direct_url = _read_direct_url(distribution)
     if direct_url is None:
         return None

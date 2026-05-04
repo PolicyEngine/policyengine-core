@@ -41,7 +41,11 @@ def test_runtime_metadata_uses_pep_610_vcs_commit(monkeypatch):
 
             return None
 
-    monkeypatch.setattr(build_metadata, "_get_distribution", Distribution)
+    monkeypatch.setattr(
+        build_metadata.importlib.metadata,
+        "distribution",
+        lambda name: Distribution(),
+    )
 
     assert get_runtime_metadata() == {
         "name": "policyengine-core",

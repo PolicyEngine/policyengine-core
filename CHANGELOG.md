@@ -1,3 +1,14 @@
+## [3.26.1] - 2026-05-07
+
+### Changed
+
+- Added provider-neutral AI engineering guidance for tests, documentation review, pull requests, and changelog fragments.
+
+### Fixed
+
+- Fixed enum encoding for HDF5-style UTF-8 byte-string arrays containing non-ASCII enum member names.
+
+
 ## [3.26.0] - 2026-05-04
 
 ### Added

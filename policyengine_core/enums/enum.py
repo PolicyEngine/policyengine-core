@@ -77,8 +77,11 @@ class Enum(enum.Enum):
             indices = np.array([item.index for item in array], dtype=ENUM_ARRAY_DTYPE)
             return EnumArray(indices, cls)
 
-        # Convert byte-strings or object arrays to Unicode strings
-        if array.dtype.kind == "S" or array.dtype == object:
+        # Convert fixed-width byte strings, as returned by h5py for string
+        # datasets, to Unicode before matching enum names.
+        if array.dtype.kind == "S":
+            array = np.char.decode(array, "utf-8")
+        elif array.dtype == object:
             array = array.astype(str)
 
         if isinstance(array, np.ndarray) and array.dtype.kind in {"U", "S"}:

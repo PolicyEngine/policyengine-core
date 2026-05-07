@@ -74,6 +74,30 @@ def test_enum_encode_all_invalid_raises_error():
     assert "FOO" in error_message or "BAR" in error_message or "BAZ" in error_message
 
 
+def test_enum_encode_utf8_byte_string_array():
+    """
+    Test that HDF5-style UTF-8 byte strings encode as enum names.
+
+    The ñ mirrors values like DOÑA_ANA_COUNTY_NM. It is a non-ASCII
+    character, so NumPy's default byte-string conversion cannot decode it
+    as ASCII.
+    """
+
+    class Sample(Enum):
+        DOÑA_ANA = "Doña Ana"
+        DWORKIN = "dworkin"
+
+    byte_string_array = np.array(
+        ["DOÑA_ANA".encode("utf-8"), b"DWORKIN"],
+        dtype="S10",
+    )
+
+    encoded_array = Sample.encode(byte_string_array)
+
+    assert isinstance(encoded_array, EnumArray)
+    assert list(encoded_array) == [0, 1]
+
+
 def test_enum_encode_empty_string_raises_error():
     """Test that encoding empty strings raises ValueError."""
 

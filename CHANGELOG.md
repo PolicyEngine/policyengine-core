@@ -1,3 +1,11 @@
+## [3.26.3] - 2026-05-14
+
+### Fixed
+
+- Preserve values passed through dispatched `set_input` handlers across cache invalidation.
+- Apply chained parameter uprating dependencies in deterministic dependency order.
+
+
 ## [3.26.2] - 2026-05-14
 
 ### Fixed

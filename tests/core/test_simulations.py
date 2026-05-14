@@ -1,5 +1,6 @@
 from policyengine_core.country_template.situation_examples import single
 from policyengine_core.simulations import SimulationBuilder
+import policyengine_core.simulations.simulation as simulation_module
 from policyengine_core.simulations.simulation_macro_cache import (
     SimulationMacroCache,
 )
@@ -90,3 +91,24 @@ def test_macro_cache(tax_benefit_system):
     )
     cache.clear_cache(cache.cache_folder_path)
     assert not cache.cache_folder_path.exists()
+
+
+def test_calculate_without_macro_cache_does_not_build_macro_cache(
+    tax_benefit_system, monkeypatch
+):
+    class UnexpectedSimulationMacroCache:
+        def __init__(self, tax_benefit_system):
+            raise AssertionError(
+                "SimulationMacroCache should not be constructed when "
+                "macro cache reads are disabled"
+            )
+
+    monkeypatch.setattr(
+        simulation_module,
+        "SimulationMacroCache",
+        UnexpectedSimulationMacroCache,
+    )
+
+    simulation = SimulationBuilder().build_default_simulation(tax_benefit_system)
+
+    simulation.calculate("income_tax", "2017-01")

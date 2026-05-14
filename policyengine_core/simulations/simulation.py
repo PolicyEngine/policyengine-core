@@ -707,11 +707,10 @@ class Simulation:
         if cached_array is not None:
             return cached_array
 
-        smc = SimulationMacroCache(self.tax_benefit_system)
-
         # Check if cache can be used, if available, check if path exists
         is_cache_available = self.check_macro_cache(variable_name, str(period))
         if is_cache_available:
+            smc = SimulationMacroCache(self.tax_benefit_system)
             smc.set_cache_path(
                 self.dataset.file_path.parent,
                 self.dataset.name,

@@ -27,6 +27,7 @@ import numpy as np
 
 from policyengine_core.model_api import Reform
 from policyengine_core.country_template import situation_examples
+from policyengine_core.experimental import MemoryConfig
 from policyengine_core.simulations import Simulation, SimulationBuilder
 
 
@@ -141,6 +142,116 @@ def test_apply_reform_preserves_eternity_inputs_set_through_holder(
         "apply_reform lost an ETERNITY input set through Holder.set_input "
         f"for {period}; got {result} instead of {expected_person_id}."
     )
+
+
+def test_apply_reform_preserves_dispatched_set_input_values(
+    tax_benefit_system,
+):
+    """Inputs dispatched into subperiod storage must survive reform apply."""
+    sim = SimulationBuilder().build_from_entities(
+        tax_benefit_system, situation_examples.single
+    )
+    input_period = "2017"
+    calculated_period = "2017-01"
+    yearly_salary = np.array([12_000.0])
+    expected_monthly_salary = np.array([1_000.0])
+
+    sim.set_input("salary", input_period, yearly_salary)
+    assert np.allclose(
+        sim.calculate("salary", calculated_period), expected_monthly_salary
+    )
+
+    class NoOpReform(Reform):
+        def apply(self):
+            pass
+
+    sim.apply_reform(NoOpReform)
+
+    result = sim.calculate("salary", calculated_period)
+    assert np.allclose(result, expected_monthly_salary), (
+        "apply_reform lost a salary input that was dispatched from a yearly "
+        f"input to monthly storage; got {result} instead of "
+        f"{expected_monthly_salary}."
+    )
+
+
+def test_apply_reform_preserves_dispatched_inputs_on_branch(
+    tax_benefit_system,
+):
+    """Dispatched inputs must keep the branch they were set on."""
+    sim = SimulationBuilder().build_from_entities(
+        tax_benefit_system, situation_examples.single
+    )
+    default_salary = np.array([24_000.0])
+    expected_default_monthly_salary = np.array([2_000.0])
+    sim.set_input("salary", "2017", default_salary)
+
+    branch = sim.get_branch("reform")
+    input_period = "2017"
+    calculated_period = "2017-01"
+    yearly_salary = np.array([12_000.0])
+    expected_monthly_salary = np.array([1_000.0])
+
+    branch.set_input("salary", input_period, yearly_salary)
+    salary_holder = branch.get_holder("salary")
+
+    assert np.allclose(
+        salary_holder._memory_storage.get(calculated_period, "default"),
+        expected_default_monthly_salary,
+    )
+    assert np.allclose(
+        salary_holder._memory_storage.get(calculated_period, "reform"),
+        expected_monthly_salary,
+    )
+
+    class NoOpReform(Reform):
+        def apply(self):
+            pass
+
+    branch.apply_reform(NoOpReform)
+
+    assert np.allclose(
+        branch.calculate("salary", calculated_period),
+        expected_monthly_salary,
+    )
+    assert np.allclose(
+        sim.calculate("salary", calculated_period),
+        expected_default_monthly_salary,
+    )
+
+
+def test_apply_reform_preserves_on_disk_inputs_on_disk(tax_benefit_system):
+    """Disk-backed user inputs should not be replayed into memory."""
+    sim = SimulationBuilder().build_from_entities(
+        tax_benefit_system, situation_examples.single
+    )
+    sim.memory_config = MemoryConfig(max_memory_occupation=0)
+    period = "2017-01"
+    expected_salary = np.array([5_000.0])
+    salary_holder = sim.get_holder("salary")
+    salary_holder._disk_storage = salary_holder.create_disk_storage()
+    salary_holder._on_disk_storable = True
+
+    sim.set_input("salary", period, expected_salary)
+
+    assert salary_holder._memory_storage.get(period, "default") is None
+    assert np.allclose(
+        salary_holder._disk_storage.get(period, "default"),
+        expected_salary,
+    )
+
+    class NoOpReform(Reform):
+        def apply(self):
+            pass
+
+    sim.apply_reform(NoOpReform)
+
+    assert salary_holder._memory_storage.get(period, "default") is None
+    assert np.allclose(
+        salary_holder._disk_storage.get(period, "default"),
+        expected_salary,
+    )
+    assert np.allclose(sim.calculate("salary", period), expected_salary)
 
 
 def test_apply_reform_preserves_situation_dict_inputs(tax_benefit_system):

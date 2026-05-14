@@ -1,6 +1,106 @@
 import pytest
 
 
+def test_parameter_uprating_processes_dependencies_before_dependents():
+    from policyengine_core.parameters import ParameterNode, uprate_parameters
+
+    root = ParameterNode(
+        data={
+            "target": {
+                "values": {"2025-01-01": 100},
+                "metadata": {"uprating": "middle"},
+            },
+            "middle": {
+                "values": {"2025-01-01": 100},
+                "metadata": {"uprating": "base"},
+            },
+            "base": {
+                "values": {"2025-01-01": 100, "2026-01-01": 110},
+            },
+        }
+    )
+
+    uprated = uprate_parameters(root)
+
+    assert uprated.middle("2026-01-01") == pytest.approx(110)
+    assert uprated.target("2026-01-01") == pytest.approx(110)
+
+
+def test_scale_bracket_uprating_processes_dependencies_before_dependents():
+    from policyengine_core.parameters import ParameterNode, uprate_parameters
+
+    root = ParameterNode(
+        data={
+            "scale": {
+                "metadata": {
+                    "uprating": "middle",
+                    "uprate_thresholds": True,
+                },
+                "brackets": [
+                    {
+                        "threshold": {"values": {"2025-01-01": 100}},
+                        "rate": {"values": {"2025-01-01": 0.1}},
+                    },
+                ],
+            },
+            "middle": {
+                "values": {"2025-01-01": 100},
+                "metadata": {"uprating": "base"},
+            },
+            "base": {
+                "values": {"2025-01-01": 100, "2026-01-01": 110},
+            },
+        }
+    )
+
+    uprated = uprate_parameters(root)
+
+    assert uprated.middle("2026-01-01") == pytest.approx(110)
+    assert uprated.scale.brackets[0].threshold("2026-01-01") == pytest.approx(110)
+
+
+def test_parameter_uprating_rejects_cyclic_dependencies():
+    from policyengine_core.parameters import ParameterNode, uprate_parameters
+
+    root = ParameterNode(
+        data={
+            "a": {
+                "values": {"2025-01-01": 100},
+                "metadata": {"uprating": "b"},
+            },
+            "b": {
+                "values": {"2025-01-01": 100},
+                "metadata": {"uprating": "a"},
+            },
+        }
+    )
+
+    with pytest.raises(ValueError, match="Cyclic uprating dependency"):
+        uprate_parameters(root)
+
+
+def test_parameter_node_loads_directory_children_deterministically(
+    tmp_path,
+    monkeypatch,
+):
+    from policyengine_core.parameters import ParameterNode
+
+    for child_name in ("zeta.yaml", "alpha.yaml"):
+        (tmp_path / child_name).write_text(
+            "values:\n  2025-01-01:\n    value: 1\n",
+            encoding="utf-8",
+        )
+
+    monkeypatch.setattr(
+        "os.listdir",
+        lambda directory_path: ["zeta.yaml", "alpha.yaml"],
+    )
+
+    root = ParameterNode(directory_path=str(tmp_path))
+
+    assert list(root.children) == ["alpha", "zeta"]
+
+
 def test_parameter_uprating():
     from policyengine_core.parameters import ParameterNode
 

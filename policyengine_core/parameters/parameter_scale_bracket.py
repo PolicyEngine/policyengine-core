@@ -7,7 +7,7 @@ class ParameterScaleBracket(ParameterNode):
     A parameter scale bracket.
     """
 
-    _allowed_keys = set(["amount", "threshold", "rate", "average_rate", "base"])
+    _allowed_keys = ("amount", "threshold", "rate", "average_rate", "base")
 
     @staticmethod
     def allowed_unit_keys():

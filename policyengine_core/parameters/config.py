@@ -7,7 +7,7 @@ import yaml
 from policyengine_core.warnings import LibYAMLWarning
 
 try:
-    from yaml import CLoader as Loader
+    from yaml import CSafeLoader as Loader
 except ImportError:
     message = [
         "libyaml is not installed in your environment.",
@@ -17,7 +17,7 @@ except ImportError:
     ]
     warnings.warn(" ".join(message), LibYAMLWarning)
     from yaml import (
-        Loader,
+        SafeLoader as Loader,
     )  # type: ignore # (see https://github.com/python/mypy/issues/1153#issuecomment-455802270)
 
 ALLOWED_PARAM_TYPES = (float, int, bool, type(None), typing.List)
@@ -33,15 +33,30 @@ yaml.add_constructor("tag:yaml.org,2002:timestamp", date_constructor, Loader=Loa
 
 
 def dict_no_duplicate_constructor(loader, node, deep=False):
-    keys = [key.value for key, value in node.value]
+    explicit_keys = {}
+    for key_node, _value_node in node.value:
+        if key_node.tag == "tag:yaml.org,2002:merge":
+            continue
+        key = loader.construct_object(key_node, deep=deep)
+        try:
+            if key in explicit_keys:
+                raise yaml.parser.ParserError(
+                    "", node.start_mark, f"Found duplicate key '{key}'"
+                )
+        except TypeError as exc:
+            raise yaml.constructor.ConstructorError(
+                "", node.start_mark, f"Found unhashable key '{key}'"
+            ) from exc
+        explicit_keys[key] = True
 
-    if len(keys) != len(set(keys)):
-        duplicate = next((key for key in keys if keys.count(key) > 1))
-        raise yaml.parser.ParserError(
-            "", node.start_mark, f"Found duplicate key '{duplicate}'"
-        )
+    loader.flatten_mapping(node)
+    pairs = loader.construct_pairs(node, deep=deep)
+    mapping = {}
 
-    return loader.construct_mapping(node, deep)
+    for key, value in pairs:
+        mapping[key] = value
+
+    return mapping
 
 
 yaml.add_constructor(

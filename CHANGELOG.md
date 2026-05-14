@@ -1,3 +1,10 @@
+## [3.26.2] - 2026-05-14
+
+### Fixed
+
+- Avoid constructing macro-cache metadata during calculations when macro-cache reads are disabled.
+
+
 ## [3.26.1] - 2026-05-07
 
 ### Changed

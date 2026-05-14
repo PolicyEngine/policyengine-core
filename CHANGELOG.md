@@ -1,3 +1,10 @@
+## [3.26.4] - 2026-05-14
+
+### Fixed
+
+- Use safe YAML loaders and remove dynamic eval from parameter breakdown handling.
+
+
 ## [3.26.3] - 2026-05-14
 
 ### Fixed

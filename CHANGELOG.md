@@ -1,3 +1,10 @@
+## [3.26.5] - 2026-05-14
+
+### Fixed
+
+- Fixed uprating dependency sorting for cloned parameter subtrees with duplicate parameter names.
+
+
 ## [3.26.4] - 2026-05-14
 
 ### Fixed

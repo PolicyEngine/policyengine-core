@@ -1,7 +1,7 @@
 import hashlib
 import tempfile
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, List, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
 import numpy as np
 import pandas as pd
@@ -64,6 +64,10 @@ class PreservedUserInput:
     branch_name: str
     period: Period
     value: object
+    storage: str
+    disk_key: Optional[str] = None
+    disk_file: Optional[str] = None
+    disk_enum: object = None
 
 
 class Simulation:
@@ -297,8 +301,31 @@ class Simulation:
                         branch_name=branch_name,
                         period=period,
                         value=stored_value,
+                        storage="memory",
                     )
                 )
+                continue
+            if holder._disk_storage is not None:
+                disk_period = (
+                    periods.period(periods.ETERNITY)
+                    if holder._disk_storage.is_eternal
+                    else periods.period(period)
+                )
+                disk_key = f"{branch_name}_{disk_period}"
+                disk_file = holder._disk_storage._files.get(disk_key)
+                if disk_file is not None:
+                    preserved.append(
+                        PreservedUserInput(
+                            variable_name=variable_name,
+                            branch_name=branch_name,
+                            period=period,
+                            value=None,
+                            storage="disk",
+                            disk_key=disk_key,
+                            disk_file=disk_file,
+                            disk_enum=holder._disk_storage._enums.get(disk_file),
+                        )
+                    )
         # Iterate only over holders that already exist on each population —
         # lazy-creating a holder for every variable in the tax-benefit
         # system (thousands in policyengine-us) inflated the cost of
@@ -313,11 +340,18 @@ class Simulation:
         # Replay preserved user inputs so ``calculate`` still sees them.
         for user_input in preserved:
             holder = self.get_holder(user_input.variable_name)
-            holder._memory_storage.put(
-                user_input.value,
-                user_input.period,
-                user_input.branch_name,
-            )
+            if user_input.storage == "disk" and holder._disk_storage is not None:
+                holder._disk_storage._files[user_input.disk_key] = user_input.disk_file
+                if user_input.disk_enum is not None:
+                    holder._disk_storage._enums[user_input.disk_file] = (
+                        user_input.disk_enum
+                    )
+            else:
+                holder._memory_storage.put(
+                    user_input.value,
+                    user_input.period,
+                    user_input.branch_name,
+                )
         for branch in self.branches.values():
             branch._invalidate_all_caches()
 
@@ -1302,12 +1336,6 @@ class Simulation:
         if (variable.end is not None) and (period.start.date > variable.end):
             return
         self.get_holder(variable_name).set_input(period, value, self.branch_name)
-        # Lazy-init ``_user_input_keys`` so country-package subclasses that
-        # override ``__init__`` without calling ``super().__init__`` still
-        # benefit from the set-input preservation across ``apply_reform``.
-        if not hasattr(self, "_user_input_keys"):
-            self._user_input_keys = set()
-        self._user_input_keys.add((variable_name, self.branch_name, period))
         _fast_cache = getattr(self, "_fast_cache", None)
         if _fast_cache is not None:
             _fast_cache.pop((variable_name, period), None)

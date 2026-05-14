@@ -94,6 +94,14 @@ class Holder:
         if self._disk_storage:
             self._disk_storage.delete(period, branch_name)
 
+    def _get_array_from_storage(
+        self, period: Period, branch_name: str = "default"
+    ) -> ArrayLike:
+        value = self._memory_storage.get(period, branch_name)
+        if value is None and self._disk_storage:
+            value = self._disk_storage.get(period, branch_name)
+        return value
+
     def get_array(self, period: Period, branch_name: str = "default") -> ArrayLike:
         """
         Get the value of the variable for the given period.
@@ -102,7 +110,9 @@ class Holder:
         """
         if self.variable.is_neutralized:
             return self.default_array()
-        value = self._memory_storage.get(period, branch_name)
+        value = self._get_array_from_storage(period, branch_name)
+        if value is not None:
+            return value
         if value is None and branch_name != "default":
             # Walk up ``simulation.parent_branch`` so nested branches inherit
             # values from their parent (e.g. a ``no_salt`` branch cloned
@@ -121,17 +131,16 @@ class Holder:
                 else None
             )
             while parent is not None:
-                ancestor_value = self._memory_storage.get(period, parent.branch_name)
+                ancestor_value = self._get_array_from_storage(
+                    period,
+                    parent.branch_name,
+                )
                 if ancestor_value is not None:
                     return ancestor_value
                 parent = getattr(parent, "parent_branch", None)
-            default_value = self._memory_storage.get(period, "default")
+            default_value = self._get_array_from_storage(period, "default")
             if default_value is not None:
                 return default_value
-        if value is not None:
-            return value
-        if self._disk_storage:
-            return self._disk_storage.get(period, branch_name)
 
     def get_memory_usage(self) -> dict:
         """
@@ -241,21 +250,23 @@ class Holder:
             return warnings.warn(warning_message, Warning)
         if self.variable.value_type in (float, int) and isinstance(array, str):
             array = tools.eval_expression(array)
-        # Track user-provided inputs on the simulation so
-        # ``Simulation._invalidate_all_caches`` can preserve them across
-        # ``apply_reform``. ``Simulation.set_input`` also records this, but
-        # ``SimulationBuilder.finalize_variables_init`` (the situation-dict
-        # path) and country-package dataset loaders call
-        # ``holder.set_input`` directly, bypassing the simulation-level hook.
-        # Recording here covers both paths.
         simulation = getattr(self, "simulation", None)
         if simulation is not None:
             if not hasattr(simulation, "_user_input_keys"):
                 simulation._user_input_keys = set()
-            simulation._user_input_keys.add((self.variable.name, branch_name, period))
-        if self.variable.set_input and period.unit != self.variable.definition_period:
-            return self.variable.set_input(self, period, array)
-        return self._set(period, array, branch_name)
+            if not hasattr(simulation, "_user_input_contexts"):
+                simulation._user_input_contexts = []
+            simulation._user_input_contexts.append(branch_name)
+        try:
+            if (
+                self.variable.set_input
+                and period.unit != self.variable.definition_period
+            ):
+                return self.variable.set_input(self, period, array)
+            return self._set(period, array, branch_name)
+        finally:
+            if simulation is not None:
+                simulation._user_input_contexts.pop()
 
     def _to_array(self, value: Any) -> ArrayLike:
         if not isinstance(value, numpy.ndarray):
@@ -295,6 +306,10 @@ class Holder:
     def _set(
         self, period: Period, value: ArrayLike, branch_name: str = "default"
     ) -> None:
+        simulation = getattr(self, "simulation", None)
+        user_input_contexts = getattr(simulation, "_user_input_contexts", None)
+        if user_input_contexts and branch_name == "default":
+            branch_name = user_input_contexts[-1]
         value = self._to_array(value)
         if self.variable.definition_period != periods.ETERNITY:
             if period is None:
@@ -313,6 +328,10 @@ class Holder:
             self._disk_storage.put(value, period, branch_name)
         else:
             self._memory_storage.put(value, period, branch_name)
+        if user_input_contexts:
+            if not hasattr(simulation, "_user_input_keys"):
+                simulation._user_input_keys = set()
+            simulation._user_input_keys.add((self.variable.name, branch_name, period))
 
     def put_in_cache(
         self, value: ArrayLike, period: Period, branch_name: str = "default"

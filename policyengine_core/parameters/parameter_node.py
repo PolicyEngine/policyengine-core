@@ -89,7 +89,7 @@ class ParameterNode(AtInstantLike):
 
         if directory_path:
             self.file_path = directory_path
-            for child_name in os.listdir(directory_path):
+            for child_name in sorted(os.listdir(directory_path)):
                 child_path = os.path.join(directory_path, child_name)
                 if os.path.isfile(child_path):
                     child_name, ext = os.path.splitext(child_name)

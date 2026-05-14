@@ -62,6 +62,21 @@ def test_get_array_falls_back_to_default_branch(tax_benefit_system):
     assert result[0] == 42.0
 
 
+def test_get_array_falls_back_to_default_branch_on_disk(tax_benefit_system):
+    """Branch fallback must work for disk-backed default values too."""
+    sim = _build_single(tax_benefit_system)
+    holder = sim.person.get_holder("salary")
+    period = periods.period("2017-01")
+    holder._disk_storage = holder.create_disk_storage()
+
+    holder._disk_storage.put(np.asarray([5_000.0]), period, "default")
+
+    result = holder.get_array(period, "reform")
+
+    assert result is not None
+    assert result[0] == 5_000.0
+
+
 def test_get_array_falls_back_through_parent_branch_chain(tax_benefit_system):
     """Nested branches must inherit values from their parent branch.
 

@@ -1,3 +1,10 @@
+## [3.26.9] - 2026-05-17
+
+### Changed
+
+- Exclude pseudo-inputs and calculated values from simulation input exports by default.
+
+
 ## [3.26.8] - 2026-05-17
 
 ### Changed

@@ -1588,10 +1588,82 @@ class Simulation:
 
         return True
 
+    def get_input_variables(self, include_computed_variables: bool = True) -> List[str]:
+        """Return variable names stored as inputs on this simulation.
+
+        Args:
+            include_computed_variables: When ``True``, return the legacy
+                runtime list of variables with stored values. When ``False``,
+                return only structurally input variables that were populated
+                through ``set_input`` on the current branch.
+
+        Returns:
+            List[str]: Stored input variable names.
+        """
+        if include_computed_variables:
+            return list(self.input_variables)
+
+        return [
+            variable_name
+            for variable_name in self.tax_benefit_system.variables
+            if len(
+                self._get_exportable_input_periods(
+                    variable_name,
+                    include_computed_variables=False,
+                )
+            )
+            > 0
+        ]
+
+    @property
+    def true_input_variables(self) -> List[str]:
+        """Stored variables that are safe to reload as source inputs."""
+        return self.get_input_variables(include_computed_variables=False)
+
+    def _is_exportable_input_variable(self, variable_name: str) -> bool:
+        variable = self.tax_benefit_system.get_variable(variable_name)
+        return variable is not None and variable.is_input_variable()
+
+    def _get_exportable_input_periods(
+        self,
+        variable_name: str,
+        include_computed_variables: bool,
+    ) -> List[Period]:
+        if include_computed_variables:
+            return self.get_holder(variable_name).get_known_periods()
+
+        if not self._is_exportable_input_variable(variable_name):
+            return []
+
+        user_input_periods = {
+            period
+            for input_variable_name, branch_name, period in getattr(
+                self, "_user_input_keys", set()
+            )
+            if input_variable_name == variable_name and branch_name == self.branch_name
+        }
+        if not user_input_periods:
+            return []
+        variable = self.tax_benefit_system.get_variable(variable_name)
+        holder = self.get_holder(variable_name)
+        if variable.definition_period == ETERNITY:
+            return holder.get_known_periods()
+        known_periods = set(holder.get_known_periods())
+        return sorted(user_input_periods & known_periods, key=str)
+
     def to_input_dataframe(
         self,
+        include_computed_variables: bool = False,
     ) -> pd.DataFrame:
-        """Exports a DataFrame which can be loaded back to a new Simulation to reproduce the same results.
+        """Exports a DataFrame that can be loaded back into a new Simulation.
+
+        By default, only structurally input variables populated through
+        ``set_input`` are exported. This avoids serializing pseudo-inputs and
+        stale calculated values that would override formulas when reloaded.
+
+        Args:
+            include_computed_variables: If ``True``, export every variable with
+                a known period, matching the historical unsafe behavior.
 
         Returns:
             pd.DataFrame: The DataFrame containing the input values.
@@ -1601,7 +1673,9 @@ class Simulation:
 
         for variable in self.tax_benefit_system.variables:
             variable_meta = self.tax_benefit_system.variables[variable]
-            for period in self.get_holder(variable).get_known_periods():
+            for period in self._get_exportable_input_periods(
+                variable, include_computed_variables
+            ):
                 # Test if period matches entity definition period
                 if variable_meta.definition_period != period.unit:
                     continue
@@ -1611,8 +1685,16 @@ class Simulation:
 
         return df
 
-    def to_input_dict(self) -> dict:
-        """Exports a dictionary which can be loaded back to a new Simulation to reproduce the same results.
+    def to_input_dict(self, include_computed_variables: bool = False) -> dict:
+        """Exports a dictionary that can be loaded back into a new Simulation.
+
+        By default, only structurally input variables populated through
+        ``set_input`` are exported. This avoids serializing pseudo-inputs and
+        stale calculated values that would override formulas when reloaded.
+
+        Args:
+            include_computed_variables: If ``True``, export every variable with
+                a known period, matching the historical unsafe behavior.
 
         Returns:
             dict: The dictionary containing the input values.
@@ -1621,7 +1703,9 @@ class Simulation:
 
         for variable in self.tax_benefit_system.variables:
             data[variable] = {}
-            for period in self.get_holder(variable).get_known_periods():
+            for period in self._get_exportable_input_periods(
+                variable, include_computed_variables
+            ):
                 values = self.calculate(variable, period, map_to="person")
                 if values is not None:
                     data[variable][str(period)] = values.tolist()

@@ -1,3 +1,10 @@
+## [3.26.6] - 2026-05-17
+
+### Fixed
+
+- Raised a clear error when numeric simulation inputs contain NaN values.
+
+
 ## [3.26.5] - 2026-05-14
 
 ### Fixed

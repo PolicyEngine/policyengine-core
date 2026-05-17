@@ -1,3 +1,10 @@
+## [3.26.10] - 2026-05-17
+
+### Changed
+
+- Derive microsimulation weights from household weights instead of entity-specific weight variables.
+
+
 ## [3.26.9] - 2026-05-17
 
 ### Changed

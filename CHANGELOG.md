@@ -1,3 +1,10 @@
+## [3.26.8] - 2026-05-17
+
+### Changed
+
+- Disallow variable definitions that combine formula, adds/subtracts, and uprating computation modes.
+
+
 ## [3.26.7] - 2026-05-17
 
 ### Changed

@@ -16,26 +16,52 @@ class Microsimulation(Simulation):
     def get_weights(
         self, variable_name: str, period: Period, map_to: str = None
     ) -> ArrayLike:
+        """Return weights for a variable's entity from ``household_weight``."""
         time_period = get_period(period)
-        variable = self.tax_benefit_system.get_variable(variable_name)
+        variable = self.tax_benefit_system.get_variable(
+            variable_name, check_existence=True
+        )
         entity_key = map_to or variable.entity.key
-        weight_variable_name = f"{entity_key}_weight"
-        weight_variable = self.tax_benefit_system.get_variable(weight_variable_name)
-        weights = None
+        weight_variable = self.tax_benefit_system.get_variable(
+            "household_weight", check_existence=True
+        )
+        weight_period = None
 
         if time_period.unit == weight_variable.definition_period:
-            weights = self.calculate(
-                weight_variable_name, time_period, use_weights=False
-            )
+            weight_period = time_period
         elif (time_period.unit == MONTH) and (
             weight_variable.definition_period == YEAR
         ):
             # Common use-case. To-do: implement others if needed.
-            weights = self.calculate(
-                weight_variable_name, time_period.this_year, use_weights=False
-            )
+            weight_period = time_period.this_year
 
-        return weights
+        if weight_period is None:
+            return None
+
+        household_weights = self.calculate(
+            "household_weight",
+            weight_period,
+            use_weights=False,
+        )
+        return self._project_household_weights(household_weights, entity_key)
+
+    def _project_household_weights(
+        self,
+        household_weights: ArrayLike,
+        entity_key: str,
+    ) -> ArrayLike:
+        household_entity = self.tax_benefit_system.get_variable(
+            "household_weight", check_existence=True
+        ).entity.key
+        if entity_key == household_entity:
+            return household_weights
+
+        household_population = self.populations[household_entity]
+        person_weights = household_population.project(household_weights)
+        if entity_key == self.tax_benefit_system.person_entity.key:
+            return person_weights
+
+        return self.populations[entity_key].value_from_first_person(person_weights)
 
     def calculate(
         self,
@@ -95,5 +121,5 @@ class Microsimulation(Simulation):
         values = super().calculate_dataframe(variable_names, period, map_to)
         if not use_weights:
             return values
-        weights = self.get_weights(variable_names[0], period)
+        weights = self.get_weights(variable_names[0], period, map_to)
         return MicroDataFrame(values, weights=weights)

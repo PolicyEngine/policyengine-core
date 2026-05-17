@@ -293,47 +293,17 @@ def amount_between(
 
 def random(population):
     """
-    Generate random values for each entity in the population.
+    Raise an error for formula-time randomness.
 
-    Args:
-        population: The population object containing simulation data.
-
-    Returns:
-        np.ndarray: Array of random values for each entity.
+    Random values should be created during data construction and exposed to
+    formulas as ordinary input variables, so simulations remain reproducible and
+    calibration outputs stay tied to the records that were calibrated.
     """
-    # Initialize count of random calls if not already present
-    if not hasattr(population.simulation, "count_random_calls"):
-        population.simulation.count_random_calls = 0
-    population.simulation.count_random_calls += 1
-
-    # Get known periods or use default calculation period
-    known_periods = population.simulation.get_holder(
-        f"{population.entity.key}_id"
-    ).get_known_periods()
-    period = (
-        known_periods[0]
-        if known_periods
-        else population.simulation.default_calculation_period
+    raise RuntimeError(
+        "Formula-time randomness is not allowed. Create random seeds or draws "
+        "during microdata construction and read them through input variables "
+        "inside formulas."
     )
-
-    # Get entity IDs for the period
-    entity_ids = population(f"{population.entity.key}_id", period)
-
-    # Generate deterministic random values using vectorised hash
-    seeds = np.abs(entity_ids * 100 + population.simulation.count_random_calls).astype(
-        np.uint64
-    )
-
-    # PCG-style mixing function for high-quality pseudo-random generation
-    x = seeds * np.uint64(0x5851F42D4C957F2D)
-    x = x ^ (x >> np.uint64(33))
-    x = x * np.uint64(0xC4CEB9FE1A85EC53)
-    x = x ^ (x >> np.uint64(33))
-
-    # Convert to float in [0, 1) using upper 53 bits for full double precision
-    values = (x >> np.uint64(11)).astype(np.float64) / (2**53)
-
-    return values
 
 
 def is_in(values: ArrayLike, *targets: list) -> ArrayLike:

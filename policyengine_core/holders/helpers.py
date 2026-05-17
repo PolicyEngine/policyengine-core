@@ -30,7 +30,7 @@ def set_input_dispatch_by_period(holder: Holder, period: Period, array: ArrayLik
 
     To read more about ``set_input`` attributes, check the `documentation <https://openfisca.org/doc/coding-the-legislation/35_periods.html#set-input-automatically-process-variable-inputs-defined-for-periods-not-matching-the-definition-period>`_.
     """
-    array = holder._to_array(array)
+    array = holder._to_array(array, validate_nan=True)
 
     period_size = period.size
     period_unit = period.unit
@@ -70,6 +70,7 @@ def set_input_divide_by_period(holder: Holder, period: Period, array: ArrayLike)
     """
     if not isinstance(array, numpy.ndarray):
         array = numpy.array(array)
+    array = holder._to_array(array, validate_nan=True)
     period_size = period.size
     period_unit = period.unit
 

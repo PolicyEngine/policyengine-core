@@ -216,3 +216,66 @@ def test_set_input_float_to_int(single):
     simulation.person.get_holder("age").set_input(period, age)
     result = simulation.calculate("age", period)
     assert result == numpy.asarray([50])
+
+
+def test__given_nan_float_array__then_set_input_raises_value_error(single):
+    simulation = single
+
+    with pytest.raises(ValueError, match='variable "salary".*NaN'):
+        simulation.set_input("salary", period, numpy.asarray([numpy.nan]))
+
+
+def test__given_nan_int_array__then_set_input_raises_value_error(single):
+    simulation = single
+
+    with pytest.raises(ValueError, match='variable "age".*NaN'):
+        simulation.set_input("age", period, numpy.asarray([numpy.nan]))
+
+
+def test__given_object_array_containing_nan__then_set_input_raises_value_error(
+    single,
+):
+    simulation = single
+    age = numpy.asarray([numpy.nan], dtype=object)
+
+    with pytest.raises(ValueError, match='variable "age".*NaN'):
+        simulation.set_input("age", period, age)
+
+
+def test__given_nan_yearly_input__then_set_input_divide_by_period_raises_value_error(
+    single,
+):
+    simulation = single
+    salary_holder = simulation.person.get_holder("salary")
+
+    with pytest.raises(ValueError, match='variable "salary".*NaN'):
+        holders.set_input_divide_by_period(
+            salary_holder,
+            periods.period(2017),
+            numpy.asarray([numpy.nan]),
+        )
+
+
+def test__given_nan_period_dispatch_input__then_helper_raises_value_error(
+    single,
+):
+    simulation = single
+    age_holder = simulation.person.get_holder("age")
+
+    with pytest.raises(ValueError, match='variable "age".*NaN'):
+        holders.set_input_dispatch_by_period(
+            age_holder,
+            periods.period(2017),
+            numpy.asarray([numpy.nan]),
+        )
+
+
+def test__given_nan_cache_value__then_put_in_cache_keeps_internal_write_allowed(
+    single,
+):
+    simulation = single
+    salary_holder = simulation.person.get_holder("salary")
+
+    salary_holder.put_in_cache(numpy.asarray([numpy.nan]), period)
+
+    assert numpy.isnan(salary_holder.get_array(period)).all()

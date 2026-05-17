@@ -1,3 +1,10 @@
+## [3.26.7] - 2026-05-17
+
+### Changed
+
+- Disallowed formula-time randomness through `random()`, directing model authors to use input seed or draw variables instead.
+
+
 ## [3.26.6] - 2026-05-17
 
 ### Fixed

@@ -7,7 +7,7 @@ from pytest import fixture, mark, raises
 import policyengine_core.country_template as country_template
 import policyengine_core.country_template.situation_examples
 from policyengine_core.country_template.entities import Person
-from policyengine_core.model_api import Variable
+from policyengine_core.model_api import Variable, uprated
 from policyengine_core.periods import ETERNITY, MONTH
 from policyengine_core.simulations import SimulationBuilder
 from policyengine_core.tools import assert_near
@@ -555,13 +555,11 @@ class variable__one_formula_one_add(Variable):
 
 
 def test_one_formula_one_add():
-    check_error_at_add_variable(
-        tax_benefit_system,
-        variable__one_formula_one_add,
-        'Variable "{name}" has a formula and an add or subtract'.format(
-            name="variable__one_formula_one_add"
-        ),
-    )
+    with raises(
+        ValueError,
+        match='Variable "variable__one_formula_one_add" mixes computation modes: formula and adds/subtracts',
+    ):
+        tax_benefit_system.add_variable(variable__one_formula_one_add)
 
 
 class variable__one_formula_one_subtract(Variable):
@@ -569,20 +567,144 @@ class variable__one_formula_one_subtract(Variable):
     entity = Person
     definition_period = MONTH
     label = "Variable with one formula and one subtract."
-    adds = ["pass"]
+    subtracts = ["pass"]
 
     def formula():
         pass
 
 
 def test_one_formula_one_subtract():
-    check_error_at_add_variable(
-        tax_benefit_system,
-        variable__one_formula_one_subtract,
-        'Variable "{name}" has a formula and an add or subtract'.format(
-            name="variable__one_formula_one_subtract"
-        ),
-    )
+    with raises(
+        ValueError,
+        match='Variable "variable__one_formula_one_subtract" mixes computation modes: formula and adds/subtracts',
+    ):
+        tax_benefit_system.add_variable(variable__one_formula_one_subtract)
+
+
+class variable__one_formula_one_uprating(Variable):
+    value_type = int
+    entity = Person
+    definition_period = MONTH
+    label = "Variable with one formula and one uprating."
+    uprating = "uprating.index"
+
+    def formula():
+        pass
+
+
+def test_one_formula_one_uprating():
+    with raises(
+        ValueError,
+        match='Variable "variable__one_formula_one_uprating" mixes computation modes: formula and uprating',
+    ):
+        tax_benefit_system.add_variable(variable__one_formula_one_uprating)
+
+
+class variable__one_add_one_uprating(Variable):
+    value_type = int
+    entity = Person
+    definition_period = MONTH
+    label = "Variable with one add and one uprating."
+    adds = ["pass"]
+    uprating = "uprating.index"
+
+
+def test_one_add_one_uprating():
+    with raises(
+        ValueError,
+        match='Variable "variable__one_add_one_uprating" mixes computation modes: adds/subtracts and uprating',
+    ):
+        tax_benefit_system.add_variable(variable__one_add_one_uprating)
+
+
+class variable__one_subtract_one_uprating(Variable):
+    value_type = int
+    entity = Person
+    definition_period = MONTH
+    label = "Variable with one subtract and one uprating."
+    subtracts = ["pass"]
+    uprating = "uprating.index"
+
+
+def test_one_subtract_one_uprating():
+    with raises(
+        ValueError,
+        match='Variable "variable__one_subtract_one_uprating" mixes computation modes: adds/subtracts and uprating',
+    ):
+        tax_benefit_system.add_variable(variable__one_subtract_one_uprating)
+
+
+def test_uprated_decorator_rejects_existing_formula():
+    with raises(
+        ValueError,
+        match='Variable "variable__uprated_decorator_one_formula" uses @uprated and has a formula',
+    ):
+
+        @uprated("uprating.index")
+        class variable__uprated_decorator_one_formula(Variable):
+            value_type = int
+            entity = Person
+            definition_period = MONTH
+            label = "Variable with @uprated and one formula."
+
+            def formula():
+                pass
+
+
+def test_uprated_decorator_rejects_existing_adds():
+    with raises(
+        ValueError,
+        match='Variable "variable__uprated_decorator_one_add" uses @uprated and has adds/subtracts',
+    ):
+
+        @uprated("uprating.index")
+        class variable__uprated_decorator_one_add(Variable):
+            value_type = int
+            entity = Person
+            definition_period = MONTH
+            label = "Variable with @uprated and one add."
+            adds = ["pass"]
+
+
+def test_uprated_decorator_rejects_existing_subtracts():
+    with raises(
+        ValueError,
+        match='Variable "variable__uprated_decorator_one_subtract" uses @uprated and has adds/subtracts',
+    ):
+
+        @uprated("uprating.index")
+        class variable__uprated_decorator_one_subtract(Variable):
+            value_type = int
+            entity = Person
+            definition_period = MONTH
+            label = "Variable with @uprated and one subtract."
+            subtracts = ["pass"]
+
+
+def test_uprated_decorator_rejects_existing_uprating():
+    with raises(
+        ValueError,
+        match='Variable "variable__uprated_decorator_one_uprating" uses @uprated and has uprating',
+    ):
+
+        @uprated("uprating.index")
+        class variable__uprated_decorator_one_uprating(Variable):
+            value_type = int
+            entity = Person
+            definition_period = MONTH
+            label = "Variable with @uprated and one uprating."
+            uprating = "uprating.index"
+
+
+def test_uprated_decorator_allows_input_variable():
+    @uprated("uprating.index")
+    class variable__uprated_decorator_input(Variable):
+        value_type = int
+        entity = Person
+        definition_period = MONTH
+        label = "Input variable with @uprated."
+
+    assert hasattr(variable__uprated_decorator_input, "formula_2015")
 
 
 class variable__one_formula(Variable):
@@ -627,6 +749,48 @@ def test_one_subtract():
     tax_benefit_system.add_variable(variable__one_subtract)
     variable = tax_benefit_system.variables["variable__one_subtract"]
     assert len(variable.subtracts)
+
+
+class variable__one_add_one_subtract(Variable):
+    value_type = int
+    entity = Person
+    definition_period = MONTH
+    label = "Variable with one add and one subtract."
+    adds = ["pass"]
+    subtracts = ["pass"]
+
+
+def test_one_add_one_subtract():
+    tax_benefit_system.add_variable(variable__one_add_one_subtract)
+    variable = tax_benefit_system.variables["variable__one_add_one_subtract"]
+    assert len(variable.adds)
+    assert len(variable.subtracts)
+
+
+def test_runtime_uprating_assignment_rejects_existing_adds():
+    variable = variable__one_add()
+
+    with raises(
+        ValueError,
+        match='Variable "variable__one_add" mixes computation modes: adds/subtracts and uprating',
+    ):
+        variable.uprating = "uprating.index"
+    assert variable.uprating is None
+
+
+class variable__runtime_uprating_input(Variable):
+    value_type = int
+    entity = Person
+    definition_period = MONTH
+    label = "Input variable with runtime uprating assignment."
+
+
+def test_runtime_uprating_assignment_allows_input_variable():
+    variable = variable__runtime_uprating_input()
+
+    variable.uprating = "uprating.index"
+
+    assert variable.uprating == "uprating.index"
 
 
 class variable__no_label(Variable):

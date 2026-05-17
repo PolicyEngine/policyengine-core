@@ -218,3 +218,27 @@ def test__given_pseudo_input_in_dataset__then_input_dict_h5_round_trip_excludes_
         include_computed_variables=True
     )
     assert reloaded.calculate("pseudo_input_for_safe_export", "2022-01")[0] == 0.0
+
+
+def test__given_branch_inherits_dataset_inputs__then_safe_exports_include_them(
+    isolated_tax_benefit_system,
+):
+    # Given
+    simulation = _safe_export_simulation(isolated_tax_benefit_system)
+    branch = simulation.get_branch("reform")
+
+    assert branch.calculate("salary", "2022-01")[0] == 0.0
+
+    # When
+    dataframe = branch.to_input_dataframe()
+    exported_data = branch.to_input_dict()
+
+    # Then
+    assert "person_id__ETERNITY" in dataframe.columns
+    assert "household_id__ETERNITY" in dataframe.columns
+    assert "household_weight__2022" in dataframe.columns
+    assert "salary__2022-01" in dataframe.columns
+    assert "pseudo_input_for_safe_export__2022-01" not in dataframe.columns
+    assert "salary" in exported_data
+    assert "pseudo_input_for_safe_export" not in exported_data
+    assert "salary" in branch.true_input_variables

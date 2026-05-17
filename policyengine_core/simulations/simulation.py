@@ -1624,6 +1624,15 @@ class Simulation:
         variable = self.tax_benefit_system.get_variable(variable_name)
         return variable is not None and variable.is_input_variable()
 
+    def _get_visible_branch_names(self) -> List[str]:
+        branch_names = [self.branch_name]
+        parent = getattr(self, "parent_branch", None)
+        while parent is not None:
+            branch_names.append(parent.branch_name)
+            parent = getattr(parent, "parent_branch", None)
+        branch_names.append("default")
+        return list(dict.fromkeys(branch_names))
+
     def _get_exportable_input_periods(
         self,
         variable_name: str,
@@ -1640,7 +1649,8 @@ class Simulation:
             for input_variable_name, branch_name, period in getattr(
                 self, "_user_input_keys", set()
             )
-            if input_variable_name == variable_name and branch_name == self.branch_name
+            if input_variable_name == variable_name
+            and branch_name in self._get_visible_branch_names()
         }
         if not user_input_periods:
             return []

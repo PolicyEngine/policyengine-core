@@ -2,8 +2,8 @@
 
 Python's built-in ``hash()`` is randomized per process for strings, so any seed
 derived from it changes from one ``python`` invocation to the next. This module
-ensures ``Simulation`` uses a stable hash so results involving ``random()`` are
-reproducible across runs (issue C6 in the 2026-04 bug hunt, related to #412).
+ensures ``Simulation`` uses a stable hash when it seeds NumPy for existing
+deterministic simulation paths.
 """
 
 from __future__ import annotations
@@ -54,7 +54,7 @@ def test_stable_hash_to_seed_covers_seed_range():
 
 def test_sort_keys_makes_equivalent_inputs_share_a_seed():
     # Two equivalent situations constructed with different dict insertion order
-    # must produce the same hash / seed so calls to ``random()`` are stable.
+    # must produce the same hash / seed.
     a = {"person": {"you": {"employment_income": 1000, "age": 30}}}
     b = {"person": {"you": {"age": 30, "employment_income": 1000}}}
     seed_a = _stable_hash_to_seed(json.dumps(a, sort_keys=True))

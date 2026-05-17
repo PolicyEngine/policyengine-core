@@ -318,6 +318,8 @@ class Variable:
         )
         self.formulas = self.set_formulas(formulas_attr)
 
+        self.check_computation_modes()
+
         if unexpected_attrs:
             raise ValueError(
                 'Unexpected attributes in definition of variable "{}": {!r}'.format(
@@ -328,6 +330,41 @@ class Variable:
         self.is_neutralized = False
 
     # ----- Setters used to build the variable ----- #
+
+    @property
+    def uprating(self):
+        return getattr(self, "_uprating", None)
+
+    @uprating.setter
+    def uprating(self, value):
+        old_value = getattr(self, "_uprating", None)
+        self._uprating = value
+        if hasattr(self, "formulas"):
+            try:
+                self.check_computation_modes()
+            except ValueError:
+                self._uprating = old_value
+                raise
+
+    def get_computation_modes(self):
+        computation_modes = []
+        if self.formulas:
+            computation_modes.append("formula")
+        if self.adds is not None or self.subtracts is not None:
+            computation_modes.append("adds/subtracts")
+        if self.uprating is not None:
+            computation_modes.append("uprating")
+        return computation_modes
+
+    def check_computation_modes(self):
+        computation_modes = self.get_computation_modes()
+        if len(computation_modes) > 1:
+            raise ValueError(
+                f'Variable "{self.name}" mixes computation modes: '
+                f"{' and '.join(computation_modes)}. Variables must use at "
+                "most one of formula, adds/subtracts, or uprating; plain "
+                "input or constant variables should use none."
+            )
 
     def set(
         self,

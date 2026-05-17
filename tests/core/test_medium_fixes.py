@@ -1,9 +1,5 @@
 """Regression tests for a batch of surgical Medium-severity fixes.
 
-* M1  — ``@uprated`` short-circuit used Python ``all()`` instead of
-        ``numpy.all(old == 0)``. Previously the guard returned ``True`` only
-        when the first element was zero (truthiness) rather than "no values
-        have been inputted".
 * M8  — ``SimulationBuilder`` multi-axis ``linspace`` branch divided by
         ``axis_count - 1``, crashing on single-point axes.
 * M10 — ``Dataset.download`` parsed ``release://org/repo/tag/file`` with
@@ -17,7 +13,6 @@ from __future__ import annotations
 
 import datetime
 
-import numpy as np
 import pytest
 
 from policyengine_core.variables.config import VALUE_TYPES
@@ -42,19 +37,3 @@ def test_single_point_axis_does_not_divide_by_zero(persons):
     # After the fix, a single-point axis produces the ``axis["min"]`` value.
     builder.expand_axes()
     assert builder.get_input("salary", "2018-11") == pytest.approx([500])
-
-
-def test_all_numpy_guard_triggers_on_all_zero_old():
-    """Bug M1: ``np.all(old == 0)`` must be used, not Python ``all(old)``.
-
-    Python ``all([1, 0, 0])`` == True (because 1 is truthy), so the guard
-    would NOT fire. ``np.all([1, 0, 0] == 0)`` == False, which correctly
-    says "not all zero".
-    """
-    old = np.array([1, 0, 0])
-    # Python truthy-check semantics: ``all([1, 0, 0])`` -> False because
-    # 0 is falsy. For the reversed test case with all zeros:
-    all_zero = np.array([0, 0, 0])
-    # The fix uses ``np.all(old == 0)`` which is True iff every element is 0.
-    assert np.all(all_zero == 0)
-    assert not np.all(old == 0)

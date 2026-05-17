@@ -250,6 +250,7 @@ class Holder:
             return warnings.warn(warning_message, Warning)
         if self.variable.value_type in (float, int) and isinstance(array, str):
             array = tools.eval_expression(array)
+        self._raise_if_input_contains_nan(numpy.asarray(array))
         simulation = getattr(self, "simulation", None)
         if simulation is not None:
             if not hasattr(simulation, "_user_input_keys"):
@@ -263,12 +264,29 @@ class Holder:
                 and period.unit != self.variable.definition_period
             ):
                 return self.variable.set_input(self, period, array)
-            return self._set(period, array, branch_name)
+            return self._set(period, array, branch_name, validate_nan=True)
         finally:
             if simulation is not None:
                 simulation._user_input_contexts.pop()
 
-    def _to_array(self, value: Any) -> ArrayLike:
+    def _raise_if_input_contains_nan(self, value: ArrayLike) -> None:
+        if self.variable.value_type not in (float, int):
+            return
+        value = numpy.asarray(value)
+        try:
+            if value.dtype.kind in ("O", "S", "U"):
+                value = value.astype(float)
+            contains_nan = numpy.isnan(value).any()
+        except (TypeError, ValueError):
+            return
+        if contains_nan:
+            raise ValueError(
+                'Unable to set value for variable "{}", as the input contains NaN values.'.format(
+                    self.variable.name,
+                )
+            )
+
+    def _to_array(self, value: Any, validate_nan: bool = False) -> ArrayLike:
         if not isinstance(value, numpy.ndarray):
             value = numpy.asarray(value)
         if value.ndim == 0:
@@ -284,6 +302,8 @@ class Holder:
                     self.population.entity.plural,
                 )
             )
+        if validate_nan:
+            self._raise_if_input_contains_nan(value)
         if self.variable.value_type == Enum:
             original_value = value
             value = self.variable.possible_values.encode(value)
@@ -301,16 +321,22 @@ class Holder:
                         value.dtype,
                     )
                 )
+        if validate_nan:
+            self._raise_if_input_contains_nan(value)
         return value
 
     def _set(
-        self, period: Period, value: ArrayLike, branch_name: str = "default"
+        self,
+        period: Period,
+        value: ArrayLike,
+        branch_name: str = "default",
+        validate_nan: bool = False,
     ) -> None:
         simulation = getattr(self, "simulation", None)
         user_input_contexts = getattr(simulation, "_user_input_contexts", None)
         if user_input_contexts and branch_name == "default":
             branch_name = user_input_contexts[-1]
-        value = self._to_array(value)
+        value = self._to_array(value, validate_nan=validate_nan)
         if self.variable.definition_period != periods.ETERNITY:
             if period is None:
                 raise ValueError(

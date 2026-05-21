@@ -18,8 +18,22 @@ import numpy as np
 import pandas as pd
 
 from policyengine_core.country_template import Microsimulation
+from policyengine_core.country_template import Simulation as CountryTemplateSimulation
+from policyengine_core.country_template.entities import Person
 from policyengine_core.data import Dataset
+from policyengine_core.model_api import Variable
+from policyengine_core.periods import YEAR
 from policyengine_core.periods import period as make_period
+
+
+class person_id(Variable):
+    value_type = int
+    entity = Person
+    definition_period = YEAR
+    label = "Formula-backed person ID for subsample regression tests."
+
+    def formula(person, period):
+        return np.arange(person.count)
 
 
 def _build_mini_dataset() -> Dataset:
@@ -38,6 +52,34 @@ def _build_mini_dataset() -> Dataset:
         }
     )
     return Dataset.from_dataframe(df, "2022")
+
+
+def _build_formula_backed_id_simulation(
+    isolated_tax_benefit_system,
+) -> CountryTemplateSimulation:
+    isolated_tax_benefit_system.replace_variable(person_id)
+    return CountryTemplateSimulation(
+        tax_benefit_system=isolated_tax_benefit_system,
+        dataset=_build_mini_dataset(),
+    )
+
+
+def test_subsample_preserves_formula_backed_structural_ids(
+    isolated_tax_benefit_system,
+) -> None:
+    """Subsampling needs IDs that safe public exports intentionally omit."""
+    sim = _build_formula_backed_id_simulation(isolated_tax_benefit_system)
+
+    safe_columns = sim.to_input_dataframe().columns
+    full_columns = sim.to_input_dataframe(include_computed_variables=True).columns
+
+    assert "person_id__2022" not in safe_columns
+    assert "person_id__2022" in full_columns
+
+    sim.subsample(n=1, seed="formula-backed-person-id")
+
+    assert sim.populations["household"].count == 1
+    assert sim.persons.count == 2
 
 
 def test_subsample_clears_stale_fast_cache_entries() -> None:

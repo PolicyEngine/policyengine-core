@@ -1753,8 +1753,9 @@ class Simulation:
         if time_period is None:
             time_period = self.default_calculation_period
 
-        # Convert simulation inputs to DataFrame
-        df = self.to_input_dataframe()
+        # Subsampling rebuilds the complete dataset, so preserve computed
+        # structural variables such as formula-backed IDs.
+        df = self.to_input_dataframe(include_computed_variables=True)
 
         # Extract time period from DataFrame columns
         df_time_period = (

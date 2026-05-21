@@ -1,3 +1,10 @@
+## [3.26.11] - 2026-05-21
+
+### Fixed
+
+- Preserve computed structural dataset variables when subsampling simulations.
+
+
 ## [3.26.10] - 2026-05-17
 
 ### Changed

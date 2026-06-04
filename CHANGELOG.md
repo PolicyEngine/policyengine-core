@@ -1,3 +1,10 @@
+## [3.27.0] - 2026-06-04
+
+### Added
+
+- Forbid random number generation inside variable formulas. A rules-engine formula must be a pure, deterministic function of its inputs, so any call to `numpy.random` or the standard library `random` module while a formula runs now raises `NonDeterministicFormulaError`. Stochastic inputs must be precomputed deterministically when building the dataset. Removes the per-variable `np.random.seed` previously applied before each calculation, which existed only to make formula-level randomness reproducible.
+
+
 ## [3.26.11] - 2026-05-21
 
 ### Fixed

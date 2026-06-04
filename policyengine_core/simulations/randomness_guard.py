@@ -7,11 +7,29 @@ different runs — and makes whole datasets non-reproducible.
 
 While a formula is executing, this guard replaces the callables exposed by
 ``numpy.random`` and the standard library ``random`` module with functions that
-raise :class:`NonDeterministicFormulaError`. Seeding does not make this
-acceptable: stochastic inputs belong in the dataset (computed once,
-deterministically, and stored), not in the formula. The guard is re-entrant, so
-nested formula evaluation is handled correctly, and it restores the original
-callables once the outermost guarded formula returns.
+raise :class:`NonDeterministicFormulaError`. This includes the RNG constructors
+``np.random.default_rng``/``Generator``/``RandomState``, so *building* a
+generator inside a formula — even a seeded one — also raises. Seeding does not
+make randomness acceptable in a formula: stochastic inputs belong in the dataset
+(computed once, deterministically, and stored), not in the formula. The guard is
+re-entrant, so nested formula evaluation is handled correctly, and it restores
+the originals once the outermost guarded formula returns.
+
+Known limitations (pinned by tests in ``test_randomness_guard`` so they cannot
+drift silently):
+
+* A ``Generator``/``RandomState`` instance built *before* the formula runs
+  (e.g. ``rng = np.random.default_rng(0)`` at module scope) is not intercepted
+  when its methods are called inside the formula. ``numpy``'s generator classes
+  are immutable C extension types, so their bound methods cannot be patched.
+* A *bare drawing function* bound into another module's namespace before the
+  guard installs (e.g. ``from numpy.random import random``) is not intercepted,
+  because the guard patches the ``numpy.random`` module attribute, not every
+  rebinding of it.
+
+Both require deliberately hoisting randomness out of the ``np.random.<fn>`` form;
+use ``np.random.<fn>(...)`` or construct the generator inside the formula (both
+caught) rather than importing or pre-building drawing callables.
 """
 
 from __future__ import annotations

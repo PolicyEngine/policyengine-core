@@ -14,6 +14,7 @@ from policyengine_core.data.dataset import Dataset
 from policyengine_core.entities.entity import Entity
 from policyengine_core.enums import Enum, EnumArray
 from policyengine_core.errors import CycleError, SpiralError
+from policyengine_core.simulations.randomness_guard import forbid_randomness
 from policyengine_core.holders.holder import Holder
 from policyengine_core.periods import Period
 from policyengine_core.periods.config import ETERNITY, MONTH, YEAR
@@ -591,7 +592,9 @@ class Simulation:
 
         self.tracer.record_calculation_start(variable_name, period, self.branch_name)
 
-        np.random.seed(_stable_hash_to_seed(variable_name + str(period)))
+        # No per-variable RNG seeding: formulas may not use randomness at all
+        # (enforced by forbid_randomness in _run_formula), so there is nothing
+        # to make reproducible here.
 
         try:
             result = self._calculate(variable_name, period)
@@ -1102,10 +1105,14 @@ class Simulation:
             self.tax_benefit_system.parameters.tracer = self.tracer
         parameters_at = self.tax_benefit_system.parameters
 
-        if formula.__code__.co_argcount == 2:
-            array = formula(population, period)
-        else:
-            array = formula(population, period, parameters_at)
+        # A rules-engine formula must be a pure, deterministic function of its
+        # inputs. Forbid any random number generation while it runs so the same
+        # inputs always produce the same outputs.
+        with forbid_randomness(variable.name):
+            if formula.__code__.co_argcount == 2:
+                array = formula(population, period)
+            else:
+                array = formula(population, period, parameters_at)
 
         return array
 

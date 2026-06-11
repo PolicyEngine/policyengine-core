@@ -145,6 +145,12 @@ class Variable:
             for name, value in self.__class__.__dict__.items()
             if not name.startswith("__")
         }
+        # Attributes the class declares itself, as opposed to attributes
+        # inherited from a baseline variable when a reform updates it.
+        # Computation-mode checks only apply to explicit declarations.
+        self._explicit_attribute_names = frozenset(
+            name for name, value in attr.items() if value is not None
+        )
 
         # Allow inheritance for some properties
         INHERITED_ALLOWED_PROPERTIES = (
@@ -338,12 +344,19 @@ class Variable:
     @uprating.setter
     def uprating(self, value):
         old_value = getattr(self, "_uprating", None)
+        old_explicit = getattr(self, "_explicit_attribute_names", frozenset())
         self._uprating = value
+        # During __init__ (before formulas exist) the assignment may carry a
+        # value inherited from a baseline variable; only runtime assignments
+        # count as explicit declarations.
         if hasattr(self, "formulas"):
+            if value is not None:
+                self._explicit_attribute_names = old_explicit | {"uprating"}
             try:
                 self.check_computation_modes()
             except ValueError:
                 self._uprating = old_value
+                self._explicit_attribute_names = old_explicit
                 raise
 
     def get_computation_modes(self):
@@ -356,8 +369,29 @@ class Variable:
             computation_modes.append("uprating")
         return computation_modes
 
+    def get_explicit_computation_modes(self):
+        """Computation modes the class declares itself.
+
+        Excludes attributes inherited from a baseline variable when a
+        reform updates it: a reform may, for example, redeclare a formula
+        variable with ``adds``, and the inherited baseline formulas keep
+        their runtime precedence rather than constituting a mixed-mode
+        authoring error.
+        """
+        explicit = getattr(self, "_explicit_attribute_names", None)
+        if explicit is None:
+            return self.get_computation_modes()
+        computation_modes = []
+        if any(name.startswith(config.FORMULA_NAME_PREFIX) for name in explicit):
+            computation_modes.append("formula")
+        if "adds" in explicit or "subtracts" in explicit:
+            computation_modes.append("adds/subtracts")
+        if "uprating" in explicit:
+            computation_modes.append("uprating")
+        return computation_modes
+
     def check_computation_modes(self):
-        computation_modes = self.get_computation_modes()
+        computation_modes = self.get_explicit_computation_modes()
         if len(computation_modes) > 1:
             raise ValueError(
                 f'Variable "{self.name}" mixes computation modes: '

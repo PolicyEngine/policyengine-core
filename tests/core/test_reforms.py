@@ -203,6 +203,42 @@ def test_update_variable(make_simulation, tax_benefit_system):
     assert disposable_income2 > 100
 
 
+def test_update_variable_from_formula_to_adds(tax_benefit_system):
+    """Updating a formula variable with an adds declaration is not a
+    mixed-mode authoring error: the baseline formulas are inherited and
+    keep their runtime precedence."""
+
+    class disposable_income(Variable):
+        adds = ["salary"]
+
+    class reform(Reform):
+        def apply(self):
+            self.update_variable(disposable_income)
+
+    reformed = reform(tax_benefit_system)
+    updated = reformed.get_variable("disposable_income")
+
+    assert updated.adds == ["salary"]
+    # Baseline formulas are kept for periods before the update.
+    assert len(updated.formulas) > 0
+    assert updated.get_explicit_computation_modes() == ["adds/subtracts"]
+
+
+def test_update_variable_with_explicit_mixed_modes_raises(tax_benefit_system):
+    class disposable_income(Variable):
+        adds = ["salary"]
+
+        def formula(person, period):
+            return person.empty_array()
+
+    class reform(Reform):
+        def apply(self):
+            self.update_variable(disposable_income)
+
+    with pytest.raises(ValueError, match="mixes computation modes"):
+        reform(tax_benefit_system)
+
+
 def test_replace_variable(tax_benefit_system):
     class disposable_income(Variable):
         definition_period = MONTH

@@ -1,3 +1,10 @@
+## [3.27.1] - 2026-06-11
+
+### Fixed
+
+- Exempt attributes inherited from a baseline variable (via reform `update_variable`) from the exclusive computation-mode check. The check now applies only to modes a variable class declares itself, so reforms may redeclare a formula variable with `adds`/`subtracts` while inherited baseline formulas keep their runtime precedence. Runtime `uprating` assignments still count as explicit declarations.
+
+
 ## [3.27.0] - 2026-06-04
 
 ### Added

@@ -1,3 +1,10 @@
+## [3.28.0] - 2026-06-26
+
+### Removed
+
+- Removed the policyengine-bundles metadata contract check from core pull-request CI.
+
+
 ## [3.27.1] - 2026-06-11
 
 ### Fixed

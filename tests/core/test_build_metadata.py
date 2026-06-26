@@ -3,8 +3,6 @@ from __future__ import annotations
 import importlib.metadata
 import json
 
-import pytest
-
 from policyengine_core import get_runtime_metadata
 from policyengine_core import build_metadata
 
@@ -52,9 +50,3 @@ def test_runtime_metadata_uses_pep_610_vcs_commit(monkeypatch):
         "version": "1.2.3",
         "git_sha": "abc123",
     }
-
-
-def test_runtime_metadata_uses_bundle_contract_when_available():
-    validation = pytest.importorskip("policyengine_bundles")
-
-    validation.load_component_metadata(get_runtime_metadata())

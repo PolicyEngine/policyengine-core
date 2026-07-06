@@ -1,0 +1,6 @@
+description: A parameter with an uprating block misplaced beside values.
+values:
+  2020-01-01: 100
+  2021-01-01: 110
+uprating:
+  parameter: some.index

@@ -1,3 +1,10 @@
+## [3.29.1] - 2026-07-06
+
+### Fixed
+
+- `SingleAmountTaxScale.calc()` now preserves the bracket amounts' dtype, so boolean `single_amount` brackets (`amount_unit: bool`) return a boolean array instead of an int64 `0`/`1` array; this restores logical NOT (`~`) on the result, which previously performed a bitwise negation and silently produced wrong values.
+
+
 ## [3.29.0] - 2026-07-06
 
 ### Added

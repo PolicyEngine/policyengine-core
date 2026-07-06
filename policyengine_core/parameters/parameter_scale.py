@@ -94,6 +94,7 @@ class ParameterScale(AtInstantLike):
             bracket.propagate_uprating(
                 self.metadata.get("uprating"),
                 threshold=self.metadata.get("uprate_thresholds", False),
+                threshold_uprating=self.metadata.get("threshold_uprating"),
             )
 
     def get_descendants(self) -> Iterable:

@@ -22,6 +22,11 @@ except ImportError:
 
 ALLOWED_PARAM_TYPES = (float, int, bool, type(None), typing.List)
 COMMON_KEYS = {"description", "metadata", "documentation"}
+# Keys tolerated beside ``values:``/``value:`` for backward compatibility with
+# older OpenFisca-heritage parameter files. They are recognized (not flagged by
+# the unknown-key check, issue #505) even though the current convention nests
+# them under ``metadata:``.
+LEGACY_COMPAT_KEYS = {"reference", "unit"}
 FILE_EXTENSIONS = {".yaml", ".yml"}
 
 

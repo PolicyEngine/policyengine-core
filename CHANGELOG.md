@@ -1,3 +1,10 @@
+## [3.28.1] - 2026-07-06
+
+### Fixed
+
+- Warn when a parameter YAML node carries an unknown key beside `values:` (for example an `uprating:` block misplaced outside `metadata:`), which was previously dropped silently.
+
+
 ## [3.28.0] - 2026-06-26
 
 ### Removed

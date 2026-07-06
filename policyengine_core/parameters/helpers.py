@@ -1,11 +1,13 @@
 import os
 import traceback
+import warnings
 
 import numpy
 
 from policyengine_core import parameters, periods
 from policyengine_core.errors import ParameterParsingError
 from policyengine_core.parameters import config
+from policyengine_core.warnings import ParameterKeyWarning
 
 
 def contains_nan(vector):
@@ -86,4 +88,48 @@ def _validate_parameter(parameter, data, data_type=None, allowed_keys=None):
         raise ParameterParsingError(
             "'{}' must be of type {}.".format(parameter.name, type_map[data_type]),
             parameter.file_path,
+        )
+
+    if allowed_keys is not None and isinstance(data, dict):
+        _warn_on_unknown_keys(parameter, data, allowed_keys)
+
+
+def _warn_on_unknown_keys(parameter, data, allowed_keys):
+    """Warn about keys placed alongside the recognized parameter keys.
+
+    Unknown siblings are silently discarded by the loader. The most damaging
+    case is an ``uprating:`` block written next to ``values:`` instead of under
+    ``metadata:``, which freezes an indexed parameter at its last explicit value
+    (see issue #505). Emit a ``ParameterKeyWarning`` naming the file, the
+    offending key, and the fix, rather than dropping it silently.
+
+    This is a warning (not an error) so country packages can sweep their trees
+    before it becomes a hard error in a future major release.
+    """
+    unknown_keys = [
+        key
+        for key in data.keys()
+        if key not in allowed_keys and key not in config.LEGACY_COMPAT_KEYS
+    ]
+    for key in unknown_keys:
+        location = (
+            "'{}'".format(parameter.file_path)
+            if parameter.file_path is not None
+            else "parameter '{}'".format(parameter.name)
+        )
+        hint = ""
+        if key == "uprating":
+            hint = " Move `uprating` under `metadata:`."
+        warnings.warn(
+            "Unknown key '{key}' in {location} (parameter '{name}'). "
+            "It sits outside the recognized keys and will be ignored.{hint} "
+            "Allowed keys are: {allowed}.".format(
+                key=key,
+                location=location,
+                name=parameter.name,
+                hint=hint,
+                allowed=", ".join(sorted(str(k) for k in allowed_keys)),
+            ),
+            ParameterKeyWarning,
+            stacklevel=3,
         )

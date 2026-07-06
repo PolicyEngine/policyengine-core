@@ -1,1 +1,0 @@
-Support scale threshold uprating via bracket-level `metadata.uprating` (value side), bracket per-component `metadata.threshold.uprating`/`metadata.amount.uprating`, bracket `metadata.uprate_thresholds`, and scale-level `metadata.threshold_uprating`, without changing the working per-leaf `threshold.metadata.uprating` form.

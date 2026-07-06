@@ -1,3 +1,10 @@
+## [3.29.0] - 2026-07-06
+
+### Added
+
+- Support scale threshold uprating via bracket-level `metadata.uprating` (value side), bracket per-component `metadata.threshold.uprating`/`metadata.amount.uprating`, bracket `metadata.uprate_thresholds`, and scale-level `metadata.threshold_uprating`, without changing the working per-leaf `threshold.metadata.uprating` form.
+
+
 ## [3.28.1] - 2026-07-06
 
 ### Fixed

@@ -138,35 +138,78 @@ class Reform(TaxBenefitSystem):
         """Create a reform from a dictionary of parameters.
 
         Args:
-            parameters: A dictionary of parameter -> { period -> value } pairs.
+            parameter_values: A mapping of ``path -> {period_key: value}``
+                (or the ``path -> scalar`` shorthand).
+
+        Period-key formats, interpreted per parameter:
+            * Bare ISO instant (``"2026"`` / ``"2026-01"`` / ``"2026-01-01"``):
+              the value applies **from that instant onward**, flattening any
+              later scheduled breakpoints (e.g. uprating) until the next
+              reform key for the same parameter. This is the natural reading
+              of a dated policy change and mirrors how a parameter's own
+              value history behaves. To bound a change, use a range instead.
+            * Range ``"start.stop"`` (e.g. ``"2026-01-01.2027-12-31"``): the
+              value applies over the bounded interval ``[start, stop]``; the
+              prior value is restored afterwards.
+            * Compound bounded period (``"year:2026:5"`` / ``"month:2026-01:3"``):
+              the value applies over that bounded period only.
+            * ``"ETERNITY"``: the value applies for all time.
+
+        Errors raised by ``Parameter.update`` (bad value, unknown parameter,
+        malformed key) propagate instead of being silently swallowed.
 
         Returns:
             A reform.
         """
+
+        def _start_instant(period_key: str):
+            """Start instant of a period key, used only to order application.
+
+            ``update(start=..., stop=None)`` removes every breakpoint at or
+            after ``start``, so a later-starting key must be applied after an
+            earlier-starting one or it would clobber it. Sorting entries by
+            this key makes multi-entry dicts order-independent.
+            """
+            if period_key == "ETERNITY":
+                return instant_("0001-01-01")
+            if "." in period_key:
+                return instant_(period_key.split(".")[0])
+            if ":" in period_key:
+                return period_(period_key).start
+            return instant_(period_key)
 
         class reform(Reform):
             def apply(self):
                 for path, period_values in parameter_values.items():
                     parameter = self.parameters.get_child(path)
                     if not isinstance(period_values, dict):
-                        parameter.update(period="year:2000:100", value=period_values)
-                    else:
-                        for period, value in period_values.items():
-                            try:
-                                period = period_(period)
-                                parameter = parameter.update(period=period, value=value)
-                            except:
-                                if "." in period:
-                                    start, stop = period.split(".")
-                                    start = instant_(start)
-                                    stop = instant_(stop)
-                                    parameter.update(
-                                        start=start, stop=stop, value=value
-                                    )
-                                else:
-                                    parameter = parameter.update(
-                                        period=period, value=value
-                                    )
+                        # Scalar shorthand: apply across the default window.
+                        parameter.update(
+                            period="year:2000:100", value=period_values
+                        )
+                        continue
+                    for period_key, value in sorted(
+                        period_values.items(),
+                        key=lambda item: _start_instant(item[0]),
+                    ):
+                        if period_key == "ETERNITY":
+                            parameter.update(value=value)
+                        elif "." in period_key:
+                            start, stop = period_key.split(".")
+                            parameter.update(
+                                start=instant_(start),
+                                stop=instant_(stop),
+                                value=value,
+                            )
+                        elif ":" in period_key:
+                            parameter.update(
+                                period=period_(period_key), value=value
+                            )
+                        else:
+                            # Bare ISO instant: apply from this instant onward.
+                            parameter.update(
+                                start=instant_(period_key), value=value
+                            )
 
         reform.country_id = country_id
         reform.parameter_values = parameter_values
@@ -201,11 +244,15 @@ class Reform(TaxBenefitSystem):
             keys_to_remove = []
             for start_stop_str in list(parameter_values[path].keys()):
                 start, stop = start_stop_str.split(".")
-                time_period = str(
-                    period_("year:2000:100").intersection(
-                        instant_(start), instant_(stop)
-                    )
+                # Clamp to the supported window, then emit an explicit
+                # ``start.stop`` range so from_dict always treats API policies
+                # as bounded. A single-civil-year intersection would otherwise
+                # stringify to a bare "YYYY" which, under the from-onward rule,
+                # would extend the change past the policy's end.
+                clamped = period_("year:2000:100").intersection(
+                    instant_(start), instant_(stop)
                 )
+                time_period = f"{clamped.start}.{clamped.stop}"
                 parameter_values[path][time_period] = parameter_values[path][
                     start_stop_str
                 ]

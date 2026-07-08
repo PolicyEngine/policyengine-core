@@ -184,9 +184,7 @@ class Reform(TaxBenefitSystem):
                     parameter = self.parameters.get_child(path)
                     if not isinstance(period_values, dict):
                         # Scalar shorthand: apply across the default window.
-                        parameter.update(
-                            period="year:2000:100", value=period_values
-                        )
+                        parameter.update(period="year:2000:100", value=period_values)
                         continue
                     for period_key, value in sorted(
                         period_values.items(),
@@ -202,14 +200,10 @@ class Reform(TaxBenefitSystem):
                                 value=value,
                             )
                         elif ":" in period_key:
-                            parameter.update(
-                                period=period_(period_key), value=value
-                            )
+                            parameter.update(period=period_(period_key), value=value)
                         else:
                             # Bare ISO instant: apply from this instant onward.
-                            parameter.update(
-                                start=instant_(period_key), value=value
-                            )
+                            parameter.update(start=instant_(period_key), value=value)
 
         reform.country_id = country_id
         reform.parameter_values = parameter_values

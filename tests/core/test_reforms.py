@@ -300,17 +300,15 @@ def test_modify_parameters(tax_benefit_system):
 
 
 def _income_tax_rate(reform, year):
-    return reform.get_parameters_at_instant(
-        Instant((year, 1, 1))
-    ).taxes.income_tax_rate
+    return reform.get_parameters_at_instant(Instant((year, 1, 1))).taxes.income_tax_rate
 
 
 def test_from_dict_bare_date_applies_onward(tax_benefit_system):
     # Regression for #509: a bare date must propagate forward, not apply to a
     # single day. Guards footgun #1 (silent single-instant reforms).
-    reform = Reform.from_dict(
-        {"taxes.income_tax_rate": {"2026-01-01": 0.25}}
-    )(tax_benefit_system)
+    reform = Reform.from_dict({"taxes.income_tax_rate": {"2026-01-01": 0.25}})(
+        tax_benefit_system
+    )
     assert _income_tax_rate(reform, 2025) == pytest.approx(0.15)  # baseline
     for year in (2026, 2027, 2030, 2035):
         assert _income_tax_rate(reform, year) == pytest.approx(0.25)
@@ -318,9 +316,9 @@ def test_from_dict_bare_date_applies_onward(tax_benefit_system):
 
 def test_from_dict_bare_year_applies_onward(tax_benefit_system):
     # Bare year keys are uniform with bare dates: from that year onward.
-    reform = Reform.from_dict(
-        {"taxes.income_tax_rate": {"2026": 0.4}}
-    )(tax_benefit_system)
+    reform = Reform.from_dict({"taxes.income_tax_rate": {"2026": 0.4}})(
+        tax_benefit_system
+    )
     assert _income_tax_rate(reform, 2025) == pytest.approx(0.15)
     assert _income_tax_rate(reform, 2026) == pytest.approx(0.4)
     assert _income_tax_rate(reform, 2030) == pytest.approx(0.4)
@@ -352,9 +350,9 @@ def test_from_dict_range_is_bounded(tax_benefit_system):
 
 def test_from_dict_compound_period_is_bounded(tax_benefit_system):
     # Compound "year:2026:3" stays bounded to 3 years; baseline restored after.
-    reform = Reform.from_dict(
-        {"taxes.income_tax_rate": {"year:2026:3": 0.5}}
-    )(tax_benefit_system)
+    reform = Reform.from_dict({"taxes.income_tax_rate": {"year:2026:3": 0.5}})(
+        tax_benefit_system
+    )
     assert _income_tax_rate(reform, 2025) == pytest.approx(0.15)
     for year in (2026, 2027, 2028):
         assert _income_tax_rate(reform, year) == pytest.approx(0.5)
@@ -368,9 +366,9 @@ def test_from_dict_none_removes_value(tax_benefit_system):
         ParameterNotFoundError,
     )
 
-    reform = Reform.from_dict(
-        {"taxes.income_tax_rate": {"2026-01-01": None}}
-    )(tax_benefit_system)
+    reform = Reform.from_dict({"taxes.income_tax_rate": {"2026-01-01": None}})(
+        tax_benefit_system
+    )
     assert _income_tax_rate(reform, 2025) == pytest.approx(0.15)
     with pytest.raises(ParameterNotFoundError):
         _income_tax_rate(reform, 2030)
@@ -380,9 +378,9 @@ def test_from_dict_invalid_key_raises(tax_benefit_system):
     # Malformed period keys must raise, not be swallowed/misrouted.
     # Guards footgun #2 (bare except).
     with pytest.raises(ValueError):
-        Reform.from_dict(
-            {"taxes.income_tax_rate": {"not-a-period": 0.5}}
-        )(tax_benefit_system)
+        Reform.from_dict({"taxes.income_tax_rate": {"not-a-period": 0.5}})(
+            tax_benefit_system
+        )
 
 
 def test_attributes_conservation(tax_benefit_system):

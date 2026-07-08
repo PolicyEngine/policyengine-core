@@ -1,3 +1,10 @@
+## [3.29.2] - 2026-07-08
+
+### Changed
+
+- `Reform.from_dict` now applies bare date keys (e.g. `"2026-01-01"`) from that instant onward instead of for a single day, detects period formats explicitly instead of via a bare `try/except`, sorts entries chronologically so multi-entry reforms are order-independent, and propagates parameter-update errors instead of silently swallowing them. Explicit ranges (`"start.stop"`) and compound periods (`"year:2026:5"`) remain bounded, and `from_api` now emits explicit ranges so single-year API policies stay bounded.
+
+
 ## [3.29.1] - 2026-07-06
 
 ### Fixed

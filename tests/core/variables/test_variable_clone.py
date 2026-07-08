@@ -6,7 +6,11 @@ independent of the original. These pass on the current implementation and
 guard the behaviour a later fix must keep.
 """
 
+import pytest
+
 import policyengine_core.country_template as country_template
+from policyengine_core.model_api import Reform, Variable
+from policyengine_core.periods import MONTH
 
 tax_benefit_system = country_template.CountryTaxBenefitSystem()
 
@@ -35,3 +39,43 @@ def test_clone_formulas_are_independent():
     clone = original.clone()
     clone.formulas.clear()
     assert len(original.formulas) > 0
+
+
+@pytest.mark.xfail(strict=True, reason="policyengine-core#502")
+def test_clone_update_variable_label_only():
+    # A reform that overrides only the label inherits value_type/entity/
+    # formula from the baseline; cloning it must keep that merged state.
+    class disposable_income(Variable):
+        label = "Updated label only"
+
+    class reform(Reform):
+        def apply(self):
+            self.update_variable(disposable_income)
+
+    system = reform(country_template.CountryTaxBenefitSystem())
+    clone = system.get_variable("disposable_income").clone()
+
+    assert clone.value_type == float  # inherited from baseline
+    assert clone.entity.key == "person"
+    assert clone.definition_period == MONTH
+    assert clone.label == "Updated label only"  # the override
+    assert len(clone.formulas) > 0  # inherited formula preserved
+
+
+@pytest.mark.xfail(strict=True, reason="policyengine-core#502")
+def test_clone_update_variable_adds_only():
+    # A reform that redeclares a formula variable with adds only inherits the
+    # baseline formula; cloning must keep the merged state.
+    class disposable_income(Variable):
+        adds = ["salary"]
+
+    class reform(Reform):
+        def apply(self):
+            self.update_variable(disposable_income)
+
+    system = reform(country_template.CountryTaxBenefitSystem())
+    clone = system.get_variable("disposable_income").clone()
+
+    assert clone.value_type == float
+    assert clone.adds == ["salary"]
+    assert len(clone.formulas) > 0  # inherited formula preserved

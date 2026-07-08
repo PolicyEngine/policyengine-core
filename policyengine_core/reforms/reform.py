@@ -25,6 +25,86 @@ class classproperty(object):
         return self.f(owner)
 
 
+# ---------------------------------------------------------------------------
+# Reform period-key handling.
+#
+# A reform dict maps a parameter path to ``{period_key: value}``. Each
+# ``period_key`` is classified by format and translated into keyword arguments
+# for ``Parameter.update``. These are small pure functions so each format is
+# independently testable.
+# ---------------------------------------------------------------------------
+
+_SCALAR_REFORM_PERIOD = "year:2000:100"
+"""Window applied for the ``{path: scalar}`` shorthand (a value with no period)."""
+
+
+def _eternity_update_kwargs(value) -> dict:
+    """``"ETERNITY"`` -> the value applies for all time."""
+    return {"value": value}
+
+
+def _range_update_kwargs(period_key: str, value) -> dict:
+    """``"start.stop"`` -> the bounded interval ``[start, stop]``."""
+    start, stop = period_key.split(".")
+    return {"start": instant_(start), "stop": instant_(stop), "value": value}
+
+
+def _bounded_period_update_kwargs(period_key: str, value) -> dict:
+    """Compound period (``"year:2026:5"``, ``"month:2026-01:3"``) -> that
+    bounded period only."""
+    return {"period": period_(period_key), "value": value}
+
+
+def _from_instant_update_kwargs(period_key: str, value) -> dict:
+    """Bare ISO instant (``"2026"`` / ``"2026-01"`` / ``"2026-01-01"``) -> the
+    value applies from that instant onward (``stop`` omitted)."""
+    return {"start": instant_(period_key), "value": value}
+
+
+def _period_key_update_kwargs(period_key, value) -> dict:
+    """Translate one ``period_key`` into ``Parameter.update`` kwargs.
+
+    Non-string keys (e.g. an int year) are coerced to ``str`` so they behave
+    like their string form rather than raising.
+    """
+    period_key = str(period_key)
+    if period_key == "ETERNITY":
+        return _eternity_update_kwargs(value)
+    if "." in period_key:
+        return _range_update_kwargs(period_key, value)
+    if ":" in period_key:
+        return _bounded_period_update_kwargs(period_key, value)
+    return _from_instant_update_kwargs(period_key, value)
+
+
+def _update_start_instant(update_kwargs: dict):
+    """Instant an update begins at, used to order application so a
+    later-starting key can't clobber an earlier one via ``stop=None``.
+    Value-only (``ETERNITY``) updates sort first, as the all-time base."""
+    if "start" in update_kwargs:
+        return update_kwargs["start"]
+    if "period" in update_kwargs:
+        return update_kwargs["period"].start
+    return instant_("0001-01-01")
+
+
+def _api_period_range(start: str, stop: str) -> str:
+    """Clamp an API policy's ``[start, stop]`` to the supported window and
+    return an explicit ``"start.stop"`` key, so :meth:`Reform.from_dict`
+    treats every API policy as bounded. (A single-civil-year intersection
+    would otherwise stringify to a bare ``"YYYY"`` which, under the
+    from-onward rule, would extend the change past the policy's end.)"""
+    clamped = period_(_SCALAR_REFORM_PERIOD).intersection(
+        instant_(start), instant_(stop)
+    )
+    if clamped is None:
+        raise ValueError(
+            f"Policy period '{start}.{stop}' does not overlap the supported "
+            f"reform window ({_SCALAR_REFORM_PERIOD})."
+        )
+    return f"{clamped.start}.{clamped.stop}"
+
+
 class Reform(TaxBenefitSystem):
     """A modified TaxBenefitSystem
 
@@ -138,7 +218,35 @@ class Reform(TaxBenefitSystem):
         """Create a reform from a dictionary of parameters.
 
         Args:
-            parameters: A dictionary of parameter -> { period -> value } pairs.
+            parameter_values: A mapping of ``path -> {period_key: value}``
+                (or the ``path -> scalar`` shorthand, applied across
+                ``year:2000:100``).
+
+        Period-key formats, interpreted per parameter (see the module-level
+        ``_*_update_kwargs`` helpers):
+            * Bare ISO instant (``"2026"`` / ``"2026-01"`` / ``"2026-01-01"``):
+              the value applies **from that instant onward**, flattening any
+              later scheduled breakpoints (e.g. uprating). The instant is
+              literal: ``{"2026-06-01": v}`` applies from 1 June 2026, so an
+              annual value read at 1 January 2026 is still the baseline — use
+              ``"2026-01-01"`` for a full-year-onward change. To keep later
+              breakpoints, bound the change with a range instead.
+            * Range ``"start.stop"`` (e.g. ``"2026-01-01.2027-12-31"``): the
+              value applies over the bounded interval ``[start, stop]``; the
+              prior value is restored afterwards.
+            * Compound bounded period (``"year:2026:5"`` / ``"month:2026-01:3"``):
+              the value applies over that bounded period only.
+            * ``"ETERNITY"``: the value applies for all time.
+
+        Entries are applied in ascending start-instant order, so a
+        later-starting key never clobbers an earlier one. Entries sharing a
+        start instant are applied in their given order (the last wins for any
+        overlap). Non-string keys are coerced to ``str``.
+
+        Invalid input raises during construction **before any parameter is
+        modified**: a malformed period key or bad value yields no partial
+        reform, and errors from ``Parameter.update`` propagate rather than
+        being silently swallowed.
 
         Returns:
             A reform.
@@ -149,24 +257,23 @@ class Reform(TaxBenefitSystem):
                 for path, period_values in parameter_values.items():
                     parameter = self.parameters.get_child(path)
                     if not isinstance(period_values, dict):
-                        parameter.update(period="year:2000:100", value=period_values)
-                    else:
-                        for period, value in period_values.items():
-                            try:
-                                period = period_(period)
-                                parameter = parameter.update(period=period, value=value)
-                            except:
-                                if "." in period:
-                                    start, stop = period.split(".")
-                                    start = instant_(start)
-                                    stop = instant_(stop)
-                                    parameter.update(
-                                        start=start, stop=stop, value=value
-                                    )
-                                else:
-                                    parameter = parameter.update(
-                                        period=period, value=value
-                                    )
+                        # Scalar shorthand: apply across the default window.
+                        parameter.update(
+                            period=_SCALAR_REFORM_PERIOD, value=period_values
+                        )
+                        continue
+                    # Translate every entry to update kwargs FIRST, so a
+                    # malformed key raises before any parameter is mutated (no
+                    # partial reform). Then apply in ascending start-instant
+                    # order; the stable sort keeps same-start entries in their
+                    # given order (last wins on overlap).
+                    updates = [
+                        _period_key_update_kwargs(period_key, value)
+                        for period_key, value in period_values.items()
+                    ]
+                    updates.sort(key=_update_start_instant)
+                    for update_kwargs in updates:
+                        parameter.update(**update_kwargs)
 
         reform.country_id = country_id
         reform.parameter_values = parameter_values
@@ -201,11 +308,7 @@ class Reform(TaxBenefitSystem):
             keys_to_remove = []
             for start_stop_str in list(parameter_values[path].keys()):
                 start, stop = start_stop_str.split(".")
-                time_period = str(
-                    period_("year:2000:100").intersection(
-                        instant_(start), instant_(stop)
-                    )
-                )
+                time_period = _api_period_range(start, stop)
                 parameter_values[path][time_period] = parameter_values[path][
                     start_stop_str
                 ]

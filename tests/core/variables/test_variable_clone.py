@@ -75,3 +75,36 @@ def test_clone_update_variable_adds_only():
     assert clone.value_type == float
     assert clone.adds == ["salary"]
     assert len(clone.formulas) > 0  # inherited formula preserved
+
+
+def test_clone_reformed_system_with_update_variable():
+    # The real "kills deployment upon test" path: TaxBenefitSystem.clone()
+    # (used by the YAML test runner and branch calculations) clones every
+    # variable, including one registered via update_variable.
+    class disposable_income(Variable):
+        label = "Updated label only"
+
+    class reform(Reform):
+        def apply(self):
+            self.update_variable(disposable_income)
+
+    system = reform(country_template.CountryTaxBenefitSystem())
+    cloned_system = system.clone()  # clones every variable; must not raise
+
+    cloned = cloned_system.get_variable("disposable_income")
+    assert cloned.value_type == float
+    assert cloned.label == "Updated label only"
+    assert len(cloned.formulas) > 0
+
+
+def test_clone_preserves_and_isolates_runtime_metadata():
+    # A runtime-set attribute (metadata) is preserved by the clone (the old
+    # __init__-based clone dropped it) and stays independent of the original.
+    system = country_template.CountryTaxBenefitSystem()
+    variable = system.get_variable("disposable_income")
+    variable.metadata = {"note": "original"}
+
+    clone = variable.clone()
+    assert clone.metadata == {"note": "original"}  # preserved
+    clone.metadata["note"] = "changed"
+    assert variable.metadata["note"] == "original"  # independent

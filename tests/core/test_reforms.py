@@ -383,6 +383,98 @@ def test_from_dict_invalid_key_raises(tax_benefit_system):
         )
 
 
+def test_from_dict_eternity(tax_benefit_system):
+    reform = Reform.from_dict({"taxes.income_tax_rate": {"ETERNITY": 0.9}})(
+        tax_benefit_system
+    )
+    assert _income_tax_rate(reform, 2013) == pytest.approx(0.9)
+    assert _income_tax_rate(reform, 2030) == pytest.approx(0.9)
+
+
+def test_from_dict_eternity_then_dated_override(tax_benefit_system):
+    # ETERNITY is the all-time base; a later dated key overrides from its date.
+    reform = Reform.from_dict(
+        {"taxes.income_tax_rate": {"ETERNITY": 0.9, "2026-01-01": 0.3}}
+    )(tax_benefit_system)
+    assert _income_tax_rate(reform, 2013) == pytest.approx(0.9)
+    assert _income_tax_rate(reform, 2026) == pytest.approx(0.3)
+    assert _income_tax_rate(reform, 2030) == pytest.approx(0.3)
+
+
+def test_from_dict_scalar_shorthand(tax_benefit_system):
+    # {path: scalar} applies across the default year:2000:100 window.
+    reform = Reform.from_dict({"taxes.income_tax_rate": 0.42})(tax_benefit_system)
+    assert _income_tax_rate(reform, 2013) == pytest.approx(0.42)
+    assert _income_tax_rate(reform, 2099) == pytest.approx(0.42)
+
+
+def test_from_dict_int_key_coerced(tax_benefit_system):
+    # Non-string keys are coerced to str (from-onward), not raise TypeError.
+    reform = Reform.from_dict({"taxes.income_tax_rate": {2026: 0.3}})(
+        tax_benefit_system
+    )
+    assert _income_tax_rate(reform, 2026) == pytest.approx(0.3)
+    assert _income_tax_rate(reform, 2030) == pytest.approx(0.3)
+
+
+def test_from_dict_bracket_indexed_path(tax_benefit_system):
+    # Bracket-indexed scale paths get the same from-onward behavior.
+    reform = Reform.from_dict(
+        {"taxes.social_security_contribution[1].rate": {"2026-01-01": 0.5}}
+    )(tax_benefit_system)
+    rate = reform.parameters.get_child("taxes.social_security_contribution[1].rate")
+    assert rate("2020-01-01") == pytest.approx(0.06)  # baseline before
+    assert rate("2026-01-01") == pytest.approx(0.5)
+    assert rate("2030-01-01") == pytest.approx(0.5)  # from onward
+
+
+def test_from_dict_mixed_range_and_bare(tax_benefit_system):
+    # A bounded range and a later from-onward key compose piecewise.
+    reform = Reform.from_dict(
+        {
+            "taxes.income_tax_rate": {
+                "2030-01-01": 0.7,
+                "2026-01-01.2028-12-31": 0.5,
+            }
+        }
+    )(tax_benefit_system)
+    observed = [
+        _income_tax_rate(reform, y) for y in (2025, 2026, 2028, 2029, 2030, 2031)
+    ]
+    assert observed == [pytest.approx(v) for v in (0.15, 0.5, 0.5, 0.15, 0.7, 0.7)]
+
+
+def test_from_dict_mid_year_date_is_literal(tax_benefit_system):
+    # Intended: a bare date is literal, so a mid-year start does not back-fill
+    # the whole year. Use "2026-01-01" for a full-year-onward change.
+    reform = Reform.from_dict({"taxes.income_tax_rate": {"2026-06-01": 0.3}})(
+        tax_benefit_system
+    )
+    assert _income_tax_rate(reform, 2025) == pytest.approx(0.15)
+    assert _income_tax_rate(reform, 2026) == pytest.approx(0.15)  # read at Jan 1
+    assert _income_tax_rate(reform, 2027) == pytest.approx(0.3)
+
+
+def test_from_dict_same_start_last_wins(tax_benefit_system):
+    # Intended: entries sharing a start instant apply in dict order; the last
+    # one wins. Here "2026" and "2026-01-01" both start 2026-01-01.
+    reform = Reform.from_dict(
+        {"taxes.income_tax_rate": {"2026": 0.2, "2026-01-01": 0.5}}
+    )(tax_benefit_system)
+    assert _income_tax_rate(reform, 2026) == pytest.approx(0.5)
+    assert _income_tax_rate(reform, 2030) == pytest.approx(0.5)
+
+
+def test_from_dict_bad_key_is_atomic(tax_benefit_system):
+    # Intended: a malformed key raises during construction (all update kwargs
+    # are built before any parameter is mutated), so the caller never receives
+    # a partially-applied reform.
+    with pytest.raises(ValueError):
+        Reform.from_dict(
+            {"taxes.income_tax_rate": {"2026-01-01": 0.9, "not-a-period": 0.5}}
+        )(tax_benefit_system)
+
+
 def test_attributes_conservation(tax_benefit_system):
     class some_variable(Variable):
         value_type = int

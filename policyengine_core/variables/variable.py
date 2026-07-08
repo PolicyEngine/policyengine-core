@@ -661,14 +661,15 @@ class Variable:
         return None
 
     def clone(self):
-        """Return an independent copy that preserves the variable's merged state.
+        """Return a copy that preserves the variable's merged state.
 
         Uses ``empty_clone`` + a ``__dict__`` copy (the ``TaxBenefitSystem.clone``
         pattern) rather than re-running ``__init__``, so a variable registered
         via a reform's ``update_variable`` keeps the attributes it inherited
-        from its baseline (``value_type``, ``entity``, ``formulas``, ...).
-        Mutable containers are copied so the clone stays independent of the
-        original, as the previous ``__init__``-based clone did.
+        from its baseline (``value_type``, ``entity``, ``formulas``,
+        ``baseline_variable``, ...). ``formulas`` and ``metadata`` are copied so
+        mutating them on the clone does not affect the original; other
+        containers (``adds``/``subtracts``) are shared, as they were before.
         """
         clone = empty_clone(self)
         clone.__dict__.update(self.__dict__)

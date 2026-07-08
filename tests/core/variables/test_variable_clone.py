@@ -7,8 +7,13 @@ guard the behaviour a later fix must keep.
 """
 
 import policyengine_core.country_template as country_template
+from policyengine_core.enums import Enum
 from policyengine_core.model_api import Reform, Variable
 from policyengine_core.periods import MONTH
+from policyengine_core.variables.helpers import (
+    get_annualized_variable,
+    get_neutralized_variable,
+)
 
 tax_benefit_system = country_template.CountryTaxBenefitSystem()
 
@@ -108,3 +113,48 @@ def test_clone_preserves_and_isolates_runtime_metadata():
     assert clone.metadata == {"note": "original"}  # preserved
     clone.metadata["note"] = "changed"
     assert variable.metadata["note"] == "original"  # independent
+
+
+def _reform_updated_disposable_income(**attrs):
+    disposable_income = type("disposable_income", (Variable,), attrs)
+
+    class reform(Reform):
+        def apply(self):
+            self.update_variable(disposable_income)
+
+    return reform(country_template.CountryTaxBenefitSystem()).get_variable(
+        "disposable_income"
+    )
+
+
+def test_neutralize_reform_updated_variable():
+    # get_neutralized_variable clones the variable; the real "reform then
+    # neutralize" path must not crash for an update_variable variable.
+    variable = _reform_updated_disposable_income(label="Updated label only")
+    neutralized = get_neutralized_variable(variable)
+    assert neutralized.value_type == float
+    assert neutralized.is_neutralized is True
+
+
+def test_annualize_reform_updated_variable():
+    # get_annualized_variable clones the variable; must work for a reform var.
+    variable = _reform_updated_disposable_income(label="Updated label only")
+    annualized = get_annualized_variable(variable)
+    assert annualized.value_type == float
+    assert len(annualized.formulas) > 0  # inherited formula preserved
+
+
+def test_clone_enum_variable():
+    variable = tax_benefit_system.get_variable("housing_occupancy_status")
+    assert variable.value_type is Enum
+    clone = variable.clone()
+    assert clone.value_type is Enum
+    assert clone.possible_values is variable.possible_values
+    assert clone.default_value == variable.default_value
+
+
+def test_clone_shares_adds():
+    # Documented behavior: adds/subtracts are shared with the original (as
+    # before the fix); only formulas and metadata are copied.
+    variable = _reform_updated_disposable_income(adds=["salary"])
+    assert variable.clone().adds is variable.adds

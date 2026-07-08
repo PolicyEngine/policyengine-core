@@ -8,6 +8,7 @@ import numpy
 import sortedcontainers
 
 from policyengine_core import periods, tools
+from policyengine_core.commons.misc import empty_clone
 from policyengine_core.entities import Entity
 from policyengine_core.enums import Enum, EnumArray
 from policyengine_core.periods import Period
@@ -660,7 +661,20 @@ class Variable:
         return None
 
     def clone(self):
-        clone = self.__class__()
+        """Return an independent copy that preserves the variable's merged state.
+
+        Uses ``empty_clone`` + a ``__dict__`` copy (the ``TaxBenefitSystem.clone``
+        pattern) rather than re-running ``__init__``, so a variable registered
+        via a reform's ``update_variable`` keeps the attributes it inherited
+        from its baseline (``value_type``, ``entity``, ``formulas``, ...).
+        Mutable containers are copied so the clone stays independent of the
+        original, as the previous ``__init__``-based clone did.
+        """
+        clone = empty_clone(self)
+        clone.__dict__.update(self.__dict__)
+        clone.formulas = self.formulas.copy()
+        if self.metadata is not None:
+            clone.metadata = dict(self.metadata)
         return clone
 
     def check_set_value(self, value):

@@ -6,8 +6,6 @@ independent of the original. These pass on the current implementation and
 guard the behaviour a later fix must keep.
 """
 
-import pytest
-
 import policyengine_core.country_template as country_template
 from policyengine_core.model_api import Reform, Variable
 from policyengine_core.periods import MONTH
@@ -41,7 +39,6 @@ def test_clone_formulas_are_independent():
     assert len(original.formulas) > 0
 
 
-@pytest.mark.xfail(strict=True, reason="policyengine-core#502")
 def test_clone_update_variable_label_only():
     # A reform that overrides only the label inherits value_type/entity/
     # formula from the baseline; cloning it must keep that merged state.
@@ -62,7 +59,6 @@ def test_clone_update_variable_label_only():
     assert len(clone.formulas) > 0  # inherited formula preserved
 
 
-@pytest.mark.xfail(strict=True, reason="policyengine-core#502")
 def test_clone_update_variable_adds_only():
     # A reform that redeclares a formula variable with adds only inherits the
     # baseline formula; cloning must keep the merged state.

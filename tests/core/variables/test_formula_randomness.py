@@ -138,6 +138,62 @@ def test_non_function_returns_none():
     assert formula_uses_randomness("not a formula") is None
 
 
+# --- closures: randomness captured through a closure is resolved too ----------
+
+
+def _closure_over_generator():
+    rng = np.random.default_rng(0)
+
+    def formula(person, period, parameters):
+        return rng.random(3)
+
+    return formula
+
+
+def _closure_over_drawing_function():
+    draw = np.random.random
+
+    def formula(person, period, parameters):
+        return draw(3)
+
+    return formula
+
+
+def _closure_over_numpy_module():
+    local_numpy = np
+
+    def formula(person, period, parameters):
+        return local_numpy.random.random(3)
+
+    return formula
+
+
+def _closure_over_deterministic_numpy():
+    op = np.maximum
+
+    def formula(person, period, parameters):
+        return op(person("salary", period), 0)
+
+    return formula
+
+
+@pytest.mark.parametrize(
+    "factory",
+    [
+        _closure_over_generator,
+        _closure_over_drawing_function,
+        _closure_over_numpy_module,
+    ],
+    ids=lambda f: f.__name__,
+)
+def test_randomness_captured_through_closure_is_detected(factory):
+    assert formula_uses_randomness(factory()) is not None
+
+
+def test_deterministic_closure_is_not_flagged():
+    assert formula_uses_randomness(_closure_over_deterministic_numpy()) is None
+
+
 # --- check_formula_determinism (the variable-level entry point) ----------------
 
 
@@ -163,3 +219,13 @@ def test_check_passes_for_deterministic_formulas():
 
 def test_check_passes_for_formula_less_variable():
     check_formula_determinism(_FakeVariable("input_only", {}))  # must not raise
+
+
+def test_exception_importable_from_legacy_guard_path():
+    # Back-compat: the runtime guard module was reduced to a shim, but the
+    # exception must still import from its old location as the same class.
+    from policyengine_core.simulations.randomness_guard import (
+        NonDeterministicFormulaError as LegacyImport,
+    )
+
+    assert LegacyImport is NonDeterministicFormulaError

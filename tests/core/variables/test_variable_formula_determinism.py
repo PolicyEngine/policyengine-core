@@ -7,8 +7,7 @@ named, instead of intermittently at calculation time. A deterministic variable
 must still register and compute normally.
 
 These integration tests prove the wiring into ``Variable.__init__`` (the pure
-detector is unit-tested in ``test_formula_randomness``). Until that wiring lands
-they are strict xfails.
+detector is unit-tested in ``test_formula_randomness``).
 """
 
 import random
@@ -19,6 +18,7 @@ import pytest
 
 from policyengine_core import periods
 from policyengine_core.country_template import CountryTaxBenefitSystem, entities
+from policyengine_core.reforms import Reform
 from policyengine_core.simulations import SimulationBuilder
 from policyengine_core.variables import Variable
 from policyengine_core.variables.formula_randomness import (
@@ -91,6 +91,19 @@ class deterministic(Variable):
         return person.count
 
 
+class uses_random_in_dated_formula(Variable):
+    value_type = float
+    entity = entities.Person
+    definition_period = periods.MONTH
+    label = "clean base formula but randomness in a later dated formula"
+
+    def formula(person, period):
+        return person.count
+
+    def formula_2020(person, period):
+        return np.random.random(person.count)
+
+
 RANDOMNESS_VARIABLES = [
     uses_numpy_random,
     uses_stdlib_random,
@@ -119,3 +132,26 @@ def test_deterministic_variable_registers_and_computes():
     simulation = SimulationBuilder().build_default_simulation(system)
     result = simulation.calculate("deterministic", PERIOD)
     assert (result == 1).all()
+
+
+def test_randomness_in_a_dated_formula_is_rejected():
+    # check_formula_determinism scans every dated formula, not just the first.
+    with pytest.raises(
+        NonDeterministicFormulaError, match="uses_random_in_dated_formula"
+    ):
+        _register(uses_random_in_dated_formula)
+
+
+def test_reform_update_variable_with_randomness_is_rejected():
+    # The reform / update_variable path re-runs Variable.__init__, so a reform
+    # that introduces a randomness-using formula is rejected when applied.
+    class disposable_income(Variable):
+        def formula(person, period):
+            return np.random.random(person.count)
+
+    class reform(Reform):
+        def apply(self):
+            self.update_variable(disposable_income)
+
+    with pytest.raises(NonDeterministicFormulaError, match="disposable_income"):
+        reform(CountryTaxBenefitSystem())

@@ -10,14 +10,13 @@ references numpy's or the standard library's random facilities.
 
 Detection is by **identity**, not by name: a local variable, a string argument,
 or an attribute that merely happens to be spelled ``random`` is never flagged.
-The bytecode is walked so that only genuine *global* / *closure* loads are
-resolved against the formula's namespace (attribute loads such as ``foo.random``
-are handled separately), which is what keeps the check free of name-collision
-false positives.
+Only genuine *global* and *closure* loads are resolved against the formula's
+namespace (attribute loads such as ``foo.random`` are not), which keeps the
+check free of name-collision false positives.
 
-Because it is static, this also catches two forms the old runtime guard
-explicitly could not: ``from numpy.random import default_rng`` (a drawing
-callable imported by name) and a generator hoisted to module scope
+Because it is static, this also catches forms the old runtime guard explicitly
+could not: ``from numpy.random import default_rng`` (a drawing callable imported
+by name) and a generator hoisted to module scope or captured through a closure
 (``rng = np.random.default_rng(0)``) and used inside the formula.
 """
 
@@ -26,7 +25,7 @@ from __future__ import annotations
 import dis
 import random as _stdlib_random
 from types import ModuleType
-from typing import Iterator, Optional
+from typing import Optional
 
 import numpy
 
@@ -36,6 +35,7 @@ class NonDeterministicFormulaError(RuntimeError):
 
 
 _RANDOM_MODULES = (numpy.random, _stdlib_random)
+_RNG_INSTANCE_TYPES = (numpy.random.Generator, numpy.random.RandomState)
 
 # Scanning is memoised by code object: each unique formula is inspected once,
 # no matter how many tax-benefit systems instantiate the variable.
@@ -60,10 +60,10 @@ def _is_random_member(obj: object) -> bool:
         module == "random" or module.startswith("numpy.random")
     ):
         return True
-    if isinstance(obj, (numpy.random.Generator, numpy.random.RandomState)):
+    if isinstance(obj, _RNG_INSTANCE_TYPES):
         return True
     if (
-        getattr(obj, "__module__", None) == "policyengine_core.commons.formulas"
+        module == "policyengine_core.commons.formulas"
         and getattr(obj, "__name__", None) == "random"
     ):
         return True
@@ -78,53 +78,62 @@ def _describe(obj: object) -> str:
     name = getattr(obj, "__name__", None)
     if module and name:
         return f"{module}.{name}"
-    if isinstance(obj, (numpy.random.Generator, numpy.random.RandomState)):
+    if isinstance(obj, _RNG_INSTANCE_TYPES):
         return f"numpy.random.{type(obj).__name__} instance"
     return repr(obj)
 
 
-def _global_and_closure_loads(formula) -> Iterator[object]:
-    """Yield the objects a formula loads as globals or closure variables.
-
-    Only ``LOAD_GLOBAL`` / ``LOAD_NAME`` / ``LOAD_DEREF`` are resolved -- never
-    ``LOAD_ATTR`` -- so ``foo.random`` (an attribute access) is not mistaken for
-    a reference to the ``random`` module, even when ``random`` is also imported
-    at module scope.
-    """
-    global_namespace = formula.__globals__
-    freevars: dict = {}
+def _freevars(formula) -> dict:
+    """Map each of a formula's closure variable names to its current value."""
+    result: dict = {}
     if formula.__closure__:
         for name, cell in zip(formula.__code__.co_freevars, formula.__closure__):
             try:
-                freevars[name] = cell.cell_contents
+                result[name] = cell.cell_contents
             except ValueError:
                 continue  # empty cell
-    for instruction in dis.get_instructions(formula):
-        if instruction.opname in ("LOAD_GLOBAL", "LOAD_NAME"):
-            if instruction.argval in global_namespace:
-                yield global_namespace[instruction.argval]
-        elif instruction.opname in ("LOAD_DEREF", "LOAD_CLASSDEREF"):
-            if instruction.argval in freevars:
-                yield freevars[instruction.argval]
+    return result
 
 
-def _numpy_random_attr_access(formula) -> bool:
-    """True if the formula accesses ``<numpy-module>.random`` (e.g. ``np.random.x``).
+def _resolve_load(instruction, global_namespace: dict, freevars: dict) -> object:
+    """Resolve a name-load instruction to the object it loads, or ``None``.
 
-    A global that resolves to the numpy top-level module immediately followed by
-    a ``LOAD_ATTR random``.
+    Only global and closure loads are resolved -- never ``LOAD_ATTR`` -- so an
+    attribute merely spelled ``random`` is not mistaken for the module, even
+    when ``random`` is also imported at module scope.
+    """
+    if instruction.opname in ("LOAD_GLOBAL", "LOAD_NAME"):
+        return global_namespace.get(instruction.argval)
+    if instruction.opname in ("LOAD_DEREF", "LOAD_CLASSDEREF"):
+        return freevars.get(instruction.argval)
+    return None
+
+
+def _referenced_randomness(formula) -> Optional[str]:
+    """Describe the randomness a formula references, or ``None``.
+
+    A single pass over the bytecode: each global/closure load is checked by
+    identity, and a numpy top-level module load followed by a ``.random``
+    attribute access (e.g. ``np.random.seed``) is flagged too.
     """
     global_namespace = formula.__globals__
-    instructions = list(dis.get_instructions(formula))
-    for current, following in zip(instructions, instructions[1:]):
-        if current.opname in ("LOAD_GLOBAL", "LOAD_NAME"):
-            if (
-                global_namespace.get(current.argval) is numpy
-                and following.opname in ("LOAD_ATTR", "LOAD_METHOD")
-                and following.argval == "random"
-            ):
-                return True
-    return False
+    freevars = _freevars(formula)
+    previous = None
+    for instruction in dis.get_instructions(formula):
+        loaded = _resolve_load(instruction, global_namespace, freevars)
+        if loaded is not None and (
+            _is_random_module(loaded) or _is_random_member(loaded)
+        ):
+            return _describe(loaded)
+        if (
+            instruction.opname in ("LOAD_ATTR", "LOAD_METHOD")
+            and instruction.argval == "random"
+            and previous is not None
+            and _resolve_load(previous, global_namespace, freevars) is numpy
+        ):
+            return "numpy.random"
+        previous = instruction
+    return None
 
 
 def formula_uses_randomness(formula) -> Optional[str]:
@@ -137,19 +146,9 @@ def formula_uses_randomness(formula) -> Optional[str]:
     code = getattr(formula, "__code__", None)
     if code is None:
         return None
-    if code in _cache:
-        return _cache[code]
-
-    result: Optional[str] = None
-    for obj in _global_and_closure_loads(formula):
-        if _is_random_module(obj) or _is_random_member(obj):
-            result = _describe(obj)
-            break
-    if result is None and _numpy_random_attr_access(formula):
-        result = "numpy.random"
-
-    _cache[code] = result
-    return result
+    if code not in _cache:
+        _cache[code] = _referenced_randomness(formula)
+    return _cache[code]
 
 
 def check_formula_determinism(variable) -> None:

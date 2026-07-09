@@ -23,7 +23,7 @@ from policyengine_core.variables.formula_randomness import (
     NonDeterministicFormulaError,
 )
 
-PERIOD = "2013-01"
+PERIOD = "2026-01"
 THREADS = 12
 ITERATIONS = 60
 

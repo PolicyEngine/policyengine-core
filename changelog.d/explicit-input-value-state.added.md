@@ -1,0 +1,1 @@
+Added `Holder.is_input`, `Simulation.is_input`, and `Simulation.get_value_state` so callers can distinguish explicit inputs (including zeros) from omitted defaults without changing calculation behavior.

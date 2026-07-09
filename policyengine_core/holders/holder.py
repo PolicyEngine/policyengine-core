@@ -142,6 +142,41 @@ class Holder:
             if default_value is not None:
                 return default_value
 
+    def is_input(self, period: Period, branch_name: str = "default") -> bool:
+        """Return whether this variable was explicitly set as an input.
+
+        Distinguishes user-provided values (including explicit zeros) from
+        values that only exist because a formula ran or a default was applied.
+        Tracking uses the simulation's existing ``_user_input_keys`` set, which
+        :meth:`set_input` already maintains; formula cache writes via
+        :meth:`put_in_cache` are not treated as inputs.
+        """
+        simulation = getattr(self, "simulation", None)
+        if simulation is None:
+            return False
+        user_input_keys = getattr(simulation, "_user_input_keys", None)
+        if not user_input_keys:
+            return False
+
+        period = periods.period(period)
+        if (self.variable.name, branch_name, period) in user_input_keys:
+            return True
+
+        # Nested branches inherit user inputs from ancestors and default.
+        if branch_name != "default":
+            parent = getattr(simulation, "parent_branch", None)
+            while parent is not None:
+                if (
+                    self.variable.name,
+                    parent.branch_name,
+                    period,
+                ) in user_input_keys:
+                    return True
+                parent = getattr(parent, "parent_branch", None)
+            if (self.variable.name, "default", period) in user_input_keys:
+                return True
+        return False
+
     def get_memory_usage(self) -> dict:
         """
         Get data about the virtual memory usage of the holder.

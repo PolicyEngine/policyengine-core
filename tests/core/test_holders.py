@@ -279,3 +279,52 @@ def test__given_nan_cache_value__then_put_in_cache_keeps_internal_write_allowed(
     salary_holder.put_in_cache(numpy.asarray([numpy.nan]), period)
 
     assert numpy.isnan(salary_holder.get_array(period)).all()
+
+
+def test_is_input_distinguishes_explicit_zero_from_missing(single):
+    simulation = single
+    salary_holder = simulation.person.get_holder("salary")
+
+    # Never provided: not an input, value state is default.
+    assert not salary_holder.is_input(period)
+    assert not simulation.is_input("salary", period)
+    assert simulation.get_value_state("salary", period) == "default"
+
+    # Explicit zero is still an input (distinct from "missing").
+    salary_holder.set_input(period, numpy.asarray([0]))
+    assert salary_holder.is_input(period)
+    assert simulation.is_input("salary", period)
+    assert simulation.get_value_state("salary", period) == "explicit"
+    assert salary_holder.get_array(period) == numpy.asarray([0])
+
+
+def test_put_in_cache_is_not_user_input(single):
+    simulation = single
+    salary_holder = simulation.person.get_holder("salary")
+
+    salary_holder.put_in_cache(numpy.asarray([1000.0]), period)
+
+    assert salary_holder.get_array(period) is not None
+    assert not salary_holder.is_input(period)
+    assert simulation.get_value_state("salary", period) == "default"
+
+
+def test_situation_inputs_are_marked_explicit(tax_benefit_system):
+    situation = {
+        "persons": {
+            "Alicia": {
+                "salary": {
+                    "2017-12": 1500,
+                }
+            }
+        },
+        "households": {
+            "_": {
+                "parents": ["Alicia"],
+            }
+        },
+    }
+    simulation = SimulationBuilder().build_from_entities(tax_benefit_system, situation)
+    assert simulation.is_input("salary", "2017-12")
+    assert simulation.get_value_state("salary", "2017-12") == "explicit"
+    assert not simulation.is_input("salary", "2017-11")

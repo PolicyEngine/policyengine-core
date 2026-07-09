@@ -1240,6 +1240,32 @@ class Simulation:
             period = periods.period(period)
         return self.get_holder(variable_name).get_array(period, self.branch_name)
 
+    def is_input(self, variable_name: str, period: Any) -> bool:
+        """Return whether ``variable_name`` was explicitly set as an input.
+
+        This does not change calculation defaults: omitted numeric inputs still
+        default to zero (or the variable's ``default_value``) during formulas.
+        Use this helper when screener-style flows need to tell an intentional
+        zero apart from a field the user never provided.
+
+        :returns: ``True`` if :meth:`Holder.set_input` recorded the key for the
+            current branch (or an ancestor branch), else ``False``.
+        """
+        if period is not None and not isinstance(period, Period):
+            period = periods.period(period)
+        return self.get_holder(variable_name).is_input(period, self.branch_name)
+
+    def get_value_state(self, variable_name: str, period: Any) -> str:
+        """Return input provenance for ``variable_name`` at ``period``.
+
+        :returns: ``"explicit"`` when the value was set via :meth:`set_input`
+            / situation inputs; ``"default"`` when it was not. Calculated
+            (formula-filled) values are also ``"default"`` from an
+            input-provenance perspective until a richer value-state model is
+            introduced.
+        """
+        return "explicit" if self.is_input(variable_name, period) else "default"
+
     def get_holder(self, variable_name: str) -> Holder:
         """
         Get the :obj:`.Holder` associated with the variable ``variable_name`` for the simulation

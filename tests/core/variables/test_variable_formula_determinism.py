@@ -106,10 +106,6 @@ def _register(*variable_classes):
     return system
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="#518 static check not yet wired into Variable.__init__",
-)
 @pytest.mark.parametrize(
     "variable_class", RANDOMNESS_VARIABLES, ids=lambda c: c.__name__
 )

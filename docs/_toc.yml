@@ -13,6 +13,7 @@ parts:
     - file: usage/datasets
     - file: usage/reforms
     - file: usage/charts
+    - file: usage/yaml_tests
   - caption: Python API
     chapters:
     - file: python_api/commons

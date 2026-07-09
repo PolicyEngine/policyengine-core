@@ -1,3 +1,14 @@
+## [3.30.0] - 2026-07-09
+
+### Fixed
+
+- Formula-time randomness is now rejected by a static check when a variable is registered, instead of a runtime guard that mutated the process-global `numpy.random`. This fixes intermittent, misattributed `NonDeterministicFormulaError`s raised under concurrent simulations, where one thread's running formula collided with another thread's legitimate setup seeding in `Simulation.__init__` (policyengine-core#518). The check fails fast at load, names the offending variable, and additionally catches `from numpy.random import ...` drawing functions and module-scope generators that the runtime guard could not.
+
+### Removed
+
+- The internal `policyengine_core.simulations.randomness_guard` module (the `forbid_randomness` runtime guard added in 3.27.0) has been removed. Formula-time randomness is now rejected statically at variable registration, and `NonDeterministicFormulaError` now lives in `policyengine_core.errors` (also re-exported from `policyengine_core.variables.formula_randomness`).
+
+
 ## [3.29.2] - 2026-07-08
 
 ### Changed

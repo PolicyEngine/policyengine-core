@@ -221,11 +221,11 @@ def test_check_passes_for_formula_less_variable():
     check_formula_determinism(_FakeVariable("input_only", {}))  # must not raise
 
 
-def test_exception_importable_from_legacy_guard_path():
-    # Back-compat: the runtime guard module was reduced to a shim, but the
-    # exception must still import from its old location as the same class.
-    from policyengine_core.simulations.randomness_guard import (
-        NonDeterministicFormulaError as LegacyImport,
+def test_exception_canonical_home_is_errors_package():
+    # NonDeterministicFormulaError lives in policyengine_core.errors; the module
+    # that raises it re-exports the same class.
+    from policyengine_core.errors import (
+        NonDeterministicFormulaError as FromErrors,
     )
 
-    assert LegacyImport is NonDeterministicFormulaError
+    assert FromErrors is NonDeterministicFormulaError

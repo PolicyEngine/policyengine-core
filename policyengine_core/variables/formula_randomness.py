@@ -29,10 +29,7 @@ from typing import Optional
 
 import numpy
 
-
-class NonDeterministicFormulaError(RuntimeError):
-    """Raised when a variable's formula references a random number generator."""
-
+from policyengine_core.errors import NonDeterministicFormulaError
 
 _RANDOM_MODULES = (numpy.random, _stdlib_random)
 _RNG_INSTANCE_TYPES = (numpy.random.Generator, numpy.random.RandomState)

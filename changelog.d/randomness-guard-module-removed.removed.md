@@ -1,0 +1,1 @@
+The internal `policyengine_core.simulations.randomness_guard` module (the `forbid_randomness` runtime guard added in 3.27.0) has been removed. Formula-time randomness is now rejected statically at variable registration, and `NonDeterministicFormulaError` now lives in `policyengine_core.errors` (also re-exported from `policyengine_core.variables.formula_randomness`).

@@ -18,6 +18,7 @@ from policyengine_core.holders import (
 from policyengine_core.periods import DAY, ETERNITY
 
 from . import config, helpers
+from .formula_randomness import check_formula_determinism
 
 
 class QuantityType:
@@ -325,6 +326,7 @@ class Variable:
         self.formulas = self.set_formulas(formulas_attr)
 
         self.check_computation_modes()
+        check_formula_determinism(self)
 
         if unexpected_attrs:
             raise ValueError(

@@ -528,6 +528,52 @@ class Simulation:
         else:
             self.tracer = SimpleTracer()
 
+    def to_trace(
+        self,
+        format: str = "policyengine.trace.v1",
+        *,
+        model: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Export a versioned computation trace for this simulation.
+
+        Requires ``trace=True`` (or assigning ``simulation.trace = True``)
+        so a :class:`~policyengine_core.tracers.FullTracer` is installed.
+
+        :param format: Trace document format identifier.
+        :param model: Optional country-package metadata override. When omitted,
+            a best-effort package name/version is taken from the tax-benefit
+            system module when available.
+        :returns: JSON-compatible trace document (see
+            :meth:`~policyengine_core.tracers.FullTracer.to_trace`).
+        """
+        if not isinstance(self.tracer, FullTracer):
+            raise ValueError(
+                "Computation traces require FullTracer. "
+                "Create the simulation with trace=True, or set simulation.trace = True "
+                "before calculating, then call to_trace()."
+            )
+        if model is None:
+            model = self._model_metadata_for_trace()
+        return self.tracer.to_trace(format=format, model=model)
+
+    def _model_metadata_for_trace(self) -> Optional[Dict[str, Any]]:
+        tax_benefit_system = getattr(self, "tax_benefit_system", None)
+        if tax_benefit_system is None:
+            return None
+        module = type(tax_benefit_system).__module__
+        package_name = module.split(".", 1)[0] if module else None
+        if not package_name or package_name == "policyengine_core":
+            return None
+        metadata: Dict[str, Any] = {"package": package_name.replace("_", "-")}
+        try:
+            import importlib.metadata
+
+            distribution_name = package_name.replace("_", "-")
+            metadata["version"] = importlib.metadata.version(distribution_name)
+        except Exception:
+            pass
+        return metadata
+
     def link_to_entities_instances(self) -> None:
         for _key, entity_instance in self.populations.items():
             entity_instance.simulation = self

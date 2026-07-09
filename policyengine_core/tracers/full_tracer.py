@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import re
 import time
 import typing
-from typing import Dict, Iterator, List, Optional, Union
+from typing import Any, Dict, Iterator, List, Optional, Union
 
 from .. import tracers
 
@@ -12,6 +13,25 @@ if typing.TYPE_CHECKING:
     from policyengine_core.periods import Period
 
     Stack = List[Dict[str, Union[str, Period]]]
+
+
+TRACE_FORMAT_V1 = "policyengine.trace.v1"
+# Matches FlatTrace.key(): ``name<period, (branch)>``
+_TRACE_KEY_RE = re.compile(
+    r"^(?P<name>.+)<(?P<period>[^<>]+), \((?P<branch>[^()]*)\)>$"
+)
+
+
+def parse_trace_key(key: str) -> Dict[str, str]:
+    """Parse a serialized flat-trace node key into name/period/branch."""
+    match = _TRACE_KEY_RE.match(key)
+    if not match:
+        raise ValueError(f"Invalid PolicyEngine trace key: {key!r}")
+    return {
+        "name": match.group("name"),
+        "period": match.group("period").strip(),
+        "branch": match.group("branch").strip(),
+    }
 
 
 class FullTracer:
@@ -172,3 +192,110 @@ class FullTracer:
 
         for node in self._trees:
             yield from _browse_node(node)
+
+    def to_trace(
+        self,
+        format: str = TRACE_FORMAT_V1,
+        *,
+        model: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Export a versioned, JSON-compatible computation trace.
+
+        Builds on :meth:`get_serialized_flat_trace` so existing tracer data
+        (nodes, dependencies, parameters, values, timings) is preserved under a
+        stable document shape suitable for audit, debugging, and downstream
+        projection without requiring PolicyEngine to adopt an external schema.
+
+        :param format: Trace document format identifier. Currently only
+            ``policyengine.trace.v1`` is supported.
+        :param model: Optional country-package / model metadata
+            (for example ``{"package": "policyengine-us", "version": "…"}``).
+        :returns: A plain ``dict`` ready for ``json.dumps``.
+        :raises ValueError: If ``format`` is not a supported version string.
+        """
+        if format != TRACE_FORMAT_V1:
+            raise ValueError(
+                f"Unsupported trace format {format!r}. "
+                f"Supported formats: {TRACE_FORMAT_V1!r}"
+            )
+
+        engine = self._engine_metadata()
+        flat = self.get_serialized_flat_trace()
+        nodes: List[Dict[str, Any]] = []
+        parameters: Dict[str, Any] = {}
+
+        for key, payload in flat.items():
+            parsed = parse_trace_key(key)
+            node: Dict[str, Any] = {
+                "id": key,
+                "variable": parsed["name"],
+                "period": parsed["period"],
+                "branch": parsed["branch"],
+                "dependencies": list(payload.get("dependencies", [])),
+                "parameters": dict(payload.get("parameters", {})),
+                "value": payload.get("value"),
+            }
+            if "calculation_time" in payload:
+                node["calculation_time"] = payload["calculation_time"]
+            if "formula_time" in payload:
+                node["formula_time"] = payload["formula_time"]
+            nodes.append(node)
+
+            for parameter_key, parameter_value in payload.get("parameters", {}).items():
+                if parameter_key in parameters:
+                    continue
+                try:
+                    parameter_parsed = parse_trace_key(parameter_key)
+                except ValueError:
+                    parameters[parameter_key] = {
+                        "id": parameter_key,
+                        "value": parameter_value,
+                    }
+                    continue
+                parameters[parameter_key] = {
+                    "id": parameter_key,
+                    "name": parameter_parsed["name"],
+                    "instant": parameter_parsed["period"],
+                    "branch": parameter_parsed["branch"],
+                    "value": parameter_value,
+                }
+
+        document: Dict[str, Any] = {
+            "format": format,
+            "engine": engine,
+            "calculation": {
+                "roots": [
+                    {
+                        "id": self.flat_trace.key(tree),
+                        "variable": tree.name,
+                        "period": str(tree.period),
+                        "branch": tree.branch_name,
+                    }
+                    for tree in self._trees
+                ],
+            },
+            "nodes": nodes,
+            "parameters": parameters,
+        }
+        if model is not None:
+            document["model"] = model
+        return document
+
+    @staticmethod
+    def _engine_metadata() -> Dict[str, Any]:
+        try:
+            from policyengine_core.build_metadata import get_runtime_metadata
+
+            metadata = get_runtime_metadata()
+            engine: Dict[str, Any] = {
+                "package": metadata.get("name", "policyengine-core"),
+                "version": metadata.get("version", "unknown"),
+            }
+            if metadata.get("git_sha"):
+                engine["git_sha"] = metadata["git_sha"]
+            return engine
+        except Exception:
+            return {
+                "package": "policyengine-core",
+                "version": "unknown",
+            }

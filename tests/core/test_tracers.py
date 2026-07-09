@@ -529,3 +529,64 @@ def test_browse_trace():
 
     browsed_nodes = [node.name for node in tracer.browse_trace()]
     assert browsed_nodes == ["B", "C", "D", "E", "F"]
+
+
+def test_to_trace_versioned_export():
+    tracer = FullTracer()
+    tracer.record_calculation_start("income_tax", 2017)
+    tracer.record_calculation_start("salary", 2017)
+    tracer.record_calculation_result(np.asarray([2000]))
+    tracer.record_calculation_end()
+    tracer.record_parameter_access("taxes.rate", "2017-01-01", "default", 0.15)
+    tracer.record_calculation_result(np.asarray([300]))
+    tracer.record_calculation_end()
+
+    trace = tracer.to_trace()
+
+    assert trace["format"] == "policyengine.trace.v1"
+    assert trace["engine"]["package"] == "policyengine-core"
+    assert "version" in trace["engine"]
+    assert trace["calculation"]["roots"] == [
+        {
+            "id": "income_tax<2017, (default)>",
+            "variable": "income_tax",
+            "period": "2017",
+            "branch": "default",
+        }
+    ]
+
+    nodes_by_id = {node["id"]: node for node in trace["nodes"]}
+    root = nodes_by_id["income_tax<2017, (default)>"]
+    assert root["variable"] == "income_tax"
+    assert root["period"] == "2017"
+    assert root["branch"] == "default"
+    assert root["dependencies"] == ["salary<2017, (default)>"]
+    assert root["value"] == [300]
+    assert "taxes.rate<2017-01-01, (default)>" in root["parameters"]
+    assert root["parameters"]["taxes.rate<2017-01-01, (default)>"] == approx(0.15)
+    assert "calculation_time" in root
+    assert "formula_time" in root
+
+    assert nodes_by_id["salary<2017, (default)>"]["value"] == [2000]
+    assert "taxes.rate<2017-01-01, (default)>" in trace["parameters"]
+    assert (
+        trace["parameters"]["taxes.rate<2017-01-01, (default)>"]["name"] == "taxes.rate"
+    )
+
+
+def test_to_trace_rejects_unknown_format():
+    tracer = FullTracer()
+    tracer.record_calculation_start("salary", 2017)
+    tracer.record_calculation_end()
+
+    with raises(ValueError, match="Unsupported trace format"):
+        tracer.to_trace(format="policyengine.trace.v0")
+
+
+def test_to_trace_includes_optional_model_metadata():
+    tracer = FullTracer()
+    tracer.record_calculation_start("salary", 2017)
+    tracer.record_calculation_end()
+
+    trace = tracer.to_trace(model={"package": "policyengine-us", "version": "0.0.0"})
+    assert trace["model"] == {"package": "policyengine-us", "version": "0.0.0"}

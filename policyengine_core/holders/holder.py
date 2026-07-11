@@ -150,6 +150,18 @@ class Holder:
         Tracking uses the simulation's existing ``_user_input_keys`` set, which
         :meth:`set_input` already maintains; formula cache writes via
         :meth:`put_in_cache` are not treated as inputs.
+
+        When ``branch_name`` matches the simulation's current branch, inheritance
+        uses :meth:`Simulation._get_visible_branch_names` (same walk as exportable
+        input periods). Queries for a different branch only check that branch's
+        exact key — they do not walk ``parent_branch``, which is only meaningful
+        relative to the simulation's current branch.
+
+        Note: variables with ``definition_period == ETERNITY`` store inputs under
+        the period key recorded by :meth:`set_input` (often the ETERNITY period
+        itself). Callers that pass a concrete month/year may miss that key until
+        a dedicated ETERNITY canonicalization is added; screener monetary inputs
+        are typically MONTH/YEAR and are unaffected.
         """
         simulation = getattr(self, "simulation", None)
         if simulation is None:
@@ -159,23 +171,15 @@ class Holder:
             return False
 
         period = periods.period(period)
-        if (self.variable.name, branch_name, period) in user_input_keys:
-            return True
+        variable_name = self.variable.name
 
-        # Nested branches inherit user inputs from ancestors and default.
-        if branch_name != "default":
-            parent = getattr(simulation, "parent_branch", None)
-            while parent is not None:
-                if (
-                    self.variable.name,
-                    parent.branch_name,
-                    period,
-                ) in user_input_keys:
+        if branch_name == getattr(simulation, "branch_name", "default"):
+            for visible_branch in simulation._get_visible_branch_names():
+                if (variable_name, visible_branch, period) in user_input_keys:
                     return True
-                parent = getattr(parent, "parent_branch", None)
-            if (self.variable.name, "default", period) in user_input_keys:
-                return True
-        return False
+            return False
+
+        return (variable_name, branch_name, period) in user_input_keys
 
     def get_memory_usage(self) -> dict:
         """

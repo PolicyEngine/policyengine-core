@@ -1258,11 +1258,17 @@ class Simulation:
     def get_value_state(self, variable_name: str, period: Any) -> str:
         """Return input provenance for ``variable_name`` at ``period``.
 
-        :returns: ``"explicit"`` when the value was set via :meth:`set_input`
-            / situation inputs; ``"default"`` when it was not. Calculated
-            (formula-filled) values are also ``"default"`` from an
-            input-provenance perspective until a richer value-state model is
-            introduced.
+        Current vocabulary (stable for callers):
+
+        - ``"explicit"`` — value was set via :meth:`set_input` / situation inputs
+        - ``"default"`` — not recorded as a user input (includes omitted fields
+          that still default to zero in formulas, and formula-filled / cached
+          values from an input-provenance perspective)
+
+        Planned future states (not returned yet): ``"computed"`` for
+        formula-filled values, and ``"unknown"`` when provenance cannot be
+        determined. Until those land, treat anything non-explicit as
+        ``"default"``.
         """
         return "explicit" if self.is_input(variable_name, period) else "default"
 

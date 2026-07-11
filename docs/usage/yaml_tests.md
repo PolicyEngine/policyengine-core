@@ -31,8 +31,10 @@ Accepted top-level fields:
 - **Entity inputs**: nest under the entity plural, then instance id, then
   variable name (the same shape `SimulationBuilder.build_from_dict` accepts).
 - **Dotted input keys**: treated as **inline parameter reforms** via
-  `set_parameter`, not as person/household variables. This differs from
-  OpenFisca Core, which uses an explicit `parameters` field.
+  `set_parameter` (see `policyengine_core/tools/test_runner.py`, which imports
+  `set_parameter` and assembles `inline_reforms` while parsing `input`), not as
+  person/household variables. This differs from OpenFisca Core, which uses an
+  explicit `parameters` field.
 - **Outputs**: may be direct variable names, entity singular keys, or entity
   plural → instance id → variable paths.
 

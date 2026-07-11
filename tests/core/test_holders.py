@@ -328,3 +328,49 @@ def test_situation_inputs_are_marked_explicit(tax_benefit_system):
     assert simulation.is_input("salary", "2017-12")
     assert simulation.get_value_state("salary", "2017-12") == "explicit"
     assert not simulation.is_input("salary", "2017-11")
+
+
+def test_is_input_false_without_simulation_binding(single):
+    simulation = single
+    salary_holder = simulation.person.get_holder("salary")
+    salary_holder.set_input(period, numpy.asarray([0]))
+    assert salary_holder.is_input(period)
+
+    salary_holder.simulation = None
+    assert not salary_holder.is_input(period)
+
+
+def test_is_input_false_when_user_input_keys_missing(single):
+    simulation = single
+    salary_holder = simulation.person.get_holder("salary")
+    salary_holder.set_input(period, numpy.asarray([25]))
+    assert salary_holder.is_input(period)
+
+    simulation._user_input_keys = set()
+    assert not salary_holder.is_input(period)
+    assert simulation.get_value_state("salary", period) == "default"
+
+
+def test_is_input_inherits_from_parent_branch(tax_benefit_system):
+    situation = {
+        "persons": {
+            "Alicia": {
+                "salary": {
+                    "2017-12": 1500,
+                }
+            }
+        },
+        "households": {
+            "_": {
+                "parents": ["Alicia"],
+            }
+        },
+    }
+    simulation = SimulationBuilder().build_from_entities(tax_benefit_system, situation)
+    child = simulation.get_branch("reform")
+    salary_holder = child.person.get_holder("salary")
+
+    assert child.branch_name == "reform"
+    assert salary_holder.is_input("2017-12")
+    assert child.is_input("salary", "2017-12")
+    assert child.get_value_state("salary", "2017-12") == "explicit"

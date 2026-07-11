@@ -201,10 +201,26 @@ class FullTracer:
     ) -> Dict[str, Any]:
         """Export a versioned, JSON-compatible computation trace.
 
-        Builds on :meth:`get_serialized_flat_trace` so existing tracer data
-        (nodes, dependencies, parameters, values, timings) is preserved under a
-        stable document shape suitable for audit, debugging, and downstream
-        projection without requiring PolicyEngine to adopt an external schema.
+        Node identity fields (``variable`` / ``period`` / ``branch``) are taken
+        from structured :class:`~policyengine_core.tracers.TraceNode` attributes
+        via :meth:`browse_trace`, not by regex-parsing serialized flat-trace
+        keys. :func:`parse_trace_key` remains available for callers that only
+        have a flat key string (for example parameter maps without a node).
+
+        **v1 intentionally omits** entity/count on ``calculation`` roots and
+        source/version on ``parameters``. Those were listed as optional
+        "minimum useful fields" in the provenance issue and can land in a later
+        format version without breaking ``policyengine.trace.v1`` consumers.
+
+        This document is *per-computation* provenance. It is complementary to
+        PolicyEngine's TRACE Transparent Research Object (TRO) surface in
+        ``policyengine`` (JSON-LD under ``https://policyengine.org/trace/0.1#``),
+        which pins release/composition artifacts. A future TRO may embed or
+        reference a ``policyengine.trace.v1`` payload as its runtime trace; the
+        format id and TRO namespace are intentionally distinct.
+
+        Values are full serialized vectors (household-audit friendly). Optional
+        summarization for population-scale traces is deferred.
 
         :param format: Trace document format identifier. Currently only
             ``policyengine.trace.v1`` is supported.
@@ -220,44 +236,48 @@ class FullTracer:
             )
 
         engine = self._engine_metadata()
-        flat = self.get_serialized_flat_trace()
+        flat_trace = self.flat_trace
         nodes: List[Dict[str, Any]] = []
         parameters: Dict[str, Any] = {}
+        seen_node_ids: set[str] = set()
 
-        for key, payload in flat.items():
-            parsed = parse_trace_key(key)
-            node: Dict[str, Any] = {
-                "id": key,
-                "variable": parsed["name"],
-                "period": parsed["period"],
-                "branch": parsed["branch"],
-                "dependencies": list(payload.get("dependencies", [])),
-                "parameters": dict(payload.get("parameters", {})),
-                "value": payload.get("value"),
+        for tree_node in self.browse_trace():
+            node_id = flat_trace.key(tree_node)
+            # Cache reads can revisit the same calculation; keep the first
+            # structured record (same non-overwriting rule as FlatTrace).
+            if node_id in seen_node_ids:
+                continue
+            seen_node_ids.add(node_id)
+
+            parameter_map = {
+                flat_trace.key(parameter): flat_trace.serialize(parameter.value)
+                for parameter in tree_node.parameters
             }
-            if "calculation_time" in payload:
-                node["calculation_time"] = payload["calculation_time"]
-            if "formula_time" in payload:
-                node["formula_time"] = payload["formula_time"]
+            node: Dict[str, Any] = {
+                "id": node_id,
+                "variable": tree_node.name,
+                "period": str(tree_node.period),
+                "branch": tree_node.branch_name,
+                "dependencies": [
+                    flat_trace.key(child) for child in tree_node.children
+                ],
+                "parameters": parameter_map,
+                "value": flat_trace.serialize(tree_node.value),
+                "calculation_time": tree_node.calculation_time(),
+                "formula_time": tree_node.formula_time(),
+            }
             nodes.append(node)
 
-            for parameter_key, parameter_value in payload.get("parameters", {}).items():
-                if parameter_key in parameters:
+            for parameter in tree_node.parameters:
+                parameter_id = flat_trace.key(parameter)
+                if parameter_id in parameters:
                     continue
-                try:
-                    parameter_parsed = parse_trace_key(parameter_key)
-                except ValueError:
-                    parameters[parameter_key] = {
-                        "id": parameter_key,
-                        "value": parameter_value,
-                    }
-                    continue
-                parameters[parameter_key] = {
-                    "id": parameter_key,
-                    "name": parameter_parsed["name"],
-                    "instant": parameter_parsed["period"],
-                    "branch": parameter_parsed["branch"],
-                    "value": parameter_value,
+                parameters[parameter_id] = {
+                    "id": parameter_id,
+                    "name": parameter.name,
+                    "instant": str(parameter.period),
+                    "branch": parameter.branch_name,
+                    "value": flat_trace.serialize(parameter.value),
                 }
 
         document: Dict[str, Any] = {
@@ -266,7 +286,7 @@ class FullTracer:
             "calculation": {
                 "roots": [
                     {
-                        "id": self.flat_trace.key(tree),
+                        "id": flat_trace.key(tree),
                         "variable": tree.name,
                         "period": str(tree.period),
                         "branch": tree.branch_name,

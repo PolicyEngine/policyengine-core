@@ -17,6 +17,7 @@ from policyengine_core.tracers import (
     TraceNode,
     TracingParameterNodeAtInstant,
 )
+from policyengine_core.tracers.full_tracer import parse_trace_key
 
 from .parameters_fancy_indexing.test_fancy_indexing import parameters
 
@@ -649,21 +650,30 @@ def test_simulation_to_trace_skips_core_package_as_model_metadata():
     assert "model" not in trace
 
 
-def test_to_trace_records_unparseable_parameter_keys():
+def test_to_trace_reads_structured_fields_from_trace_nodes():
+    """Nodes/parameters come from TraceNode attributes, not key regex parsing."""
     tracer = FullTracer()
-    tracer.record_calculation_start("salary", 2017)
-    # Inject a flat-trace parameter key that parse_trace_key cannot parse.
+    tracer.record_calculation_start("income_tax", 2017, branch_name="reform")
+    tracer.record_parameter_access("taxes.rate", "2017-01-01", "reform", 0.2)
+    tracer.record_calculation_result(np.asarray([100]))
     tracer.record_calculation_end()
-    flat = tracer.get_serialized_flat_trace()
-    key = next(iter(flat))
-    flat[key]["parameters"] = {"not-a-valid-trace-key": 0.1}
-    # Monkeypatch get_serialized_flat_trace for this call path via temporary override
-    original = tracer.get_serialized_flat_trace
-    tracer.get_serialized_flat_trace = lambda: flat
-    try:
-        trace = tracer.to_trace()
-    finally:
-        tracer.get_serialized_flat_trace = original
 
-    assert "not-a-valid-trace-key" in trace["parameters"]
-    assert trace["parameters"]["not-a-valid-trace-key"]["value"] == 0.1
+    trace = tracer.to_trace()
+    root = trace["nodes"][0]
+    assert root["variable"] == "income_tax"
+    assert root["period"] == "2017"
+    assert root["branch"] == "reform"
+
+    parameter = trace["parameters"]["taxes.rate<2017-01-01, (reform)>"]
+    assert parameter["name"] == "taxes.rate"
+    assert parameter["instant"] == "2017-01-01"
+    assert parameter["branch"] == "reform"
+    assert parameter["value"] == approx(0.2)
+
+
+def test_parse_trace_key_still_available_for_flat_keys():
+    parsed = parse_trace_key("salary<2017, (default)>")
+    assert parsed == {"name": "salary", "period": "2017", "branch": "default"}
+
+    with raises(ValueError, match="Invalid PolicyEngine trace key"):
+        parse_trace_key("not-a-valid-trace-key")

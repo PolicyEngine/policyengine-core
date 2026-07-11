@@ -590,3 +590,80 @@ def test_to_trace_includes_optional_model_metadata():
 
     trace = tracer.to_trace(model={"package": "policyengine-us", "version": "0.0.0"})
     assert trace["model"] == {"package": "policyengine-us", "version": "0.0.0"}
+
+
+def test_simulation_to_trace_requires_full_tracer():
+    simulation = StubSimulation()
+    simulation.tracer = SimpleTracer()
+
+    with raises(ValueError, match="FullTracer"):
+        simulation.to_trace()
+
+
+def test_simulation_to_trace_exports_full_tracer_document():
+    simulation = StubSimulation()
+    simulation.tracer = FullTracer()
+    simulation.tax_benefit_system = None
+    simulation.tracer.record_calculation_start("salary", 2017)
+    simulation.tracer.record_calculation_result(np.asarray([1000]))
+    simulation.tracer.record_calculation_end()
+
+    trace = simulation.to_trace(model={"package": "policyengine-us", "version": "1.0.0"})
+
+    assert trace["format"] == "policyengine.trace.v1"
+    assert trace["model"] == {"package": "policyengine-us", "version": "1.0.0"}
+    assert trace["calculation"]["roots"][0]["variable"] == "salary"
+    assert trace["nodes"][0]["value"] == [1000]
+
+
+def test_simulation_to_trace_infers_model_metadata_from_tax_benefit_system():
+    class FakeCountrySystem:
+        pass
+
+    FakeCountrySystem.__module__ = "policyengine_us.system"
+
+    simulation = StubSimulation()
+    simulation.tracer = FullTracer()
+    simulation.tax_benefit_system = FakeCountrySystem()
+    simulation.tracer.record_calculation_start("salary", 2017)
+    simulation.tracer.record_calculation_end()
+
+    trace = simulation.to_trace()
+
+    assert trace["model"]["package"] == "policyengine-us"
+
+
+def test_simulation_to_trace_skips_core_package_as_model_metadata():
+    class CoreLikeSystem:
+        pass
+
+    CoreLikeSystem.__module__ = "policyengine_core.country_template"
+
+    simulation = StubSimulation()
+    simulation.tracer = FullTracer()
+    simulation.tax_benefit_system = CoreLikeSystem()
+    simulation.tracer.record_calculation_start("salary", 2017)
+    simulation.tracer.record_calculation_end()
+
+    trace = simulation.to_trace()
+    assert "model" not in trace
+
+
+def test_to_trace_records_unparseable_parameter_keys():
+    tracer = FullTracer()
+    tracer.record_calculation_start("salary", 2017)
+    # Inject a flat-trace parameter key that parse_trace_key cannot parse.
+    tracer.record_calculation_end()
+    flat = tracer.get_serialized_flat_trace()
+    key = next(iter(flat))
+    flat[key]["parameters"] = {"not-a-valid-trace-key": 0.1}
+    # Monkeypatch get_serialized_flat_trace for this call path via temporary override
+    original = tracer.get_serialized_flat_trace
+    tracer.get_serialized_flat_trace = lambda: flat
+    try:
+        trace = tracer.to_trace()
+    finally:
+        tracer.get_serialized_flat_trace = original
+
+    assert "not-a-valid-trace-key" in trace["parameters"]
+    assert trace["parameters"]["not-a-valid-trace-key"]["value"] == 0.1

@@ -258,9 +258,7 @@ class FullTracer:
                 "variable": tree_node.name,
                 "period": str(tree_node.period),
                 "branch": tree_node.branch_name,
-                "dependencies": [
-                    flat_trace.key(child) for child in tree_node.children
-                ],
+                "dependencies": [flat_trace.key(child) for child in tree_node.children],
                 "parameters": parameter_map,
                 "value": flat_trace.serialize(tree_node.value),
                 "calculation_time": tree_node.calculation_time(),

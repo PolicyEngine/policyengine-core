@@ -609,7 +609,9 @@ def test_simulation_to_trace_exports_full_tracer_document():
     simulation.tracer.record_calculation_result(np.asarray([1000]))
     simulation.tracer.record_calculation_end()
 
-    trace = simulation.to_trace(model={"package": "policyengine-us", "version": "1.0.0"})
+    trace = simulation.to_trace(
+        model={"package": "policyengine-us", "version": "1.0.0"}
+    )
 
     assert trace["format"] == "policyengine.trace.v1"
     assert trace["model"] == {"package": "policyengine-us", "version": "1.0.0"}

@@ -1261,10 +1261,14 @@ class Simulation:
 
     def delete_arrays(self, variable: str, period: Period = None) -> None:
         """
-        Delete a variable's value for a given period
+        Delete a variable's values visible to this simulation branch.
 
-        :param variable: the variable to be set
-        :param period: the period for which the value should be deleted
+        The calling branch, each ancestor branch, and the default branch are
+        purged from this simulation's private holder storage. Other branch
+        names and the parent simulation's holder storage remain unchanged.
+
+        :param variable: the variable whose cached values should be deleted
+        :param period: the period to delete, or all periods when omitted
 
         Example:
 
@@ -1286,7 +1290,9 @@ class Simulation:
         >>> simulation.get_array('age', '2018-05') is None
         True
         """
-        self.get_holder(variable).delete_arrays(period)
+        holder = self.get_holder(variable)
+        for branch_name in self._get_visible_branch_names():
+            holder.delete_arrays(period, branch_name)
         _fast_cache = getattr(self, "_fast_cache", None)
         if period is None:
             if _fast_cache is not None:
@@ -1631,7 +1637,7 @@ class Simulation:
         return variable is not None and variable.is_input_variable()
 
     def _get_visible_branch_names(self) -> List[str]:
-        branch_names = [self.branch_name]
+        branch_names = [getattr(self, "branch_name", "default")]
         parent = getattr(self, "parent_branch", None)
         while parent is not None:
             branch_names.append(parent.branch_name)

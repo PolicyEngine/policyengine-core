@@ -1,3 +1,10 @@
+## [3.30.1] - 2026-07-19
+
+### Fixed
+
+- Fixed nested simulation cache deletion so perturbation branches recompute inherited values without mutating parent storage.
+
+
 ## [3.30.0] - 2026-07-09
 
 ### Fixed

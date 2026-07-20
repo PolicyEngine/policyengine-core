@@ -1857,11 +1857,20 @@ class Simulation:
         # as "size X != Y = count" projection errors.
         self._invalidate_all_caches()
 
-        # Ensure the baseline branch has the new data.
+        # Ensure the baseline branch has the new data: rebuild it from the
+        # subsampled simulation through ``get_branch`` (the same wiring
+        # ``__init__`` uses), then restore the saved baseline tax-benefit
+        # system. Previously the saved system was assigned to
+        # ``self.branches["tax_benefit_system"]`` — a stray dict key — so the
+        # rebuilt baseline branch kept the reform system and reform-vs-baseline
+        # comparisons after ``subsample`` compared the reform against itself.
         if "baseline" in self.branches:
             baseline_tax_benefit_system = self.branches["baseline"].tax_benefit_system
-            self.branches["baseline"] = self.clone()
-            self.branches["tax_benefit_system"] = baseline_tax_benefit_system
+            del self.branches["baseline"]
+            baseline = self.get_branch("baseline")
+            baseline.tax_benefit_system = baseline_tax_benefit_system
+            if getattr(self, "baseline", None) is not None:
+                self.baseline = baseline
 
         self.default_calculation_period = default_calculation_period
         return self

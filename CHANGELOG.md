@@ -1,3 +1,10 @@
+## [3.30.2] - 2026-07-20
+
+### Fixed
+
+- Fixed subsample so the rebuilt baseline branch keeps the baseline tax-benefit system instead of the reform system, with canonical branch wiring and no stray branches key.
+
+
 ## [3.30.1] - 2026-07-19
 
 ### Fixed

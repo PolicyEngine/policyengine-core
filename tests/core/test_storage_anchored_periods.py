@@ -32,3 +32,30 @@ def test_get_known_branch_periods_with_anchored_year_period():
     anchored = periods.period("year:2027-11")
     storage.put(np.asarray([1.0]), anchored, branch_name="reform")
     assert storage.get_known_branch_periods() == [("reform", anchored)]
+
+
+def test_put_rejects_colon_branch_names():
+    import pytest
+
+    storage = InMemoryStorage(is_eternal=False)
+    with pytest.raises(ValueError, match="526"):
+        storage.put(np.asarray([1.0]), "2024-01", branch_name="my:reform")
+
+
+def test_put_rejects_mid_month_anchored_periods():
+    import pytest
+
+    from policyengine_core.periods import Instant, Period, YEAR
+
+    storage = InMemoryStorage(is_eternal=False)
+    day_anchored = Period((YEAR, Instant((2027, 11, 15)), 2))
+    with pytest.raises(ValueError, match="lossy"):
+        storage.put(np.asarray([1.0]), day_anchored, branch_name="default")
+
+
+def test_eternal_storage_round_trips():
+    storage = InMemoryStorage(is_eternal=True)
+    storage.put(np.asarray([1.0]), "2024-01", branch_name="default")
+    from policyengine_core import periods as p
+
+    assert storage.get_known_periods() == [p.period(p.ETERNITY)]

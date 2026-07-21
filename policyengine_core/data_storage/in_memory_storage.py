@@ -40,6 +40,21 @@ class InMemoryStorage:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
 
+        # Keys embed f"{branch_name}:{period}", so reject inputs whose key
+        # would be ambiguous to parse back: branch names containing the
+        # separator, and month/year periods anchored mid-month (their string
+        # form drops the day). See policyengine-core#526 for the structured-
+        # key refactor that will lift these restrictions.
+        if ":" in branch_name:
+            raise ValueError(
+                f"Branch name {branch_name!r} may not contain ':' "
+                "(see policyengine-core#526)."
+            )
+        if period.unit in (periods.YEAR, periods.MONTH) and period.start.day != 1:
+            raise ValueError(
+                f"Cannot cache period {period} anchored mid-month: its "
+                "string form is lossy (see policyengine-core#526)."
+            )
         self._arrays[f"{branch_name}:{period}"] = value
 
     def delete(self, period: Period = None, branch_name: str = "default") -> None:

@@ -1,0 +1,1 @@
+Fix InMemoryStorage period-key parsing so anchored year periods (e.g. a year-defined input set at a non-January month), whose string form contains colons, no longer crash get_known_periods and get_known_branch_periods.

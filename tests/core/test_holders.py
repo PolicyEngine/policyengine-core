@@ -184,7 +184,7 @@ def test_known_periods(couple):
     holder.put_in_cache(data, month)
     holder._memory_storage.put(data, month_2)
 
-    assert sorted(holder.get_known_periods()), [month == month_2]
+    assert sorted(holder.get_known_periods()) == [month, month_2]
 
 
 def test_cache_enum_on_disk(single):

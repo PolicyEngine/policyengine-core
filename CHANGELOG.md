@@ -1,3 +1,10 @@
+## [3.30.3] - 2026-07-21
+
+### Fixed
+
+- Fix InMemoryStorage period-key parsing so anchored year periods (e.g. a year-defined input set at a non-January month), whose string form contains colons, no longer crash get_known_periods and get_known_branch_periods; reject colon branch names and mid-month-anchored periods loudly at put time (their keys cannot round-trip; see #526).
+
+
 ## [3.30.2] - 2026-07-20
 
 ### Fixed

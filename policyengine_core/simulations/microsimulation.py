@@ -88,10 +88,15 @@ class Microsimulation(Simulation):
         map_to: str = None,
         use_weights: bool = True,
     ) -> MicroSeries:
-        values = super().calculate_add(variable_name, period, map_to)
+        values = super().calculate_add(variable_name, period)
+        if map_to is not None:
+            source_entity = self.tax_benefit_system.get_variable(
+                variable_name, check_existence=True
+            ).entity.key
+            values = self.map_result(np.array(values), source_entity, map_to)
         if not use_weights:
             return values
-        weights = self.get_weights(variable_name, period)
+        weights = self.get_weights(variable_name, period, map_to)
         return MicroSeries(np.array(values), weights=weights)
 
     def calculate_divide(
@@ -101,10 +106,15 @@ class Microsimulation(Simulation):
         map_to: str = None,
         use_weights: bool = True,
     ) -> MicroSeries:
-        values = super().calculate_divide(variable_name, period, map_to)
+        values = super().calculate_divide(variable_name, period)
+        if map_to is not None:
+            source_entity = self.tax_benefit_system.get_variable(
+                variable_name, check_existence=True
+            ).entity.key
+            values = self.map_result(np.array(values), source_entity, map_to)
         if not use_weights:
             return values
-        weights = self.get_weights(variable_name, period)
+        weights = self.get_weights(variable_name, period, map_to)
         return MicroSeries(np.array(values), weights=weights)
 
     def calculate_dataframe(

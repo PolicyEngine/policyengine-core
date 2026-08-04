@@ -1,3 +1,10 @@
+## [3.30.4] - 2026-08-04
+
+### Fixed
+
+- Fix `Microsimulation.calculate_add` and `calculate_divide` to honor `map_to` for both values and weights.
+
+
 ## [3.30.3] - 2026-07-21
 
 ### Fixed

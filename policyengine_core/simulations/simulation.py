@@ -467,6 +467,7 @@ class Simulation:
             # Ensure we're back to all person-level data.
             data = data_copy
 
+        unknown_columns = []
         if self.dataset.data_format != Dataset.FLAT_FILE:
             for variable in data:
                 if variable in self.tax_benefit_system.variables:
@@ -482,8 +483,7 @@ class Simulation:
                             variable, self.dataset.time_period, data[variable]
                         )
                 else:
-                    # Silently skip.
-                    pass
+                    unknown_columns.append(variable)
         else:
             for variable in data:
                 if "__" in variable:
@@ -493,6 +493,7 @@ class Simulation:
                     time_period = self.dataset.time_period or self.default_input_period
 
                 if variable_name not in self.tax_benefit_system.variables:
+                    unknown_columns.append(variable)
                     continue
 
                 variable_meta = self.tax_benefit_system.get_variable(variable_name)
@@ -509,6 +510,20 @@ class Simulation:
                     entity_level_data = data[variable]
 
                 self.set_input(variable_name, time_period, entity_level_data)
+
+        if unknown_columns:
+            # A skipped column usually means the dataset was built for a
+            # different model version (e.g. an input variable was renamed or
+            # removed), and its data is silently lost — say so instead of
+            # loading as if nothing happened.
+            shown = ", ".join(sorted(unknown_columns)[:10])
+            if len(unknown_columns) > 10:
+                shown += f", … ({len(unknown_columns) - 10} more)"
+            logging.warning(
+                f"The dataset contains {len(unknown_columns)} column(s) that "
+                f"do not match any variable in the tax-benefit system and "
+                f"were ignored: {shown}"
+            )
 
         self.default_calculation_period = (
             self.dataset.time_period or self.default_calculation_period

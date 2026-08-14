@@ -1,3 +1,10 @@
+## [3.31.0] - 2026-08-14
+
+### Added
+
+- Warn when a dataset contains columns that do not match any variable in the tax-benefit system, instead of silently ignoring them.
+
+
 ## [3.30.4] - 2026-08-04
 
 ### Fixed

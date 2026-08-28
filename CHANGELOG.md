@@ -1,3 +1,10 @@
+## [3.31.1] - 2026-08-28
+
+### Changed
+
+- Removed a stray scratch notebook (test.ipynb) that was accidentally committed to the repository root.
+
+
 ## [3.31.0] - 2026-08-14
 
 ### Added

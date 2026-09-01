@@ -1,0 +1,1 @@
+- Made release tagging use the version in `pyproject.toml`, run only after successful PyPI publication, and report tag-push failures.

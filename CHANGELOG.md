@@ -1,3 +1,10 @@
+## [3.32.1] - 2026-09-02
+
+### Changed
+
+- Documented the `Dataset.FLAT_FILE` option alongside the other `Dataset.data_format` values.
+
+
 ## [3.32.0] - 2026-09-02
 
 ### Fixed

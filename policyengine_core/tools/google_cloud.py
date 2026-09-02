@@ -2,10 +2,9 @@ import os
 import tempfile
 from getpass import getpass
 from pathlib import Path
-from typing import Optional, Tuple
 
 
-def parse_gs_url(url: str) -> Tuple[str, str, Optional[str]]:
+def parse_gs_url(url: str) -> tuple[str, str, str | None]:
     """
     Parse a Google Cloud Storage URL into components.
 

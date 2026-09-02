@@ -5,7 +5,6 @@ from huggingface_hub import (
 )
 from huggingface_hub.errors import RepositoryNotFoundError
 from getpass import getpass
-from typing import Optional, Tuple
 import os
 import warnings
 import traceback
@@ -14,7 +13,7 @@ with warnings.catch_warnings():
     warnings.simplefilter("ignore")
 
 
-def parse_hf_url(url: str) -> Tuple[str, str, str, Optional[str]]:
+def parse_hf_url(url: str) -> tuple[str, str, str, str | None]:
     """
     Parse a Hugging Face URL into components.
 
@@ -48,7 +47,7 @@ def download_huggingface_dataset(
     repo: str,
     repo_filename: str,
     version: str = None,
-    local_dir: Optional[str] = None,
+    local_dir: str | None = None,
 ):
     """
     Download a dataset from the Hugging Face Hub.
@@ -92,7 +91,7 @@ def download_huggingface_dataset(
     )
 
 
-def get_or_prompt_hf_token() -> Optional[str]:
+def get_or_prompt_hf_token() -> str | None:
     """
     Either get the Hugging Face token from the environment,
     or prompt the user for it and store it in the environment.

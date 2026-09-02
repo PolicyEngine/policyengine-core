@@ -1,5 +1,6 @@
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -22,6 +23,8 @@ def run_git(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
 
 @pytest.fixture
 def release_repository(tmp_path: Path) -> tuple[Path, Path]:
+    if sys.platform == "win32":
+        pytest.skip("the Bash release script is not exercised by Windows jobs")
     if shutil.which("bash") is None:
         pytest.skip("bash is required to exercise the release tag script")
 
@@ -87,6 +90,8 @@ def test_release_tag_script_is_idempotent(
 
 
 def test_release_tag_script_propagates_push_failure(tmp_path: Path):
+    if sys.platform == "win32":
+        pytest.skip("the Bash release script is not exercised by Windows jobs")
     if shutil.which("bash") is None:
         pytest.skip("bash is required to exercise the release tag script")
 

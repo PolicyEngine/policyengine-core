@@ -12,7 +12,7 @@ A fork of [OpenFisca-Core](https://github.com/OpenFisca/OpenFisca-Core) that pow
 pip install policyengine-core
 ```
 
-Supports Python 3.9 – 3.14.
+Supports Python 3.11–3.14.
 
 ## Usage
 

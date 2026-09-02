@@ -89,6 +89,39 @@ def test_release_tag_script_is_idempotent(
     assert second_run.stdout.strip() == "Tag 1.2.3 already exists."
 
 
+def test_release_tag_script_rejects_tag_for_different_commit(
+    release_repository: tuple[Path, Path],
+):
+    repository, remote = release_repository
+    run_git("tag", "1.2.3", cwd=repository)
+    run_git("push", "origin", "1.2.3", cwd=repository)
+    (repository / "change.txt").write_text("Different release commit\n")
+    run_git("add", "change.txt", cwd=repository)
+    run_git("commit", "-m", "Create a different release commit", cwd=repository)
+
+    result = run_tag_script(repository, check=False)
+
+    head = run_git("rev-parse", "HEAD", cwd=repository).stdout.strip()
+    tagged_commit = run_git(
+        "rev-parse",
+        "refs/tags/1.2.3^{commit}",
+        cwd=repository,
+    ).stdout.strip()
+    remote_tag = run_git(
+        "--git-dir",
+        str(remote),
+        "rev-parse",
+        "refs/tags/1.2.3^{commit}",
+        cwd=repository,
+    ).stdout.strip()
+    assert result.returncode != 0
+    assert result.stdout == ""
+    assert f"Tag 1.2.3 identifies {tagged_commit}" in result.stderr
+    assert f"not the release commit {head}" in result.stderr
+    assert tagged_commit != head
+    assert remote_tag == tagged_commit
+
+
 def test_release_tag_script_propagates_push_failure(tmp_path: Path):
     if sys.platform == "win32":
         pytest.skip("the Bash release script is not exercised by Windows jobs")

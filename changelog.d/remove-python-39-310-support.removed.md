@@ -1,1 +1,1 @@
-- Removed support for Python 3.9 and 3.10; PolicyEngine Core now requires Python 3.11 or later.
+Removed support for Python 3.9 and 3.10; PolicyEngine Core now requires Python 3.11 or later.

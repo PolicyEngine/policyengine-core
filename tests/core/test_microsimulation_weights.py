@@ -16,6 +16,7 @@ def _weighted_dataset(include_person_weight: bool = True) -> Dataset:
         "person_household_role__2022": ["parent", "child", "parent"],
         "household_weight__2022": [10.0, 10.0, 20.0],
         "salary__2022-01": [100.0, 200.0, 300.0],
+        "housing_tax__2022": [120.0, 120.0, 240.0],
     }
     if include_person_weight:
         data["person_weight__2022"] = [1.0, 2.0, 3.0]
@@ -63,6 +64,38 @@ def test__given_dataframe_mapped_to_household__then_weights_are_household_weight
 
     # Then
     np.testing.assert_array_equal(dataframe.weights, np.array([10.0, 20.0]))
+
+
+def test__given_calculate_add_mapped_to_household__then_values_and_weights_match_households():
+    # Given
+    simulation = Microsimulation(dataset=_weighted_dataset())
+
+    # When
+    result = simulation.calculate_add(
+        "salary",
+        "2022-01",
+        map_to="household",
+    )
+
+    # Then
+    np.testing.assert_array_equal(result, np.array([300.0, 300.0]))
+    np.testing.assert_array_equal(result.weights, np.array([10.0, 20.0]))
+
+
+def test__given_calculate_divide_mapped_to_person__then_values_and_weights_match_persons():
+    # Given
+    simulation = Microsimulation(dataset=_weighted_dataset())
+
+    # When
+    result = simulation.calculate_divide(
+        "housing_tax",
+        "2022-01",
+        map_to="person",
+    )
+
+    # Then
+    np.testing.assert_array_equal(result, np.array([10.0, 10.0, 20.0]))
+    np.testing.assert_array_equal(result.weights, np.array([10.0, 10.0, 20.0]))
 
 
 Family = build_entity(

@@ -1,19 +1,17 @@
 [project]
 name = "policyengine-core"
-version = "3.29.2"
+version = "3.32.1"
 description = "Core microsimulation engine enabling country-specific policy models."
 readme = "README.md"
 authors = [
     { name = "PolicyEngine", email = "hello@policyengine.org" }
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "License :: OSI Approved :: GNU Affero General Public License v3",
     "Operating System :: POSIX",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -27,8 +25,7 @@ dependencies = [
     "ipython>=8,<9",
     "microdf_python>=1.0.0",
     "numexpr<3",
-    "numpy>=1.26,<2.1; python_version < '3.10'",
-    "numpy>=2.1.0,<3; python_version >= '3.10'",
+    "numpy>=2.1.0,<3",
     "pandas>=1",
     "plotly>=5,<6",
     "psutil>=6,<7",

@@ -26,6 +26,26 @@ class OnDiskStorage:
         self.preserve_storage_dir = preserve_storage_dir
         self.storage_dir = storage_dir
 
+    def clone(self) -> "OnDiskStorage":
+        """Create a private metadata view over this storage directory.
+
+        The file and enum mappings are copied so deleting or rewiring entries
+        through the clone does not mutate the source storage. The underlying
+        ``.npy`` files remain shared: writing the same ``{branch}_{period}``
+        key from two views targets the same path and can overwrite the file.
+        Clones retain the original cleanup owner so the shared directory stays
+        alive, but never own cleanup themselves.
+        """
+        clone = OnDiskStorage(
+            self.storage_dir,
+            is_eternal=self.is_eternal,
+            preserve_storage_dir=True,
+        )
+        clone._files = self._files.copy()
+        clone._enums = self._enums.copy()
+        clone._storage_dir_owner = getattr(self, "_storage_dir_owner", self)
+        return clone
+
     def _decode_file(self, file: str) -> ArrayLike:
         enum = self._enums.get(file)
         if enum is not None:

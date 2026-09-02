@@ -60,7 +60,7 @@ def test_set_input_without_fast_cache_attribute():
 def test_delete_arrays_without_fast_cache_attribute():
     sim = _bare_simulation()
     sim.get_holder = lambda name: types.SimpleNamespace(
-        delete_arrays=lambda period: None
+        delete_arrays=lambda period, branch_name: None
     )
     # No _fast_cache attribute — must not crash
     sim.delete_arrays("variable", period=None)

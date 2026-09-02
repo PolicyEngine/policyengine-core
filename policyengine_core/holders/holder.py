@@ -57,10 +57,14 @@ class Holder:
                 "formula",
                 "simulation",
                 "_memory_storage",
+                "_disk_storage",
             ):
                 new_dict[key] = value
 
         new._memory_storage = self._memory_storage.clone()
+        new._disk_storage = (
+            self._disk_storage.clone() if self._disk_storage is not None else None
+        )
 
         new_dict["population"] = population
         new_dict["simulation"] = population.simulation

@@ -14,7 +14,6 @@ from policyengine_core.data.dataset import Dataset
 from policyengine_core.entities.entity import Entity
 from policyengine_core.enums import Enum, EnumArray
 from policyengine_core.errors import CycleError, SpiralError
-from policyengine_core.simulations.randomness_guard import forbid_randomness
 from policyengine_core.holders.holder import Holder
 from policyengine_core.periods import Period
 from policyengine_core.periods.config import ETERNITY, MONTH, YEAR
@@ -468,6 +467,7 @@ class Simulation:
             # Ensure we're back to all person-level data.
             data = data_copy
 
+        unknown_columns = []
         if self.dataset.data_format != Dataset.FLAT_FILE:
             for variable in data:
                 if variable in self.tax_benefit_system.variables:
@@ -483,8 +483,7 @@ class Simulation:
                             variable, self.dataset.time_period, data[variable]
                         )
                 else:
-                    # Silently skip.
-                    pass
+                    unknown_columns.append(variable)
         else:
             for variable in data:
                 if "__" in variable:
@@ -494,6 +493,7 @@ class Simulation:
                     time_period = self.dataset.time_period or self.default_input_period
 
                 if variable_name not in self.tax_benefit_system.variables:
+                    unknown_columns.append(variable)
                     continue
 
                 variable_meta = self.tax_benefit_system.get_variable(variable_name)
@@ -510,6 +510,20 @@ class Simulation:
                     entity_level_data = data[variable]
 
                 self.set_input(variable_name, time_period, entity_level_data)
+
+        if unknown_columns:
+            # A skipped column usually means the dataset was built for a
+            # different model version (e.g. an input variable was renamed or
+            # removed), and its data is silently lost — say so instead of
+            # loading as if nothing happened.
+            shown = ", ".join(sorted(unknown_columns)[:10])
+            if len(unknown_columns) > 10:
+                shown += f", … ({len(unknown_columns) - 10} more)"
+            logging.warning(
+                f"The dataset contains {len(unknown_columns)} column(s) that "
+                f"do not match any variable in the tax-benefit system and "
+                f"were ignored: {shown}"
+            )
 
         self.default_calculation_period = (
             self.dataset.time_period or self.default_calculation_period
@@ -593,8 +607,9 @@ class Simulation:
         self.tracer.record_calculation_start(variable_name, period, self.branch_name)
 
         # No per-variable RNG seeding: formulas may not use randomness at all
-        # (enforced by forbid_randomness in _run_formula), so there is nothing
-        # to make reproducible here.
+        # (enforced statically at variable registration by
+        # check_formula_determinism), so there is nothing to make reproducible
+        # here.
 
         try:
             result = self._calculate(variable_name, period)
@@ -1106,13 +1121,12 @@ class Simulation:
         parameters_at = self.tax_benefit_system.parameters
 
         # A rules-engine formula must be a pure, deterministic function of its
-        # inputs. Forbid any random number generation while it runs so the same
-        # inputs always produce the same outputs.
-        with forbid_randomness(variable.name):
-            if formula.__code__.co_argcount == 2:
-                array = formula(population, period)
-            else:
-                array = formula(population, period, parameters_at)
+        # inputs. Randomness is forbidden statically at variable registration
+        # (check_formula_determinism), so no runtime guard is needed here.
+        if formula.__code__.co_argcount == 2:
+            array = formula(population, period)
+        else:
+            array = formula(population, period, parameters_at)
 
         return array
 
@@ -1262,10 +1276,14 @@ class Simulation:
 
     def delete_arrays(self, variable: str, period: Period = None) -> None:
         """
-        Delete a variable's value for a given period
+        Delete a variable's values visible to this simulation branch.
 
-        :param variable: the variable to be set
-        :param period: the period for which the value should be deleted
+        The calling branch, each ancestor branch, and the default branch are
+        purged from this simulation's private holder storage. Other branch
+        names and the parent simulation's holder storage remain unchanged.
+
+        :param variable: the variable whose cached values should be deleted
+        :param period: the period to delete, or all periods when omitted
 
         Example:
 
@@ -1287,7 +1305,9 @@ class Simulation:
         >>> simulation.get_array('age', '2018-05') is None
         True
         """
-        self.get_holder(variable).delete_arrays(period)
+        holder = self.get_holder(variable)
+        for branch_name in self._get_visible_branch_names():
+            holder.delete_arrays(period, branch_name)
         _fast_cache = getattr(self, "_fast_cache", None)
         if period is None:
             if _fast_cache is not None:
@@ -1632,7 +1652,7 @@ class Simulation:
         return variable is not None and variable.is_input_variable()
 
     def _get_visible_branch_names(self) -> List[str]:
-        branch_names = [self.branch_name]
+        branch_names = [getattr(self, "branch_name", "default")]
         parent = getattr(self, "parent_branch", None)
         while parent is not None:
             branch_names.append(parent.branch_name)
@@ -1852,11 +1872,20 @@ class Simulation:
         # as "size X != Y = count" projection errors.
         self._invalidate_all_caches()
 
-        # Ensure the baseline branch has the new data.
+        # Ensure the baseline branch has the new data: rebuild it from the
+        # subsampled simulation through ``get_branch`` (the same wiring
+        # ``__init__`` uses), then restore the saved baseline tax-benefit
+        # system. Previously the saved system was assigned to
+        # ``self.branches["tax_benefit_system"]`` — a stray dict key — so the
+        # rebuilt baseline branch kept the reform system and reform-vs-baseline
+        # comparisons after ``subsample`` compared the reform against itself.
         if "baseline" in self.branches:
             baseline_tax_benefit_system = self.branches["baseline"].tax_benefit_system
-            self.branches["baseline"] = self.clone()
-            self.branches["tax_benefit_system"] = baseline_tax_benefit_system
+            del self.branches["baseline"]
+            baseline = self.get_branch("baseline")
+            baseline.tax_benefit_system = baseline_tax_benefit_system
+            if getattr(self, "baseline", None) is not None:
+                self.baseline = baseline
 
         self.default_calculation_period = default_calculation_period
         return self

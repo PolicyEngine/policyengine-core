@@ -58,7 +58,7 @@ class Dataset:
     label: str = None
     """The label of the dataset. This is used for logging and is used as the key in the `datasets` dictionary."""
     data_format: str = None
-    """The format of the dataset. This can be either `Dataset.ARRAYS`, `Dataset.TIME_PERIOD_ARRAYS` or `Dataset.TABLES`. If `Dataset.ARRAYS`, the dataset is stored as a collection of arrays. If `Dataset.TIME_PERIOD_ARRAYS`, the dataset is stored as a collection of arrays, with one array per time period. If `Dataset.TABLES`, the dataset is stored as a collection of tables (DataFrames)."""
+    """The format of the dataset. This can be either `Dataset.ARRAYS`, `Dataset.TIME_PERIOD_ARRAYS`, `Dataset.TABLES` or `Dataset.FLAT_FILE`. If `Dataset.ARRAYS`, the dataset is stored as a collection of arrays. If `Dataset.TIME_PERIOD_ARRAYS`, the dataset is stored as a collection of arrays, with one array per time period. If `Dataset.TABLES`, the dataset is stored as a collection of tables (DataFrames). If `Dataset.FLAT_FILE`, the dataset is stored as a single CSV file (DataFrame)."""
     file_path: Path = None
     """The path to the dataset file. This is used to load the dataset from a file."""
     time_period: str = None

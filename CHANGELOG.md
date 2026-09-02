@@ -1,3 +1,74 @@
+## [3.32.1] - 2026-09-02
+
+### Changed
+
+- Documented the `Dataset.FLAT_FILE` option alongside the other `Dataset.data_format` values.
+
+
+## [3.32.0] - 2026-09-02
+
+### Fixed
+
+- Made release tagging use the version in `pyproject.toml`, run only after successful PyPI publication, and report tag-push failures or an existing version tag that identifies a different commit.
+
+### Removed
+
+- Removed support for Python 3.9 and 3.10; PolicyEngine Core now requires Python 3.11 or later.
+
+
+## [3.31.1] - 2026-08-28
+
+### Changed
+
+- Removed a stray scratch notebook (test.ipynb) that was accidentally committed to the repository root.
+
+
+## [3.31.0] - 2026-08-14
+
+### Added
+
+- Warn when a dataset contains columns that do not match any variable in the tax-benefit system, instead of silently ignoring them.
+
+
+## [3.30.4] - 2026-08-04
+
+### Fixed
+
+- Fix `Microsimulation.calculate_add` and `calculate_divide` to honor `map_to` for both values and weights.
+
+
+## [3.30.3] - 2026-07-21
+
+### Fixed
+
+- Fix InMemoryStorage period-key parsing so anchored year periods (e.g. a year-defined input set at a non-January month), whose string form contains colons, no longer crash get_known_periods and get_known_branch_periods; reject colon branch names and mid-month-anchored periods loudly at put time (their keys cannot round-trip; see #526).
+
+
+## [3.30.2] - 2026-07-20
+
+### Fixed
+
+- Fixed subsample so the rebuilt baseline branch keeps the baseline tax-benefit system instead of the reform system, with canonical branch wiring and no stray branches key.
+
+
+## [3.30.1] - 2026-07-19
+
+### Fixed
+
+- Fixed nested simulation cache deletion so perturbation branches recompute inherited values without mutating parent storage.
+
+
+## [3.30.0] - 2026-07-09
+
+### Fixed
+
+- Formula-time randomness is now rejected by a static check when a variable is registered, instead of a runtime guard that mutated the process-global `numpy.random`. This fixes intermittent, misattributed `NonDeterministicFormulaError`s raised under concurrent simulations, where one thread's running formula collided with another thread's legitimate setup seeding in `Simulation.__init__` (policyengine-core#518). The check fails fast at load, names the offending variable, and additionally catches `from numpy.random import ...` drawing functions and module-scope generators that the runtime guard could not.
+
+### Removed
+
+- The internal `policyengine_core.simulations.randomness_guard` module (the `forbid_randomness` runtime guard added in 3.27.0) has been removed. Formula-time randomness is now rejected statically at variable registration, and `NonDeterministicFormulaError` now lives in `policyengine_core.errors` (also re-exported from `policyengine_core.variables.formula_randomness`).
+
+
 ## [3.29.2] - 2026-07-08
 
 ### Changed

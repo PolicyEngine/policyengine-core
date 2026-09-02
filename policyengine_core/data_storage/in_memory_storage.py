@@ -40,6 +40,21 @@ class InMemoryStorage:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
 
+        # Keys embed f"{branch_name}:{period}", so reject inputs whose key
+        # would be ambiguous to parse back: branch names containing the
+        # separator, and month/year periods anchored mid-month (their string
+        # form drops the day). See policyengine-core#526 for the structured-
+        # key refactor that will lift these restrictions.
+        if ":" in branch_name:
+            raise ValueError(
+                f"Branch name {branch_name!r} may not contain ':' "
+                "(see policyengine-core#526)."
+            )
+        if period.unit in (periods.YEAR, periods.MONTH) and period.start.day != 1:
+            raise ValueError(
+                f"Cannot cache period {period} anchored mid-month: its "
+                "string form is lossy (see policyengine-core#526)."
+            )
         self._arrays[f"{branch_name}:{period}"] = value
 
     def delete(self, period: Period = None, branch_name: str = "default") -> None:
@@ -71,12 +86,21 @@ class InMemoryStorage:
         }
 
     def get_known_periods(self) -> list:
-        return list(map(lambda x: periods.period(x.split(":")[1]), self._arrays.keys()))
+        # Split on the first colon only: an anchored period's string form
+        # itself contains colons (e.g. "default:year:2027-11").
+        return list(
+            map(
+                lambda x: periods.period(x.split(":", 1)[1]),
+                self._arrays.keys(),
+            )
+        )
 
     def get_known_branch_periods(self) -> list:
         return [
             (branch_name, periods.period(period))
-            for branch_name, period in map(lambda x: x.split(":"), self._arrays.keys())
+            for branch_name, period in map(
+                lambda x: x.split(":", 1), self._arrays.keys()
+            )
         ]
 
     def get_memory_usage(self) -> dict:

@@ -1,3 +1,14 @@
+## [3.32.0] - 2026-09-02
+
+### Fixed
+
+- Made release tagging use the version in `pyproject.toml`, run only after successful PyPI publication, and report tag-push failures or an existing version tag that identifies a different commit.
+
+### Removed
+
+- Removed support for Python 3.9 and 3.10; PolicyEngine Core now requires Python 3.11 or later.
+
+
 ## [3.31.1] - 2026-08-28
 
 ### Changed

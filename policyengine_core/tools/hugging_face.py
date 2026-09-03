@@ -52,6 +52,14 @@ def download_huggingface_dataset(
     """
     Download a dataset from the Hugging Face Hub.
 
+    Private repos and public-but-gated repos both require authentication,
+    so for either the token is resolved by get_or_prompt_hf_token()
+    (HUGGING_FACE_TOKEN, else an interactive prompt when stdin is a TTY,
+    else None) and passed explicitly to hf_hub_download. Public, ungated
+    repos are requested with token=None and never prompt; huggingface_hub
+    may still apply its own implicitly configured token (HF_TOKEN or the
+    login file) in that case.
+
     Args:
         repo (str): The Hugging Face repo name, in format "{org}/{repo}".
         repo_filename (str): The filename of the dataset.
@@ -60,15 +68,23 @@ def download_huggingface_dataset(
     """
     # Attempt connection to Hugging Face model_info endpoint
     # (https://huggingface.co/docs/huggingface_hub/v0.26.5/en/package_reference/hf_api#huggingface_hub.HfApi.model_info)
-    # Attempt to fetch model info to determine if repo is private
+    # Attempt to fetch model info to determine if the repo requires
+    # authentication. Testing `private` alone is not enough: a public but
+    # gated repo still answers model_info() without a token, but the file
+    # download returns 401 unless a gate-approved token is sent.
+    # ModelInfo.gated is False for ungated repos, "auto" or "manual" for
+    # gated repos, and None if the field is absent, so a truthiness test
+    # covers every state (both gate modes need an authenticated request).
     # A RepositoryNotFoundError & 401 likely means the repo is private,
     # but this error will also surface for public repos with malformed URL, etc.
     try:
         fetched_model_info: ModelInfo = model_info(repo)
-        is_repo_private: bool = fetched_model_info.private
+        requires_authentication: bool = bool(fetched_model_info.private) or bool(
+            fetched_model_info.gated
+        )
     except RepositoryNotFoundError as e:
         # If this error type arises, it's likely the repo is private; see docs above
-        is_repo_private = True
+        requires_authentication = True
         pass
     except Exception as e:
         # Otherwise, there probably is just a download error
@@ -77,9 +93,9 @@ def download_huggingface_dataset(
             + f"is private, the URL is malformed, or the dataset does not exist. The full error is {traceback.format_exc()}"
         )
 
-    authentication_token: str = None
-    if is_repo_private:
-        authentication_token: str = get_or_prompt_hf_token()
+    authentication_token: str | None = None
+    if requires_authentication:
+        authentication_token = get_or_prompt_hf_token()
 
     return hf_hub_download(
         repo_id=repo,

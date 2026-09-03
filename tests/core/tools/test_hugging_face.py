@@ -107,6 +107,153 @@ class TestHuggingFaceDownload:
                         )
                         mock_download.assert_not_called()
 
+    @pytest.mark.parametrize("gated", ["manual", "auto"])
+    def test_download_gated_public_repo_passes_env_token(self, gated):
+        """A public but gated repo must receive HUGGING_FACE_TOKEN.
+
+        Regression test for PolicyEngine/policyengine-core#529: `private`
+        is False for a gated repo, but the file download still needs a
+        gate-approved token or the Hub answers 401.
+        """
+        test_repo = "test_repo"
+        test_filename = "test_filename"
+        test_version = "test_version"
+        test_dir = "test_dir"
+        test_token = "gated_repo_test_token"
+
+        with patch.dict(os.environ, {"HUGGING_FACE_TOKEN": test_token}, clear=True):
+            with patch(
+                "policyengine_core.tools.hugging_face.hf_hub_download"
+            ) as mock_download:
+                with patch(
+                    "policyengine_core.tools.hugging_face.model_info"
+                ) as mock_model_info:
+                    mock_model_info.return_value = ModelInfo(
+                        id=test_repo, private=False, gated=gated
+                    )
+
+                    download_huggingface_dataset(
+                        test_repo, test_filename, test_version, test_dir
+                    )
+
+                    mock_download.assert_called_once_with(
+                        repo_id=test_repo,
+                        repo_type="model",
+                        filename=test_filename,
+                        revision=test_version,
+                        token=test_token,
+                        local_dir=test_dir,
+                    )
+
+    def test_download_private_flag_repo_passes_env_token(self):
+        """A repo reported as private=True by model_info still gets the token."""
+        test_repo = "test_repo"
+        test_filename = "test_filename"
+        test_version = "test_version"
+        test_dir = "test_dir"
+        test_token = "private_repo_test_token"
+
+        with patch.dict(os.environ, {"HUGGING_FACE_TOKEN": test_token}, clear=True):
+            with patch(
+                "policyengine_core.tools.hugging_face.hf_hub_download"
+            ) as mock_download:
+                with patch(
+                    "policyengine_core.tools.hugging_face.model_info"
+                ) as mock_model_info:
+                    mock_model_info.return_value = ModelInfo(
+                        id=test_repo, private=True, gated=False
+                    )
+
+                    download_huggingface_dataset(
+                        test_repo, test_filename, test_version, test_dir
+                    )
+
+                    mock_download.assert_called_once_with(
+                        repo_id=test_repo,
+                        repo_type="model",
+                        filename=test_filename,
+                        revision=test_version,
+                        token=test_token,
+                        local_dir=test_dir,
+                    )
+
+    def test_download_gated_repo_non_interactive_without_token(self):
+        """Gated repo in CI without secrets: no prompt, token=None is passed."""
+        test_repo = "test_repo"
+        test_filename = "test_filename"
+        test_version = "test_version"
+        test_dir = "test_dir"
+
+        with patch.dict(os.environ, {}, clear=True):
+            with patch("os.isatty", return_value=False):
+                with patch(
+                    "policyengine_core.tools.hugging_face.getpass"
+                ) as mock_getpass:
+                    with patch(
+                        "policyengine_core.tools.hugging_face.hf_hub_download"
+                    ) as mock_download:
+                        with patch(
+                            "policyengine_core.tools.hugging_face.model_info"
+                        ) as mock_model_info:
+                            mock_model_info.return_value = ModelInfo(
+                                id=test_repo, private=False, gated="manual"
+                            )
+
+                            download_huggingface_dataset(
+                                test_repo, test_filename, test_version, test_dir
+                            )
+
+                            mock_getpass.assert_not_called()
+                            mock_download.assert_called_once_with(
+                                repo_id=test_repo,
+                                repo_type="model",
+                                filename=test_filename,
+                                revision=test_version,
+                                token=None,
+                                local_dir=test_dir,
+                            )
+
+    @pytest.mark.parametrize("gated", [False, None])
+    def test_download_public_ungated_repo_never_prompts(self, gated):
+        """Public, ungated repo: no token lookup and no interactive prompt.
+
+        Guards against widening the predicate so far that every public
+        download on a developer machine asks for a token.
+        """
+        test_repo = "test_repo"
+        test_filename = "test_filename"
+        test_version = "test_version"
+        test_dir = "test_dir"
+
+        with patch.dict(os.environ, {}, clear=True):
+            with patch("os.isatty", return_value=True):
+                with patch(
+                    "policyengine_core.tools.hugging_face.getpass"
+                ) as mock_getpass:
+                    with patch(
+                        "policyengine_core.tools.hugging_face.hf_hub_download"
+                    ) as mock_download:
+                        with patch(
+                            "policyengine_core.tools.hugging_face.model_info"
+                        ) as mock_model_info:
+                            mock_model_info.return_value = ModelInfo(
+                                id=test_repo, private=False, gated=gated
+                            )
+
+                            download_huggingface_dataset(
+                                test_repo, test_filename, test_version, test_dir
+                            )
+
+                            mock_getpass.assert_not_called()
+                            mock_download.assert_called_once_with(
+                                repo_id=test_repo,
+                                repo_type="model",
+                                filename=test_filename,
+                                revision=test_version,
+                                token=None,
+                                local_dir=test_dir,
+                            )
+
 
 class TestGetOrPromptHfToken:
     def test_get_token_from_environment(self):

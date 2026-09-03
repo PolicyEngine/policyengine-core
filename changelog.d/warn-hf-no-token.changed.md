@@ -1,0 +1,1 @@
+Warn when a Hugging Face repo that requires authentication is downloaded with no HUGGING_FACE_TOKEN available, so that a 401 raised after huggingface_hub's own cached-token fallback (HF_TOKEN or the `hf auth login` file) comes up empty is easy to trace back to the missing or unapproved token.

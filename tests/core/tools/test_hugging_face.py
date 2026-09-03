@@ -1,4 +1,5 @@
 import os
+import warnings
 import pytest
 from unittest.mock import patch, MagicMock
 from huggingface_hub import ModelInfo
@@ -225,3 +226,189 @@ class TestParseHfUrl:
     def test_invalid_url_too_short(self):
         with pytest.raises(ValueError, match="Invalid hf:// URL format"):
             parse_hf_url("hf://owner/repo")
+
+
+class TestNoTokenWarning:
+    """download_huggingface_dataset warns when it passes token=None for a
+    repo that needs authentication.
+
+    Core deliberately does not raise or prompt in that case (#422): with
+    token=None, huggingface_hub falls back to its own cached token (HF_TOKEN
+    or the `hf auth login` file) and raises its own 401 if that is missing
+    too. The warning is what makes that 401 traceable to a missing or
+    unapproved HUGGING_FACE_TOKEN (#529).
+    """
+
+    repo = "test_owner/test_repo"
+    filename = "test_filename"
+    version = "test_version"
+    local_dir = "test_dir"
+
+    def _download(self):
+        return download_huggingface_dataset(
+            self.repo, self.filename, self.version, self.local_dir
+        )
+
+    def _assert_downloaded_with(self, mock_download, token):
+        mock_download.assert_called_once_with(
+            repo_id=self.repo,
+            repo_type="model",
+            filename=self.filename,
+            revision=self.version,
+            token=token,
+            local_dir=self.local_dir,
+        )
+
+    @staticmethod
+    def _lookup_response(lookup):
+        """Configure model_info for the given repo visibility.
+
+        "public": the repo is public, so no token is ever needed.
+        "private-flag": model_info answers with private=True.
+        "not-found": model_info raises RepositoryNotFoundError, which core
+            treats as "probably private".
+        """
+        if lookup == "public":
+            return {"return_value": ModelInfo(id="test_repo", private=False)}
+        if lookup == "private-flag":
+            return {"return_value": ModelInfo(id="test_repo", private=True)}
+        assert lookup == "not-found"
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_response.headers = {}
+        return {
+            "side_effect": RepositoryNotFoundError("Test error", response=mock_response)
+        }
+
+    @pytest.mark.parametrize("lookup", ["private-flag", "not-found"])
+    @pytest.mark.parametrize(
+        "environ",
+        [{}, {"HUGGING_FACE_TOKEN": ""}, {"HF_TOKEN": "hf_cached_token"}],
+        ids=["token-unset", "token-empty", "hf-token-only"],
+    )
+    def test_warns_when_no_token_resolved_non_interactively(self, lookup, environ):
+        """No HUGGING_FACE_TOKEN, no TTY: warn, then pass token=None through.
+
+        The hf-token-only case pins that the warning still fires when only
+        huggingface_hub's own HF_TOKEN is set: core resolved nothing, and
+        the warning itself says the fallback will be used if present.
+        """
+        model_info_config = self._lookup_response(lookup)
+
+        with patch.dict(os.environ, environ, clear=True):
+            with patch("os.isatty", return_value=False):
+                with patch(
+                    "policyengine_core.tools.hugging_face.getpass"
+                ) as mock_getpass:
+                    mock_getpass.return_value = "prompted_token"
+                    with patch(
+                        "policyengine_core.tools.hugging_face.hf_hub_download"
+                    ) as mock_download:
+                        with patch(
+                            "policyengine_core.tools.hugging_face.model_info",
+                            **model_info_config,
+                        ):
+                            with pytest.warns(
+                                UserWarning, match="no HUGGING_FACE_TOKEN"
+                            ) as record:
+                                result = self._download()
+
+        # Behaviour is unchanged: no prompt, no raise, token=None passed on.
+        assert result is mock_download.return_value
+        mock_getpass.assert_not_called()
+        self._assert_downloaded_with(mock_download, token=None)
+
+        # Exactly one warning, naming the repo, the fallback, and the 401.
+        assert len(record) == 1
+        message = str(record[0].message)
+        assert self.repo in message
+        assert "HF_TOKEN" in message
+        assert "hf auth login" in message
+        assert "401" in message
+        # stacklevel=2: the warning points at the caller, not at core.
+        assert record[0].filename == __file__
+
+    def test_warns_when_interactive_prompt_left_empty(self):
+        """TTY present but the user enters nothing: same warning, token=None."""
+        with patch.dict(os.environ, {}, clear=True):
+            with patch("os.isatty", return_value=True):
+                with patch(
+                    "policyengine_core.tools.hugging_face.getpass",
+                    return_value="",
+                ) as mock_getpass:
+                    with patch(
+                        "policyengine_core.tools.hugging_face.hf_hub_download"
+                    ) as mock_download:
+                        with patch(
+                            "policyengine_core.tools.hugging_face.model_info",
+                            **self._lookup_response("private-flag"),
+                        ):
+                            with pytest.warns(
+                                UserWarning, match="no HUGGING_FACE_TOKEN"
+                            ):
+                                self._download()
+
+        mock_getpass.assert_called_once()
+        self._assert_downloaded_with(mock_download, token=None)
+
+    @pytest.mark.parametrize(
+        ("lookup", "environ", "isatty", "prompted", "expected_token"),
+        [
+            pytest.param("public", {}, False, None, None, id="public-repo"),
+            pytest.param(
+                "public",
+                {"HUGGING_FACE_TOKEN": "env_token"},
+                False,
+                None,
+                None,
+                id="public-repo-ignores-env-token",
+            ),
+            pytest.param(
+                "private-flag",
+                {"HUGGING_FACE_TOKEN": "env_token"},
+                False,
+                None,
+                "env_token",
+                id="private-flag-env-token",
+            ),
+            pytest.param(
+                "not-found",
+                {"HUGGING_FACE_TOKEN": "env_token"},
+                False,
+                None,
+                "env_token",
+                id="not-found-env-token",
+            ),
+            pytest.param(
+                "private-flag",
+                {},
+                True,
+                "prompted_token",
+                "prompted_token",
+                id="private-flag-prompted-token",
+            ),
+        ],
+    )
+    def test_no_warning_when_a_token_is_passed_or_not_needed(
+        self, lookup, environ, isatty, prompted, expected_token
+    ):
+        """Public repos pass token=None without warning; a resolved token
+        never warns. Guards against warning on every public download."""
+        with patch.dict(os.environ, environ, clear=True):
+            with patch("os.isatty", return_value=isatty):
+                with patch(
+                    "policyengine_core.tools.hugging_face.getpass",
+                    return_value=prompted,
+                ):
+                    with patch(
+                        "policyengine_core.tools.hugging_face.hf_hub_download"
+                    ) as mock_download:
+                        with patch(
+                            "policyengine_core.tools.hugging_face.model_info",
+                            **self._lookup_response(lookup),
+                        ):
+                            with warnings.catch_warnings():
+                                warnings.simplefilter("error", UserWarning)
+                                self._download()
+
+        self._assert_downloaded_with(mock_download, token=expected_token)

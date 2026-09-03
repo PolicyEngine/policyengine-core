@@ -79,8 +79,8 @@ class TestHuggingFaceDownload:
 
     @pytest.mark.parametrize(
         "environ",
-        [{}, {"HUGGING_FACE_TOKEN": ""}],
-        ids=["token-unset", "token-empty"],
+        [{}, {"HUGGING_FACE_TOKEN": ""}, {"HF_TOKEN": "hf_cached_token"}],
+        ids=["token-unset", "token-empty", "hf-token-only"],
     )
     def test_download_private_repo_no_token(self, environ):
         """Private repo, no token, non-interactive: token=None, no prompt, no raise.
@@ -91,12 +91,16 @@ class TestHuggingFaceDownload:
         to hf_hub_download rather than raising. huggingface_hub then falls
         back to its own cached token (HF_TOKEN or the `hf auth login` file)
         and raises its own error if that is missing too, so core must not
-        fail early here.
+        fail early here. The third case sets only huggingface_hub's own
+        HF_TOKEN: core still passes token=None, because resolving that token
+        is huggingface_hub's job, not core's.
 
         The previous version of this test wrapped assert_not_called() inside
-        pytest.raises(Exception); the download never raised, so the
-        AssertionError from assert_not_called() satisfied pytest.raises and
-        the test passed without checking anything.
+        pytest.raises(Exception). The download never raised, so control
+        reached assert_not_called(), whose AssertionError (the download had
+        been called) satisfied pytest.raises. The test passed precisely
+        because the download was called, the opposite of what its name
+        claimed to check.
         """
         test_repo = "test_repo"
         test_filename = "test_filename"
@@ -108,6 +112,7 @@ class TestHuggingFaceDownload:
                 with patch(
                     "policyengine_core.tools.hugging_face.getpass"
                 ) as mock_getpass:
+                    mock_getpass.return_value = "prompted_token"
                     with patch(
                         "policyengine_core.tools.hugging_face.hf_hub_download"
                     ) as mock_download:
@@ -121,10 +126,11 @@ class TestHuggingFaceDownload:
                                 "Test error", response=mock_response
                             )
 
-                            download_huggingface_dataset(
+                            result = download_huggingface_dataset(
                                 test_repo, test_filename, test_version, test_dir
                             )
 
+                            assert result is mock_download.return_value
                             mock_getpass.assert_not_called()
                             mock_download.assert_called_once_with(
                                 repo_id=test_repo,

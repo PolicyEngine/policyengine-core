@@ -1,0 +1,1 @@
+Fix `test_download_private_repo_no_token`, which passed on its own `AssertionError` inside `pytest.raises(Exception)` and so checked nothing, so it now asserts that a private repo with no token available non-interactively passes `token=None` to `hf_hub_download` without prompting or raising.

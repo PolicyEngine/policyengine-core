@@ -57,6 +57,13 @@ def download_huggingface_dataset(
         repo_filename (str): The filename of the dataset.
         version (str, optional): The version of the dataset. Defaults to None.
         local_dir (str, optional): The local directory to save the dataset to. Defaults to None.
+
+    Warns:
+        UserWarning: If the repo requires authentication but no
+            HUGGING_FACE_TOKEN was available. The download still runs with
+            token=None, so huggingface_hub applies its own cached token
+            (HF_TOKEN or the `hf auth login` file) if it has one; the
+            warning explains a 401 that follows when it does not.
     """
     # Attempt connection to Hugging Face model_info endpoint
     # (https://huggingface.co/docs/huggingface_hub/v0.26.5/en/package_reference/hf_api#huggingface_hub.HfApi.model_info)
@@ -80,6 +87,24 @@ def download_huggingface_dataset(
     authentication_token: str = None
     if is_repo_private:
         authentication_token: str = get_or_prompt_hf_token()
+        if authentication_token is None:
+            # Deliberately not an error: huggingface_hub resolves its own
+            # cached token when token=None, so `hf auth login` users still
+            # work. Warn so that the bare 401 huggingface_hub raises when
+            # that fallback is empty too can be traced back here (#529).
+            warnings.warn(
+                f"Hugging Face repo '{repo}' requires authentication, but no "
+                "HUGGING_FACE_TOKEN was available (the environment variable "
+                "is unset or empty, and no token was entered at a prompt). "
+                "huggingface_hub will use its own cached token instead if one "
+                "exists (the HF_TOKEN environment variable or the "
+                "`hf auth login` file). A 401 on the download that follows "
+                "(RepositoryNotFoundError or GatedRepoError) means neither "
+                "token was set, or the token in use is not approved for this "
+                "repo. Set HUGGING_FACE_TOKEN to a token whose account has "
+                "access.",
+                stacklevel=2,
+            )
 
     return hf_hub_download(
         repo_id=repo,

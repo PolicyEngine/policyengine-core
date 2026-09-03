@@ -1,0 +1,1 @@
+Fix `test_download_private_repo_no_token`, which passed only because `hf_hub_download` was called and its `assert_not_called()` raised inside `pytest.raises(Exception)`, so it now asserts that a private repo with no token available non-interactively passes `token=None` to `hf_hub_download` without prompting or raising.

@@ -77,35 +77,69 @@ class TestHuggingFaceDownload:
                         local_dir=test_dir,
                     )
 
-    def test_download_private_repo_no_token(self):
-        """Test handling of private repo with no token"""
+    @pytest.mark.parametrize(
+        "environ",
+        [{}, {"HUGGING_FACE_TOKEN": ""}, {"HF_TOKEN": "hf_cached_token"}],
+        ids=["token-unset", "token-empty", "hf-token-only"],
+    )
+    def test_download_private_repo_no_token(self, environ):
+        """Private repo, no token, non-interactive: token=None, no prompt, no raise.
+
+        With HUGGING_FACE_TOKEN unset (or empty, as when Dependabot runs CI
+        without secrets), get_or_prompt_hf_token returns None instead of
+        prompting, and download_huggingface_dataset passes token=None through
+        to hf_hub_download rather than raising. huggingface_hub then falls
+        back to its own cached token (HF_TOKEN or the `hf auth login` file)
+        and raises its own error if that is missing too, so core must not
+        fail early here. The third case sets only huggingface_hub's own
+        HF_TOKEN: core still passes token=None, because resolving that token
+        is huggingface_hub's job, not core's.
+
+        The previous version of this test wrapped assert_not_called() inside
+        pytest.raises(Exception). The download never raised, so control
+        reached assert_not_called(), whose AssertionError (the download had
+        been called) satisfied pytest.raises. The test passed precisely
+        because the download was called, the opposite of what its name
+        claimed to check.
+        """
         test_repo = "test_repo"
         test_filename = "test_filename"
         test_version = "test_version"
         test_dir = "test_dir"
 
-        with patch(
-            "policyengine_core.tools.hugging_face.hf_hub_download"
-        ) as mock_download:
-            with patch(
-                "policyengine_core.tools.hugging_face.model_info"
-            ) as mock_model_info:
-                mock_response = MagicMock()
-                mock_response.status_code = 404
-                mock_response.headers = {}
-                mock_model_info.side_effect = RepositoryNotFoundError(
-                    "Test error", response=mock_response
-                )
+        with patch.dict(os.environ, environ, clear=True):
+            with patch("os.isatty", return_value=False):
                 with patch(
-                    "policyengine_core.tools.hugging_face.get_or_prompt_hf_token"
-                ) as mock_token:
-                    mock_token.return_value = ""
+                    "policyengine_core.tools.hugging_face.getpass"
+                ) as mock_getpass:
+                    mock_getpass.return_value = "prompted_token"
+                    with patch(
+                        "policyengine_core.tools.hugging_face.hf_hub_download"
+                    ) as mock_download:
+                        with patch(
+                            "policyengine_core.tools.hugging_face.model_info"
+                        ) as mock_model_info:
+                            mock_response = MagicMock()
+                            mock_response.status_code = 404
+                            mock_response.headers = {}
+                            mock_model_info.side_effect = RepositoryNotFoundError(
+                                "Test error", response=mock_response
+                            )
 
-                    with pytest.raises(Exception):
-                        download_huggingface_dataset(
-                            test_repo, test_filename, test_version, test_dir
-                        )
-                        mock_download.assert_not_called()
+                            result = download_huggingface_dataset(
+                                test_repo, test_filename, test_version, test_dir
+                            )
+
+                            assert result is mock_download.return_value
+                            mock_getpass.assert_not_called()
+                            mock_download.assert_called_once_with(
+                                repo_id=test_repo,
+                                repo_type="model",
+                                filename=test_filename,
+                                revision=test_version,
+                                token=None,
+                                local_dir=test_dir,
+                            )
 
 
 class TestGetOrPromptHfToken:

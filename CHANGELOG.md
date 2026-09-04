@@ -1,3 +1,10 @@
+## [3.32.3] - 2026-09-04
+
+### Fixed
+
+- Correct the public type annotations for methods that add, replace, and update variables.
+
+
 ## [3.32.2] - 2026-09-04
 
 ### Fixed

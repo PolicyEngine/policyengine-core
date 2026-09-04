@@ -219,11 +219,11 @@ class TaxBenefitSystem:
 
         return variable
 
-    def add_variable(self, variable: Variable) -> Variable:
+    def add_variable(self, variable: Type[Variable]) -> Variable:
         """Adds an OpenFisca variable to the tax and benefit system.
 
         Args:
-            variable: The variable to add. Must be a subclass of Variable.
+            variable: The variable class to add. Must be a subclass of Variable.
 
         Raises:
             policyengine_core.errors.VariableNameConflictError: if a variable with the same name have previously been added to the tax and benefit system.
@@ -232,7 +232,7 @@ class TaxBenefitSystem:
         self.data_modified = True
         return self.load_variable(variable, update=False)
 
-    def replace_variable(self, variable: str) -> Variable:
+    def replace_variable(self, variable: Type[Variable]) -> None:
         """
         Replaces an existing OpenFisca variable in the tax and benefit system by a new one.
 
@@ -240,7 +240,7 @@ class TaxBenefitSystem:
 
         If no variable with the given name exists in the tax and benefit system, no error will be raised and the new variable will be simply added.
 
-        :param Variable variable: New variable to add. Must be a subclass of Variable.
+        :param Variable variable: New variable class to add. Must be a subclass of Variable.
         """
         name = variable.__name__
         if self.variables.get(name) is not None:
@@ -248,7 +248,7 @@ class TaxBenefitSystem:
         self.load_variable(variable, update=False)
         self.data_modified = True
 
-    def update_variable(self, variable: str) -> Variable:
+    def update_variable(self, variable: Type[Variable]) -> Variable:
         """
         Updates an existing OpenFisca variable in the tax and benefit system.
 
@@ -258,7 +258,7 @@ class TaxBenefitSystem:
 
         If no variable with the given name exists in the tax and benefit system, no error will be raised and the new variable will be simply added.
 
-        :param Variable variable: Variable to add. Must be a subclass of Variable.
+        :param Variable variable: Variable class to add. Must be a subclass of Variable.
         """
         self.data_modified = True
         return self.load_variable(variable, update=True)
@@ -377,9 +377,9 @@ class TaxBenefitSystem:
         for subdirectory in subdirectories:
             self.add_variables_from_directory(subdirectory)
 
-    def add_variables(self, *variables: List[Type[Variable]]):
+    def add_variables(self, *variables: Type[Variable]) -> None:
         """
-        Adds a list of OpenFisca Variables to the `TaxBenefitSystem`.
+        Adds OpenFisca Variable classes to the `TaxBenefitSystem`.
 
         See also :any:`add_variable`
         """

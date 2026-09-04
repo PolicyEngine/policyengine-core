@@ -18,11 +18,7 @@ from policyengine_core.holders.holder import Holder
 from policyengine_core.periods import Period
 from policyengine_core.periods.config import ETERNITY, MONTH, YEAR
 from policyengine_core.periods.helpers import period
-from policyengine_core.tracers import (
-    FullTracer,
-    SimpleTracer,
-    TracingParameterNodeAtInstant,
-)
+from policyengine_core.tracers import FullTracer, SimpleTracer
 import random
 from policyengine_core.tools.hugging_face import *
 from policyengine_core.tools.google_cloud import (
@@ -152,8 +148,7 @@ class Simulation:
         # simulation was loaded from.
         self._user_input_keys: set[tuple[str, str, Period]] = set()
         self.debug: bool = False
-        self.trace: bool = trace
-        self.tracer: SimpleTracer = SimpleTracer() if not trace else FullTracer()
+        self.trace: bool = trace  # also builds self.tracer
         self.opt_out_cache: bool = False
         # controls the spirals detection; check for performance impact if > 1
         self.max_spiral_loops: int = 10
@@ -542,6 +537,16 @@ class Simulation:
             self.tracer = FullTracer()
         else:
             self.tracer = SimpleTracer()
+        # Parameter reads are recorded through the parameter tree, whose
+        # at-instant nodes are cached as plain or tracing when first built.
+        # Recast (and clear) here rather than lazily in _run_formula: by the
+        # time a formula runs, defined_for and adds/subtracts evaluation has
+        # already cached the yearly node untraced.
+        parameters = getattr(
+            getattr(self, "tax_benefit_system", None), "parameters", None
+        )
+        if parameters is not None:
+            parameters.set_tracing(self.tracer if trace else None, self.branch_name)
 
     def link_to_entities_instances(self) -> None:
         for _key, entity_instance in self.populations.items():
@@ -1111,14 +1116,12 @@ class Simulation:
                             )
             return values
 
-        if self.trace and not isinstance(
-            self.tax_benefit_system.parameters, TracingParameterNodeAtInstant
-        ):
-            # Soft-recast
-            self.tax_benefit_system.parameters.branch_name = self.branch_name
-            self.tax_benefit_system.parameters.trace = True
-            self.tax_benefit_system.parameters.tracer = self.tracer
         parameters_at = self.tax_benefit_system.parameters
+        if self.trace and parameters_at is not None:
+            # Keep the parameter tree pointed at this simulation's tracer and
+            # branch (branch simulations share the tax-benefit system). The
+            # trace setter did the initial recast; this follows the branch.
+            parameters_at.set_tracing(self.tracer, self.branch_name)
 
         # A rules-engine formula must be a pure, deterministic function of its
         # inputs. Randomness is forbidden statically at variable registration

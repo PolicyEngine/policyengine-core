@@ -76,5 +76,9 @@ class TracingParameterNodeAtInstant:
 
         if isinstance(child, (numpy.ndarray,) + parameters.ALLOWED_PARAM_TYPES):
             self.tracer.record_parameter_access(name, period, self.branch_name, child)
+        else:
+            # A scale or bracket (read through .calc() or [index]) is a
+            # parameter read too; record it at its node with no scalar value.
+            self.tracer.record_parameter_access(name, period, self.branch_name, None)
 
         return child

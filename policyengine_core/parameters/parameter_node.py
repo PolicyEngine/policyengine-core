@@ -234,6 +234,32 @@ class ParameterNode(AtInstantLike):
         if self.parent is not None:
             self.parent.clear_parent_cache()
 
+    def clear_at_instant_caches(self) -> None:
+        """Drop every cached at-instant node in this subtree.
+
+        A cached ``ParameterNodeAtInstant`` is plain or tracing depending on
+        ``trace`` at the time it was built, so the caches must be cleared
+        whenever tracing is switched on or off.
+        """
+        self._at_instant_cache.clear()
+        for child in self.children.values():
+            clear = getattr(child, "clear_at_instant_caches", None)
+            if clear is not None:
+                clear()
+            else:
+                cache = getattr(child, "_at_instant_cache", None)
+                if cache is not None:
+                    cache.clear()
+
+    def set_tracing(self, tracer, branch_name: str) -> None:
+        """Route parameter reads through ``tracer`` (``None`` to stop)."""
+        was_tracing = self.trace
+        self.trace = tracer is not None
+        self.tracer = tracer
+        self.branch_name = branch_name
+        if self.trace != was_tracing:
+            self.clear_at_instant_caches()
+
     def mark_as_modified(self):
         self.modified = True
         if self.parent is not None:

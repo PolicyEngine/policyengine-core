@@ -579,3 +579,29 @@ def test_switching_trace_off_restores_plain_parameter_nodes(simulation):
         TracingParameterNodeAtInstant,
     )
     simulation.calculate("income_tax", PARAMETER_PERIOD)
+
+
+@mark.parametrize("simulation", [({"salary": 2000}, PARAMETER_PERIOD)], indirect=True)
+def test_swapping_tracer_keeps_cached_nodes_and_records_into_new_tracer(
+    simulation,
+):
+    """Branch simulations share the parameter tree and swap in the parent's
+    tracer; that must neither rebuild the at-instant tree nor keep recording
+    into the old tracer."""
+    simulation.trace = True
+    parameters = simulation.tax_benefit_system.parameters
+    cached = parameters("2017-01-01")
+    old_tracer = simulation.tracer
+
+    new_tracer = FullTracer()
+    parameters.set_tracing(new_tracer, "branch")
+
+    assert (
+        parameters("2017-01-01").parameter_node_at_instant
+        is cached.parameter_node_at_instant
+    )
+    new_tracer._enter_calculation("income_tax", PARAMETER_PERIOD)
+    cached.taxes.income_tax_rate
+    assert new_tracer.trees[0].parameters[0].name == "taxes.income_tax_rate"
+    assert new_tracer.trees[0].parameters[0].branch_name == "branch"
+    assert old_tracer.trees == []

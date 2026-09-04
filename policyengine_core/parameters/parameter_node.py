@@ -214,17 +214,19 @@ class ParameterNode(AtInstantLike):
         return clone
 
     def _get_at_instant(self, instant: Instant) -> ParameterNodeAtInstant:
-        if instant in self._at_instant_cache:
-            return self._at_instant_cache[instant]
-        node_at_instant = ParameterNodeAtInstant(self.name, self, instant)
+        # The cache holds plain nodes only; tracing wraps one on the way out.
+        # Building the at-instant tree is expensive, so it must survive
+        # tracing being switched on and off (the API traces some household
+        # simulations and not others on one shared tax-benefit system).
+        node_at_instant = self._at_instant_cache.get(instant)
+        if node_at_instant is None:
+            node_at_instant = ParameterNodeAtInstant(self.name, self, instant)
+            self._at_instant_cache[instant] = node_at_instant
         if self.trace:
-            at_instant = TracingParameterNodeAtInstant(
-                node_at_instant, self.tracer, self.branch_name
+            return TracingParameterNodeAtInstant(
+                node_at_instant, self.tracer, self.branch_name, tracing_root=self
             )
-        else:
-            at_instant = node_at_instant
-        self._at_instant_cache[instant] = at_instant
-        return at_instant
+        return node_at_instant
 
     def attach_to_parent(self, parent: "ParameterNode"):
         self.parent = parent
@@ -234,33 +236,17 @@ class ParameterNode(AtInstantLike):
         if self.parent is not None:
             self.parent.clear_parent_cache()
 
-    def clear_at_instant_caches(self) -> None:
-        """Drop every cached at-instant node in this subtree.
-
-        A cached ``ParameterNodeAtInstant`` is plain or tracing depending on
-        ``trace`` at the time it was built, so the caches must be cleared
-        whenever tracing is switched on or off.
-        """
-        self._at_instant_cache.clear()
-        for child in self.children.values():
-            clear = getattr(child, "clear_at_instant_caches", None)
-            if clear is not None:
-                clear()
-            else:
-                cache = getattr(child, "_at_instant_cache", None)
-                if cache is not None:
-                    cache.clear()
-
     def set_tracing(self, tracer, branch_name: str) -> None:
-        """Route parameter reads through ``tracer`` (``None`` to stop)."""
-        # Cached at-instant nodes capture the tracer they were built with,
-        # so a different tracer instance also invalidates them.
-        changed = (tracer is not None) != self.trace or tracer is not self.tracer
+        """Route parameter reads through ``tracer`` (``None`` to stop).
+
+        Cheap by design: the at-instant cache holds plain nodes and the
+        tracing wrapper reads ``tracer`` and ``branch_name`` from this node
+        at access time, so nothing is rebuilt when tracing is switched or
+        a branch simulation swaps tracers.
+        """
         self.trace = tracer is not None
         self.tracer = tracer
         self.branch_name = branch_name
-        if changed:
-            self.clear_at_instant_caches()
 
     def mark_as_modified(self):
         self.modified = True

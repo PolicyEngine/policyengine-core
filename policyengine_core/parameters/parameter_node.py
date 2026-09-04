@@ -253,11 +253,13 @@ class ParameterNode(AtInstantLike):
 
     def set_tracing(self, tracer, branch_name: str) -> None:
         """Route parameter reads through ``tracer`` (``None`` to stop)."""
-        was_tracing = self.trace
+        # Cached at-instant nodes capture the tracer they were built with,
+        # so a different tracer instance also invalidates them.
+        changed = (tracer is not None) != self.trace or tracer is not self.tracer
         self.trace = tracer is not None
         self.tracer = tracer
         self.branch_name = branch_name
-        if self.trace != was_tracing:
+        if changed:
             self.clear_at_instant_caches()
 
     def mark_as_modified(self):

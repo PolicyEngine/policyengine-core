@@ -60,11 +60,19 @@ IGNORED_PARAMETER_PREFIXES = ("gov.abolitions.",)
 MODEL_SURFACE = ("entities.py", "parameters", "system.py", "variables")
 
 
-def _quiet_tracer() -> None:
+class _QuietFullTracer(FullTracer):
     """Trace values are never read back; dropping them keeps memory flat."""
-    if not getattr(FullTracer, "_dependency_map_quiet", False):
-        FullTracer.record_calculation_result = lambda self, value: None
-        FullTracer._dependency_map_quiet = True
+
+    def record_calculation_result(self, value) -> None:
+        pass
+
+
+def _enable_tracing(simulation) -> None:
+    simulation.trace = True
+    simulation.tracer = _QuietFullTracer()
+    simulation.tax_benefit_system.parameters.set_tracing(
+        simulation.tracer, simulation.branch_name
+    )
 
 
 def collect_edges(simulation, readers=None, consumers=None) -> Edges:
@@ -122,7 +130,6 @@ def trace_yaml_tests(
     progress: Optional[Progress] = None,
     every_test: bool = False,
 ) -> tuple[Edges, dict[str, int]]:
-    _quiet_tracer()
     readers: dict[str, set[str]] = defaultdict(set)
     consumers: dict[str, set[str]] = defaultdict(set)
     stats = {"tests": 0, "failed": 0}
@@ -133,7 +140,7 @@ def trace_yaml_tests(
             builder.set_default_period(period)
             simulation = builder.build_from_dict(system, test.get("input") or {})
             simulation.default_calculation_period = builder.default_period
-            simulation.trace = True
+            _enable_tracing(simulation)
             for output in test["output"]:
                 try:
                     simulation.calculate(output, period)
@@ -154,10 +161,9 @@ def trace_microdata(
     year: int = 2026,
     progress: Optional[Progress] = None,
 ) -> tuple[Edges, dict[str, int]]:
-    _quiet_tracer()
     simulation = microsimulation_class()
     simulation = simulation.subsample(n=households, seed=0) or simulation
-    simulation.trace = True
+    _enable_tracing(simulation)
     variables = simulation.tax_benefit_system.variables
     stats = {"variables": 0, "failed": 0}
     for index, name in enumerate(sorted(variables)):

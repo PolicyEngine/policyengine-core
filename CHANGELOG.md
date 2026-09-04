@@ -1,3 +1,10 @@
+## [3.32.2] - 2026-09-04
+
+### Fixed
+
+- Parameter loading now rejects uprating rounding rules placed where they would be silently ignored.
+
+
 ## [3.32.1] - 2026-09-02
 
 ### Changed

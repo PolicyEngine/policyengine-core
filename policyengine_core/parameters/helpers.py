@@ -90,8 +90,25 @@ def _validate_parameter(parameter, data, data_type=None, allowed_keys=None):
             parameter.file_path,
         )
 
+    if isinstance(data, dict):
+        _validate_uprating_rounding_metadata(parameter, data.get("metadata"))
+
     if allowed_keys is not None and isinstance(data, dict):
         _warn_on_unknown_keys(parameter, data, allowed_keys)
+
+
+def _validate_uprating_rounding_metadata(parameter, metadata):
+    if not isinstance(metadata, dict):
+        return
+    if "uprating" not in metadata or "rounding" not in metadata:
+        return
+
+    raise ParameterParsingError(
+        "Invalid uprating metadata for '{}': `rounding` must be nested inside "
+        "`uprating`; placing both keys at the same level causes the rounding "
+        "rule to be ignored.".format(parameter.name),
+        parameter.file_path,
+    )
 
 
 def _warn_on_unknown_keys(parameter, data, allowed_keys):

@@ -344,6 +344,62 @@ def test_parameter_uprating_with_rounding():
     assert interpolated.to_be_uprated("2018-01-01") == 4
 
 
+@pytest.mark.parametrize(
+    "data",
+    [
+        {
+            "parameter": {
+                "values": {"2025-01-01": 1},
+                "metadata": {
+                    "uprating": "uprater",
+                    "rounding": {"interval": 1, "type": "upwards"},
+                },
+            },
+        },
+        {
+            "scale": {
+                "metadata": {
+                    "uprating": "uprater",
+                    "rounding": {"interval": 1, "type": "upwards"},
+                },
+                "brackets": [
+                    {
+                        "threshold": {"2025-01-01": 0},
+                        "rate": {"2025-01-01": 0.1},
+                    },
+                ],
+            },
+        },
+        {
+            "scale": {
+                "brackets": [
+                    {
+                        "threshold": {"2025-01-01": 0},
+                        "rate": {"2025-01-01": 0.1},
+                        "metadata": {
+                            "uprating": "uprater",
+                            "rounding": {
+                                "interval": 1,
+                                "type": "upwards",
+                            },
+                        },
+                    },
+                ],
+            },
+        },
+    ],
+)
+def test_parameter_uprating_rejects_rounding_beside_uprating(data):
+    from policyengine_core.errors import ParameterParsingError
+    from policyengine_core.parameters import ParameterNode
+
+    with pytest.raises(
+        ParameterParsingError,
+        match="`rounding` must be nested inside `uprating`",
+    ):
+        ParameterNode(data=data)
+
+
 def test_parameter_uprating_with_self():
     from policyengine_core.parameters import ParameterNode
 

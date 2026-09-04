@@ -53,6 +53,9 @@ Edges = tuple[dict[str, set[str]], dict[str, set[str]]]
 Progress = Callable[[str], None]
 
 DEFAULT_OUTPUT = Path("dependency-map.json")
+# Read by core's neutralisation check before a formula runs, not by the
+# formula: a switch per variable, not a dependency.
+IGNORED_PARAMETER_PREFIXES = ("gov.abolitions.",)
 # The model surface the map depends on; hashed into the fingerprint.
 MODEL_SURFACE = ("entities.py", "parameters", "system.py", "variables")
 
@@ -75,7 +78,8 @@ def collect_edges(simulation, readers=None, consumers=None) -> Edges:
             return
         seen.add(id(node))
         for parameter in node.parameters:
-            readers[parameter.name].add(node.name)
+            if not parameter.name.startswith(IGNORED_PARAMETER_PREFIXES):
+                readers[parameter.name].add(node.name)
         for child in node.children:
             if child.name != node.name:
                 consumers[child.name].add(node.name)

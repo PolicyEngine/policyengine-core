@@ -214,17 +214,19 @@ class ParameterNode(AtInstantLike):
         return clone
 
     def _get_at_instant(self, instant: Instant) -> ParameterNodeAtInstant:
-        if instant in self._at_instant_cache:
-            return self._at_instant_cache[instant]
-        node_at_instant = ParameterNodeAtInstant(self.name, self, instant)
+        # The cache holds plain nodes only; tracing wraps one on the way out.
+        # Building the at-instant tree is expensive, so it must survive
+        # tracing being switched on and off (the API traces some household
+        # simulations and not others on one shared tax-benefit system).
+        node_at_instant = self._at_instant_cache.get(instant)
+        if node_at_instant is None:
+            node_at_instant = ParameterNodeAtInstant(self.name, self, instant)
+            self._at_instant_cache[instant] = node_at_instant
         if self.trace:
-            at_instant = TracingParameterNodeAtInstant(
-                node_at_instant, self.tracer, self.branch_name
+            return TracingParameterNodeAtInstant(
+                node_at_instant, self.tracer, self.branch_name, tracing_root=self
             )
-        else:
-            at_instant = node_at_instant
-        self._at_instant_cache[instant] = at_instant
-        return at_instant
+        return node_at_instant
 
     def attach_to_parent(self, parent: "ParameterNode"):
         self.parent = parent
@@ -233,6 +235,18 @@ class ParameterNode(AtInstantLike):
         self._at_instant_cache.clear()
         if self.parent is not None:
             self.parent.clear_parent_cache()
+
+    def set_tracing(self, tracer, branch_name: str) -> None:
+        """Route parameter reads through ``tracer`` (``None`` to stop).
+
+        Cheap by design: the at-instant cache holds plain nodes and the
+        tracing wrapper reads ``tracer`` and ``branch_name`` from this node
+        at access time, so nothing is rebuilt when tracing is switched or
+        a branch simulation swaps tracers.
+        """
+        self.trace = tracer is not None
+        self.tracer = tracer
+        self.branch_name = branch_name
 
     def mark_as_modified(self):
         self.modified = True

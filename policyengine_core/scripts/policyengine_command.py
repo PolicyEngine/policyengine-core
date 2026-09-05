@@ -105,11 +105,42 @@ def get_parser():
 
         return parser
 
+    def build_dependency_map_parser(parser):
+        parser = add_tax_benefit_system_arguments(parser, country_only=True)
+        parser.add_argument(
+            "--population",
+            choices=["tests", "microdata", "both"],
+            default="tests",
+            help="what to trace: the package's YAML tests (default), a microdata subsample, or both",
+        )
+        parser.add_argument(
+            "--tests-root",
+            default=None,
+            help="directory of YAML tests to trace (default: <package>/tests)",
+        )
+        parser.add_argument(
+            "--every-test",
+            action="store_true",
+            help="trace every test instead of one per newly covered output variable per file",
+        )
+        parser.add_argument(
+            "--households", type=int, default=2000, help="microdata subsample size"
+        )
+        parser.add_argument("--year", type=int, default=2026, help="microdata year")
+        parser.add_argument("--output", default="dependency-map.json")
+        return parser
+
     parser_test = subparsers.add_parser("test", help="Run OpenFisca YAML tests")
     parser_test = build_test_parser(parser_test)
 
     parser_data = subparsers.add_parser("data", help="Manage OpenFisca data")
     parser_data = build_data_parser(parser_data)
+
+    parser_dependency_map = subparsers.add_parser(
+        "dependency-map",
+        help="Trace which variables read each parameter and which variables feed which",
+    )
+    parser_dependency_map = build_dependency_map_parser(parser_dependency_map)
 
     return parser
 
@@ -126,6 +157,11 @@ def main():
 
     if args.command == "data":
         from policyengine_core.scripts.run_data import main
+
+        return sys.exit(main(parser))
+
+    if args.command == "dependency-map":
+        from policyengine_core.tools.dependency_map import main
 
         return sys.exit(main(parser))
 

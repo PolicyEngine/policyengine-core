@@ -529,3 +529,79 @@ def test_browse_trace():
 
     browsed_nodes = [node.name for node in tracer.browse_trace()]
     assert browsed_nodes == ["B", "C", "D", "E", "F"]
+
+
+#  Tests on parameter reads recorded through a simulation (#541, #542)
+PARAMETER_PERIOD = "2017-01"
+
+
+def _tree(simulation, name):
+    return next(tree for tree in simulation.tracer.trees if tree.name == name)
+
+
+@mark.parametrize("simulation", [({"salary": 2000}, PARAMETER_PERIOD)], indirect=True)
+def test_yearly_parameter_read_traced_after_node_was_cached(simulation):
+    # Reproduces #541: the at-instant node is cached untraced before tracing
+    # is switched on (defined_for / adds evaluation does this in practice).
+    simulation.tax_benefit_system.parameters("2017-01-01")
+    simulation.trace = True
+
+    simulation.calculate("income_tax", PARAMETER_PERIOD)
+
+    names = [p.name for p in _tree(simulation, "income_tax").parameters]
+    assert names == ["taxes.income_tax_rate"]
+
+
+@mark.parametrize("simulation", [({"salary": 2000}, PARAMETER_PERIOD)], indirect=True)
+def test_scale_read_is_traced(simulation):
+    # Reproduces #542: scale.calc(salary) is a parameter read.
+    simulation.trace = True
+
+    simulation.calculate("social_security_contribution", PARAMETER_PERIOD)
+
+    parameters = _tree(simulation, "social_security_contribution").parameters
+    assert [p.name for p in parameters] == ["taxes.social_security_contribution"]
+    assert parameters[0].value is None
+
+
+@mark.parametrize("simulation", [({"salary": 2000}, PARAMETER_PERIOD)], indirect=True)
+def test_switching_trace_off_restores_plain_parameter_nodes(simulation):
+    simulation.trace = True
+    assert isinstance(
+        simulation.tax_benefit_system.parameters("2017-01-01"),
+        TracingParameterNodeAtInstant,
+    )
+
+    simulation.trace = False
+
+    assert not isinstance(
+        simulation.tax_benefit_system.parameters("2017-01-01"),
+        TracingParameterNodeAtInstant,
+    )
+    simulation.calculate("income_tax", PARAMETER_PERIOD)
+
+
+@mark.parametrize("simulation", [({"salary": 2000}, PARAMETER_PERIOD)], indirect=True)
+def test_swapping_tracer_keeps_cached_nodes_and_records_into_new_tracer(
+    simulation,
+):
+    """Branch simulations share the parameter tree and swap in the parent's
+    tracer; that must neither rebuild the at-instant tree nor keep recording
+    into the old tracer."""
+    simulation.trace = True
+    parameters = simulation.tax_benefit_system.parameters
+    cached = parameters("2017-01-01")
+    old_tracer = simulation.tracer
+
+    new_tracer = FullTracer()
+    parameters.set_tracing(new_tracer, "branch")
+
+    assert (
+        parameters("2017-01-01").parameter_node_at_instant
+        is cached.parameter_node_at_instant
+    )
+    new_tracer._enter_calculation("income_tax", PARAMETER_PERIOD)
+    cached.taxes.income_tax_rate
+    assert new_tracer.trees[0].parameters[0].name == "taxes.income_tax_rate"
+    assert new_tracer.trees[0].parameters[0].branch_name == "branch"
+    assert old_tracer.trees == []

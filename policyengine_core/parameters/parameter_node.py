@@ -224,7 +224,7 @@ class ParameterNode(AtInstantLike):
             self._at_instant_cache[instant] = node_at_instant
         if self.trace:
             return TracingParameterNodeAtInstant(
-                node_at_instant, self.tracer, self.branch_name, tracing_root=self
+                node_at_instant, self.tracer, self.branch_name
             )
         return node_at_instant
 
@@ -239,10 +239,10 @@ class ParameterNode(AtInstantLike):
     def set_tracing(self, tracer, branch_name: str) -> None:
         """Route parameter reads through ``tracer`` (``None`` to stop).
 
-        Cheap by design: the at-instant cache holds plain nodes and the
-        tracing wrapper reads ``tracer`` and ``branch_name`` from this node
-        at access time, so nothing is rebuilt when tracing is switched or
-        a branch simulation swaps tracers.
+        Cheap by design: the at-instant cache holds plain nodes and
+        ``_get_at_instant`` wraps one with the current ``tracer`` and
+        ``branch_name`` on the way out, so nothing is rebuilt when tracing
+        is switched or a branch simulation swaps tracers.
         """
         self.trace = tracer is not None
         self.tracer = tracer

@@ -27,7 +27,36 @@ Populations
 
 Tests in one file mostly vary inputs for the same outputs and record the
 same edges, so by default one test is kept per newly covered output
-variable in each file; ``every_test`` traces them all.
+variable in each file; ``every_test`` traces them all. A test's ``output``
+block is read the way the YAML runner reads it: a key is a variable, an
+entity's singular key holding variables, or an entity's plural key holding
+instances of variables, and a dict value keyed by period checks the
+variable at each period.
+
+Output
+------
+The map is one JSON object::
+
+    generatedAt     ISO-8601 UTC timestamp
+    model           package, version, fingerprint (sha256 over the model
+                    surface: entities.py, parameters/, system.py,
+                    variables/), coreVersion
+    populations     per population traced, its selection and counts:
+                    tests: root, everyTest, tests (situations built),
+                    failed (situations that could not be built), outputs
+                    (variables calculated), outputErrors (output
+                    calculations that raised; their edges are whatever
+                    ran before the error); microdata: households, year,
+                    variables (calculated), failed (raised at every period)
+    tracingSeconds  wall time
+    readers         parameter path -> sorted variables that read it
+    consumers       variable -> sorted variables whose formula read it
+
+The map records what ran. A test that could not be built contributes no
+edges, and an output that raised contributes only the edges recorded before
+it raised, so ``failed`` and ``outputErrors`` bound how incomplete a map may
+be; the command prints both, and a map with non-zero counts should be read
+as a lower bound on the model's dependencies.
 """
 
 from __future__ import annotations
@@ -98,7 +127,42 @@ def collect_edges(simulation, readers=None, consumers=None) -> Edges:
     return readers, consumers
 
 
-def iter_yaml_tests(paths: Iterable[Path], every_test: bool = False):
+def iter_output_variables(output, system=None):
+    """Yield ``(variable, period)`` for each variable a test's output checks.
+
+    Mirrors ``YamlItem.check_output``: a key is a variable, an entity's
+    singular key holding variables, or an entity's plural key holding
+    instances of variables. A dict value keyed by period checks the variable
+    at each of those periods; ``period`` is ``None`` for the test's own
+    period. Without a ``system`` every key is taken to be a variable.
+    """
+    if not isinstance(output, dict):
+        return
+    singular = {} if system is None else {e.key for e in system.entities}
+    plural = {} if system is None else {e.plural for e in system.entities}
+
+    def variable(name, value):
+        if isinstance(value, dict):
+            for period in value:
+                yield name, period
+        else:
+            yield name, None
+
+    for key, value in output.items():
+        if system is None or system.get_variable(key) is not None:
+            yield from variable(key, value)
+        elif key in singular and isinstance(value, dict):
+            for name, nested in value.items():
+                yield from variable(name, nested)
+        elif key in plural and isinstance(value, dict):
+            for instance in value.values():
+                if isinstance(instance, dict):
+                    for name, nested in instance.items():
+                        yield from variable(name, nested)
+        # Any other key fails the YAML runner as an unknown variable.
+
+
+def iter_yaml_tests(paths: Iterable[Path], every_test: bool = False, system=None):
     """Yield (file, test) for the tests worth tracing against the baseline."""
     for path in paths:
         files = sorted(path.rglob("*.yaml")) if path.is_dir() else [path]
@@ -115,12 +179,15 @@ def iter_yaml_tests(paths: Iterable[Path], every_test: bool = False):
                     continue
                 if any("." in key for key in inputs):
                     continue  # inline parameter change: not the baseline system
-                outputs = test.get("output") or {}
+                outputs = {
+                    name
+                    for name, _ in iter_output_variables(test.get("output"), system)
+                }
                 if not outputs:
                     continue
-                if not every_test and covered >= set(outputs):
+                if not every_test and covered >= outputs:
                     continue
-                covered |= set(outputs)
+                covered |= outputs
                 yield file, test
 
 
@@ -132,8 +199,8 @@ def trace_yaml_tests(
 ) -> tuple[Edges, dict[str, int]]:
     readers: dict[str, set[str]] = defaultdict(set)
     consumers: dict[str, set[str]] = defaultdict(set)
-    stats = {"tests": 0, "failed": 0}
-    for index, (file, test) in enumerate(iter_yaml_tests(paths, every_test)):
+    stats = {"tests": 0, "failed": 0, "outputs": 0, "outputErrors": 0}
+    for index, (file, test) in enumerate(iter_yaml_tests(paths, every_test, system)):
         period = test.get("period")
         try:
             builder = SimulationBuilder()
@@ -141,11 +208,12 @@ def trace_yaml_tests(
             simulation = builder.build_from_dict(system, test.get("input") or {})
             simulation.default_calculation_period = builder.default_period
             _enable_tracing(simulation)
-            for output in test["output"]:
+            for name, output_period in iter_output_variables(test["output"], system):
                 try:
-                    simulation.calculate(output, period)
-                except Exception:  # a failing test still traced what ran
-                    pass
+                    simulation.calculate(name, output_period or period)
+                    stats["outputs"] += 1
+                except Exception:  # what ran before the error is still traced
+                    stats["outputErrors"] += 1
             collect_edges(simulation, readers, consumers)
             stats["tests"] += 1
         except Exception:  # unbuildable situation: skip it
@@ -311,6 +379,13 @@ def main(parser) -> int:
         progress=progress,
     )
     output = write_dependency_map(payload, Path(args.output))
+    for name, counts in payload["populations"].items():
+        summary = ", ".join(
+            f"{key}: {value}"
+            for key, value in counts.items()
+            if key not in ("root", "everyTest")
+        )
+        progress(f"{name}: {summary}")
     progress(
         f"wrote {output}: {len(payload['readers'])} parameter paths, "
         f"{len(payload['consumers'])} consumed variables, "

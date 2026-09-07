@@ -21,9 +21,77 @@ def test_trace_yaml_tests_records_parameter_and_variable_edges():
         CountryTaxBenefitSystem(), [TESTS_ROOT / "income_tax.yaml"]
     )
 
-    assert stats == {"tests": 1, "failed": 0}
+    assert stats == {"tests": 1, "failed": 0, "outputs": 1, "outputErrors": 0}
     assert readers["taxes.income_tax_rate"] == {"income_tax"}
     assert consumers["salary"] == {"income_tax"}
+
+
+def test_trace_yaml_tests_follows_entity_scoped_and_period_keyed_outputs(
+    tmp_path: Path,
+):
+    (tmp_path / "cases.yaml").write_text(
+        """
+- name: plural entity outputs
+  period: 2017-01
+  input:
+    persons:
+      alice: {salary: 1000}
+    households:
+      home: {parents: [alice]}
+  output:
+    persons:
+      alice: {income_tax: 150}
+- name: singular entity output keyed by period
+  period: 2017-01
+  input: {salary: 1000}
+  output:
+    person:
+      social_security_contribution: {2017-01: 20}
+- name: same variable again under the plural key
+  period: 2017-01
+  input:
+    persons:
+      bob: {salary: 3000}
+    households:
+      home: {parents: [bob]}
+  output:
+    persons:
+      bob: {income_tax: 450}
+"""
+    )
+    system = CountryTaxBenefitSystem()
+
+    names = [test["name"] for _, test in iter_yaml_tests([tmp_path], system=system)]
+    (readers, consumers), stats = trace_yaml_tests(system, [tmp_path])
+
+    assert names == ["plural entity outputs", "singular entity output keyed by period"]
+    assert stats == {"tests": 2, "failed": 0, "outputs": 2, "outputErrors": 0}
+    assert readers["taxes.income_tax_rate"] == {"income_tax"}
+    assert readers["taxes.social_security_contribution"] == {
+        "social_security_contribution"
+    }
+    assert consumers["salary"] == {"income_tax", "social_security_contribution"}
+
+
+def test_trace_yaml_tests_counts_outputs_that_fail_to_calculate(tmp_path: Path):
+    (tmp_path / "cases.yaml").write_text(
+        """
+- name: an output the model does not define
+  period: 2017-01
+  input: {salary: 1000}
+  output:
+    person:
+      no_such_variable: 1
+      social_security_contribution: 20
+"""
+    )
+
+    (readers, _), stats = trace_yaml_tests(CountryTaxBenefitSystem(), [tmp_path])
+
+    assert stats == {"tests": 1, "failed": 0, "outputs": 1, "outputErrors": 1}
+    assert readers["taxes.social_security_contribution"] == {
+        "social_security_contribution"
+    }
 
 
 def test_trace_yaml_tests_records_scale_reads():

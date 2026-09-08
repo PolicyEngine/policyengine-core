@@ -1,3 +1,10 @@
+## [3.32.4] - 2026-09-08
+
+### Changed
+
+- Document the Hugging Face dataset download inputs and returned local file path, and correct its optional argument annotations.
+
+
 ## [3.32.3] - 2026-09-04
 
 ### Fixed

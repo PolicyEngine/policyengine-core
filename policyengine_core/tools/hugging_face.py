@@ -6,6 +6,7 @@ from huggingface_hub import (
 from huggingface_hub.errors import RepositoryNotFoundError
 from getpass import getpass
 import os
+from pathlib import Path
 import warnings
 import traceback
 
@@ -46,17 +47,24 @@ def parse_hf_url(url: str) -> tuple[str, str, str, str | None]:
 def download_huggingface_dataset(
     repo: str,
     repo_filename: str,
-    version: str = None,
-    local_dir: str | None = None,
-):
+    version: str | None = None,
+    local_dir: str | Path | None = None,
+) -> str:
     """
-    Download a dataset from the Hugging Face Hub.
+    Download a PolicyEngine dataset file from the Hugging Face Hub.
 
     Args:
-        repo (str): The Hugging Face repo name, in format "{org}/{repo}".
-        repo_filename (str): The filename of the dataset.
-        version (str, optional): The version of the dataset. Defaults to None.
-        local_dir (str, optional): The local directory to save the dataset to. Defaults to None.
+        repo: Hugging Face model repository identifier in ``owner/name``
+            format.
+        repo_filename: Path to the dataset file within the repository.
+        version: Repository revision to download, such as a branch, tag, or
+            commit hash. If omitted, Hugging Face uses the repository's
+            default revision.
+        local_dir: Directory in which to place the downloaded file. If
+            omitted, Hugging Face uses its local cache.
+
+    Returns:
+        Path to the downloaded local file.
     """
     # Attempt connection to Hugging Face model_info endpoint
     # (https://huggingface.co/docs/huggingface_hub/v0.26.5/en/package_reference/hf_api#huggingface_hub.HfApi.model_info)
@@ -65,7 +73,7 @@ def download_huggingface_dataset(
     # but this error will also surface for public repos with malformed URL, etc.
     try:
         fetched_model_info: ModelInfo = model_info(repo)
-        is_repo_private: bool = fetched_model_info.private
+        is_repo_private = bool(fetched_model_info.private)
     except RepositoryNotFoundError as e:
         # If this error type arises, it's likely the repo is private; see docs above
         is_repo_private = True
@@ -77,9 +85,9 @@ def download_huggingface_dataset(
             + f"is private, the URL is malformed, or the dataset does not exist. The full error is {traceback.format_exc()}"
         )
 
-    authentication_token: str = None
+    authentication_token: str | None = None
     if is_repo_private:
-        authentication_token: str = get_or_prompt_hf_token()
+        authentication_token = get_or_prompt_hf_token()
 
     return hf_hub_download(
         repo_id=repo,

@@ -74,28 +74,14 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install uv
         uses: astral-sh/setup-uv@v8.1.0
-      - name: Install -core package
-        run: |
-          uv pip install --system .
-          uv pip install --system "pytest-rerunfailures>=10,<15"
+      - name: Install Core and the legacy country smoke bundle
+        # Resolve the checkout and all country dependencies together so a later
+        # install cannot replace Core or pair a legacy US model with SPM 1.x.
+        run: uv pip install --system . -r .github/requirements/legacy-country-smoke.txt "pytest-rerunfailures>=10,<15"
+      - name: Verify installed dependency compatibility
+        run: uv pip check --system
       - name: Verify pytest plugins
         run: python -m pytest --version
-      - name: Install -us package from PyPI
-        run: |
-          if [[ "${{ matrix.python-version }}" == "3.13" || "${{ matrix.python-version }}" == "3.14" ]]; then
-            # For Python 3.13+, install newer tables first and ignore conflicts
-            uv pip install --system "tables>=3.11.0"
-            uv pip install --system policyengine-us --no-deps
-            # Install remaining dependencies manually (skip pytest-dependency which has build issues)
-            uv pip install --system click pathlib synthimpute tabulate spm-calculator
-            uv pip install --system policyengine-us-data --no-deps
-          else
-            uv pip install --system policyengine-us
-          fi
-        shell: bash
-      - name: Install -uk package from PyPI
-        run: uv pip install --system policyengine-uk
-        shell: bash
       - name: Run smoke tests only
         run: python -m pytest -m smoke --reruns 2 --reruns-delay 5 -v -s
         env:

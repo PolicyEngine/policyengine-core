@@ -565,7 +565,7 @@ def test_scale_read_is_traced(simulation):
 
     parameters = _tree(simulation, "social_security_contribution").parameters
     assert [p.name for p in parameters] == ["taxes.social_security_contribution"]
-    assert parameters[0].value is None
+    assert parameters[0].value["type"] == "MarginalRateTaxScale"
 
 
 @mark.parametrize("simulation", [({"salary": 2000}, PARAMETER_PERIOD)], indirect=True)
@@ -744,3 +744,55 @@ def test_nested_branch_does_not_relabel_the_callers_parameter_reads(
     ]
     parameters = tax_benefit_system.parameters
     assert (parameters.tracer, parameters.branch_name) == (simulation.tracer, "default")
+
+
+@mark.parametrize("simulation", [({"salary": 2000}, PARAMETER_PERIOD)], indirect=True)
+def test_reading_a_nodes_children_is_recorded_at_the_node_and_keeps_them_wrapped(
+    simulation,
+):
+    """Formulas iterate a node's children or pick one by computed key. That
+    must record the node's own path (never one ending in ._children) with
+    the names read, and hand back children that are still traced."""
+    simulation.trace = True
+    tracer = simulation.tracer
+    tracer._enter_calculation("waived_area", PARAMETER_PERIOD)
+    taxes = simulation.tax_benefit_system.parameters("2017-01-01").taxes
+
+    names = list(taxes._children)
+    assert len(taxes._children) == len(names)
+    assert "housing_tax" in taxes._children
+    housing = next(iter(taxes._children.values()))
+    housing.rate
+
+    recorded = [(p.name, p.value) for p in tracer.trees[0].parameters]
+    assert ("taxes", names) in recorded
+    assert not any(name.endswith("._children") for name, _ in recorded)
+    assert isinstance(housing, TracingParameterNodeAtInstant)
+    assert "taxes.housing_tax.rate" in [name for name, _ in recorded]
+
+
+@mark.parametrize("simulation", [({"salary": 2000}, PARAMETER_PERIOD)], indirect=True)
+def test_iterating_a_traced_node_yields_child_names(simulation):
+    simulation.trace = True
+    simulation.tracer._enter_calculation("x", PARAMETER_PERIOD)
+    taxes = simulation.tax_benefit_system.parameters("2017-01-01").taxes
+
+    assert sorted(taxes) == sorted(taxes.parameter_node_at_instant._children)
+
+
+@mark.parametrize("simulation", [({"salary": 2000}, PARAMETER_PERIOD)], indirect=True)
+def test_a_scale_read_records_its_brackets(simulation):
+    simulation.trace = True
+    tracer = simulation.tracer
+    tracer._enter_calculation("social_security_contribution", PARAMETER_PERIOD)
+
+    simulation.tax_benefit_system.parameters(
+        "2017-01-01"
+    ).taxes.social_security_contribution
+
+    recorded = tracer.trees[0].parameters[0]
+    assert recorded.name == "taxes.social_security_contribution"
+    assert recorded.value["type"] == "MarginalRateTaxScale"
+    assert recorded.value["thresholds"] == [0.0, 6000.0, 12400.0]
+    assert recorded.value["rates"] == [0.02, 0.06, 0.12]
+    json.dumps(tracer.get_serialized_flat_trace())

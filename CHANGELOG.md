@@ -1,3 +1,10 @@
+## [3.32.5] - 2026-09-10
+
+### Fixed
+
+- Resolve CI country smoke tests with exact compatible legacy US, UK, and SPM versions alongside the Core checkout.
+
+
 ## [3.32.4] - 2026-09-08
 
 ### Changed

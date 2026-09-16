@@ -1,3 +1,10 @@
+## [3.32.6] - 2026-09-16
+
+### Fixed
+
+- `Variable.clone()` now preserves attributes inherited from a baseline variable via a reform's `update_variable` (using `empty_clone` + a `__dict__` copy instead of re-running `__init__`), so cloning a reformed tax-benefit system — as the YAML test runner and branch calculations do for every variable — no longer raises `Missing attribute 'value_type'`.
+
+
 ## [3.32.5] - 2026-09-10
 
 ### Fixed

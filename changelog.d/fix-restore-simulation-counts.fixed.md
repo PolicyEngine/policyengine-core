@@ -1,0 +1,1 @@
+Restore each entity's count from its dumped ids in `restore_simulation`, so that a group entity with no member is no longer silently dropped and a tax-benefit system without group entities can be restored.

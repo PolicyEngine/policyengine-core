@@ -1,0 +1,1 @@
+Uprating an input variable no longer raises `TypeError` when its uprating parameter has no value at the known period's start (the index is held flat where it has no value), and it now always uprates from the latest known earlier period rather than one picked by list position.

@@ -129,6 +129,18 @@ def test_uprates_from_latest_earlier_period_when_later_period_stored_first(
     )
 
 
+def test_cached_default_before_input_does_not_pull_later_input_back(system):
+    # A formula reading an earlier year (a lagged-income lookup, say) caches
+    # the default there. Before the fix a later request between that year
+    # and the input year then deflated the later input instead of using the
+    # latest earlier period, so the result depended on evaluation order.
+    direct = calculate(system, {2018: VALUE}, 2017)
+    lagged_first = simulate(system, {2018: VALUE})
+    lagged_first.calculate("uprated_income", 2016)
+    assert direct == 0
+    assert float(lagged_first.calculate("uprated_income", 2017)[0]) == direct
+
+
 def test_index_gap_from_explicit_null_is_held_flat():
     # ``update`` on a period before an index starts leaves an explicit null
     # between the new value and the old first value.

@@ -123,7 +123,7 @@ class Variable:
     """List of variables that are subtracted from the variable. Alternatively, can be a parameter name."""
 
     uprating: str = None
-    """Name of a parameter used to uprate the variable."""
+    """Name of a parameter used to uprate the variable. When the variable has no value for a requested period, its value in the latest known earlier period is multiplied by the ratio of this parameter at the two period starts. Where the parameter has no value it is held flat: before its first value it takes that first value, and after an explicit null it keeps the last value before the null. The variable therefore carries over unchanged across any span the parameter does not cover."""
 
     hidden_input: bool = False
     """Whether the variable is hidden from the input screen entirely on PolicyEngine."""

@@ -7,9 +7,12 @@ import os
 import numpy as np
 from pytest import approx, fixture, mark, raises
 
+from policyengine_core.country_template.entities import Person
 from policyengine_core.country_template.variables.housing import (
     HousingOccupancyStatus,
 )
+from policyengine_core.parameters import Parameter
+from policyengine_core.periods import MONTH
 from policyengine_core.simulations import CycleError, Simulation, SpiralError
 from policyengine_core.tracers import (
     FullTracer,
@@ -17,6 +20,7 @@ from policyengine_core.tracers import (
     TraceNode,
     TracingParameterNodeAtInstant,
 )
+from policyengine_core.variables import Variable
 
 from .parameters_fancy_indexing.test_fancy_indexing import parameters
 
@@ -529,3 +533,266 @@ def test_browse_trace():
 
     browsed_nodes = [node.name for node in tracer.browse_trace()]
     assert browsed_nodes == ["B", "C", "D", "E", "F"]
+
+
+#  Tests on parameter reads recorded through a simulation (#541, #542)
+PARAMETER_PERIOD = "2017-01"
+
+
+def _tree(simulation, name):
+    return next(tree for tree in simulation.tracer.trees if tree.name == name)
+
+
+@mark.parametrize("simulation", [({"salary": 2000}, PARAMETER_PERIOD)], indirect=True)
+def test_yearly_parameter_read_traced_after_node_was_cached(simulation):
+    # Reproduces #541: the at-instant node is cached untraced before tracing
+    # is switched on (defined_for / adds evaluation does this in practice).
+    simulation.tax_benefit_system.parameters("2017-01-01")
+    simulation.trace = True
+
+    simulation.calculate("income_tax", PARAMETER_PERIOD)
+
+    names = [p.name for p in _tree(simulation, "income_tax").parameters]
+    assert names == ["taxes.income_tax_rate"]
+
+
+@mark.parametrize("simulation", [({"salary": 2000}, PARAMETER_PERIOD)], indirect=True)
+def test_scale_read_is_traced(simulation):
+    # Reproduces #542: scale.calc(salary) is a parameter read.
+    simulation.trace = True
+
+    simulation.calculate("social_security_contribution", PARAMETER_PERIOD)
+
+    parameters = _tree(simulation, "social_security_contribution").parameters
+    assert [p.name for p in parameters] == ["taxes.social_security_contribution"]
+    assert parameters[0].value["type"] == "MarginalRateTaxScale"
+
+
+@mark.parametrize("simulation", [({"salary": 2000}, PARAMETER_PERIOD)], indirect=True)
+def test_switching_trace_off_restores_plain_parameter_nodes(simulation):
+    simulation.trace = True
+    assert isinstance(
+        simulation.tax_benefit_system.parameters("2017-01-01"),
+        TracingParameterNodeAtInstant,
+    )
+
+    simulation.trace = False
+
+    assert not isinstance(
+        simulation.tax_benefit_system.parameters("2017-01-01"),
+        TracingParameterNodeAtInstant,
+    )
+    simulation.calculate("income_tax", PARAMETER_PERIOD)
+
+
+@mark.parametrize("simulation", [({"salary": 2000}, PARAMETER_PERIOD)], indirect=True)
+def test_swapping_tracer_keeps_cached_nodes_and_records_into_new_tracer(
+    simulation,
+):
+    """Branch simulations share the parameter tree and swap in the parent's
+    tracer; that must not rebuild the at-instant tree. A wrapper keeps the
+    tracer and branch it was obtained under; the next access after the swap
+    records into the new tracer."""
+    simulation.trace = True
+    parameters = simulation.tax_benefit_system.parameters
+    before = parameters("2017-01-01")
+    old_tracer = simulation.tracer
+
+    new_tracer = FullTracer()
+    parameters.set_tracing(new_tracer, "branch")
+    after = parameters("2017-01-01")
+
+    assert after.parameter_node_at_instant is before.parameter_node_at_instant
+    new_tracer._enter_calculation("income_tax", PARAMETER_PERIOD)
+    after.taxes.income_tax_rate
+    assert new_tracer.trees[0].parameters[0].name == "taxes.income_tax_rate"
+    assert new_tracer.trees[0].parameters[0].branch_name == "branch"
+    old_tracer._enter_calculation("income_tax", PARAMETER_PERIOD)
+    before.taxes.income_tax_rate
+    assert old_tracer.trees[0].parameters[0].branch_name == "default"
+    assert len(new_tracer.trees[0].parameters) == 1
+
+
+#  Reads the core makes on a variable's behalf, and branch labelling
+
+
+class salary_plus_basic_income(Variable):
+    value_type = float
+    entity = Person
+    definition_period = MONTH
+    label = "adds: a variable and a parameter path"
+    adds = ["salary", "benefits.basic_income"]
+
+
+class income_components_total(Variable):
+    value_type = float
+    entity = Person
+    definition_period = MONTH
+    label = "adds: a parameter holding the list"
+    adds = "taxes.income_components"
+
+
+class minus_basic_income(Variable):
+    value_type = float
+    entity = Person
+    definition_period = MONTH
+    label = "subtracts: a parameter path"
+    subtracts = ["benefits.basic_income"]
+
+
+class uprated_amount(Variable):
+    value_type = float
+    entity = Person
+    definition_period = MONTH
+    label = "no formula; carried forward by an uprating parameter"
+    uprating = "taxes.income_tax_rate"
+
+
+class reads_around_a_branch(Variable):
+    value_type = float
+    entity = Person
+    definition_period = MONTH
+    label = "reads a parameter before and after a nested branch calculation"
+
+    def formula(person, period, parameters):
+        before = parameters(period).taxes.income_tax_rate
+        person.simulation.get_branch("inner").calculate("income_tax", period)
+        after = parameters(period).taxes.income_tax_rate
+        return before + after + person("salary", period) * 0
+
+
+def _parameter_reads(simulation, name):
+    return [
+        (p.name, p.period, p.branch_name, p.value)
+        for p in _tree(simulation, name).parameters
+    ]
+
+
+def test_parameter_backed_adds_and_subtracts_are_traced(
+    tax_benefit_system, make_simulation
+):
+    tax_benefit_system.parameters.taxes.add_child(
+        "income_components",
+        Parameter(
+            "taxes.income_components",
+            {"values": {"2015-01-01": {"value": ["salary"]}}},
+        ),
+    )
+    for variable in (
+        salary_plus_basic_income,
+        income_components_total,
+        minus_basic_income,
+    ):
+        tax_benefit_system.add_variable(variable)
+    simulation = make_simulation(tax_benefit_system, {"salary": 2000}, PARAMETER_PERIOD)
+    simulation.trace = True
+    basic_income = tax_benefit_system.parameters.benefits.basic_income("2017-01-01")
+
+    assert simulation.calculate("salary_plus_basic_income", PARAMETER_PERIOD) == approx(
+        2000 + basic_income
+    )
+    assert simulation.calculate("income_components_total", PARAMETER_PERIOD) == 2000
+    assert simulation.calculate("minus_basic_income", PARAMETER_PERIOD) == approx(
+        -basic_income
+    )
+
+    assert _parameter_reads(simulation, "salary_plus_basic_income") == [
+        ("benefits.basic_income", "2017-01-01", "default", basic_income)
+    ]
+    assert _parameter_reads(simulation, "income_components_total") == [
+        ("taxes.income_components", "2017-01-01", "default", ["salary"])
+    ]
+    assert _parameter_reads(simulation, "minus_basic_income") == [
+        ("benefits.basic_income", "2017-01-01", "default", basic_income)
+    ]
+
+
+def test_uprating_parameter_reads_are_traced(tax_benefit_system, make_simulation):
+    tax_benefit_system.add_variable(uprated_amount)
+    simulation = make_simulation(tax_benefit_system, {"salary": 2000}, "2017-01")
+    simulation.set_input("uprated_amount", "2017-01", [100])
+    simulation.trace = True
+    rate = tax_benefit_system.parameters.taxes.income_tax_rate
+
+    assert simulation.calculate("uprated_amount", "2017-02") == approx(
+        100 * rate("2017-02-01") / rate("2017-01-01")
+    )
+
+    assert _parameter_reads(simulation, "uprated_amount") == [
+        ("taxes.income_tax_rate", "2017-01-01", "default", rate("2017-01-01")),
+        ("taxes.income_tax_rate", "2017-02-01", "default", rate("2017-02-01")),
+    ]
+
+
+def test_nested_branch_does_not_relabel_the_callers_parameter_reads(
+    tax_benefit_system, make_simulation
+):
+    tax_benefit_system.add_variable(reads_around_a_branch)
+    simulation = make_simulation(tax_benefit_system, {"salary": 2000}, PARAMETER_PERIOD)
+    simulation.trace = True
+
+    simulation.calculate("reads_around_a_branch", PARAMETER_PERIOD)
+
+    outer = _tree(simulation, "reads_around_a_branch")
+    assert [(p.name, p.branch_name) for p in outer.parameters] == [
+        ("taxes.income_tax_rate", "default"),
+        ("taxes.income_tax_rate", "default"),
+    ]
+    inner = next(child for child in outer.children if child.name == "income_tax")
+    assert [(p.name, p.branch_name) for p in inner.parameters] == [
+        ("taxes.income_tax_rate", "inner")
+    ]
+    parameters = tax_benefit_system.parameters
+    assert (parameters.tracer, parameters.branch_name) == (simulation.tracer, "default")
+
+
+@mark.parametrize("simulation", [({"salary": 2000}, PARAMETER_PERIOD)], indirect=True)
+def test_reading_a_nodes_children_is_recorded_at_the_node_and_keeps_them_wrapped(
+    simulation,
+):
+    """Formulas iterate a node's children or pick one by computed key. That
+    must record the node's own path (never one ending in ._children) with
+    the names read, and hand back children that are still traced."""
+    simulation.trace = True
+    tracer = simulation.tracer
+    tracer._enter_calculation("waived_area", PARAMETER_PERIOD)
+    taxes = simulation.tax_benefit_system.parameters("2017-01-01").taxes
+
+    names = list(taxes._children)
+    assert len(taxes._children) == len(names)
+    assert "housing_tax" in taxes._children
+    housing = next(iter(taxes._children.values()))
+    housing.rate
+
+    recorded = [(p.name, p.value) for p in tracer.trees[0].parameters]
+    assert ("taxes", names) in recorded
+    assert not any(name.endswith("._children") for name, _ in recorded)
+    assert isinstance(housing, TracingParameterNodeAtInstant)
+    assert "taxes.housing_tax.rate" in [name for name, _ in recorded]
+
+
+@mark.parametrize("simulation", [({"salary": 2000}, PARAMETER_PERIOD)], indirect=True)
+def test_iterating_a_traced_node_yields_child_names(simulation):
+    simulation.trace = True
+    simulation.tracer._enter_calculation("x", PARAMETER_PERIOD)
+    taxes = simulation.tax_benefit_system.parameters("2017-01-01").taxes
+
+    assert sorted(taxes) == sorted(taxes.parameter_node_at_instant._children)
+
+
+@mark.parametrize("simulation", [({"salary": 2000}, PARAMETER_PERIOD)], indirect=True)
+def test_a_scale_read_records_its_brackets(simulation):
+    simulation.trace = True
+    tracer = simulation.tracer
+    tracer._enter_calculation("social_security_contribution", PARAMETER_PERIOD)
+
+    simulation.tax_benefit_system.parameters(
+        "2017-01-01"
+    ).taxes.social_security_contribution
+
+    recorded = tracer.trees[0].parameters[0]
+    assert recorded.name == "taxes.social_security_contribution"
+    assert recorded.value["type"] == "MarginalRateTaxScale"
+    assert recorded.value["thresholds"] == [0.0, 6000.0, 12400.0]
+    assert recorded.value["rates"] == [0.02, 0.06, 0.12]
+    json.dumps(tracer.get_serialized_flat_trace())

@@ -1,0 +1,1 @@
+`policyengine-core dependency-map -c <country package>` traces which variables read each parameter and which variables feed which, over the package's YAML tests and optionally its microdata, and writes the map with the package's version and fingerprint for downstream validation tools.

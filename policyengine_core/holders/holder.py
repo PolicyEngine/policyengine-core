@@ -106,45 +106,53 @@ class Holder:
             value = self._disk_storage.get(period, branch_name)
         return value
 
+    def _readable_branch_names(self, branch_name: str = "default") -> List[str]:
+        """
+        Branches whose stored values ``get_array(period, branch_name)`` can
+        return, in lookup order.
+
+        That is ``branch_name`` itself, then (unless it is ``default``) each
+        ``simulation.parent_branch`` ancestor, then ``default``. Nested
+        branches inherit values from their parent (e.g. a ``no_salt`` branch
+        cloned from an ``itemizing`` branch still sees ``tax_unit_itemizes``
+        set on the ``itemizing`` branch). Previously the fallback returned
+        the first branch in dict-insertion order (bug C1) — silently swapping
+        values between unrelated sibling branches (reform vs baseline) and
+        producing wrong reform deltas. The post-C1 behavior only fell back to
+        ``default``, which broke country-package nested-branch patterns that
+        relied on the ancestor's input being visible.
+        """
+        if branch_name == "default":
+            return ["default"]
+        branch_names = [branch_name]
+        simulation = getattr(self, "simulation", None)
+        parent = getattr(simulation, "parent_branch", None) if simulation else None
+        while parent is not None:
+            branch_names.append(parent.branch_name)
+            parent = getattr(parent, "parent_branch", None)
+        branch_names.append("default")
+        return list(dict.fromkeys(branch_names))
+
     def get_array(self, period: Period, branch_name: str = "default") -> ArrayLike:
         """
         Get the value of the variable for the given period.
 
-        If the value is not known, return ``None``.
+        Values stored under ``branch_name``, its ``parent_branch`` ancestors
+        and ``default`` are visible, in that order. If the value is not
+        known on any of them, return ``None``.
         """
         if self.variable.is_neutralized:
             return self.default_array()
+        # The branch's own value is the common case: look it up before
+        # walking the ancestors.
         value = self._get_array_from_storage(period, branch_name)
         if value is not None:
             return value
-        if value is None and branch_name != "default":
-            # Walk up ``simulation.parent_branch`` so nested branches inherit
-            # values from their parent (e.g. a ``no_salt`` branch cloned
-            # from an ``itemizing`` branch still sees ``tax_unit_itemizes``
-            # set on the ``itemizing`` branch). Fall back to ``default``
-            # only if no ancestor branch has a value. Previously the
-            # fallback returned the first branch in dict-insertion order
-            # (bug C1) — silently swapping values between unrelated
-            # sibling branches (reform vs baseline) and producing wrong
-            # reform deltas. The post-C1 behavior only fell back to
-            # ``default``, which broke country-package nested-branch
-            # patterns that relied on the ancestor's input being visible.
-            parent = (
-                getattr(self.simulation, "parent_branch", None)
-                if self.simulation
-                else None
-            )
-            while parent is not None:
-                ancestor_value = self._get_array_from_storage(
-                    period,
-                    parent.branch_name,
-                )
-                if ancestor_value is not None:
-                    return ancestor_value
-                parent = getattr(parent, "parent_branch", None)
-            default_value = self._get_array_from_storage(period, "default")
-            if default_value is not None:
-                return default_value
+        for readable_branch_name in self._readable_branch_names(branch_name)[1:]:
+            value = self._get_array_from_storage(period, readable_branch_name)
+            if value is not None:
+                return value
+        return None
 
     def get_memory_usage(self) -> dict:
         """
@@ -189,11 +197,23 @@ class Holder:
 
         return usage
 
-    def get_known_periods(self) -> List[Period]:
+    def get_known_periods(self, branch_name: str = None) -> List[Period]:
         """
         Get the list of periods the variable value is known for.
-        """
 
+        With ``branch_name``, list only the periods ``get_array(period,
+        branch_name)`` can read: those stored under that branch, its
+        ``parent_branch`` ancestors or ``default``. Without it, list the
+        periods stored under every branch in this holder, some of which that
+        branch may not be able to read.
+        """
+        if branch_name is not None:
+            readable_branch_names = set(self._readable_branch_names(branch_name))
+            return [
+                period
+                for stored_branch_name, period in self.get_known_branch_periods()
+                if stored_branch_name in readable_branch_names
+            ]
         return list(self._memory_storage.get_known_periods()) + list(
             (self._disk_storage.get_known_periods() if self._disk_storage else [])
         )

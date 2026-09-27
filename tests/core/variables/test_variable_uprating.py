@@ -23,7 +23,6 @@ from policyengine_core.model_api import MONTH, YEAR, Variable
 from policyengine_core.parameters import ParameterNode
 from policyengine_core.periods import Instant, Period
 from policyengine_core.simulations import SimulationBuilder
-from policyengine_core.simulations.simulation import _uprating_index_value
 
 INDEX_START = 2015
 # The index grows 10% a year from INDEX_START. Integer powers keep the
@@ -161,9 +160,14 @@ def test_index_with_no_values_carries_value_over():
 
 
 def test_index_value_helper():
+    # Imported here so the rest of the module also runs against code without
+    # the helper.
+    from policyengine_core.simulations.simulation import _uprating_index_value
+
     system = build_system(INDEX)
     index = system.parameters.test_uprating.index
-    index.update(period="2030", value=None)
+    # A null from 2030 with no end date: the index is undefined from then on.
+    index.update(start="2030-01-01", value=None)
     assert _uprating_index_value(index, Instant((2010, 6, 1))) == INDEX["2015-01-01"]
     assert _uprating_index_value(index, Instant((2017, 1, 1))) == INDEX["2017-01-01"]
     # After an explicit null the last value before it holds.
@@ -220,13 +224,15 @@ def test_result_does_not_depend_on_intermediate_years_computed(system, known):
 
 
 @pytest.mark.parametrize(
-    "stored_years", list(itertools.permutations([2012, 2016, 2019]))
+    "stored_years", list(itertools.permutations([2015, 2017, 2019]))
 )
 def test_latest_earlier_period_wins_regardless_of_storage_order(system, stored_years):
     """Order independence: for any insertion order of the known periods, each
-    requested year uprates from the latest known year before it."""
+    requested year uprates from the latest known year before it. All years
+    are inside the index's range, so only the choice of base period is
+    tested here."""
     inputs = {year: 1_000.0 * (i + 1) for i, year in enumerate(stored_years)}
-    for requested in (2014, 2017, 2021):
+    for requested in (2016, 2018, 2020):
         latest = max(year for year in inputs if year < requested)
         assert calculate(system, inputs, requested) == pytest.approx(
             inputs[latest] * index_at(requested) / index_at(latest), rel=1e-6

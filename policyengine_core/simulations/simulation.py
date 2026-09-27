@@ -48,8 +48,9 @@ def _uprating_index_value(parameter, instant) -> Optional[float]:
     """Value of a variable's uprating index at ``instant``, held flat where
     the index has no value.
 
-    Before the index's first value this returns that first value, the same
-    convention as extending a parameter's earliest value backward. After an
+    Before the index's first value this returns that first value, as if the
+    earliest value had been extended backward (country packages backdate
+    parameters this way; a parameter itself returns ``None`` there). After an
     explicit null it returns the last value before the null. A value known
     for a period the index does not reach is therefore carried over
     unchanged until the index starts, then uprated with it. Returns ``None``

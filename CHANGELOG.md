@@ -1,3 +1,10 @@
+## [3.32.8] - 2026-09-27
+
+### Fixed
+
+- Uprating an input variable no longer raises `TypeError` when its uprating parameter has no value at the start of the known or the requested period (the parameter is held flat where it has no value), and it now always uprates from the latest known earlier period rather than one picked by list position.
+
+
 ## [3.32.7] - 2026-09-25
 
 ### Fixed

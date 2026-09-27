@@ -44,6 +44,36 @@ def _stable_hash_to_seed(value: str) -> int:
     return int.from_bytes(digest[:4], "big") % 1000000
 
 
+def _uprating_index_value(parameter, instant) -> Optional[float]:
+    """Value of a variable's uprating index at ``instant``, held flat where
+    the index has no value.
+
+    Before the index's first value this returns that first value, as if the
+    earliest value had been extended backward (country packages backdate
+    parameters this way; a parameter itself returns ``None`` there). After an
+    explicit null it returns the last value before the null. A value known
+    for a period the index does not reach is therefore carried over
+    unchanged until the index starts, then uprated with it. Returns ``None``
+    only if the index has no non-null value at all.
+    """
+    value = parameter(instant)
+    if value is not None:
+        return value
+    defined = [
+        value_at_instant
+        for value_at_instant in getattr(parameter, "values_list", [])
+        if value_at_instant.value is not None
+    ]
+    if not defined:
+        return None
+    # ``values_list`` runs from the latest instant to the earliest.
+    instant_str = str(instant)
+    for value_at_instant in defined:
+        if value_at_instant.instant_str <= instant_str:
+            return value_at_instant.value
+    return defined[-1].value
+
+
 if TYPE_CHECKING:
     from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 
@@ -836,14 +866,20 @@ class Simulation:
             if array is None:
                 # Check if the variable has a previously defined value
                 known_periods = holder.get_known_periods()
-                start_instants = [
-                    str(known_period.start)
+                earlier_known_periods = [
+                    known_period
                     for known_period in known_periods
                     if known_period.unit == variable.definition_period
                     and known_period.start < period.start
                 ]
-                if variable.uprating is not None and len(start_instants) > 0:
-                    latest_known_period = known_periods[np.argmax(start_instants)]
+                if variable.uprating is not None and len(earlier_known_periods) > 0:
+                    # Take the latest period from the filtered list itself.
+                    # Indexing ``known_periods`` with a position in the
+                    # filtered list picked the wrong period whenever a later
+                    # one was stored first.
+                    latest_known_period = max(
+                        earlier_known_periods, key=lambda p: p.start
+                    )
                     try:
                         uprating_parameter = get_parameter(
                             self.tax_benefit_system.parameters,
@@ -853,9 +889,17 @@ class Simulation:
                         raise ValueError(
                             f"Could not find uprating parameter {variable.uprating} when trying to uprate {variable_name}."
                         )
-                    value_in_last_period = uprating_parameter(latest_known_period.start)
-                    value_in_this_period = uprating_parameter(period.start)
-                    if value_in_last_period == 0:
+                    value_in_last_period = _uprating_index_value(
+                        uprating_parameter, latest_known_period.start
+                    )
+                    value_in_this_period = _uprating_index_value(
+                        uprating_parameter, period.start
+                    )
+                    if (
+                        value_in_last_period is None
+                        or value_in_this_period is None
+                        or value_in_last_period == 0
+                    ):
                         uprating_factor = 1
                     else:
                         uprating_factor = value_in_this_period / value_in_last_period

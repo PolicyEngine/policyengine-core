@@ -78,8 +78,10 @@ def download_huggingface_dataset(
         UserWarning: If the repo requires authentication but no
             HUGGING_FACE_TOKEN was available. The download still runs with
             token=None, so huggingface_hub applies its own cached token
-            (HF_TOKEN or the `hf auth login` file) if it has one; the
-            warning explains a 401 that follows when it does not.
+            (HF_TOKEN or the `hf auth login` file) if it has one, unless
+            HF_HUB_DISABLE_IMPLICIT_TOKEN is set; the warning explains a
+            401 that follows when there is no such token, or a 403 when a
+            gated repo has not approved it.
     """
     # Attempt connection to Hugging Face model_info endpoint
     # (https://huggingface.co/docs/huggingface_hub/v0.26.5/en/package_reference/hf_api#huggingface_hub.HfApi.model_info)
@@ -120,13 +122,14 @@ def download_huggingface_dataset(
                 f"Hugging Face repo '{repo}' requires authentication, but no "
                 "HUGGING_FACE_TOKEN was available (the environment variable "
                 "is unset or empty, and no token was entered at a prompt). "
-                "huggingface_hub will use its own cached token instead if one "
-                "exists (the HF_TOKEN environment variable or the "
-                "`hf auth login` file). A 401 on the download that follows "
-                "(RepositoryNotFoundError or GatedRepoError) means neither "
-                "token was set, or the token in use is not approved for this "
-                "repo. Set HUGGING_FACE_TOKEN to a token whose account has "
-                "access.",
+                "huggingface_hub normally falls back to its own cached token "
+                "if it has one (the HF_TOKEN environment variable, or the file "
+                "written by `hf auth login`, which is `huggingface-cli login` "
+                "before huggingface_hub 0.34). If the download that follows "
+                "fails with RepositoryNotFoundError or GatedRepoError (a 401 "
+                "when no token was sent, or a 403 when a gated repo has not "
+                "approved the token), set HUGGING_FACE_TOKEN to a token whose "
+                "account has access.",
                 stacklevel=2,
             )
 

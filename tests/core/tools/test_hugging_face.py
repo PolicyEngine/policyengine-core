@@ -1,3 +1,4 @@
+import itertools
 import os
 import warnings
 import pytest
@@ -127,9 +128,12 @@ class TestHuggingFaceDownload:
                                 "Test error", response=mock_response
                             )
 
-                            result = download_huggingface_dataset(
-                                test_repo, test_filename, test_version, test_dir
-                            )
+                            with pytest.warns(
+                                UserWarning, match="no HUGGING_FACE_TOKEN"
+                            ):
+                                result = download_huggingface_dataset(
+                                    test_repo, test_filename, test_version, test_dir
+                                )
 
                             assert result is mock_download.return_value
                             mock_getpass.assert_not_called()
@@ -234,9 +238,12 @@ class TestHuggingFaceDownload:
                                 id=test_repo, private=False, gated="manual"
                             )
 
-                            download_huggingface_dataset(
-                                test_repo, test_filename, test_version, test_dir
-                            )
+                            with pytest.warns(
+                                UserWarning, match="no HUGGING_FACE_TOKEN"
+                            ):
+                                download_huggingface_dataset(
+                                    test_repo, test_filename, test_version, test_dir
+                                )
 
                             mock_getpass.assert_not_called()
                             mock_download.assert_called_once_with(
@@ -265,6 +272,10 @@ class TestHuggingFaceDownload:
                 with patch(
                     "policyengine_core.tools.hugging_face.getpass"
                 ) as mock_getpass:
+                    # A string, so that a widened predicate fails on
+                    # assert_not_called() below rather than on storing a
+                    # MagicMock in os.environ.
+                    mock_getpass.return_value = "prompted_token"
                     with patch(
                         "policyengine_core.tools.hugging_face.hf_hub_download"
                     ) as mock_download:
@@ -607,3 +618,116 @@ class TestNoTokenWarning:
                                 self._download()
 
         self._assert_downloaded_with(mock_download, token=expected_token)
+
+
+class TestTokenRoutingInvariants:
+    """Exhaustive check of download_huggingface_dataset's token contract.
+
+    Every combination of repo state, environment, TTY and prompt entry is run
+    through the real function (with model_info, hf_hub_download and getpass
+    mocked) and compared with the spec written out in _expected():
+
+    - Only private, gated or not-found repos require authentication.
+    - Such a repo gets HUGGING_FACE_TOKEN if it is non-empty; otherwise a
+      prompt on a TTY; otherwise None. A public, ungated repo always gets
+      None and never prompts.
+    - The token passed on is None or a non-empty string, never "".
+    - Exactly one no-token warning fires when a repo requiring
+      authentication ends up with None, and none fires otherwise.
+    """
+
+    repo = "test_owner/test_repo"
+    filename = "test_filename"
+
+    REPO_STATES = {
+        "ungated": dict(private=False, gated=False),
+        "gated-none": dict(private=False, gated=None),
+        "fields-missing": dict(),
+        "gated-auto": dict(private=False, gated="auto"),
+        "gated-manual": dict(private=False, gated="manual"),
+        "private": dict(private=True, gated=False),
+        "not-found": None,
+    }
+    ENVIRONS = {
+        "token-unset": {},
+        "token-empty": {"HUGGING_FACE_TOKEN": ""},
+        "hf-token-only": {"HF_TOKEN": "hf_cached_token"},
+        "token-set": {"HUGGING_FACE_TOKEN": "env_token"},
+    }
+    # itertools.product, not nested fors: only a comprehension's first
+    # iterable can see class attributes.
+    CASES = [
+        pytest.param(state, environ, isatty, entry, id=f"{state}-{environ}-{tty}-{e}")
+        for state, environ, (isatty, tty), (entry, e) in itertools.product(
+            REPO_STATES,
+            ENVIRONS,
+            [(False, "no-tty"), (True, "tty")],
+            [("", "empty-entry"), ("prompted_token", "entry")],
+        )
+    ]
+
+    @staticmethod
+    def _expected(state, environ, isatty, entry):
+        requires_authentication = state in (
+            "gated-auto",
+            "gated-manual",
+            "private",
+            "not-found",
+        )
+        if not requires_authentication:
+            return None, False, 0
+        env_token = environ.get("HUGGING_FACE_TOKEN") or None
+        if env_token is not None:
+            return env_token, False, 0
+        if isatty:
+            token = entry or None
+            return token, True, int(token is None)
+        return None, False, 1
+
+    @pytest.mark.parametrize(("state", "environ", "isatty", "entry"), CASES)
+    def test_token_routing_matches_spec(self, state, environ, isatty, entry):
+        fields = self.REPO_STATES[state]
+        if fields is None:
+            mock_response = MagicMock()
+            mock_response.status_code = 404
+            mock_response.headers = {}
+            model_info_config = {
+                "side_effect": RepositoryNotFoundError(
+                    "Test error", response=mock_response
+                )
+            }
+        else:
+            model_info_config = {"return_value": ModelInfo(id="test_repo", **fields)}
+        env = self.ENVIRONS[environ]
+
+        with patch.dict(os.environ, env, clear=True):
+            with patch("os.isatty", return_value=isatty):
+                with patch(
+                    "policyengine_core.tools.hugging_face.getpass",
+                    return_value=entry,
+                ) as mock_getpass:
+                    with patch(
+                        "policyengine_core.tools.hugging_face.hf_hub_download"
+                    ) as mock_download:
+                        with patch(
+                            "policyengine_core.tools.hugging_face.model_info",
+                            **model_info_config,
+                        ):
+                            with warnings.catch_warnings(record=True) as caught:
+                                warnings.simplefilter("always")
+                                result = download_huggingface_dataset(
+                                    self.repo, self.filename
+                                )
+
+        expected_token, expected_prompt, expected_warnings = self._expected(
+            state, env, isatty, entry
+        )
+        assert result is mock_download.return_value
+        mock_download.assert_called_once()
+        token = mock_download.call_args.kwargs["token"]
+        assert token == expected_token
+        assert token is None or (isinstance(token, str) and token != "")
+        assert mock_getpass.called == expected_prompt
+        user_warnings = [w for w in caught if issubclass(w.category, UserWarning)]
+        assert len(user_warnings) == expected_warnings
+        assert all("no HUGGING_FACE_TOKEN" in str(w.message) for w in user_warnings)

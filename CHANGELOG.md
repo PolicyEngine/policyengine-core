@@ -1,3 +1,10 @@
+## [3.32.10] - 2026-09-29
+
+### Changed
+
+- Allow downstream packages to use pytest 9 while retaining pytest 8 compatibility.
+
+
 ## [3.32.9] - 2026-09-29
 
 ### Fixed

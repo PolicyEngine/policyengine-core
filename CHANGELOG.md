@@ -1,3 +1,10 @@
+## [3.32.9] - 2026-09-29
+
+### Fixed
+
+- Send the HUGGING_FACE_TOKEN when downloading from public but gated Hugging Face repos, not only private ones, so gated dataset downloads no longer fail with a 401 gated-repo error.
+
+
 ## [3.32.8] - 2026-09-27
 
 ### Fixed

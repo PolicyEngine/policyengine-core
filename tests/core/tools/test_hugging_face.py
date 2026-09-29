@@ -446,6 +446,8 @@ class TestNoTokenWarning:
 
         "public": the repo is public, so no token is ever needed.
         "private-flag": model_info answers with private=True.
+        "gated": model_info answers with private=False, gated="manual", as
+            policyengine/policyengine-uk-data-private does.
         "not-found": model_info raises RepositoryNotFoundError, which core
             treats as "probably private".
         """
@@ -453,6 +455,10 @@ class TestNoTokenWarning:
             return {"return_value": ModelInfo(id="test_repo", private=False)}
         if lookup == "private-flag":
             return {"return_value": ModelInfo(id="test_repo", private=True)}
+        if lookup == "gated":
+            return {
+                "return_value": ModelInfo(id="test_repo", private=False, gated="manual")
+            }
         assert lookup == "not-found"
         mock_response = MagicMock()
         mock_response.status_code = 404
@@ -461,7 +467,7 @@ class TestNoTokenWarning:
             "side_effect": RepositoryNotFoundError("Test error", response=mock_response)
         }
 
-    @pytest.mark.parametrize("lookup", ["private-flag", "not-found"])
+    @pytest.mark.parametrize("lookup", ["private-flag", "gated", "not-found"])
     @pytest.mark.parametrize(
         "environ",
         [{}, {"HUGGING_FACE_TOKEN": ""}, {"HF_TOKEN": "hf_cached_token"}],
@@ -551,6 +557,14 @@ class TestNoTokenWarning:
                 None,
                 "env_token",
                 id="private-flag-env-token",
+            ),
+            pytest.param(
+                "gated",
+                {"HUGGING_FACE_TOKEN": "env_token"},
+                False,
+                None,
+                "env_token",
+                id="gated-env-token",
             ),
             pytest.param(
                 "not-found",

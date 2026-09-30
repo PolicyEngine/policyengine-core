@@ -1,0 +1,1 @@
+Warn when a Hugging Face repo that requires authentication (private or gated) is downloaded with no HUGGING_FACE_TOKEN available, so that a 401 from a missing token, or a 403 from a cached token that is not approved for a gated repo, is easy to trace.

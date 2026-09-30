@@ -78,10 +78,11 @@ def download_huggingface_dataset(
         UserWarning: If the repo requires authentication but no
             HUGGING_FACE_TOKEN was available. The download still runs with
             token=None, so huggingface_hub applies its own cached token
-            (HF_TOKEN or the `hf auth login` file) if it has one, unless
-            HF_HUB_DISABLE_IMPLICIT_TOKEN is set; the warning explains a
-            401 that follows when there is no such token, or a 403 when a
-            gated repo has not approved it.
+            (HF_TOKEN, or the file written by `hf auth login`, which is
+            `huggingface-cli login` before huggingface_hub 0.34) if it has
+            one, unless HF_HUB_DISABLE_IMPLICIT_TOKEN is set; the warning
+            explains a 401 that follows when there is no such token, or a
+            403 when a gated repo has not approved it.
     """
     # Attempt connection to Hugging Face model_info endpoint
     # (https://huggingface.co/docs/huggingface_hub/v0.26.5/en/package_reference/hf_api#huggingface_hub.HfApi.model_info)

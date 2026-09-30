@@ -646,6 +646,7 @@ class TestTokenRoutingInvariants:
         "gated-auto": dict(private=False, gated="auto"),
         "gated-manual": dict(private=False, gated="manual"),
         "private": dict(private=True, gated=False),
+        "private-gated": dict(private=True, gated="manual"),
         "not-found": None,
     }
     ENVIRONS = {
@@ -672,6 +673,7 @@ class TestTokenRoutingInvariants:
             "gated-auto",
             "gated-manual",
             "private",
+            "private-gated",
             "not-found",
         )
         if not requires_authentication:
@@ -727,7 +729,7 @@ class TestTokenRoutingInvariants:
         token = mock_download.call_args.kwargs["token"]
         assert token == expected_token
         assert token is None or (isinstance(token, str) and token != "")
-        assert mock_getpass.called == expected_prompt
+        assert mock_getpass.call_count == int(expected_prompt)
         user_warnings = [w for w in caught if issubclass(w.category, UserWarning)]
         assert len(user_warnings) == expected_warnings
         assert all("no HUGGING_FACE_TOKEN" in str(w.message) for w in user_warnings)

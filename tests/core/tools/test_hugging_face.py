@@ -425,10 +425,10 @@ class TestNoTokenWarning:
     repo that needs authentication.
 
     Core deliberately does not raise or prompt in that case (#422): with
-    token=None, huggingface_hub falls back to its own cached token (HF_TOKEN
-    or the `hf auth login` file) and raises its own 401 if that is missing
-    too. The warning is what makes that 401 traceable to a missing or
-    unapproved HUGGING_FACE_TOKEN (#529).
+    token=None, huggingface_hub falls back to its own cached token (for
+    example HF_TOKEN or the `hf auth login` file) and raises its own 401 if
+    that is missing too. The warning is what makes that 401 traceable to a
+    missing HUGGING_FACE_TOKEN (#529).
     """
 
     repo = "test_owner/test_repo"
@@ -516,13 +516,19 @@ class TestNoTokenWarning:
         mock_getpass.assert_not_called()
         self._assert_downloaded_with(mock_download, token=None)
 
-        # Exactly one warning, naming the repo, the fallback, and the 401.
+        # Exactly one warning, naming the repo, the fallback (including the
+        # pre-0.34 login command), and both errors that can follow with
+        # their 401 and 403 causes.
         assert len(record) == 1
         message = str(record[0].message)
         assert self.repo in message
         assert "HF_TOKEN" in message
         assert "hf auth login" in message
+        assert "huggingface-cli login" in message
+        assert "RepositoryNotFoundError" in message
+        assert "GatedRepoError" in message
         assert "401" in message
+        assert "403" in message
         # stacklevel=2: the warning points at the caller, not at core.
         assert record[0].filename == __file__
 

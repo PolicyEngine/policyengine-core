@@ -12,33 +12,33 @@ input set on a branch drops the branch's non-input values stored at or after
 the first time anything in the family stored, or derived, the overridden
 variable for an overlapping period (``StoreHistory.earliest_dependency``).
 
-The invariant tested throughout (and by the property test at the end, over
-random sequences of calculations, branches and inputs): whatever the
-branch's family calculated before, and in whatever order, a calculation in a
-branch equals the same calculation in a new simulation given the branch's
-inputs, its own and those it inherited when it was created, before
-calculating anything.
+The invariant tested throughout (and, over random sequences of calculations,
+branches and inputs, by ``test_branch_input_invalidation_property.py``):
+whatever the branch's family calculated before, and in whatever order, a
+calculation in a branch equals the same calculation in a new simulation given
+the branch's inputs, its own and those it inherited when it was created,
+before calculating anything.
 """
 
 from __future__ import annotations
 
 import numpy as np
 import pytest
-from hypothesis import HealthCheck, given, settings
-from hypothesis import strategies as st
 
 from policyengine_core import periods
-from policyengine_core.country_template import CountryTaxBenefitSystem, entities
 from policyengine_core.data_storage import InMemoryStorage
 from policyengine_core.data_storage.store_history import (
     StoreHistory,
     next_sequence_number,
 )
 from policyengine_core.experimental import MemoryConfig
-from policyengine_core.holders import set_input_divide_by_period
 from policyengine_core.model_api import Reform
 from policyengine_core.simulations import SimulationBuilder
-from policyengine_core.variables import Variable
+from tests.fixtures.branch_input_invalidation import (
+    CARRY_OVER_SYSTEM,
+    ROOT_INPUTS,
+    synthetic_simulation,
+)
 
 JANUARY = periods.period("2017-01")
 JANUARY_2022 = periods.period("2022-01")
@@ -450,167 +450,17 @@ def test_history_matches_overlapping_periods_and_derived_values():
     assert history.earliest_dependency("e", periods.period("1999-01")) == 5
 
 
-# ----- A synthetic system for derived values and branches inside formulas ----- #
-
-
-def _yearly(name, formula=None, **attributes):
-    namespace = dict(
-        value_type=float,
-        entity=entities.Person,
-        definition_period=periods.YEAR,
-        label=name,
-        **attributes,
-    )
-    if formula is not None:
-        namespace["formula"] = formula
-    return type(name, (Variable,), namespace)
-
-
-def _inner_branch_formula(person, period):
-    """Calculate a value in a branch that exists only while this formula runs."""
-    simulation = person.simulation
-    inner = simulation.get_branch("inner")
-    try:
-        inner.set_input("p_switch", period, np.ones(person.count))
-        inner_value = inner.calculate("p_inner_only", period)
-    finally:
-        del simulation.branches["inner"]
-    return inner_value + person("p_sum", period)
-
-
-def _monthly_formula(person, period):
-    return (
-        person("p_a", period)
-        + person("p_b", period.this_year) / 12
-        + person("p_m", period)
-    )
-
-
-def _monthly(name, formula=None, **attributes):
-    namespace = dict(
-        value_type=float,
-        entity=entities.Person,
-        definition_period=periods.MONTH,
-        label=name,
-        **attributes,
-    )
-    if formula is not None:
-        namespace["formula"] = formula
-    return type(name, (Variable,), namespace)
-
-
-SYNTHETIC_VARIABLES = [
-    # Inputs. p_up is uprated by a parameter that changes every year from
-    # 2012 to 2015; p_c is given for 2012 only, and carried over where the
-    # system carries inputs over.
-    _yearly("p_a"),
-    _yearly("p_b"),
-    _yearly("p_up", uprating="taxes.income_tax_rate"),
-    _yearly("p_c"),
-    _yearly(
-        "p_sum",
-        lambda person, period: person("p_a", period) + 2 * person("p_b", period),
-    ),
-    _yearly(
-        "p_prod",
-        lambda person, period: (
-            person("p_sum", period) * (1 + person("p_up", period) / 100)
-        ),
-    ),
-    _yearly(
-        "p_cond",
-        lambda person, period: np.where(
-            person("p_sum", period) > 60,
-            person("p_prod", period),
-            person("p_c", period),
-        ),
-    ),
-    _yearly(
-        "p_lag",
-        lambda person, period: (
-            person("p_sum", period.last_year) + person("p_a", period)
-        ),
-    ),
-    # A monthly input; an input for a year is divided between its months.
-    _monthly("p_m", set_input=set_input_divide_by_period),
-    _monthly("p_month", _monthly_formula),
-    _yearly("p_months", lambda person, period: person("p_month", period)),
-    _yearly("p_switch", lambda person, period: np.zeros(person.count)),
-    _yearly(
-        "p_inner_only",
-        lambda person, period: 3 * person("p_a", period) + person("p_switch", period),
-    ),
-    _yearly("p_inner", _inner_branch_formula),
-    # Reads itself a year earlier, back until core's spiral detection gives
-    # up and returns the default.
-    _yearly(
-        "p_spiral", lambda person, period: person("p_spiral", period.last_year) + 1
-    ),
-]
-
-
-def _synthetic_system(carry_over):
-    class System(CountryTaxBenefitSystem):
-        auto_carry_over_input_variables = carry_over
-
-    system = System()
-    system.add_variables(*SYNTHETIC_VARIABLES)
-    return system
-
-
-# Carry-over is left out of the random programs below: core's carry-over
-# itself depends on calculation order (a later period calculated first stops
-# an earlier input being carried into the years between), in any simulation.
-SYNTHETIC_SYSTEM = _synthetic_system(carry_over=False)
-CARRY_OVER_SYSTEM = _synthetic_system(carry_over=True)
-
-PEOPLE = 3
-YEARS = ["2012", "2013", "2014", "2015"]
-
-
-def _synthetic(inputs, memory_config=None, system=SYNTHETIC_SYSTEM):
-    """A simulation of ``PEOPLE`` people given ``inputs`` before anything else."""
-    simulation = SimulationBuilder().build_default_simulation(system, count=PEOPLE)
-    if memory_config is not None:
-        simulation.memory_config = memory_config
-        # Holders read the memory configuration when created; nothing is
-        # stored yet, so create them again. Create them all here, so every
-        # branch's holders are copies of these: a holder first created in a
-        # branch would own (and remove on deletion) a directory the whole
-        # family's disk storage shares.
-        for population in simulation.populations.values():
-            population._holders = {}
-        for variable in system.variables:
-            simulation.get_holder(variable)
-    for (variable, period), values in sorted(
-        inputs.items(),
-        key=lambda item: periods.key_period_size(periods.period(item[0][1])),
-    ):
-        simulation.set_input(variable, period, np.asarray(values, dtype=float))
-    return simulation
-
-
-ROOT_INPUTS = {
-    **{("p_a", year): (10.0 * i, 20.0, 35.0 + i) for i, year in enumerate(YEARS)},
-    **{("p_b", year): (5.0, 15.0 + i, 25.0) for i, year in enumerate(YEARS)},
-    ("p_up", "2012"): (100.0, 200.0, 300.0),
-    ("p_c", "2012"): (7.0, 8.0, 9.0),
-    **{
-        ("p_m", f"{year}-{month:02d}"): (1.0 * month, 2.0, 0.5 * month)
-        for year in (2013, 2014)
-        for month in range(1, 13)
-    },
-}
+# ----- Derived values and branches inside formulas, on a synthetic system ----- #
 
 
 def test_value_carried_over_from_an_earlier_input_is_dropped():
-    simulation = _synthetic(ROOT_INPUTS, system=CARRY_OVER_SYSTEM)
+    simulation = synthetic_simulation(ROOT_INPUTS, system=CARRY_OVER_SYSTEM)
     simulation.calculate("p_cond", "2015")  # p_c 2015 carried over from 2012
 
     branch = simulation.get_branch("branch")
     branch.set_input("p_c", "2014", np.array([70.0, 80.0, 90.0]))
 
-    fresh = _synthetic(
+    fresh = synthetic_simulation(
         {**ROOT_INPUTS, ("p_c", "2014"): (70.0, 80.0, 90.0)},
         system=CARRY_OVER_SYSTEM,
     )
@@ -622,13 +472,13 @@ def test_value_carried_over_from_an_earlier_input_is_dropped():
 
 
 def test_uprated_value_is_dropped():
-    simulation = _synthetic(ROOT_INPUTS)
+    simulation = synthetic_simulation(ROOT_INPUTS)
     simulation.calculate("p_prod", "2015")  # p_up 2015 uprated from 2012
 
     branch = simulation.get_branch("branch")
     branch.set_input("p_up", "2014", np.array([1.0, 2.0, 3.0]))
 
-    fresh = _synthetic({**ROOT_INPUTS, ("p_up", "2014"): (1.0, 2.0, 3.0)})
+    fresh = synthetic_simulation({**ROOT_INPUTS, ("p_up", "2014"): (1.0, 2.0, 3.0)})
     assert np.allclose(
         branch.calculate("p_prod", "2015"), fresh.calculate("p_prod", "2015")
     )
@@ -641,14 +491,16 @@ def test_value_calculated_only_inside_another_branch_is_tracked():
     so the parent and its later branches never store ``p_inner_only``. The
     history the whole family shares still records it.
     """
-    simulation = _synthetic(ROOT_INPUTS)
+    simulation = synthetic_simulation(ROOT_INPUTS)
     simulation.calculate("p_inner", "2013")
     assert not simulation.get_holder("p_inner_only")._memory_storage._arrays
 
     branch = simulation.get_branch("branch")
     branch.set_input("p_inner_only", "2013", np.array([1.0, 1.0, 1.0]))
 
-    fresh = _synthetic({**ROOT_INPUTS, ("p_inner_only", "2013"): (1.0, 1.0, 1.0)})
+    fresh = synthetic_simulation(
+        {**ROOT_INPUTS, ("p_inner_only", "2013"): (1.0, 1.0, 1.0)}
+    )
     assert np.array_equal(
         branch.calculate("p_inner", "2013"), fresh.calculate("p_inner", "2013")
     )
@@ -657,7 +509,7 @@ def test_value_calculated_only_inside_another_branch_is_tracked():
 def test_value_a_holder_does_not_keep_is_tracked():
     """``variables_to_drop`` values are not stored, but what reads them is."""
     config = MemoryConfig(max_memory_occupation=1, variables_to_drop=["p_sum"])
-    simulation = _synthetic(ROOT_INPUTS, memory_config=config)
+    simulation = synthetic_simulation(ROOT_INPUTS, memory_config=config)
     simulation.calculate("p_prod", "2013")
     assert not simulation.get_holder("p_sum")._memory_storage._arrays
 
@@ -669,7 +521,7 @@ def test_value_a_holder_does_not_keep_is_tracked():
 
 def test_value_a_spiral_defaults_is_tracked():
     """The default a spiral returns is not stored, but what reads it is."""
-    simulation = _synthetic(ROOT_INPUTS)
+    simulation = synthetic_simulation(ROOT_INPUTS)
     branch = simulation.get_branch("branch")
     branch.calculate("p_spiral", "2015")
     deepest = min(
@@ -679,206 +531,9 @@ def test_value_a_spiral_defaults_is_tracked():
 
     branch.set_input("p_spiral", deepest, np.array([100.0, 100.0, 100.0]))
 
-    fresh = _synthetic({**ROOT_INPUTS, ("p_spiral", str(deepest)): (100.0,) * 3})
+    fresh = synthetic_simulation(
+        {**ROOT_INPUTS, ("p_spiral", str(deepest)): (100.0,) * 3}
+    )
     assert np.array_equal(
         branch.calculate("p_spiral", "2015"), fresh.calculate("p_spiral", "2015")
     )
-
-
-# ----- Property: branch results do not depend on what was calculated before ----- #
-
-SETTABLE = [
-    "p_a",
-    "p_b",
-    "p_up",
-    "p_c",
-    "p_m",
-    "p_sum",
-    "p_prod",
-    "p_switch",
-    "p_inner_only",
-]
-CALCULABLE = [
-    "p_sum",
-    "p_prod",
-    "p_cond",
-    "p_lag",
-    "p_months",
-    "p_inner",
-    "p_inner_only",
-    "p_up",
-    "p_c",
-]
-MONTHS = ["2013-01", "2013-07", "2014-12", "2015-03"]
-MEMORY_CONFIGS = {
-    "memory": lambda: None,
-    "disk": lambda: MemoryConfig(max_memory_occupation=0),
-    "not_kept": lambda: MemoryConfig(
-        max_memory_occupation=1, variables_to_drop=["p_sum", "p_inner_only"]
-    ),
-}
-
-# Indices pick a simulation modulo how many exist (-1: the newest); small ones
-# keep most operations on the root and the first few branches, where they
-# interact.
-simulation_index = st.integers(0, 3)
-values = st.tuples(*[st.integers(0, 100).map(float)] * PEOPLE)
-calculate = st.one_of(
-    st.tuples(
-        st.just("calculate"),
-        simulation_index,
-        st.sampled_from(CALCULABLE),
-        st.sampled_from(YEARS),
-    ),
-    st.tuples(
-        st.just("calculate"),
-        simulation_index,
-        st.just("p_month"),
-        st.sampled_from(MONTHS),
-    ),
-)
-set_input = st.one_of(
-    st.tuples(
-        st.just("set"),
-        simulation_index,
-        st.sampled_from(SETTABLE),
-        st.sampled_from(YEARS),
-        values,
-    ),
-    st.tuples(
-        st.just("set"),
-        simulation_index,
-        st.sampled_from(["p_m", "p_month"]),
-        st.sampled_from(MONTHS),
-        values,
-    ),
-)
-single_operation = st.one_of(
-    calculate,
-    calculate,
-    set_input,
-    set_input,
-    st.tuples(st.just("branch"), simulation_index),
-    st.tuples(st.just("drop"), simulation_index),
-)
-# Pairs of a calculated value and an input it depends on, each reaching it a
-# different way: through a formula's own branch, uprating from an earlier
-# year, a month of a year, a value the holder may not keep, a lagged year,
-# and a year summed from months.
-DEPENDENCIES = [
-    ("p_inner", "2013", "p_inner_only", "2013"),
-    ("p_prod", "2015", "p_up", "2014"),
-    ("p_month", "2013-07", "p_m", "2013"),
-    ("p_prod", "2013", "p_sum", "2013"),
-    ("p_lag", "2014", "p_a", "2013"),
-    ("p_cond", "2014", "p_b", "2014"),
-    ("p_months", "2014", "p_m", "2014-12"),
-]
-# Calculate a value, branch, override an input it depends on in the new
-# branch (index -1), and calculate the value again there; or branch first and
-# calculate the value in the branch before and after overriding the input.
-override_after_calculating = st.tuples(
-    simulation_index, st.sampled_from(DEPENDENCIES), values, st.booleans()
-).map(
-    lambda drawn: (
-        [
-            ("calculate", drawn[0], drawn[1][0], drawn[1][1]),
-            ("branch", drawn[0]),
-            ("set", -1, drawn[1][2], drawn[1][3], drawn[2]),
-            ("calculate", -1, drawn[1][0], drawn[1][1]),
-        ]
-        if drawn[3]
-        else [
-            ("branch", drawn[0]),
-            ("calculate", -1, drawn[1][0], drawn[1][1]),
-            ("set", -1, drawn[1][2], drawn[1][3], drawn[2]),
-            ("calculate", -1, drawn[1][0], drawn[1][1]),
-        ]
-    )
-)
-operations = st.lists(
-    st.one_of(
-        single_operation.map(lambda operation: [operation]),
-        override_after_calculating,
-    ),
-    min_size=1,
-    max_size=15,
-).map(lambda chunks: [operation for chunk in chunks for operation in chunk])
-
-
-def _stored_periods(variable, period):
-    """The periods ``set_input`` stores ``variable`` at, given ``period``."""
-    period = periods.period(period)
-    if SYNTHETIC_SYSTEM.get_variable(variable).definition_period == periods.MONTH:
-        return [str(month) for month in period.get_subperiods(periods.MONTH)]
-    return [str(period)]
-
-
-def _own_inputs(simulation, variable, period):
-    """The values stored on the branch itself for ``variable`` over ``period``."""
-    holder = simulation.get_holder(variable)
-    return {
-        (variable, stored_period): tuple(
-            holder._get_array_from_storage(stored_period, simulation.branch_name)
-        )
-        for stored_period in _stored_periods(variable, period)
-    }
-
-
-def _run(program, memory_config):
-    """Run ``program``; return each calculation with the inputs it should reflect.
-
-    A branch's inputs are those of the simulation it was created from, as
-    they were then, and those set on it since, as stored (an input for a
-    year is divided between the months the branch has not set itself).
-    """
-    root = _synthetic(ROOT_INPUTS, memory_config=memory_config)
-    simulations = [root]
-    inputs = [dict(ROOT_INPUTS)]
-    own_inputs = [set()]
-    results = []
-    for operation in program:
-        kind, index = operation[0], operation[1] % len(simulations)
-        if operation[1] == -1:
-            index = len(simulations) - 1  # The newest simulation.
-        simulation = simulations[index]
-        if kind == "branch":
-            simulations.append(simulation.get_branch(f"b{len(simulations)}"))
-            inputs.append(dict(inputs[index]))
-            own_inputs.append(set())
-        elif kind == "set":
-            if index == 0:
-                continue  # Inputs on the root after calculating are out of scope.
-            _, _, variable, period, value = operation
-            stored = {(variable, p) for p in _stored_periods(variable, period)}
-            if len(stored) > 1 and stored <= own_inputs[index]:
-                # Dividing a year between months the branch has all set
-                # itself is an error unless the totals match.
-                continue
-            simulation.set_input(variable, period, np.asarray(value))
-            stored = _own_inputs(simulation, variable, period)
-            inputs[index].update(stored)
-            own_inputs[index].update(stored)
-        elif kind == "calculate":
-            _, _, variable, period = operation
-            value = np.array(simulation.calculate(variable, period), copy=True)
-            results.append((dict(inputs[index]), variable, period, value))
-        else:
-            simulation.drop_computed_arrays()
-    return results
-
-
-@settings(
-    max_examples=500,
-    deadline=None,
-    suppress_health_check=[HealthCheck.too_slow],
-)
-@given(program=operations, mode=st.sampled_from(sorted(MEMORY_CONFIGS)))
-def test_branch_calculations_match_a_simulation_given_its_inputs_first(program, mode):
-    for branch_inputs, variable, period, value in _run(program, MEMORY_CONFIGS[mode]()):
-        expected = _synthetic(branch_inputs).calculate(variable, period)
-        # Uprating chains may round differently in float32 depending on which
-        # earlier periods were calculated first.
-        np.testing.assert_allclose(
-            value, expected, rtol=1e-5, err_msg=f"{variable} {period}"
-        )

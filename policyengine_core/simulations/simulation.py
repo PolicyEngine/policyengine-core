@@ -1201,11 +1201,12 @@ class Simulation:
         except ValueError as error:
             if _is_read_only_write(error):
                 error.add_note(
-                    f"The formula of '{variable.name}' wrote in place into an "
-                    "array that is read-only. A branch shares the arrays its "
-                    "parent simulation had cached when the branch was created, "
-                    "so it cannot write into them. Build a new array instead: "
-                    "`x = x + y` rather than `x += y`, and "
+                    f"The formula of '{variable.name}' wrote in place into a "
+                    "read-only array. The arrays a formula reads from other "
+                    "variables are their cached values, and a branch shares "
+                    "the ones its parent simulation had cached when the "
+                    "branch was created, read-only. Build a new array "
+                    "instead: `x = x + y` rather than `x += y`, and "
                     "`x = where(mask, y, x)` rather than `x[mask] = y`."
                 )
             raise

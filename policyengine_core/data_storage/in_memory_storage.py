@@ -8,13 +8,12 @@ from policyengine_core.periods import Period
 
 
 def _read_only_view(array: ArrayLike) -> ArrayLike:
-    """Return ``array`` as a view that cannot be written through.
+    """Return ``array`` as a view whose data cannot be written through.
 
-    A shared array belongs to the storage it was shared from, so an in-place
-    write (``array[mask] = 0``, ``array += 1``) through the sharing storage
-    would change the original's value too. The view raises ``ValueError``
-    on such a write instead. An array that is already read-only (such as a
-    view shared from a further ancestor) is shared as it is.
+    Used for arrays a storage shares with the one it was cloned from, until
+    it copies them (see ``InMemoryStorage.clone``). An array that is already
+    read-only (such as a view shared from a further ancestor) is shared as
+    it is.
     """
     if not isinstance(array, numpy.ndarray):
         return array.copy()
@@ -35,28 +34,38 @@ class InMemoryStorage:
 
     def __init__(self, is_eternal: bool):
         self._arrays = {}
+        # Keys of ``_arrays`` whose array still belongs to the storage this
+        # one was cloned from with ``share_arrays``. ``get`` replaces each
+        # with a copy the first time it is read.
+        self._shared = set()
         self.is_eternal = is_eternal
 
     def clone(self, share_arrays: bool = False) -> "InMemoryStorage":
         """Copy this storage.
 
-        By default every stored array is copied, so nothing done to either
-        storage changes the other.
+        By default every stored array is copied straight away.
 
-        With ``share_arrays``, the clone instead holds a read-only view of
-        each array, so cloning allocates no array data. The clone still has
-        its own index: ``put`` and ``delete`` on either storage replace or
-        drop index entries without touching the arrays, so neither storage
-        sees what the other stores, replaces or deletes after cloning.
-        Writing into a shared array in place through the clone raises
-        ``ValueError``. This storage's own arrays stay writeable, and
-        writing into one of them in place changes the value the clone reads.
+        With ``share_arrays``, the clone starts with views of this storage's
+        arrays and copies an array only when it is first read through
+        ``get``, so an array the clone never reads is never copied. What
+        ``get`` returns is the clone's own array either way, so writing into
+        it in place does not change this storage.
+
+        The clone has its own index in both cases: ``put`` and ``delete`` on
+        either storage replace or drop index entries without touching the
+        arrays, so neither storage sees what the other stores, replaces or
+        deletes after cloning.
+
+        The one difference from copying straight away: writing in place into
+        one of this storage's arrays, after cloning and before the clone
+        first reads it, changes the value the clone reads.
         """
         clone = InMemoryStorage(self.is_eternal)
         if share_arrays:
             clone._arrays = {
                 key: _read_only_view(array) for key, array in self._arrays.items()
             }
+            clone._shared = set(clone._arrays)
         else:
             clone._arrays = {key: array.copy() for key, array in self._arrays.items()}
         return clone
@@ -65,9 +74,16 @@ class InMemoryStorage:
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
-        values = self._arrays.get(f"{branch_name}:{period}")
+        key = f"{branch_name}:{period}"
+        values = self._arrays.get(key)
         if values is None:
             return None
+        if key in self._shared:
+            # First read of an array shared by ``clone``: from here on the
+            # caller may write into it, so it needs to be this storage's own.
+            values = values.copy()
+            self._arrays[key] = values
+            self._shared.discard(key)
         return values
 
     def put(
@@ -92,7 +108,9 @@ class InMemoryStorage:
                 f"Cannot cache period {period} anchored mid-month: its "
                 "string form is lossy (see policyengine-core#526)."
             )
-        self._arrays[f"{branch_name}:{period}"] = value
+        key = f"{branch_name}:{period}"
+        self._arrays[key] = value
+        self._shared.discard(key)
 
     def delete(self, period: Period = None, branch_name: str = "default") -> None:
         if period is None:
@@ -104,6 +122,7 @@ class InMemoryStorage:
                 for period_item, value in self._arrays.items()
                 if not period_item.startswith(branch_prefix)
             }
+            self._shared.intersection_update(self._arrays)
             return
 
         if self.is_eternal:
@@ -121,6 +140,7 @@ class InMemoryStorage:
                 and period.contains(periods.period(period_item.split(":", 1)[1]))
             )
         }
+        self._shared.intersection_update(self._arrays)
 
     def get_known_periods(self) -> list:
         # Split on the first colon only: an anchored period's string form

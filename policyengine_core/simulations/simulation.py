@@ -33,30 +33,29 @@ from policyengine_core.tools.google_cloud import (
 
 import json
 
-# True while ``get_branch`` clones a simulation into a new branch, so that
-# ``clone`` shares the cached arrays with the branch instead of copying them.
-# This is a context variable rather than a ``clone`` argument because country
-# packages override ``clone`` with its existing signature and call
-# ``super().clone`` (policyengine-us's SPM ``Simulation`` does), so an extra
-# argument could not reach this class's ``clone`` through them.
-_cloning_branch: ContextVar[bool] = ContextVar("_cloning_branch", default=False)
 
+class _BranchClone:
+    """The simulation ``get_branch`` is cloning into a new branch.
 
-def _is_read_only_write(error: BaseException) -> bool:
-    """Whether ``error`` comes from writing in place into a read-only array.
-
-    numpy raises ``ValueError`` with "read-only" in its message
-    ("assignment destination is read-only", "output array is read-only").
-    pandas re-raises it under another message, with numpy's error as the
-    cause, so the chain is searched.
+    ``get_branch`` announces the clone it is about to make, and ``clone``
+    shares the cached arrays with the copy (instead of copying them) only for
+    that simulation, and only once: any other ``clone`` call made meanwhile,
+    or after ``get_branch`` returns, copies as usual.
     """
-    seen = set()
-    while error is not None and id(error) not in seen:
-        if isinstance(error, ValueError) and "read-only" in str(error):
-            return True
-        seen.add(id(error))
-        error = error.__cause__ or error.__context__
-    return False
+
+    def __init__(self, simulation: "Simulation"):
+        self.simulation = simulation
+        self.pending = True
+
+
+# Set by ``get_branch`` around its ``clone`` call. This is a context variable
+# rather than a ``clone`` argument because country packages override ``clone``
+# with its existing signature and call ``super().clone`` (policyengine-us's
+# SPM ``Simulation`` does), so an extra argument could not reach this class's
+# ``clone`` through them.
+_branch_clone: ContextVar[Optional[_BranchClone]] = ContextVar(
+    "_branch_clone", default=None
+)
 
 
 def _stable_hash_to_seed(value: str) -> int:
@@ -1193,23 +1192,10 @@ class Simulation:
         # A rules-engine formula must be a pure, deterministic function of its
         # inputs. Randomness is forbidden statically at variable registration
         # (check_formula_determinism), so no runtime guard is needed here.
-        try:
-            if formula.__code__.co_argcount == 2:
-                array = formula(population, period)
-            else:
-                array = formula(population, period, parameters_at)
-        except ValueError as error:
-            if _is_read_only_write(error):
-                error.add_note(
-                    f"The formula of '{variable.name}' wrote in place into a "
-                    "read-only array. The arrays a formula reads from other "
-                    "variables are their cached values, and a branch shares "
-                    "the ones its parent simulation had cached when the "
-                    "branch was created, read-only. Build a new array "
-                    "instead: `x = x + y` rather than `x += y`, and "
-                    "`x = where(mask, y, x)` rather than `x[mask] = y`."
-                )
-            raise
+        if formula.__code__.co_argcount == 2:
+            array = formula(population, period)
+        else:
+            array = formula(population, period, parameters_at)
 
         return array
 
@@ -1486,12 +1472,16 @@ class Simulation:
         Copy the simulation just enough to be able to run the copy without modifying the original simulation.
 
         Every cached array is copied, except when ``get_branch`` is cloning
-        the simulation into a branch: the branch then shares them (see
-        :meth:`get_branch`). That also holds for a subclass's ``clone`` that
-        calls this one, and for any other simulation it clones while
-        ``get_branch`` is running it.
+        this simulation into a branch: the branch then shares them until it
+        reads them (see :meth:`get_branch`). A subclass's ``clone`` that
+        calls this one takes part in that the same way.
         """
-        share_arrays = _cloning_branch.get()
+        request = _branch_clone.get()
+        share_arrays = (
+            request is not None and request.pending and request.simulation is self
+        )
+        if share_arrays:
+            request.pending = False
         new = commons.empty_clone(self)
         new_dict = new.__dict__
 
@@ -1534,21 +1524,21 @@ class Simulation:
         """Create a clone of this simulation, whose calculations are traced in the original.
 
         The branch starts from the values this simulation has cached when the
-        branch is created. It shares those arrays instead of copying them:
-        each of the branch's holders gets its own index of read-only views of
-        this simulation's arrays. What the branch stores (``set_input``,
-        calculations, deletions) goes into its own index only, so it never
-        changes this simulation's values. What this simulation stores after
-        branching stays out of the branch, as when the arrays were copied.
-        Writing in place into a shared array through the branch
-        (``array[mask] = 0`` or ``array += 1``) raises ``ValueError``,
-        because the write would change this simulation's value too.
+        branch is created. It does not copy them up front: each of the
+        branch's holders gets its own index of this simulation's arrays, and
+        copies an array the first time the branch reads it. An array the
+        branch never reads is never copied.
 
-        This simulation's own arrays stay writeable. Code that writes into
-        one of them in place after branching, instead of storing a new array
-        with ``set_input``, changes the value the branch reads as well. When
-        branches held copies, such a write changed only this simulation's
-        cached value.
+        What the branch stores (``set_input``, calculations, deletions) goes
+        into its own index only, and what it reads is its own copy, so
+        nothing done through the branch changes this simulation's values.
+        What this simulation stores after branching stays out of the branch.
+
+        The one difference from copying every array up front: code that
+        writes in place into one of this simulation's cached arrays
+        (``array[mask] = 0`` or ``array += 1``, instead of storing a new
+        array with ``set_input``) after branching also changes the value the
+        branch reads, if the branch has not read that array yet.
 
         Args:
             name (str, optional): Name of the branch. Defaults to "branch".
@@ -1561,11 +1551,13 @@ class Simulation:
             return self
         if name in self.branches:
             return self.branches[name]
-        token = _cloning_branch.set(True)
+        request = _BranchClone(self)
+        token = _branch_clone.set(request)
         try:
             branch = self.clone(clone_tax_benefit_system=clone_system)
         finally:
-            _cloning_branch.reset(token)
+            request.pending = False
+            _branch_clone.reset(token)
         self.branches[name] = branch
         branch.branch_name = name
         branch.parent_branch = self

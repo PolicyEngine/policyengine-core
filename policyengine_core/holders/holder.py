@@ -48,9 +48,9 @@ class Holder:
         """
         Copy the holder just enough to be able to run a new simulation without modifying the original simulation.
 
-        With ``share_arrays``, the new holder's in-memory storage holds
-        read-only views of this holder's arrays instead of copies (see
-        :meth:`InMemoryStorage.clone`).
+        With ``share_arrays``, the new holder's in-memory storage shares
+        this holder's arrays and copies each one when it is first read,
+        instead of copying them all now (see :meth:`InMemoryStorage.clone`).
         """
         new = commons.empty_clone(self)
         new_dict = new.__dict__

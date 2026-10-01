@@ -259,6 +259,49 @@ def test_disk_storage_drops_calculated_values_and_keeps_inputs(tax_benefit_syste
     )
 
 
+def test_value_served_from_the_macro_cache_is_tracked(tax_benefit_system, monkeypatch):
+    """A macro-cache read is not stored, but what reads it is."""
+    import policyengine_core.simulations.simulation as simulation_module
+
+    class CachedIncomeTax:
+        def __init__(self, tax_benefit_system):
+            pass
+
+        def set_cache_path(self, *args):
+            pass
+
+        def get_cache_path(self):
+            return type("Path", (), {"exists": lambda self: True})()
+
+        def get_cache_value(self, path):
+            return np.array([100.0, 100.0], dtype=np.float32)
+
+    monkeypatch.setattr(simulation_module, "SimulationMacroCache", CachedIncomeTax)
+    simulation = _build(tax_benefit_system)
+    simulation.macro_cache_read = True
+    simulation.dataset = type(
+        "Dataset", (), {"file_path": simulation_module.Path("cache"), "name": "d"}
+    )()
+    monkeypatch.setattr(
+        type(simulation),
+        "check_macro_cache",
+        lambda self, variable, period: variable == "income_tax",
+    )
+    simulation.calculate("disposable_income", JANUARY)
+    assert not _stored_keys(simulation, "income_tax")
+
+    branch = simulation.get_branch("branch")
+    branch.set_input("income_tax", JANUARY, np.array([0.0, 0.0]))
+
+    assert not _stored_keys(branch, "disposable_income")
+    fresh = _build(tax_benefit_system)
+    fresh.set_input("income_tax", JANUARY, np.array([0.0, 0.0]))
+    assert np.array_equal(
+        branch.calculate("disposable_income", JANUARY),
+        fresh.calculate("disposable_income", JANUARY),
+    )
+
+
 # ----- drop_computed_arrays ----- #
 
 
@@ -498,6 +541,11 @@ SYNTHETIC_VARIABLES = [
         lambda person, period: 3 * person("p_a", period) + person("p_switch", period),
     ),
     _yearly("p_inner", _inner_branch_formula),
+    # Reads itself a year earlier, back until core's spiral detection gives
+    # up and returns the default.
+    _yearly(
+        "p_spiral", lambda person, period: person("p_spiral", period.last_year) + 1
+    ),
 ]
 
 
@@ -617,6 +665,24 @@ def test_value_a_holder_does_not_keep_is_tracked():
     branch.set_input("p_sum", "2013", np.array([0.0, 0.0, 0.0]))
 
     assert np.array_equal(branch.calculate("p_prod", "2013"), [0.0, 0.0, 0.0])
+
+
+def test_value_a_spiral_defaults_is_tracked():
+    """The default a spiral returns is not stored, but what reads it is."""
+    simulation = _synthetic(ROOT_INPUTS)
+    branch = simulation.get_branch("branch")
+    branch.calculate("p_spiral", "2015")
+    deepest = min(
+        periods.period(key.split(":", 1)[1])
+        for key in branch.get_holder("p_spiral")._memory_storage._arrays
+    ).last_year
+
+    branch.set_input("p_spiral", deepest, np.array([100.0, 100.0, 100.0]))
+
+    fresh = _synthetic({**ROOT_INPUTS, ("p_spiral", str(deepest)): (100.0,) * 3})
+    assert np.array_equal(
+        branch.calculate("p_spiral", "2015"), fresh.calculate("p_spiral", "2015")
+    )
 
 
 # ----- Property: branch results do not depend on what was calculated before ----- #

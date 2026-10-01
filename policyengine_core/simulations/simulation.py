@@ -734,6 +734,9 @@ class Simulation:
                     value = smc.get_cache_value(cache_path)
 
                 if value is not None:
+                    # Served without being stored: record it, so values
+                    # calculated from it count as later (see ``set_input``).
+                    holder._record_store(period, next_sequence_number())
                     return value
 
         if variable.requires_computation_after is not None:
@@ -880,6 +883,8 @@ class Simulation:
 
         except SpiralError:
             array = holder.default_array()
+            # Not stored, but what reads it is (see ``set_input``).
+            holder._record_store(period, next_sequence_number())
         except RecursionError as e:
             if isinstance(self.tracer, FullTracer):
                 self.tracer.print_computation_log()

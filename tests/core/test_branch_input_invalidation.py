@@ -41,6 +41,7 @@ from policyengine_core.simulations import SimulationBuilder
 from policyengine_core.variables import Variable
 
 JANUARY = periods.period("2017-01")
+JANUARY_2022 = periods.period("2022-01")
 
 SITUATION = {
     "persons": {
@@ -322,6 +323,38 @@ def test_apply_reform_keeps_branch_inputs(tax_benefit_system):
 
     assert _stored_keys(branch, "income_tax") == set()
     assert np.array_equal(branch.calculate("salary", JANUARY), [10.0, 20.0])
+
+
+def test_subsample_starts_a_new_store_history():
+    """``subsample`` replaces every value, so earlier stores no longer count."""
+    from policyengine_core.country_template import Microsimulation
+
+    simulation = Microsimulation()
+    simulation.calculate("income_tax", JANUARY_2022)
+    last_before = next_sequence_number()
+    simulation.subsample(n=3, seed="store-history", time_period="2022")
+
+    recorded = [
+        number
+        for stored in simulation._store_history._first_stored.values()
+        for number in stored.values()
+    ]
+    assert recorded and min(recorded) > last_before
+
+    # A branch's input still reaches what the parent calculated first.
+    salary = np.asarray(simulation.calculate("salary", JANUARY_2022)) + 1000
+    before = simulation.get_branch("before")
+    before.set_input("salary", JANUARY_2022, salary)
+    expected = np.asarray(
+        before.calculate("social_security_contribution", JANUARY_2022)
+    )
+    simulation.calculate("social_security_contribution", JANUARY_2022)
+    after = simulation.get_branch("after")
+    after.set_input("salary", JANUARY_2022, salary)
+    assert np.array_equal(
+        np.asarray(after.calculate("social_security_contribution", JANUARY_2022)),
+        expected,
+    )
 
 
 # ----- Storage and history ----- #

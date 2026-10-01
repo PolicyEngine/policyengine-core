@@ -1920,8 +1920,11 @@ class Simulation:
 
         df = subset_df
 
-        # Update the dataset and rebuild the simulation
+        # Update the dataset and rebuild the simulation. Nothing stored before
+        # survives the rebuild, so start a new store history before the
+        # rebuilt inputs are recorded in it.
         self.dataset = Dataset.from_dataframe(df, self.dataset.time_period)
+        self._store_history = StoreHistory()
         self.build_from_dataset()
 
         # Purge ``_fast_cache`` entries populated by ``to_input_dataframe``

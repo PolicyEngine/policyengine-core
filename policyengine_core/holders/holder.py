@@ -8,6 +8,7 @@ from numpy.typing import ArrayLike
 
 from policyengine_core import commons, periods, tools
 from policyengine_core.data_storage import InMemoryStorage, OnDiskStorage
+from policyengine_core.data_storage.store_history import next_sequence_number
 from policyengine_core.enums import Enum
 from policyengine_core.errors import PeriodMismatchError
 from policyengine_core.periods import Period
@@ -97,6 +98,18 @@ class Holder:
         self._memory_storage.delete(period, branch_name)
         if self._disk_storage:
             self._disk_storage.delete(period, branch_name)
+
+    def drop_computed(self, since: int = None) -> int:
+        """Delete every stored value that is not an input, and return how many.
+
+        With ``since``, only values stored with that sequence number or a
+        later one are deleted. Inputs are values stored through
+        :meth:`set_input`, on any branch.
+        """
+        dropped = self._memory_storage.drop_computed(since)
+        if self._disk_storage is not None:
+            dropped += self._disk_storage.drop_computed(since)
+        return dropped
 
     def _get_array_from_storage(
         self, period: Period, branch_name: str = "default"
@@ -257,6 +270,9 @@ class Holder:
         self._raise_if_input_contains_nan(numpy.asarray(array))
         simulation = getattr(self, "simulation", None)
         if simulation is not None:
+            # On a branch, drop what may have been calculated from the value
+            # this input replaces (see ``Simulation.set_input``).
+            simulation._drop_values_that_may_depend_on(self.variable.name, period)
             if not hasattr(simulation, "_user_input_keys"):
                 simulation._user_input_keys = set()
             if not hasattr(simulation, "_user_input_contexts"):
@@ -354,10 +370,17 @@ class Holder:
             >= self.simulation.memory_config.max_memory_occupation_pc
         )
 
-        if should_store_on_disk:
-            self._disk_storage.put(value, period, branch_name)
-        else:
-            self._memory_storage.put(value, period, branch_name)
+        sequence_number = next_sequence_number()
+        is_input = bool(user_input_contexts)
+        storage = self._disk_storage if should_store_on_disk else self._memory_storage
+        storage.put(
+            value,
+            period,
+            branch_name,
+            sequence_number=sequence_number,
+            is_input=is_input,
+        )
+        self._record_store(period, sequence_number)
         if user_input_contexts:
             if not hasattr(simulation, "_user_input_keys"):
                 simulation._user_input_keys = set()
@@ -366,17 +389,26 @@ class Holder:
     def put_in_cache(
         self, value: ArrayLike, period: Period, branch_name: str = "default"
     ) -> None:
-        if self._do_not_store:
-            return
-
-        if (
+        if self._do_not_store or (
             self.simulation.opt_out_cache
             and self.simulation.tax_benefit_system.cache_blacklist
             and self.variable.name in self.simulation.tax_benefit_system.cache_blacklist
         ):
+            # Not kept, but whatever reads it is stored after it all the same.
+            self._record_store(period, next_sequence_number())
             return
 
         self._set(period, value, branch_name)
+
+    def _record_store(self, period: Period, sequence_number: int) -> None:
+        simulation = getattr(self, "simulation", None)
+        if simulation is None:
+            return
+        if self.variable.definition_period == periods.ETERNITY:
+            period = periods.period(periods.ETERNITY)
+        simulation._get_store_history().record_store(
+            self.variable.name, periods.period(period), sequence_number
+        )
 
     def default_array(self) -> ArrayLike:
         """

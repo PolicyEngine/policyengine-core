@@ -1,0 +1,1 @@
+Simulation.set_input on a branch now drops the values the branch holds that may have been calculated from the value it replaces (tracked with a sequence number on every stored array), so a value the parent calculated before branching no longer shadows the branch's input.

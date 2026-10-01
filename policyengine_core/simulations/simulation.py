@@ -1,6 +1,5 @@
 import hashlib
 import tempfile
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
 import numpy as np
@@ -11,6 +10,10 @@ from pathlib import Path
 
 from policyengine_core import commons, periods
 from policyengine_core.data.dataset import Dataset
+from policyengine_core.data_storage.store_history import (
+    StoreHistory,
+    next_sequence_number,
+)
 from policyengine_core.entities.entity import Entity
 from policyengine_core.enums import Enum, EnumArray
 from policyengine_core.errors import CycleError, SpiralError
@@ -86,18 +89,6 @@ from policyengine_core.parameters import get_parameter
 from policyengine_core.simulations.simulation_macro_cache import (
     SimulationMacroCache,
 )
-
-
-@dataclass(frozen=True)
-class PreservedUserInput:
-    variable_name: str
-    branch_name: str
-    period: Period
-    value: object
-    storage: str
-    disk_key: Optional[str] = None
-    disk_file: Optional[str] = None
-    disk_enum: object = None
 
 
 class Simulation:
@@ -181,6 +172,9 @@ class Simulation:
         # post-``apply_reform`` cache wipe would also wipe the dataset the
         # simulation was loaded from.
         self._user_input_keys: set[tuple[str, str, Period]] = set()
+        # When each variable's values were first stored, shared with every
+        # branch created from this simulation (see ``set_input``).
+        self._store_history = StoreHistory()
         self.debug: bool = False
         self.trace: bool = trace
         self.tracer: SimpleTracer = SimpleTracer() if not trace else FullTracer()
@@ -305,83 +299,15 @@ class Simulation:
         Called after ``apply_reform`` and any other operation that changes
         the tax-benefit system underneath an already-calculated simulation.
 
-        Every (variable, branch, period) that was populated via
-        ``set_input`` is preserved — those are source data, not stale
-        formula output — so a structural reform applied after dataset
-        load doesn't silently discard the dataset. Everything else
-        (formula outputs, cached short-path results, on-disk caches) is
-        wiped so the next ``calculate`` recomputes under the new
-        tax-benefit system.
+        Every value stored through ``set_input`` is preserved — those are
+        source data, not stale formula output — so a structural reform
+        applied after dataset load doesn't silently discard the dataset.
+        Everything else (formula outputs, cached short-path results, on-disk
+        caches) is wiped, here and in every branch, so the next ``calculate``
+        recomputes under the new tax-benefit system.
         """
-        self._fast_cache = {}
         self.invalidated_caches = set()
-        # Snapshot user-provided inputs before wiping so they can be
-        # replayed into the fresh storage. Use the storage API instead of
-        # hand-building keys, since ETERNITY variables canonicalize every
-        # period to the single ETERNITY storage key.
-        preserved: list[PreservedUserInput] = []
-        user_input_keys = getattr(self, "_user_input_keys", None) or set()
-        for variable_name, branch_name, period in user_input_keys:
-            holder = self.get_holder(variable_name)
-            stored_value = holder._memory_storage.get(period, branch_name)
-            if stored_value is not None:
-                preserved.append(
-                    PreservedUserInput(
-                        variable_name=variable_name,
-                        branch_name=branch_name,
-                        period=period,
-                        value=stored_value,
-                        storage="memory",
-                    )
-                )
-                continue
-            if holder._disk_storage is not None:
-                disk_period = (
-                    periods.period(periods.ETERNITY)
-                    if holder._disk_storage.is_eternal
-                    else periods.period(period)
-                )
-                disk_key = f"{branch_name}_{disk_period}"
-                disk_file = holder._disk_storage._files.get(disk_key)
-                if disk_file is not None:
-                    preserved.append(
-                        PreservedUserInput(
-                            variable_name=variable_name,
-                            branch_name=branch_name,
-                            period=period,
-                            value=None,
-                            storage="disk",
-                            disk_key=disk_key,
-                            disk_file=disk_file,
-                            disk_enum=holder._disk_storage._enums.get(disk_file),
-                        )
-                    )
-        # Iterate only over holders that already exist on each population —
-        # lazy-creating a holder for every variable in the tax-benefit
-        # system (thousands in policyengine-us) inflated the cost of
-        # ``apply_reform`` from milliseconds to seconds and broke the
-        # YAML full-suite on downstream repos. Untouched variables have
-        # no holder and therefore nothing to wipe.
-        for population in self.populations.values():
-            for holder in population._holders.values():
-                holder._memory_storage._arrays = {}
-                if holder._disk_storage is not None:
-                    holder._disk_storage._files = {}
-        # Replay preserved user inputs so ``calculate`` still sees them.
-        for user_input in preserved:
-            holder = self.get_holder(user_input.variable_name)
-            if user_input.storage == "disk" and holder._disk_storage is not None:
-                holder._disk_storage._files[user_input.disk_key] = user_input.disk_file
-                if user_input.disk_enum is not None:
-                    holder._disk_storage._enums[user_input.disk_file] = (
-                        user_input.disk_enum
-                    )
-            else:
-                holder._memory_storage.put(
-                    user_input.value,
-                    user_input.period,
-                    user_input.branch_name,
-                )
+        self._drop_computed()
         for branch in self.branches.values():
             branch._invalidate_all_caches()
 
@@ -864,6 +790,16 @@ class Simulation:
 
             # If no result, use the default value and cache it
             if array is None:
+                if variable.uprating is not None or (
+                    self.tax_benefit_system.auto_carry_over_input_variables
+                    and variable.calculate_output is None
+                ):
+                    # The value is uprated or carried over from another
+                    # period, or defaults for lack of one: an input set later
+                    # for another period of the variable can change it.
+                    self._get_store_history().record_derived(
+                        variable_name, next_sequence_number()
+                    )
                 # Check if the variable has a previously defined value
                 known_periods = holder.get_known_periods()
                 earlier_known_periods = [
@@ -1364,6 +1300,24 @@ class Simulation:
             if _fast_cache is not None:
                 _fast_cache.pop((variable, period), None)
 
+    def drop_computed_arrays(self) -> int:
+        """Delete every value this simulation holds except inputs.
+
+        Inputs are the values stored through ``set_input``: the dataset or
+        situation the simulation was built from, and inputs set on it or,
+        for a branch, on the simulations it was created from. Every other
+        value is calculated again when next requested.
+
+        Use this on a branch whose tax-benefit system or parameters differ
+        from its parent's, whose values the branch would otherwise inherit;
+        ``set_input`` on a branch drops what depends on the input by itself.
+        Branches already created from this simulation keep their values.
+
+        Returns:
+            int: The number of arrays deleted.
+        """
+        return self._drop_computed()
+
     def get_known_periods(self, variable: str) -> List[Period]:
         """
         Get a list variable's known period, i.e. the periods where a value has been initialized and
@@ -1397,6 +1351,31 @@ class Simulation:
         array([12, 14], dtype=int32)
 
         If a ``set_input`` property has been set for the variable, this method may accept inputs for periods not matching the ``definition_period`` of the variable. To read more about this, check the `documentation <https://openfisca.org/doc/coding-the-legislation/35_periods.html#automatically-process-variable-inputs-defined-for-periods-not-matching-the-definitionperiod>`_.
+
+        On a branch (see :meth:`get_branch`), the input also drops what the
+        branch holds that may have been calculated from the value it
+        replaces, so what the branch calculates next uses the input, as a
+        simulation given the input before calculating anything would. Every
+        value is stored after everything it was calculated from (see
+        :mod:`policyengine_core.data_storage.store_history`). So the branch
+        drops each value it holds, other than an input, that was stored at
+        or after the earliest of: the first time anything in this
+        simulation's family (the simulation the branches were created from,
+        and all its branches) stored or calculated ``variable_name`` for a
+        period that shares a day with ``period``; and the first time a value
+        of ``variable_name`` was derived from its other periods (uprated,
+        carried over, or given the default for lack of a formula result). If
+        neither has happened, nothing can depend on the value and nothing is
+        dropped; this is the usual case, where a formula creates the branch
+        while still calculating the variable it overrides.
+
+        What this does not track: a branch given a different tax-benefit
+        system or parameters (call :meth:`drop_computed_arrays` on it);
+        formulas that write into an array they read instead of returning a
+        new one; formulas that test whether a value is stored
+        (``get_known_periods``, ``get_array``) rather than calculating it;
+        and values calculated in a different simulation family. Inputs set
+        on a simulation that is not a branch drop nothing, as before.
         """
         period = periods.period(period)
         if self.start_instant is None or self.start_instant > period.start:
@@ -1410,6 +1389,38 @@ class Simulation:
         _fast_cache = getattr(self, "_fast_cache", None)
         if _fast_cache is not None:
             _fast_cache.pop((variable_name, period), None)
+
+    def _get_store_history(self) -> StoreHistory:
+        history = getattr(self, "_store_history", None)
+        if history is None:
+            history = self._store_history = StoreHistory()
+        return history
+
+    def _drop_values_that_may_depend_on(
+        self, variable_name: str, period: Period
+    ) -> int:
+        """On a branch, drop what may depend on ``variable_name`` at ``period``.
+
+        Called before an input for ``variable_name`` at ``period`` is stored;
+        see :meth:`set_input`. Returns the number of arrays dropped.
+        """
+        if getattr(self, "parent_branch", None) is None:
+            return 0
+        since = self._get_store_history().earliest_dependency(
+            variable_name, periods.period(period)
+        )
+        if since is None:
+            return 0
+        return self._drop_computed(since)
+
+    def _drop_computed(self, since: Optional[int] = None) -> int:
+        dropped = 0
+        for population in self.populations.values():
+            for holder in population._holders.values():
+                dropped += holder.drop_computed(since)
+        # The fast cache can also hold values a holder does not keep.
+        self._fast_cache = {}
+        return dropped
 
     def get_variable_population(self, variable_name: str) -> Population:
         variable = self.tax_benefit_system.get_variable(
@@ -1485,6 +1496,12 @@ class Simulation:
     ) -> "Simulation":
         """Create a clone of this simulation, whose calculations are traced in the original.
 
+        The branch starts with the values this simulation holds. An input set
+        on the branch drops those that may have been calculated from the
+        value it replaces (see :meth:`set_input`). A branch whose
+        tax-benefit system or parameters are changed should call
+        :meth:`drop_computed_arrays` before calculating.
+
         Args:
             name (str, optional): Name of the branch. Defaults to "branch".
             clone_system (bool, optional): Whether to clone the tax-benefit system. Use this if you're changing policy parameters. Defaults to False.
@@ -1496,6 +1513,8 @@ class Simulation:
             return self
         if name in self.branches:
             return self.branches[name]
+        # The branch shares this simulation's store history.
+        self._get_store_history()
         branch = self.clone(clone_tax_benefit_system=clone_system)
         self.branches[name] = branch
         branch.branch_name = name

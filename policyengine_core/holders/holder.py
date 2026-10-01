@@ -1,6 +1,6 @@
 import os
 import warnings
-from typing import TYPE_CHECKING, Any, List, Tuple
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple
 
 import numpy
 import psutil
@@ -99,17 +99,30 @@ class Holder:
         if self._disk_storage:
             self._disk_storage.delete(period, branch_name)
 
-    def drop_computed(self, since: int = None) -> int:
+    def _drop_computed(self, since: Optional[int] = None) -> int:
         """Delete every stored value that is not an input, and return how many.
 
         With ``since``, only values stored with that sequence number or a
         later one are deleted. Inputs are values stored through
         :meth:`set_input`, on any branch.
         """
-        dropped = self._memory_storage.drop_computed(since)
+        dropped = self._memory_storage.drop_computed(since=since)
         if self._disk_storage is not None:
-            dropped += self._disk_storage.drop_computed(since)
+            dropped += self._disk_storage.drop_computed(since=since)
         return dropped
+
+    def _record_inputs(self, since: Optional[int] = None) -> None:
+        """Record in the simulation's history each input stored at ``since`` or later."""
+        for storage in (self._memory_storage, self._disk_storage):
+            if storage is not None:
+                for period, sequence_number in storage.inputs_since(since):
+                    self._record_store(period, sequence_number)
+
+    def _has_unnumbered_values(self) -> bool:
+        return self._memory_storage.has_unnumbered_values() or (
+            self._disk_storage is not None
+            and self._disk_storage.has_unnumbered_values()
+        )
 
     def _get_array_from_storage(
         self, period: Period, branch_name: str = "default"
@@ -351,10 +364,16 @@ class Holder:
         value: ArrayLike,
         branch_name: str = "default",
         validate_nan: bool = False,
+        is_input: Optional[bool] = None,
     ) -> None:
         simulation = getattr(self, "simulation", None)
         user_input_contexts = getattr(simulation, "_user_input_contexts", None)
-        if user_input_contexts and branch_name == "default":
+        # A value is an input when stored while ``set_input`` runs, unless the
+        # caller says otherwise: ``put_in_cache`` stores calculated values,
+        # including those a custom ``set_input`` handler calculates.
+        if is_input is None:
+            is_input = bool(user_input_contexts)
+        if is_input and user_input_contexts and branch_name == "default":
             branch_name = user_input_contexts[-1]
         value = self._to_array(value, validate_nan=validate_nan)
         if self.variable.definition_period != periods.ETERNITY:
@@ -371,7 +390,6 @@ class Holder:
         )
 
         sequence_number = next_sequence_number()
-        is_input = bool(user_input_contexts)
         storage = self._disk_storage if should_store_on_disk else self._memory_storage
         storage.put(
             value,
@@ -381,7 +399,7 @@ class Holder:
             is_input=is_input,
         )
         self._record_store(period, sequence_number)
-        if user_input_contexts:
+        if is_input and simulation is not None:
             if not hasattr(simulation, "_user_input_keys"):
                 simulation._user_input_keys = set()
             simulation._user_input_keys.add((self.variable.name, branch_name, period))
@@ -398,7 +416,7 @@ class Holder:
             self._record_store(period, next_sequence_number())
             return
 
-        self._set(period, value, branch_name)
+        self._set(period, value, branch_name, is_input=False)
 
     def _record_store(self, period: Period, sequence_number: int) -> None:
         simulation = getattr(self, "simulation", None)

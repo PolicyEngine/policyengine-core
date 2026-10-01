@@ -1,0 +1,1 @@
+Disk storage writes a new file for every store, so recalculating a value no longer changes what branches sharing the directory read; apply_reform keeps inputs by a flag on each stored array instead of replaying _user_input_keys, and values a custom set_input handler calculates are no longer treated as inputs.

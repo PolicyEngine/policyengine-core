@@ -1,14 +1,18 @@
 """Branch results do not depend on what was calculated before.
 
-Random sequences of calculations, branches, inputs and
-``drop_computed_arrays`` run on a synthetic system, with values held in
-memory, on disk, or not kept. Every calculation in a branch must equal the
-same calculation in a new simulation given the branch's inputs, its own and
-those it inherited when it was created, before calculating anything.
-``test_branch_input_invalidation.py`` pins the same behaviour with examples.
+Random sequences of calculations, branches (including reused and forgotten
+names), inputs and ``drop_computed_arrays`` run on a synthetic system, with
+values held in memory, on disk, not kept, or blacklisted. Every calculation
+in a branch must equal the same calculation in a new simulation given the
+branch's inputs, its own and those it inherited when it was created, before
+calculating anything. The inputs a branch should hold are modelled here, not
+read back from the branch. ``test_branch_input_invalidation.py`` pins the
+same behaviour with examples.
 """
 
 from __future__ import annotations
+
+import os
 
 import numpy as np
 import pytest
@@ -50,18 +54,25 @@ CALCULABLE = [
     "p_c",
 ]
 MONTHS = ["2013-01", "2013-07", "2014-12", "2015-03"]
-MEMORY_CONFIGS = {
-    "memory": lambda: None,
-    "disk": lambda: MemoryConfig(max_memory_occupation=0),
-    "not_kept": lambda: MemoryConfig(
-        max_memory_occupation=1, variables_to_drop=["p_sum", "p_inner_only"]
+# How the root simulation (and so every branch) stores values.
+MODES = {
+    "memory": dict(),
+    "disk": dict(memory_config=lambda: MemoryConfig(max_memory_occupation=0)),
+    "not_kept": dict(
+        memory_config=lambda: MemoryConfig(
+            max_memory_occupation=1, variables_to_drop=["p_sum", "p_inner_only"]
+        )
     ),
+    # The synthetic system blacklists p_sum and p_inner_only.
+    "blacklist": dict(opt_out_cache=True),
 }
 
 # Indices pick a simulation modulo how many exist (-1: the newest); small ones
 # keep most operations on the root and the first few branches, where they
-# interact.
+# interact. A branch is named "x" or "y" (so two lineages can share a name,
+# and a forgotten name can be reused) or given a name of its own (None).
 simulation_index = st.integers(0, 3)
+branch_name = st.sampled_from(["x", "y", None, None])
 values = st.tuples(*[st.integers(0, 100).map(float)] * PEOPLE)
 calculate = st.one_of(
     st.tuples(
@@ -98,7 +109,8 @@ single_operation = st.one_of(
     calculate,
     set_input,
     set_input,
-    st.tuples(st.just("branch"), simulation_index),
+    st.tuples(st.just("branch"), simulation_index, branch_name),
+    st.tuples(st.just("forget"), simulation_index),
     st.tuples(st.just("drop"), simulation_index),
 )
 # Pairs of a calculated value and an input it depends on, each reaching it a
@@ -109,6 +121,7 @@ DEPENDENCIES = [
     ("p_inner", "2013", "p_inner_only", "2013"),
     ("p_prod", "2015", "p_up", "2014"),
     ("p_month", "2013-07", "p_m", "2013"),
+    ("p_month", "2015-03", "p_m", "2015"),
     ("p_prod", "2013", "p_sum", "2013"),
     ("p_lag", "2014", "p_a", "2013"),
     ("p_cond", "2014", "p_b", "2014"),
@@ -123,13 +136,13 @@ override_after_calculating = st.tuples(
     lambda drawn: (
         [
             ("calculate", drawn[0], drawn[1][0], drawn[1][1]),
-            ("branch", drawn[0]),
+            ("branch", drawn[0], None),
             ("set", -1, drawn[1][2], drawn[1][3], drawn[2]),
             ("calculate", -1, drawn[1][0], drawn[1][1]),
         ]
         if drawn[3]
         else [
-            ("branch", drawn[0]),
+            ("branch", drawn[0], None),
             ("calculate", -1, drawn[1][0], drawn[1][1]),
             ("set", -1, drawn[1][2], drawn[1][3], drawn[2]),
             ("calculate", -1, drawn[1][0], drawn[1][1]),
@@ -146,36 +159,49 @@ operations = st.lists(
 ).map(lambda chunks: [operation for chunk in chunks for operation in chunk])
 
 
-def _stored_periods(variable, period):
-    """The periods ``set_input`` stores ``variable`` at, given ``period``."""
+def _stored_inputs(own_inputs, variable, period, value):
+    """What ``set_input(variable, period, value)`` stores on a branch, by its own rule.
+
+    Monthly ``p_m`` divides a yearly value between the months the branch has
+    not set as inputs itself (what is left after the months it has set).
+    Returns ``None`` when every month is already set (an error unless the
+    totals match, so the program skips it).
+    """
     period = periods.period(period)
-    if SYNTHETIC_SYSTEM.get_variable(variable).definition_period == periods.MONTH:
-        return [str(month) for month in period.get_subperiods(periods.MONTH)]
-    return [str(period)]
+    variable_period = SYNTHETIC_SYSTEM.get_variable(variable).definition_period
+    if variable_period != periods.MONTH or period.unit == periods.MONTH:
+        return {(variable, str(period)): tuple(value)}
+    months = [str(month) for month in period.get_subperiods(periods.MONTH)]
+    unset = [month for month in months if (variable, month) not in own_inputs]
+    if not unset:
+        return None
+    remaining = np.asarray(value, dtype=float) - sum(
+        (
+            np.asarray(own_inputs[(variable, month)])
+            for month in months
+            if month not in unset
+        ),
+        np.zeros(PEOPLE),
+    )
+    return {(variable, month): tuple(remaining / len(unset)) for month in unset}
 
 
-def _own_inputs(simulation, variable, period):
-    """The values stored on the branch itself for ``variable`` over ``period``."""
-    holder = simulation.get_holder(variable)
-    return {
-        (variable, stored_period): tuple(
-            holder._get_array_from_storage(stored_period, simulation.branch_name)
-        )
-        for stored_period in _stored_periods(variable, period)
-    }
-
-
-def _run(program, memory_config):
+def _run(program, mode):
     """Run ``program``; return each calculation with the inputs it should reflect.
 
     A branch's inputs are those of the simulation it was created from, as
-    they were then, and those set on it since, as stored (an input for a
-    year is divided between the months the branch has not set itself).
+    they were then, and those set on it since.
     """
-    root = synthetic_simulation(ROOT_INPUTS, memory_config=memory_config)
+    options = MODES[mode]
+    root = synthetic_simulation(
+        ROOT_INPUTS,
+        memory_config=options.get("memory_config", lambda: None)(),
+        opt_out_cache=options.get("opt_out_cache", False),
+    )
     simulations = [root]
     inputs = [dict(ROOT_INPUTS)]
-    own_inputs = [set()]
+    own_inputs = [{}]
+    children = {}  # (parent index, name) -> index, while the parent keeps it
     results = []
     for operation in program:
         kind, index = operation[0], operation[1] % len(simulations)
@@ -183,20 +209,28 @@ def _run(program, memory_config):
             index = len(simulations) - 1  # The newest simulation.
         simulation = simulations[index]
         if kind == "branch":
-            simulations.append(simulation.get_branch(f"b{len(simulations)}"))
+            name = operation[2] or f"b{len(simulations)}"
+            if (index, name) in children or name == simulation.branch_name:
+                continue  # get_branch would return an existing simulation.
+            simulations.append(simulation.get_branch(name))
             inputs.append(dict(inputs[index]))
-            own_inputs.append(set())
+            own_inputs.append({})
+            children[(index, name)] = len(simulations) - 1
+        elif kind == "forget":
+            # The parent forgets a branch (formulas delete theirs); the branch
+            # object keeps working, and its name can be reused.
+            names = sorted(name for parent, name in children if parent == index)
+            if names:
+                del simulation.branches[names[0]]
+                del children[(index, names[0])]
         elif kind == "set":
             if index == 0:
                 continue  # Inputs on the root after calculating are out of scope.
             _, _, variable, period, value = operation
-            stored = {(variable, p) for p in _stored_periods(variable, period)}
-            if len(stored) > 1 and stored <= own_inputs[index]:
-                # Dividing a year between months the branch has all set
-                # itself is an error unless the totals match.
+            stored = _stored_inputs(own_inputs[index], variable, period, value)
+            if stored is None:
                 continue
             simulation.set_input(variable, period, np.asarray(value))
-            stored = _own_inputs(simulation, variable, period)
             inputs[index].update(stored)
             own_inputs[index].update(stored)
         elif kind == "calculate":
@@ -208,17 +242,24 @@ def _run(program, memory_config):
     return results
 
 
+# CI runs a fixed set of programs; set POLICYENGINE_BRANCH_PROPERTY_EXAMPLES
+# to explore new ones (e.g. 5000 for a soak).
+_SOAK_EXAMPLES = os.environ.get("POLICYENGINE_BRANCH_PROPERTY_EXAMPLES")
+
+
 @hypothesis.settings(
-    max_examples=500,
+    max_examples=int(_SOAK_EXAMPLES or 200),
+    derandomize=not _SOAK_EXAMPLES,
+    database=None,
     deadline=None,
     suppress_health_check=[hypothesis.HealthCheck.too_slow],
 )
-@hypothesis.given(program=operations, mode=st.sampled_from(sorted(MEMORY_CONFIGS)))
+@hypothesis.given(program=operations, mode=st.sampled_from(sorted(MODES)))
 def test_branch_calculations_match_a_simulation_given_its_inputs_first(program, mode):
-    for branch_inputs, variable, period, value in _run(program, MEMORY_CONFIGS[mode]()):
+    for branch_inputs, variable, period, value in _run(program, mode):
         expected = synthetic_simulation(branch_inputs).calculate(variable, period)
-        # Uprating chains may round differently in float32 depending on which
-        # earlier periods were calculated first.
+        # Uprating chains, and months divided from a year, may round
+        # differently in float32 depending on what was calculated first.
         np.testing.assert_allclose(
-            value, expected, rtol=1e-5, err_msg=f"{variable} {period}"
+            value, expected, rtol=1e-5, atol=1e-4, err_msg=f"{variable} {period}"
         )

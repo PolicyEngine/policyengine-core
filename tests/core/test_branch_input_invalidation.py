@@ -7,10 +7,14 @@ whatever the branch's inputs said, and the branch's results depended on what
 had been calculated before it was created.
 
 Every stored value now carries a sequence number from one process-wide
-counter, and a value is stored after everything it was calculated from. An
-input set on a branch drops the branch's non-input values stored at or after
-the first time anything in the family stored, or derived, the overridden
-variable for an overlapping period (``StoreHistory.earliest_dependency``).
+counter, and a value is stored after everything it was calculated from. Each
+simulation keeps a history of the first stores its values may have been
+calculated from: a branch copies its parent's, and a formula that calculates
+in another simulation takes in that simulation's history. An input set on a
+branch drops the branch's non-input values stored at or after the earliest
+recorded store, or derivation, of the overridden variable for an overlapping
+period (``StoreHistory.earliest_dependency``), and the records the drop made
+obsolete.
 
 The invariant tested throughout (and, over random sequences of calculations,
 branches and inputs, by ``test_branch_input_invalidation_property.py``):
@@ -36,7 +40,9 @@ from policyengine_core.model_api import Reform
 from policyengine_core.simulations import SimulationBuilder
 from tests.fixtures.branch_input_invalidation import (
     CARRY_OVER_SYSTEM,
+    FORMULA_RUNS,
     ROOT_INPUTS,
+    branching_simulation,
     synthetic_simulation,
 )
 
@@ -122,11 +128,10 @@ def test_branch_keeps_values_stored_before_the_input_first_existed(
     branch = simulation.get_branch("raise")
     branch.set_input("salary", JANUARY, np.array([4000.0]))
 
-    assert _stored_keys(branch, "housing_tax") == {"default:2017"}
-    assert _stored_keys(branch, "income_tax") == set()
     assert branch.calculate("income_tax", JANUARY) == pytest.approx(
         4000 * tax_benefit_system.parameters(JANUARY).taxes.income_tax_rate
     )
+    assert _stored_keys(branch, "housing_tax") == {"default:2017"}
 
 
 def test_branch_input_with_no_history_drops_nothing(tax_benefit_system):
@@ -247,16 +252,17 @@ def test_disk_storage_drops_calculated_values_and_keeps_inputs(tax_benefit_syste
     branch = simulation.get_branch("cheaper")
     branch.set_input("rent", JANUARY, np.array([300.0]))
 
-    assert branch.get_holder("housing_allowance")._disk_storage._files == {}
-    rent_disk = branch.get_holder("rent")._disk_storage
-    assert set(rent_disk._files) == {"default_2017-01", "cheaper_2017-01"}
-    assert rent_disk._input_keys == {"default_2017-01", "cheaper_2017-01"}
+    dropped = branch.get_holder("housing_allowance")._disk_storage._files == {}
     fresh = _build(tax_benefit_system, situation)
     fresh.set_input("rent", JANUARY, np.array([300.0]))
     assert np.array_equal(
         branch.calculate("housing_allowance", JANUARY),
         fresh.calculate("housing_allowance", JANUARY),
     )
+    assert dropped
+    rent_disk = branch.get_holder("rent")._disk_storage
+    assert set(rent_disk._files) == {"default_2017-01", "cheaper_2017-01"}
+    assert rent_disk._input_keys == {"default_2017-01", "cheaper_2017-01"}
 
 
 def test_value_served_from_the_macro_cache_is_tracked(tax_benefit_system, monkeypatch):
@@ -537,3 +543,331 @@ def test_value_a_spiral_defaults_is_tracked():
     assert np.array_equal(
         branch.calculate("p_spiral", "2015"), fresh.calculate("p_spiral", "2015")
     )
+
+
+# ----- Values that reach a simulation without being stored there ----- #
+
+
+def test_macro_cache_files_a_branch_wrote_are_not_read_after_its_input_changes(
+    tmp_path,
+):
+    """Macro-cache files are keyed by branch and period, not by inputs."""
+    from policyengine_core.data.dataset import Dataset
+    from policyengine_core.entities import build_entity
+    from policyengine_core.simulations import Simulation
+    from policyengine_core.taxbenefitsystems import TaxBenefitSystem
+    from policyengine_core.variables import Variable
+
+    person = build_entity("person", "persons", "Person", is_person=True)
+
+    class source(Variable):
+        label = "Source"
+        value_type = float
+        entity = person
+        definition_period = periods.YEAR
+
+    class result(Variable):
+        label = "Result"
+        value_type = float
+        entity = person
+        definition_period = periods.YEAR
+        exhaustive_parameter_dependencies = []
+
+        def formula(person, period):
+            return 2 * person("source", period)
+
+    class OnePerson(Dataset):
+        name = "one_person"
+        label = "One person"
+        file_path = tmp_path / "one_person.h5"
+        data_format = Dataset.ARRAYS
+        time_period = "2022"
+
+        def generate(self):
+            self.save_dataset({"person_id": np.array([0]), "source": np.array([1.0])})
+
+    system = TaxBenefitSystem([person])
+    system.add_variables(source, result)
+    parent = Simulation(tax_benefit_system=system, dataset=OnePerson)
+    parent.macro_cache_read = True
+    branch = parent.get_branch("test")
+    assert branch.calculate("result", "2022").tolist() == [2.0]  # writes the file
+
+    branch.set_input("source", "2022", np.array([5.0]))
+
+    assert branch.calculate("result", "2022").tolist() == [10.0]
+
+
+def test_blacklisted_value_is_tracked():
+    """With ``opt_out_cache``, blacklisted values are not stored; what reads them is."""
+    simulation = synthetic_simulation(ROOT_INPUTS, opt_out_cache=True)
+    simulation.calculate("p_prod", "2013")
+    assert not simulation.get_holder("p_sum")._memory_storage._arrays
+
+    branch = simulation.get_branch("branch")
+    branch.set_input("p_sum", "2013", np.array([0.0, 0.0, 0.0]))
+
+    assert np.array_equal(branch.calculate("p_prod", "2013"), [0.0, 0.0, 0.0])
+
+
+def test_value_written_straight_into_storage_counts_as_a_dependency(
+    tax_benefit_system,
+):
+    """A value stored without ``put`` has no number, so anything may depend on it."""
+    simulation = _build(tax_benefit_system)
+    holder = simulation.get_holder("salary")
+    holder._memory_storage._arrays["default:2017-02"] = np.array([4000.0, 0.0])
+    simulation.calculate("income_tax", "2017-02")
+
+    branch = simulation.get_branch("branch")
+    branch.set_input("salary", "2017-02", np.array([0.0, 0.0]))
+
+    assert np.array_equal(branch.calculate("income_tax", "2017-02"), [0.0, 0.0])
+
+
+def test_cached_value_another_simulation_returns_is_tracked():
+    """A formula that reads another simulation's cached value takes in its history."""
+    simulation = branching_simulation()
+    # Cached in the persistent branch before any formula of the parent reads it.
+    simulation.get_branch("persistent").calculate("tax", "2020")
+    simulation.calculate("from_persistent_branch", "2020")  # a cache hit there
+
+    branch = simulation.get_branch("branch")
+    branch.set_input("tax", "2020", np.zeros(3))
+
+    # A new simulation given the input first creates its persistent branch
+    # from itself, so the branch's input reaches it.
+    assert np.array_equal(
+        branch.calculate("from_persistent_branch", "2020"), np.zeros(3)
+    )
+
+
+def test_history_is_taken_in_again_after_a_drop_forgets_it():
+    """A drop forgets records; reading the other simulation again restores them."""
+    simulation = branching_simulation()
+    branch = simulation.get_branch("branch")
+    branch.calculate("from_persistent_branch", "2020")
+    branch.drop_computed_arrays()  # forgets what the persistent branch stored
+    branch.calculate("from_persistent_branch", "2020")  # a cache hit there
+
+    child = branch.get_branch("child")
+    child.set_input("tax", "2020", np.zeros(3))
+
+    assert np.array_equal(
+        child.calculate("from_persistent_branch", "2020"), np.zeros(3)
+    )
+
+
+# ----- Only what may depend on the input is dropped ----- #
+
+
+def test_input_on_one_branch_does_not_make_another_drop(tax_benefit_system):
+    simulation = _build(tax_benefit_system)
+    sibling = simulation.get_branch("sibling")
+    sibling.set_input("rent", "2017-02", np.array([500.0]))
+    sibling.calculate("housing_allowance", "2017-02")
+    simulation.calculate("disposable_income", JANUARY)
+    held = {
+        (name, key)
+        for name in ("disposable_income", "income_tax")
+        for key in _stored_keys(simulation, name)
+    }
+
+    branch = simulation.get_branch("branch")
+    dropped = branch._drop_values_that_may_depend_on("rent", periods.period("2017-02"))
+
+    assert dropped == 0
+    assert held <= {
+        (name, key)
+        for name in ("disposable_income", "income_tax")
+        for key in _stored_keys(branch, name)
+    }
+
+
+def test_branches_that_choose_between_overrides_calculate_shared_values_once():
+    """Values the overridden variable cannot reach are calculated once per arm.
+
+    ``choose`` compares ``tax`` in two branches that set it, as
+    policyengine-us itemization does; ``agi`` does not depend on it.
+    """
+    # A marginal-rate branch after the parent has calculated everything.
+    simulation = branching_simulation()
+    simulation.calculate("net", "2020")
+    FORMULA_RUNS["agi"] = 0
+    rate = simulation.calculate("marginal_rate", "2020")
+    assert FORMULA_RUNS["agi"] == 1
+    assert np.allclose(rate, 0.85)
+
+    # A baseline branch calculating after the reform arm has.
+    FORMULA_RUNS["agi"] = 0
+    simulation = branching_simulation()
+    baseline = simulation.get_branch("baseline")
+    simulation.calculate("net", "2020")
+    baseline.calculate("net", "2020")
+    assert FORMULA_RUNS["agi"] == 2
+
+    fresh = branching_simulation()
+    assert np.array_equal(
+        baseline.calculate("net", "2020"), fresh.calculate("net", "2020")
+    )
+
+
+# ----- Other paths ----- #
+
+
+def test_prerequisite_requested_before_a_branch_input_still_counts():
+    """``requires_computation_after`` holds if the prerequisite was requested, even if dropped."""
+    from policyengine_core.entities import build_entity
+    from policyengine_core.taxbenefitsystems import TaxBenefitSystem
+    from policyengine_core.variables import Variable
+
+    person = build_entity("person", "persons", "Person", is_person=True)
+
+    class source(Variable):
+        label = "Source"
+        value_type = float
+        entity = person
+        definition_period = periods.YEAR
+
+    class prerequisite(Variable):
+        label = "Prerequisite"
+        value_type = float
+        entity = person
+        definition_period = periods.YEAR
+
+        def formula(person, period):
+            return person("source", period) * 0 + 1
+
+    class result(Variable):
+        label = "Result"
+        value_type = float
+        entity = person
+        definition_period = periods.YEAR
+        requires_computation_after = "prerequisite"
+
+        def formula(person, period):
+            return person("source", period) * 2
+
+    system = TaxBenefitSystem([person])
+    system.add_variables(source, prerequisite, result)
+    simulation = SimulationBuilder().build_default_simulation(system)
+    simulation.set_input("source", "2022", np.array([1.0]))
+    simulation.calculate("prerequisite", "2022")
+    simulation.calculate("result", "2022")
+
+    branch = simulation.get_branch("branch")
+    branch.set_input("source", "2022", np.array([2.0]))
+
+    assert branch.calculate("result", "2022").tolist() == [4.0]
+
+
+def test_values_a_custom_input_handler_calculates_are_not_inputs():
+    from policyengine_core.entities import build_entity
+    from policyengine_core.taxbenefitsystems import TaxBenefitSystem
+    from policyengine_core.variables import Variable
+
+    person = build_entity("person", "persons", "Person", is_person=True)
+
+    def store_first_month_then_calculate(holder, period, array):
+        holder._set(period.first_month, array)
+        holder.simulation.calculate("dependent", period)
+
+    class dispatched(Variable):
+        label = "Dispatched"
+        value_type = float
+        entity = person
+        definition_period = periods.MONTH
+        set_input = store_first_month_then_calculate
+
+    class dependent(Variable):
+        label = "Dependent"
+        value_type = float
+        entity = person
+        definition_period = periods.YEAR
+
+        def formula(person, period):
+            return 2 * person("dispatched", period.first_month)
+
+    system = TaxBenefitSystem([person])
+    system.add_variables(dispatched, dependent)
+    branch = SimulationBuilder().build_default_simulation(system).get_branch("branch")
+    branch.set_input("dispatched", "2020", np.array([3.0]))
+    assert branch.calculate("dependent", "2020").tolist() == [6.0]
+
+    branch.set_input("dispatched", "2020-01", np.array([4.0]))
+
+    assert branch.calculate("dependent", "2020").tolist() == [8.0]
+    assert not branch.get_holder("dependent")._memory_storage._input_keys
+
+
+def test_year_input_after_calculating_one_of_its_months():
+    """The drop comes before a yearly input is divided, so only input months count."""
+    simulation = synthetic_simulation(ROOT_INPUTS)
+    branch = simulation.get_branch("branch")
+    branch.calculate("p_month", "2015-03")  # 2015 has no p_m input: default
+
+    branch.set_input("p_m", "2015", np.array([120.0, 120.0, 120.0]))
+
+    fresh = synthetic_simulation(
+        {**ROOT_INPUTS, **{("p_m", f"2015-{m:02d}"): (10.0,) * 3 for m in range(1, 13)}}
+    )
+    assert np.allclose(
+        branch.calculate("p_month", "2015-03"), fresh.calculate("p_month", "2015-03")
+    )
+
+
+def test_derivative_keeps_inputs_set_after_construction():
+    """``derivative`` keeps every input of the simulation it differentiates."""
+    simulation = synthetic_simulation({("p_a", "2013"): (1.0, 1.0, 1.0)})
+    branch = simulation.get_branch("branch")
+    branch.set_input("p_b", "2013", np.array([9.0, 9.0, 9.0]))
+
+    assert np.allclose(branch.derivative("p_sum", "p_b", "2013"), 2.0)
+    assert np.array_equal(branch.calculate("p_b", "2013"), [9.0, 9.0, 9.0])
+
+
+def test_disk_branch_keeps_its_values_when_its_parent_recalculates():
+    """Each disk store writes its own file, so a recalculation leaves children's files."""
+    config = MemoryConfig(max_memory_occupation=0)
+    simulation = synthetic_simulation(ROOT_INPUTS, memory_config=config)
+    branch = simulation.get_branch("branch")
+    before = branch.calculate("p_sum", "2013").copy()
+    child = branch.get_branch("child")
+
+    branch.set_input("p_a", "2013", np.zeros(3))
+    branch.calculate("p_sum", "2013")  # recalculated: a new file
+
+    assert np.array_equal(child.calculate("p_sum", "2013"), before)
+
+
+def test_disk_branches_with_the_same_name_keep_their_own_values():
+    config = MemoryConfig(max_memory_occupation=0)
+    simulation = synthetic_simulation(ROOT_INPUTS, memory_config=config)
+    first = simulation.get_branch("a").get_branch("leaf")
+    second = simulation.get_branch("b").get_branch("leaf")
+    first.set_input("p_a", "2013", np.full(3, 3.0))
+    second.set_input("p_a", "2013", np.full(3, 4.0))
+    # A name reused after its branch is forgotten.
+    old = simulation.get_branch("reused")
+    old.set_input("p_a", "2013", np.full(3, 7.0))
+    del simulation.branches["reused"]
+    new = simulation.get_branch("reused")
+    new.set_input("p_a", "2013", np.full(3, 8.0))
+
+    assert np.array_equal(first.calculate("p_a", "2013"), [3.0] * 3)
+    assert np.array_equal(second.calculate("p_a", "2013"), [4.0] * 3)
+    assert np.array_equal(old.calculate("p_a", "2013"), [7.0] * 3)
+    assert np.array_equal(new.calculate("p_a", "2013"), [8.0] * 3)
+
+
+def test_storage_pickled_before_stores_were_numbered_still_stores():
+    import pickle
+
+    storage = InMemoryStorage(is_eternal=False)
+    storage.put(np.array([1.0]), periods.period("2020"))
+    del storage._sequence_numbers, storage._input_keys  # as pickled before
+    restored = pickle.loads(pickle.dumps(storage))
+
+    restored.put(np.array([2.0]), periods.period("2021"), is_input=True)
+
+    assert restored._input_keys == {"default:2021"}

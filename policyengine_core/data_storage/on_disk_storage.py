@@ -1,6 +1,6 @@
 import os
 import shutil
-from typing import Dict, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 import numpy
 from numpy.typing import ArrayLike
@@ -31,6 +31,12 @@ class OnDiskStorage:
         self.is_eternal = is_eternal
         self.preserve_storage_dir = preserve_storage_dir
         self.storage_dir = storage_dir
+
+    def __setstate__(self, state: dict) -> None:
+        # Storages pickled before stores were numbered have neither record.
+        state.setdefault("_sequence_numbers", {})
+        state.setdefault("_input_keys", set())
+        self.__dict__.update(state)
 
     def clone(self) -> "OnDiskStorage":
         """Create a private metadata view over this storage directory.
@@ -89,21 +95,23 @@ class OnDiskStorage:
         period = periods.period(period)
 
         filename = f"{branch_name}_{period}"
-        path = os.path.join(self.storage_dir, filename) + ".npy"
+        if sequence_number is None:
+            sequence_number = next_sequence_number()
+        # A new file for every store: clones share this directory and may
+        # still map an earlier file for the same key.
+        path = os.path.join(self.storage_dir, f"{filename}.{sequence_number}") + ".npy"
         if isinstance(value, EnumArray):
             self._enums[path] = value.possible_values
             value = value.view(numpy.ndarray)
         numpy.save(path, value)
         self._files[filename] = path
-        self._sequence_numbers[filename] = (
-            next_sequence_number() if sequence_number is None else sequence_number
-        )
+        self._sequence_numbers[filename] = sequence_number
         if is_input:
             self._input_keys.add(filename)
         else:
             self._input_keys.discard(filename)
 
-    def drop_computed(self, since: Optional[int] = None) -> int:
+    def drop_computed(self, *, since: Optional[int] = None) -> int:
         """Forget stored values that are not inputs, and return how many.
 
         As :meth:`InMemoryStorage.drop_computed`. The files stay on disk
@@ -120,6 +128,20 @@ class OnDiskStorage:
             del self._files[key]
             self._sequence_numbers.pop(key, None)
         return len(dropped)
+
+    def inputs_since(self, since: Optional[int] = None) -> List[Tuple[Period, int]]:
+        """As :meth:`InMemoryStorage.inputs_since`."""
+        # Period strings contain no "_"; branch names may.
+        return [
+            (periods.period(key.rsplit("_", 1)[1]), self._sequence_numbers[key])
+            for key in self._input_keys
+            if key in self._sequence_numbers
+            and (since is None or self._sequence_numbers[key] >= since)
+        ]
+
+    def has_unnumbered_values(self) -> bool:
+        """As :meth:`InMemoryStorage.has_unnumbered_values`."""
+        return any(key not in self._sequence_numbers for key in self._files)
 
     def _forget_deleted_keys(self) -> None:
         self._sequence_numbers = {
@@ -169,12 +191,20 @@ class OnDiskStorage:
         self._sequence_numbers = {}
         self._input_keys = set()
         # Restore self._files from content of storage_dir.
+        latest = {}
         for filename in os.listdir(self.storage_dir):
             if not filename.endswith(".npy"):
                 continue
             path = os.path.join(self.storage_dir, filename)
             filename_core = filename.rsplit(".", 1)[0]
-            files[filename_core] = path
+            # Files are named "<key>.<sequence number>.npy" (each store writes
+            # a new file); older dumps are "<key>.npy". Keep each key's latest.
+            key, _, number = filename_core.rpartition(".")
+            if not (key and number.isdigit()):
+                key, number = filename_core, "0"
+            if key not in latest or int(number) > latest[key]:
+                latest[key] = int(number)
+                files[key] = path
 
     def __del__(self) -> None:
         if self.preserve_storage_dir:

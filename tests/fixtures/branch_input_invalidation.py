@@ -1,5 +1,7 @@
 """A synthetic system for derived values and branches inside formulas."""
 
+import tempfile
+
 import numpy as np
 
 from policyengine_core import periods
@@ -111,6 +113,8 @@ def _synthetic_system(carry_over):
 
     system = System()
     system.add_variables(*SYNTHETIC_VARIABLES)
+    # Not stored by simulations that opt out of the cache (``opt_out_cache``).
+    system.cache_blacklist = {"p_sum", "p_inner_only"}
     return system
 
 
@@ -125,10 +129,18 @@ PEOPLE = 3
 YEARS = ["2012", "2013", "2014", "2015"]
 
 
-def synthetic_simulation(inputs, memory_config=None, system=SYNTHETIC_SYSTEM):
+def synthetic_simulation(
+    inputs, memory_config=None, system=SYNTHETIC_SYSTEM, opt_out_cache=False
+):
     """A simulation of ``PEOPLE`` people given ``inputs`` before anything else."""
     simulation = SimulationBuilder().build_default_simulation(system, count=PEOPLE)
+    simulation.opt_out_cache = opt_out_cache
     if memory_config is not None:
+        # Each holder's disk storage removes its directory, and this one
+        # once empty, when garbage-collected.
+        simulation._data_storage_dir = tempfile.mkdtemp(
+            prefix="policyengine-branch-tests-"
+        )
         simulation.memory_config = memory_config
         # Holders read the memory configuration when created; nothing is
         # stored yet, so create them again. Create them all here, so every
@@ -158,3 +170,83 @@ ROOT_INPUTS = {
         for month in range(1, 13)
     },
 }
+
+
+# ----- A system whose formulas choose between branches, as itemization does ----- #
+
+# How many times each counted formula ran.
+FORMULA_RUNS = {"agi": 0}
+
+
+def _agi(person, period):
+    FORMULA_RUNS["agi"] += 1
+    return person("earn", period) * 1.0
+
+
+def _tax_if(choice):
+    """Tax with ``choose`` set to ``choice``, from a branch deleted afterwards."""
+
+    def formula(person, period):
+        simulation = person.simulation
+        name = f"choose_{choice}"
+        branch = simulation.get_branch(name)
+        try:
+            branch.set_input("choose", period, np.full(person.count, float(choice)))
+            return branch.calculate("tax", period)
+        finally:
+            del simulation.branches[name]
+
+    return formula
+
+
+def _marginal_rate(person, period):
+    """Net income with one more unit of earnings, from a branch, as MTRs are."""
+    simulation = person.simulation
+    branch = simulation.get_branch("raise")
+    try:
+        branch.set_input("earn", period, person("earn", period) + 1)
+        return branch.calculate("net", period) - person("net", period)
+    finally:
+        del simulation.branches["raise"]
+
+
+def _from_persistent_branch(person, period):
+    """Read a value from a branch kept between calls."""
+    return person.simulation.get_branch("persistent").calculate("tax", period)
+
+
+BRANCHING_VARIABLES = [
+    _yearly("earn"),
+    _yearly("agi", _agi),
+    _yearly(
+        "tax",
+        lambda person, period: (
+            person("agi", period) * (0.2 - 0.05 * person("choose", period))
+        ),
+    ),
+    _yearly("tax_if_chosen", _tax_if(1)),
+    _yearly("tax_if_not_chosen", _tax_if(0)),
+    _yearly(
+        "choose",
+        lambda person, period: (
+            (person("tax_if_chosen", period) < person("tax_if_not_chosen", period))
+            * 1.0
+        ),
+    ),
+    _yearly(
+        "net", lambda person, period: person("agi", period) - person("tax", period)
+    ),
+    _yearly("marginal_rate", _marginal_rate),
+    _yearly("from_persistent_branch", _from_persistent_branch),
+]
+
+BRANCHING_SYSTEM = CountryTaxBenefitSystem()
+BRANCHING_SYSTEM.add_variables(*BRANCHING_VARIABLES)
+
+
+def branching_simulation(earn=(10.0, 20.0, 30.0), period="2020"):
+    simulation = SimulationBuilder().build_default_simulation(
+        BRANCHING_SYSTEM, count=len(earn)
+    )
+    simulation.set_input("earn", period, np.asarray(earn))
+    return simulation

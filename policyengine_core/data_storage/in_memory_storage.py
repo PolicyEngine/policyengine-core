@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Set, Union
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 import numpy
 from numpy.typing import ArrayLike
@@ -24,6 +24,12 @@ class InMemoryStorage:
         self._sequence_numbers: Dict[str, int] = {}
         self._input_keys: Set[str] = set()
         self.is_eternal = is_eternal
+
+    def __setstate__(self, state: dict) -> None:
+        # Storages pickled before stores were numbered have neither record.
+        state.setdefault("_sequence_numbers", {})
+        state.setdefault("_input_keys", set())
+        self.__dict__.update(state)
 
     def clone(self) -> "InMemoryStorage":
         clone = InMemoryStorage(self.is_eternal)
@@ -84,7 +90,7 @@ class InMemoryStorage:
         else:
             self._input_keys.discard(key)
 
-    def drop_computed(self, since: Optional[int] = None) -> int:
+    def drop_computed(self, *, since: Optional[int] = None) -> int:
         """Delete stored values that are not inputs, and return how many.
 
         With ``since``, only values stored with that sequence number or a
@@ -102,6 +108,19 @@ class InMemoryStorage:
             del self._arrays[key]
             self._sequence_numbers.pop(key, None)
         return len(dropped)
+
+    def inputs_since(self, since: Optional[int] = None) -> List[Tuple[Period, int]]:
+        """The period and number of each input stored at ``since`` or later (or ever)."""
+        return [
+            (periods.period(key.split(":", 1)[1]), self._sequence_numbers[key])
+            for key in self._input_keys
+            if key in self._sequence_numbers
+            and (since is None or self._sequence_numbers[key] >= since)
+        ]
+
+    def has_unnumbered_values(self) -> bool:
+        """Whether a value was stored without ``put`` (so without a number)."""
+        return any(key not in self._sequence_numbers for key in self._arrays)
 
     def _forget_deleted_keys(self) -> None:
         self._sequence_numbers = {

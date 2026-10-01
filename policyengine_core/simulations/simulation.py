@@ -1,5 +1,6 @@
 import hashlib
 import tempfile
+from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
 import numpy as np
@@ -88,6 +89,16 @@ from policyengine_core.reforms.reform import Reform
 from policyengine_core.parameters import get_parameter
 from policyengine_core.simulations.simulation_macro_cache import (
     SimulationMacroCache,
+)
+
+
+# The simulation whose formula is running. When that formula calculates a
+# value in another simulation (a branch it created, say), what the formula
+# returns, and so what its simulation stores, may be calculated from the other
+# simulation's values: ``calculate`` then merges the other's store history into
+# this one's (see ``StoreHistory``).
+_formula_simulation: ContextVar[Optional["Simulation"]] = ContextVar(
+    "_formula_simulation", default=None
 )
 
 
@@ -558,6 +569,7 @@ class Simulation:
             if _fast_cache is not None:
                 _cached = _fast_cache.get(_fast_key)
                 if _cached is not None:
+                    self._share_store_history_with_caller()
                     return _cached
 
         self.tracer.record_calculation_start(variable_name, period, self.branch_name)
@@ -577,6 +589,7 @@ class Simulation:
                     variable_name
                 ).entity.key
                 result = self.map_result(result, source_entity, map_to)
+            self._share_store_history_with_caller()
             return result
         finally:
             self.tracer.record_calculation_end()
@@ -692,6 +705,7 @@ class Simulation:
         """
         if variable_name not in self.tax_benefit_system.variables:
             raise ValueError(f"Variable {variable_name} does not exist.")
+        self._get_requested_variables().add(variable_name)
         population = self.get_variable_population(variable_name)
         holder = population.get_holder(variable_name)
         variable = self.tax_benefit_system.get_variable(
@@ -747,7 +761,16 @@ class Simulation:
             required_is_known_periods = self.get_holder(
                 variable.requires_computation_after
             ).get_known_periods()
-            if (not variable_in_stack) and (not len(required_is_known_periods) > 0):
+            # A branch input may have dropped the prerequisite's values; it
+            # was still requested.
+            required_was_requested = (
+                variable.requires_computation_after in self._get_requested_variables()
+            )
+            if (
+                (not variable_in_stack)
+                and (not len(required_is_known_periods) > 0)
+                and not required_was_requested
+            ):
                 raise ValueError(
                     f"Variable {variable_name} requires {variable.requires_computation_after} to be requested first. That variable is known in: {required_is_known_periods}. The full stack is: {variables_in_stack}. {variable_in_stack, len(required_is_known_periods) > 0}"
                 )
@@ -789,7 +812,11 @@ class Simulation:
         # First, try to run a formula
         try:
             self._check_for_cycle(variable.name, period)
-            array = self._run_formula(variable, population, period)
+            token = _formula_simulation.set(self)
+            try:
+                array = self._run_formula(variable, population, period)
+            finally:
+                _formula_simulation.reset(token)
 
             # If no result, use the default value and cache it
             if array is None:
@@ -1309,9 +1336,11 @@ class Simulation:
         """Delete every value this simulation holds except inputs.
 
         Inputs are the values stored through ``set_input``: the dataset or
-        situation the simulation was built from, and inputs set on it or,
-        for a branch, on the simulations it was created from. Every other
-        value is calculated again when next requested.
+        situation the simulation was built from, inputs set on it and, for a
+        branch, inputs set on the simulations it was created from before it
+        was created. Values a custom ``set_input`` handler calculates are not
+        inputs. Every other value is calculated again when next requested,
+        and the simulation stops reading macro-cache files.
 
         Use this on a branch whose tax-benefit system or parameters differ
         from its parent's, whose values the branch would otherwise inherit;
@@ -1321,6 +1350,8 @@ class Simulation:
         Returns:
             int: The number of arrays deleted.
         """
+        # Recalculate rather than read macro-cache files written before.
+        self.macro_cache_read = False
         return self._drop_computed()
 
     def get_known_periods(self, variable: str) -> List[Period]:
@@ -1361,26 +1392,35 @@ class Simulation:
         branch holds that may have been calculated from the value it
         replaces, so what the branch calculates next uses the input, as a
         simulation given the input before calculating anything would. Every
-        value is stored after everything it was calculated from (see
-        :mod:`policyengine_core.data_storage.store_history`). So the branch
-        drops each value it holds, other than an input, that was stored at
-        or after the earliest of: the first time anything in this
-        simulation's family (the simulation the branches were created from,
-        and all its branches) stored or calculated ``variable_name`` for a
-        period that shares a day with ``period``; and the first time a value
-        of ``variable_name`` was derived from its other periods (uprated,
-        carried over, or given the default for lack of a formula result). If
-        neither has happened, nothing can depend on the value and nothing is
-        dropped; this is the usual case, where a formula creates the branch
-        while still calculating the variable it overrides.
+        value is stored after everything it was calculated from, and each
+        simulation records the first stores its values may have been
+        calculated from (see :mod:`policyengine_core.data_storage.store_history`):
+        its own, its parent's when it was created, and those of simulations
+        its formulas calculated in. The branch drops each value it holds,
+        other than an input, stored at or after the earliest recorded store of
+        ``variable_name`` for a period that shares a day with ``period``, or
+        the earliest recorded value of ``variable_name`` uprated or carried
+        over from another period (or given the default for want of one). If
+        there is neither, nothing it holds depends on the value and nothing
+        is dropped. That is the case when a formula creates the branch while
+        still calculating the variable it overrides, unless another branch
+        it created for the same comparison already returned a value
+        calculated from the variable; then only what came back from there,
+        and what was calculated after, is dropped.
+
+        After such a drop the branch stops reading macro-cache files, which
+        are keyed by branch and period but not by inputs.
 
         What this does not track: a branch given a different tax-benefit
         system or parameters (call :meth:`drop_computed_arrays` on it);
         formulas that write into an array they read instead of returning a
         new one; formulas that test whether a value is stored
-        (``get_known_periods``, ``get_array``) rather than calculating it;
-        and values calculated in a different simulation family. Inputs set
-        on a simulation that is not a branch drop nothing, as before.
+        (``get_known_periods``, ``get_array``) or read another simulation's
+        storage directly, rather than calculating; and branches a formula
+        keeps between calls, which hold what their parent held when they
+        were created. Inputs set on a simulation that is not a branch drop
+        nothing, as before, and branches already created from the branch
+        keep their values.
         """
         period = periods.period(period)
         if self.start_instant is None or self.start_instant > period.start:
@@ -1401,6 +1441,18 @@ class Simulation:
             history = self._store_history = StoreHistory()
         return history
 
+    def _get_requested_variables(self) -> set:
+        requested = getattr(self, "_requested_variables", None)
+        if requested is None:
+            requested = self._requested_variables = set()
+        return requested
+
+    def _share_store_history_with_caller(self) -> None:
+        """Merge this simulation's store history into that of a formula calling it."""
+        caller = _formula_simulation.get()
+        if caller is not None and caller is not self:
+            caller._get_store_history().merge(self._get_store_history())
+
     def _drop_values_that_may_depend_on(
         self, variable_name: str, period: Period
     ) -> int:
@@ -1414,17 +1466,32 @@ class Simulation:
         since = self._get_store_history().earliest_dependency(
             variable_name, periods.period(period)
         )
+        if self.get_holder(variable_name)._has_unnumbered_values():
+            # Written into storage directly, so neither numbered nor recorded:
+            # anything may have been calculated from it.
+            since = 0
         if since is None:
             return 0
+        # Macro-cache files are keyed by branch and period, not by inputs, so
+        # those this branch wrote may hold values calculated from the old one.
+        self.macro_cache_read = False
         return self._drop_computed(since)
 
     def _drop_computed(self, since: Optional[int] = None) -> int:
+        """Drop every non-input value numbered ``since`` or later (all, without it)."""
         dropped = 0
         for population in self.populations.values():
             for holder in population._holders.values():
-                dropped += holder.drop_computed(since)
+                dropped += holder._drop_computed(since)
         # The fast cache can also hold values a holder does not keep.
         self._fast_cache = {}
+        # Nothing the simulation still holds was calculated from what the
+        # records numbered ``since`` or later describe, except the inputs it
+        # keeps, which are recorded again.
+        self._get_store_history().prune(since)
+        for population in self.populations.values():
+            for holder in population._holders.values():
+                holder._record_inputs(since)
         return dropped
 
     def get_variable_population(self, variable_name: str) -> Population:
@@ -1493,6 +1560,10 @@ class Simulation:
             new.tax_benefit_system = self.tax_benefit_system
         new.debug = debug
         new.trace = trace
+        # The copy holds what this simulation holds, so it starts from what
+        # those values may have been calculated from, and diverges from there.
+        new._store_history = self._get_store_history().copy()
+        new._requested_variables = set(self._get_requested_variables())
 
         return new
 
@@ -1501,8 +1572,9 @@ class Simulation:
     ) -> "Simulation":
         """Create a clone of this simulation, whose calculations are traced in the original.
 
-        The branch starts with the values this simulation holds. An input set
-        on the branch drops those that may have been calculated from the
+        A new branch starts with the values this simulation holds; asked for
+        a name it already has, this returns that branch as it is. An input
+        set on the branch drops those that may have been calculated from the
         value it replaces (see :meth:`set_input`). A branch whose
         tax-benefit system or parameters are changed should call
         :meth:`drop_computed_arrays` before calculating.
@@ -1518,8 +1590,6 @@ class Simulation:
             return self
         if name in self.branches:
             return self.branches[name]
-        # The branch shares this simulation's store history.
-        self._get_store_history()
         branch = self.clone(clone_tax_benefit_system=clone_system)
         self.branches[name] = branch
         branch.branch_name = name
@@ -1551,9 +1621,7 @@ class Simulation:
             period = periods.period(self.default_calculation_period)
 
         alt_sim = self.clone()
-        for computed_variable in alt_sim.tax_benefit_system.variables:
-            if computed_variable not in self.input_variables:
-                alt_sim.delete_arrays(computed_variable)
+        alt_sim.drop_computed_arrays()
         alt_sim.set_input(wrt, period, self.calculate(wrt, period) + delta)
         original_value = self.calculate(variable, period)
         new_value = alt_sim.calculate(variable, period)

@@ -1,5 +1,4 @@
 import hashlib
-import tempfile
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
@@ -11,6 +10,7 @@ from pathlib import Path
 
 from policyengine_core import commons, periods
 from policyengine_core.data.dataset import Dataset
+from policyengine_core.data_storage.on_disk_storage import StorageDirectory
 from policyengine_core.entities.entity import Entity
 from policyengine_core.enums import Enum, EnumArray
 from policyengine_core.errors import CycleError, SpiralError
@@ -189,6 +189,7 @@ class Simulation:
         self.max_spiral_loops: int = 10
         self.memory_config: MemoryConfig = None
         self._data_storage_dir: str = None
+        self._data_storage_directory: Optional[StorageDirectory] = None
 
         self.branches: Dict[str, Simulation] = {}
         self.has_axes = False
@@ -588,14 +589,20 @@ class Simulation:
         Temporary folder used to store intermediate calculation data in case the memory is saturated
         """
         if self._data_storage_dir is None:
-            self._data_storage_dir = tempfile.mkdtemp(prefix="openfisca_")
-            message = [
-                (
-                    "Intermediate results will be stored on disk in {} in case of memory overflow."
-                ).format(self._data_storage_dir),
-                "You should remove this directory once you're done with your simulation.",
-            ]
+            # Removed once this simulation, its clones and every storage
+            # inside it are gone.
+            self._data_storage_directory = StorageDirectory.create(prefix="openfisca_")
+            self._data_storage_dir = self._data_storage_directory.path
         return self._data_storage_dir
+
+    def _get_data_storage_directory(self) -> Union[StorageDirectory, str]:
+        """Return ``data_storage_dir``, as the object that keeps it on disk
+        if the simulation created it."""
+        path = self.data_storage_dir
+        directory = getattr(self, "_data_storage_directory", None)
+        if directory is not None and directory.path == path:
+            return directory
+        return path
 
     # ----- Calculation methods ----- #
 

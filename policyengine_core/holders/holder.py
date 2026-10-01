@@ -74,6 +74,23 @@ class Holder:
     def create_disk_storage(
         self, directory: str = None, preserve: bool = False
     ) -> OnDiskStorage:
+        """Create on-disk storage for this variable.
+
+        With ``directory``, or ``preserve``, the storage uses
+        ``<directory>/<variable name>`` (``directory`` defaults to the
+        simulation's ``data_storage_dir``). Otherwise it makes a directory of
+        its own inside ``data_storage_dir`` on its first write, so holders
+        for the same variable in different simulations of a family, or in a
+        branch that created its own holder, never share or remove each
+        other's files.
+        """
+        is_eternal = self.variable.definition_period == periods.ETERNITY
+        if directory is None and not preserve:
+            return OnDiskStorage.temporary(
+                self.variable.name,
+                self.simulation._get_data_storage_directory(),
+                is_eternal=is_eternal,
+            )
         if directory is None:
             directory = self.simulation.data_storage_dir
         storage_dir = os.path.join(directory, self.variable.name)
@@ -81,7 +98,7 @@ class Holder:
             os.mkdir(storage_dir)
         return OnDiskStorage(
             storage_dir,
-            is_eternal=(self.variable.definition_period == periods.ETERNITY),
+            is_eternal=is_eternal,
             preserve_storage_dir=preserve,
         )
 

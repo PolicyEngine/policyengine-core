@@ -865,12 +865,22 @@ class Simulation:
             # If no result, use the default value and cache it
             if array is None:
                 # Check if the variable has a previously defined value
-                known_periods = holder.get_known_periods()
+                # Only a value stored at the variable's own definition period
+                # can stand in for another period. A YEAR variable also caches
+                # month values (``calculate_divide`` stores a twelfth of the
+                # year's value, the STOCK path the whole value) and a MONTH
+                # variable caches year values (``calculate_add`` stores the sum
+                # of the months). Those are derived from a stored value, so
+                # carrying one forward would rescale the variable.
+                known_periods = [
+                    known_period
+                    for known_period in holder.get_known_periods()
+                    if known_period.unit == variable.definition_period
+                ]
                 earlier_known_periods = [
                     known_period
                     for known_period in known_periods
-                    if known_period.unit == variable.definition_period
-                    and known_period.start < period.start
+                    if known_period.start < period.start
                 ]
                 if variable.uprating is not None and len(earlier_known_periods) > 0:
                     # Take the latest period from the filtered list itself.
@@ -915,9 +925,10 @@ class Simulation:
                 ):
                     # Variables with a calculate-output property specify
                     # Sort by period.start (temporal order). Sorting Period
-                    # tuples lexicographically puts "year" before "month"
-                    # alphabetically, so a known "2023" annual value would
-                    # win over a later "2024-06" monthly value (bug H1).
+                    # tuples lexicographically compares their unit strings
+                    # first (bug H1). Every period here has the definition
+                    # period's unit, so a twelfth of a year's value cached at
+                    # "2024-12" cannot stand in for "2025".
                     last_known_period = max(known_periods, key=lambda p: p.start)
                     if last_known_period.start > period.start:
                         return holder.default_array()

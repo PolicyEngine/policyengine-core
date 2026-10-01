@@ -154,6 +154,10 @@ class Holder:
         """
         Get data about the virtual memory usage of the holder.
 
+        An array a branch still shares with the simulation it was created
+        from (see :meth:`Simulation.get_branch`) is counted for both, though
+        it is held in memory once.
+
         :returns: Memory usage data
         :rtype: dict
 

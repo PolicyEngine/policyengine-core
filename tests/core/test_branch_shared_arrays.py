@@ -327,6 +327,27 @@ def test_branch_reads_values_its_parent_stored_on_disk(tax_benefit_system):
     assert np.array_equal(simulation.calculate("rent", february), [11.0, 22.0])
 
 
+def test_branch_set_input_over_an_inherited_value_with_disk_storage(
+    tax_benefit_system,
+):
+    simulation = _build(tax_benefit_system)
+    rent = simulation.calculate("rent", JANUARY)
+    expected = rent.copy()
+    simulation.memory_config = MemoryConfig(max_memory_occupation=0)
+    branch = simulation.get_branch("default_named")
+    branch.branch_name = "default"
+    holder = branch.get_holder("rent")
+    holder._disk_storage = holder.create_disk_storage()
+    holder._on_disk_storable = True
+
+    # The value is already in memory, so the new one replaces it there.
+    branch.set_input("rent", JANUARY, np.array([7.0, 8.0]))
+
+    assert np.array_equal(branch.calculate("rent", JANUARY), [7.0, 8.0])
+    assert np.array_equal(simulation.calculate("rent", JANUARY), expected)
+    assert simulation.calculate("rent", JANUARY) is rent
+
+
 # ----- Storage-level behaviour ----- #
 
 
@@ -836,6 +857,26 @@ def test_thread_started_during_get_branch_clones_by_copying(tax_benefit_system):
     assert _shared_keys(branch)
     assert len(clones) == 1
     assert not _shared_keys(clones[0])
+
+
+def test_get_branch_inside_a_clone_override_shares_both_branches(
+    tax_benefit_system,
+):
+    class NestingSimulation(Simulation):
+        def clone(self, debug=False, trace=False, clone_tax_benefit_system=True):
+            if not self.__dict__.get("made_inner"):
+                self.made_inner = True
+                self.get_branch("inner")
+            return super().clone(debug, trace, clone_tax_benefit_system)
+
+    simulation = _build(tax_benefit_system)
+    simulation.__class__ = NestingSimulation
+
+    outer = simulation.get_branch("outer")
+
+    assert _shared_keys(outer) == set(_stored_arrays(simulation))
+    assert _shared_keys(simulation.branches["inner"]) == set(_stored_arrays(simulation))
+    assert _branch_clone.get() is None
 
 
 def test_sharing_ends_when_get_branch_returns(tax_benefit_system):

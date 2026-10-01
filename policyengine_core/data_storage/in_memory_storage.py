@@ -7,6 +7,24 @@ from policyengine_core import periods
 from policyengine_core.periods import Period
 
 
+def _read_only_view(array: ArrayLike) -> ArrayLike:
+    """Return ``array`` as a view that cannot be written through.
+
+    A shared array belongs to the storage it was shared from, so an in-place
+    write (``array[mask] = 0``, ``array += 1``) through the sharing storage
+    would change the original's value too. The view raises ``ValueError``
+    on such a write instead. An array that is already read-only (such as a
+    view shared from a further ancestor) is shared as it is.
+    """
+    if not isinstance(array, numpy.ndarray):
+        return array.copy()
+    if not array.flags.writeable:
+        return array
+    view = array.view()
+    view.flags.writeable = False
+    return view
+
+
 class InMemoryStorage:
     """
     Low-level class responsible for storing and retrieving calculated vectors in memory
@@ -19,9 +37,24 @@ class InMemoryStorage:
         self._arrays = {}
         self.is_eternal = is_eternal
 
-    def clone(self) -> "InMemoryStorage":
+    def clone(self, share_arrays: bool = False) -> "InMemoryStorage":
+        """Copy this storage so that writes to either one leave the other unchanged.
+
+        By default every stored array is copied. With ``share_arrays``, the
+        clone instead holds a read-only view of each array, so cloning
+        allocates no array data. The clone still has its own index: ``put``
+        and ``delete`` on either storage replace or drop index entries
+        without touching the arrays, so neither storage sees values the
+        other stores, replaces or deletes after cloning. Writing into a
+        shared array in place through the clone raises ``ValueError``.
+        """
         clone = InMemoryStorage(self.is_eternal)
-        clone._arrays = {period: array.copy() for period, array in self._arrays.items()}
+        if share_arrays:
+            clone._arrays = {
+                key: _read_only_view(array) for key, array in self._arrays.items()
+            }
+        else:
+            clone._arrays = {key: array.copy() for key, array in self._arrays.items()}
         return clone
 
     def get(self, period: Period, branch_name: str = "default") -> ArrayLike:

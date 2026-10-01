@@ -35,7 +35,12 @@ class GroupPopulation(Population):
         else:
             return super().__call__(variable_name, period, options)
 
-    def clone(self, simulation: "Simulation", members: Population) -> "GroupPopulation":
+    def clone(
+        self,
+        simulation: "Simulation",
+        members: Population,
+        share_arrays: bool = False,
+    ) -> "GroupPopulation":
         result = GroupPopulation(self.entity, members)
         result.simulation = simulation
         # Pass ``result`` (the cloned population) to ``holder.clone`` so the
@@ -46,7 +51,7 @@ class GroupPopulation(Population):
         # and ``parent_branch`` lookups for group-entity variables
         # (e.g. ``tax_unit_itemizes``) on nested branches.
         result._holders = {
-            variable: holder.clone(result)
+            variable: holder.clone(result, share_arrays=share_arrays)
             for (variable, holder) in self._holders.items()
         }
         result.count = self.count

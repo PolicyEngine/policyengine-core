@@ -1,5 +1,6 @@
 import hashlib
 import tempfile
+from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
@@ -31,6 +32,14 @@ from policyengine_core.tools.google_cloud import (
 )
 
 import json
+
+# True while ``get_branch`` clones a simulation into a new branch, so that
+# ``clone`` shares the cached arrays with the branch instead of copying them.
+# This is a context variable rather than a ``clone`` argument because country
+# packages override ``clone`` with its existing signature and call
+# ``super().clone`` (policyengine-us's SPM ``Simulation`` does), so an extra
+# argument could not reach this class's ``clone`` through them.
+_cloning_branch: ContextVar[bool] = ContextVar("_cloning_branch", default=False)
 
 
 def _stable_hash_to_seed(value: str) -> int:
@@ -1444,8 +1453,13 @@ class Simulation:
         clone_tax_benefit_system: bool = True,
     ) -> "Simulation":
         """
-        Copy the simulation just enough to be able to run the copy without modifying the original simulation
+        Copy the simulation just enough to be able to run the copy without modifying the original simulation.
+
+        Every cached array is copied, except when ``get_branch`` is cloning
+        the simulation into a branch: the branch then shares them (see
+        :meth:`get_branch`).
         """
+        share_arrays = _cloning_branch.get()
         new = commons.empty_clone(self)
         new_dict = new.__dict__
 
@@ -1460,13 +1474,15 @@ class Simulation:
                 new_dict[key] = value
         new._fast_cache = {}
 
-        new.persons = self.persons.clone(new)
+        new.persons = self.persons.clone(new, share_arrays=share_arrays)
         setattr(new, new.persons.entity.key, new.persons)
         new.populations = {new.persons.entity.key: new.persons}
         new.branches = {}
 
         for entity in self.tax_benefit_system.group_entities:
-            population = self.populations[entity.key].clone(new, new.persons)
+            population = self.populations[entity.key].clone(
+                new, new.persons, share_arrays=share_arrays
+            )
             new.populations[entity.key] = population
             setattr(
                 new, entity.key, population
@@ -1485,6 +1501,17 @@ class Simulation:
     ) -> "Simulation":
         """Create a clone of this simulation, whose calculations are traced in the original.
 
+        The branch starts from the values this simulation has cached when the
+        branch is created. It shares those arrays instead of copying them:
+        each of the branch's holders gets its own index of read-only views of
+        this simulation's arrays. What the branch stores (``set_input``,
+        calculations, deletions) goes into its own index only, so it never
+        changes this simulation's values. What this simulation stores after
+        branching stays out of the branch, as when the arrays were copied.
+        Writing in place into a shared array through the branch
+        (``array[mask] = 0`` or ``array += 1``) raises ``ValueError``,
+        because the write would change this simulation's value too.
+
         Args:
             name (str, optional): Name of the branch. Defaults to "branch".
             clone_system (bool, optional): Whether to clone the tax-benefit system. Use this if you're changing policy parameters. Defaults to False.
@@ -1496,7 +1523,11 @@ class Simulation:
             return self
         if name in self.branches:
             return self.branches[name]
-        branch = self.clone(clone_tax_benefit_system=clone_system)
+        token = _cloning_branch.set(True)
+        try:
+            branch = self.clone(clone_tax_benefit_system=clone_system)
+        finally:
+            _cloning_branch.reset(token)
         self.branches[name] = branch
         branch.branch_name = name
         branch.parent_branch = self

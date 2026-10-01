@@ -44,9 +44,13 @@ class Holder:
             if self.variable.name in self.simulation.memory_config.variables_to_drop:
                 self._do_not_store = True
 
-    def clone(self, population: "Population") -> "Holder":
+    def clone(self, population: "Population", share_arrays: bool = False) -> "Holder":
         """
         Copy the holder just enough to be able to run a new simulation without modifying the original simulation.
+
+        With ``share_arrays``, the new holder's in-memory storage holds
+        read-only views of this holder's arrays instead of copies (see
+        :meth:`InMemoryStorage.clone`).
         """
         new = commons.empty_clone(self)
         new_dict = new.__dict__
@@ -61,7 +65,7 @@ class Holder:
             ):
                 new_dict[key] = value
 
-        new._memory_storage = self._memory_storage.clone()
+        new._memory_storage = self._memory_storage.clone(share_arrays=share_arrays)
         new._disk_storage = (
             self._disk_storage.clone() if self._disk_storage is not None else None
         )

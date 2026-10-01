@@ -23,11 +23,13 @@ class Population:
         self.count = 0
         self.ids = []
 
-    def clone(self, simulation: "Simulation") -> "Population":
+    def clone(
+        self, simulation: "Simulation", share_arrays: bool = False
+    ) -> "Population":
         result = Population(self.entity)
         result.simulation = simulation
         result._holders = {
-            variable: holder.clone(result)
+            variable: holder.clone(result, share_arrays=share_arrays)
             for (variable, holder) in self._holders.items()
         }
         result.count = self.count

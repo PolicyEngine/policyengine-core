@@ -38,15 +38,19 @@ class InMemoryStorage:
         self.is_eternal = is_eternal
 
     def clone(self, share_arrays: bool = False) -> "InMemoryStorage":
-        """Copy this storage so that writes to either one leave the other unchanged.
+        """Copy this storage.
 
-        By default every stored array is copied. With ``share_arrays``, the
-        clone instead holds a read-only view of each array, so cloning
-        allocates no array data. The clone still has its own index: ``put``
-        and ``delete`` on either storage replace or drop index entries
-        without touching the arrays, so neither storage sees values the
-        other stores, replaces or deletes after cloning. Writing into a
-        shared array in place through the clone raises ``ValueError``.
+        By default every stored array is copied, so nothing done to either
+        storage changes the other.
+
+        With ``share_arrays``, the clone instead holds a read-only view of
+        each array, so cloning allocates no array data. The clone still has
+        its own index: ``put`` and ``delete`` on either storage replace or
+        drop index entries without touching the arrays, so neither storage
+        sees what the other stores, replaces or deletes after cloning.
+        Writing into a shared array in place through the clone raises
+        ``ValueError``. This storage's own arrays stay writeable, and
+        writing into one of them in place changes the value the clone reads.
         """
         clone = InMemoryStorage(self.is_eternal)
         if share_arrays:

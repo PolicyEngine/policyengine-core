@@ -42,6 +42,23 @@ import json
 _cloning_branch: ContextVar[bool] = ContextVar("_cloning_branch", default=False)
 
 
+def _is_read_only_write(error: BaseException) -> bool:
+    """Whether ``error`` comes from writing in place into a read-only array.
+
+    numpy raises ``ValueError`` with "read-only" in its message
+    ("assignment destination is read-only", "output array is read-only").
+    pandas re-raises it under another message, with numpy's error as the
+    cause, so the chain is searched.
+    """
+    seen = set()
+    while error is not None and id(error) not in seen:
+        if isinstance(error, ValueError) and "read-only" in str(error):
+            return True
+        seen.add(id(error))
+        error = error.__cause__ or error.__context__
+    return False
+
+
 def _stable_hash_to_seed(value: str) -> int:
     """Deterministically hash a string to an int suitable for numpy.random.seed.
 
@@ -1176,10 +1193,22 @@ class Simulation:
         # A rules-engine formula must be a pure, deterministic function of its
         # inputs. Randomness is forbidden statically at variable registration
         # (check_formula_determinism), so no runtime guard is needed here.
-        if formula.__code__.co_argcount == 2:
-            array = formula(population, period)
-        else:
-            array = formula(population, period, parameters_at)
+        try:
+            if formula.__code__.co_argcount == 2:
+                array = formula(population, period)
+            else:
+                array = formula(population, period, parameters_at)
+        except ValueError as error:
+            if _is_read_only_write(error):
+                error.add_note(
+                    f"The formula of '{variable.name}' wrote in place into an "
+                    "array that is read-only. A branch shares the arrays its "
+                    "parent simulation had cached when the branch was created, "
+                    "so it cannot write into them. Build a new array instead: "
+                    "`x = x + y` rather than `x += y`, and "
+                    "`x = where(mask, y, x)` rather than `x[mask] = y`."
+                )
+            raise
 
         return array
 
@@ -1457,7 +1486,9 @@ class Simulation:
 
         Every cached array is copied, except when ``get_branch`` is cloning
         the simulation into a branch: the branch then shares them (see
-        :meth:`get_branch`).
+        :meth:`get_branch`). That also holds for a subclass's ``clone`` that
+        calls this one, and for any other simulation it clones while
+        ``get_branch`` is running it.
         """
         share_arrays = _cloning_branch.get()
         new = commons.empty_clone(self)
@@ -1511,6 +1542,12 @@ class Simulation:
         Writing in place into a shared array through the branch
         (``array[mask] = 0`` or ``array += 1``) raises ``ValueError``,
         because the write would change this simulation's value too.
+
+        This simulation's own arrays stay writeable. Code that writes into
+        one of them in place after branching, instead of storing a new array
+        with ``set_input``, changes the value the branch reads as well. When
+        branches held copies, such a write changed only this simulation's
+        cached value.
 
         Args:
             name (str, optional): Name of the branch. Defaults to "branch".

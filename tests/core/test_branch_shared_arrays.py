@@ -20,14 +20,18 @@ simulation whose branches share arrays and on one whose branches are copies
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from policyengine_core import periods
+from policyengine_core.country_template import Microsimulation
 from policyengine_core.enums import EnumArray
+from policyengine_core.experimental import MemoryConfig
 from policyengine_core.simulations import Simulation, SimulationBuilder
 from policyengine_core.simulations.simulation import _cloning_branch
+from policyengine_core.variables import Variable
 
 SITUATION = {
     "persons": {
@@ -155,6 +159,65 @@ def test_writing_in_place_through_a_branch_raises_and_leaves_parent(
     assert np.array_equal(branch.calculate("salary", JANUARY), expected)
 
 
+def test_formula_writing_into_a_shared_array_says_which_formula(
+    isolated_tax_benefit_system,
+):
+    class salary_plus_one(Variable):
+        value_type = float
+        entity = isolated_tax_benefit_system.person_entity
+        definition_period = periods.MONTH
+        label = "Salary plus one, written in place"
+
+        def formula(person, period, parameters):
+            salary = person("salary", period)
+            salary += 1
+            return salary
+
+    class salary_floor(Variable):
+        value_type = float
+        entity = isolated_tax_benefit_system.person_entity
+        definition_period = periods.MONTH
+        label = "Salary with a floor, written in place through pandas"
+
+        def formula(person, period, parameters):
+            salary = pd.Series(person("salary", period), copy=False)
+            salary[salary < 1_000] = 1_000
+            return salary.values
+
+    isolated_tax_benefit_system.add_variables(salary_plus_one, salary_floor)
+    simulation = _build(isolated_tax_benefit_system)
+    salary = simulation.calculate("salary", JANUARY).copy()
+    branch = simulation.get_branch("branch")
+
+    for variable in ("salary_plus_one", "salary_floor"):
+        with pytest.raises(ValueError) as raised:
+            branch.calculate(variable, JANUARY)
+        notes = "\n".join(getattr(raised.value, "__notes__", []))
+        assert f"The formula of '{variable}' wrote in place" in notes
+        assert "`x = x + y` rather than `x += y`" in notes
+
+    assert np.array_equal(simulation.calculate("salary", JANUARY), salary)
+    assert np.array_equal(branch.calculate("salary", JANUARY), salary)
+
+
+def test_other_formula_value_errors_get_no_note(isolated_tax_benefit_system):
+    class raises_value_error(Variable):
+        value_type = float
+        entity = isolated_tax_benefit_system.person_entity
+        definition_period = periods.MONTH
+        label = "Raises an unrelated ValueError"
+
+        def formula(person, period, parameters):
+            raise ValueError("not about arrays")
+
+    isolated_tax_benefit_system.add_variables(raises_value_error)
+    branch = _build(isolated_tax_benefit_system).get_branch("branch")
+
+    with pytest.raises(ValueError, match="not about arrays") as raised:
+        branch.calculate("raises_value_error", JANUARY)
+    assert not getattr(raised.value, "__notes__", [])
+
+
 def test_branch_own_results_are_writeable(tax_benefit_system):
     simulation = _build(tax_benefit_system)
     branch = simulation.get_branch("branch")
@@ -185,6 +248,68 @@ def test_shared_string_arrays(tax_benefit_system):
     assert np.array_equal(shared, postal_code)
     assert np.shares_memory(shared, postal_code)
     assert not shared.flags.writeable
+
+
+def test_branch_of_a_traced_simulation_shares_arrays(tax_benefit_system):
+    simulation = _build(tax_benefit_system)
+    simulation.trace = True
+    salary = simulation.calculate("salary", JANUARY)
+
+    branch = simulation.get_branch("branch")
+
+    assert branch.trace
+    assert branch.tracer is simulation.tracer
+    assert np.shares_memory(branch.calculate("salary", JANUARY), salary)
+    branch.set_input("salary", JANUARY, np.zeros(4))
+    assert branch.calculate("income_tax", JANUARY).sum() == 0
+    assert simulation.calculate("income_tax", JANUARY).sum() > 0
+
+
+def test_baseline_branch_of_a_reform_simulation_shares_its_inputs():
+    reform_rate, baseline_rate, instant = 0.42, 0.15, "2022-01-01"
+    simulation = Microsimulation(
+        reform={"taxes.income_tax_rate": {instant: reform_rate}}
+    )
+    baseline = simulation.baseline
+    assert baseline is simulation.branches["baseline"]
+
+    shared = _stored_arrays(baseline)
+    parent_arrays = _stored_arrays(simulation)
+    assert shared
+    for key, array in shared.items():
+        assert np.shares_memory(array, parent_arrays[key]), key
+        assert not array.flags.writeable, key
+
+    # The reform simulation calculates after the baseline branch exists; the
+    # branch must not pick up the reform's results.
+    reform_tax = simulation.calculate("income_tax", "2022-01").sum()
+    baseline_tax = baseline.calculate("income_tax", "2022-01").sum()
+    assert reform_tax > 0
+    assert baseline_tax == pytest.approx(
+        reform_tax * baseline_rate / reform_rate, rel=1e-6
+    )
+
+
+def test_branch_reads_values_its_parent_stored_on_disk(tax_benefit_system):
+    simulation = _build(tax_benefit_system)
+    simulation.memory_config = MemoryConfig(max_memory_occupation=0)
+    holder = simulation.get_holder("rent")
+    holder._disk_storage = holder.create_disk_storage()
+    holder._on_disk_storable = True
+    february = periods.period("2017-02")
+    simulation.set_input("rent", february, np.array([11.0, 22.0]))
+    assert holder._memory_storage.get(february, "default") is None
+
+    branch = simulation.get_branch("branch")
+    assert np.array_equal(branch.calculate("rent", february), [11.0, 22.0])
+    # In-memory values of the same holder are still shared.
+    assert np.shares_memory(
+        branch.calculate("rent", JANUARY), simulation.calculate("rent", JANUARY)
+    )
+
+    branch.delete_arrays("rent", february)
+    assert branch.get_array("rent", february) is None
+    assert np.array_equal(simulation.calculate("rent", february), [11.0, 22.0])
 
 
 # ----- Isolation: a branch never changes its parent ----- #
@@ -309,6 +434,32 @@ def test_parent_delete_after_branching_is_not_seen(tax_benefit_system):
     assert np.array_equal(branch.get_array("income_tax", JANUARY), tax)
 
 
+def test_parent_writing_in_place_after_branching_reaches_the_branch(
+    tax_benefit_system,
+):
+    """The one way a parent's later change reaches a branch.
+
+    The branch reads the parent's array through a view, so a write INTO that
+    array, rather than a new array stored with ``set_input``, shows in the
+    branch too. Core never writes into a stored array (see the test that
+    freezes the parent's arrays below); this pins what happens when calling
+    code does.
+    """
+    simulation = _build(tax_benefit_system)
+    salary = simulation.calculate("salary", JANUARY)
+    branch = simulation.get_branch("branch")
+
+    salary[0] = 123.0
+
+    assert simulation.calculate("salary", JANUARY)[0] == 123.0
+    assert branch.calculate("salary", JANUARY)[0] == 123.0
+
+    # A deep copy made before the write is unaffected.
+    clone = simulation.clone()
+    salary[0] = 456.0
+    assert clone.calculate("salary", JANUARY)[0] == 123.0
+
+
 def test_parent_apply_reform_after_branching_keeps_branch_inputs(
     tax_benefit_system,
 ):
@@ -348,10 +499,13 @@ def test_nested_branch_reads_its_ancestors(tax_benefit_system):
         grandchild.calculate("income_tax", JANUARY),
         simulation.calculate("income_tax", JANUARY),
     )
-    for key, array in _stored_arrays(grandchild).items():
+    child_arrays = _stored_arrays(child)
+    grandchild_arrays = _stored_arrays(grandchild)
+    assert grandchild_arrays.keys() == child_arrays.keys()
+    for key, array in grandchild_arrays.items():
         assert not array.flags.writeable, key
-        source = child_snapshot.get(key)
-        assert source is not None, key
+        assert np.shares_memory(array, child_arrays[key]), key
+        assert np.array_equal(np.asarray(array), child_snapshot[key]), key
 
     grandchild.set_input("rent", JANUARY, np.array([1.0, 1.0]))
     grandchild.set_input("salary", JANUARY, np.zeros(4))
@@ -696,11 +850,11 @@ def _assert_shared_arrays_read_only(tree):
 
 
 @settings(
-    max_examples=300,
+    max_examples=500,
     deadline=None,
     suppress_health_check=[HealthCheck.too_slow, HealthCheck.data_too_large],
 )
-@given(operations=st.lists(_operation, max_size=30))
+@given(operations=st.lists(_operation, max_size=40))
 def test_shared_array_branches_match_copied_branches(tax_benefit_system, operations):
     shared = _Tree(
         tax_benefit_system,

@@ -94,6 +94,18 @@ def test_clone_input_leaves_the_source_input():
     np.testing.assert_array_equal(clone.calculate("salary", PERIOD), [5.0])
 
 
+@pytest.mark.parametrize("on_disk", [False, True])
+def test_derivative_leaves_the_simulation_inputs(on_disk):
+    """``derivative`` perturbs a clone's input, not the simulation's own."""
+    simulation = _simulation(on_disk)
+    simulation.set_input("salary", PERIOD, np.array([3_000.0]))
+
+    derivative = simulation.derivative("income_tax", "salary", PERIOD, delta=100)
+
+    np.testing.assert_allclose(derivative, [0.15])
+    np.testing.assert_array_equal(simulation.calculate("salary", PERIOD), [3_000.0])
+
+
 def test_branches_with_the_same_name_keep_their_own_values():
     simulation = _simulation()
     # Branches made after the root has stored on disk share its directory.
@@ -369,6 +381,14 @@ class _Family:
         elif kind == "calculate":
             variable, period = arguments
             return _outcome(lambda: simulation.calculate(variable, period))
+        elif kind == "derivative":
+            (period,) = arguments
+            return _outcome(
+                lambda: simulation.derivative("income_tax", "salary", period, delta=100)
+            )
+        elif kind == "reform":
+            (rate,) = arguments
+            simulation.apply_reform({"taxes.income_tax_rate": rate})
         elif kind == "delete_arrays":
             (variable,) = arguments
             simulation.delete_arrays(variable)
@@ -431,6 +451,8 @@ _operations = st.lists(
             st.sampled_from(CALCULATED),
             st.sampled_from(MONTHS),
         ),
+        st.tuples(st.just("derivative"), _index, st.sampled_from(MONTHS)),
+        st.tuples(st.just("reform"), _index, st.sampled_from([0.1, 0.2, 0.3])),
         st.tuples(
             st.just("delete_arrays"), _index, st.sampled_from(INPUTS + CALCULATED)
         ),
@@ -448,7 +470,8 @@ _operations = st.lists(
 )
 @given(operations=_operations)
 def test_disk_storage_gives_the_results_memory_storage_gives(operations):
-    """For any sequence of branching, cloning, inputs, calculations and drops:
+    """For any sequence of branching, cloning, inputs, calculations,
+    derivatives, reforms and drops:
 
     - every calculation returns what it returns with values held in memory;
     - every file a live storage maps is on disk;

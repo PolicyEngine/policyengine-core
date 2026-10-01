@@ -14,9 +14,12 @@ dataset therefore aged every person to a twelfth of their age in 2025. On a
 3,000-household Enhanced CPS subsample, 2025 federal income tax came to
 $31.6bn, against $1,846.9bn in a simulation that calculated only 2025.
 
-A period in another unit still counts when it was set as an input: a
-variable with no ``set_input`` helper, and every DAY variable, stores an
-input at whatever period it is given, and carry-over keeps using it.
+The fix marks those two caches as derived when they are written
+(``Holder.put_in_cache(..., derived=True)``), clears the mark on any later
+write to the period, and never carries a marked period. Everything else
+still carries over, inputs at any unit included: a variable with no
+``set_input`` helper, and every DAY variable, stores an input at whatever
+period it is given.
 
 The invariant pinned here: what a simulation calculates for a later period
 does not depend on which earlier periods it calculated first. Each case
@@ -296,3 +299,64 @@ def test_input_in_another_unit_set_on_a_branch_carries_over_there(
     np.testing.assert_array_equal(branch.calculate(variable, later_period), [24.0, 7.0])
     nested = branch.get_branch("nested")
     np.testing.assert_array_equal(nested.calculate(variable, later_period), [24.0, 7.0])
+
+
+FLOW = "year_flow_input_without_helper"
+FLOW_INPUT = {FLOW: {BASE_YEAR: [120.0, 12.0]}}
+
+
+def test_derived_cache_ignores_a_same_named_branch_elsewhere(system):
+    simulation = _simulation(system, FLOW_INPUT)
+    nested = simulation.get_branch("a").get_branch("s")
+    simulation.get_branch("s").set_input(FLOW, MONTHS[-1], [999.0, 999.0])
+    nested.calculate(FLOW, MONTHS[-1])
+    np.testing.assert_array_equal(nested.calculate(FLOW, 2025), [120.0, 12.0])
+
+
+def test_derived_cache_ignores_an_input_set_on_a_clone(system):
+    simulation = _simulation(system, FLOW_INPUT)
+    simulation.calculate(FLOW, MONTHS[-1])
+    clone = simulation.clone()
+    clone.set_input(FLOW, MONTHS[-1], [999.0, 999.0])
+    np.testing.assert_array_equal(simulation.calculate(FLOW, 2025), [120.0, 12.0])
+    np.testing.assert_array_equal(clone.calculate(FLOW, 2025), [999.0, 999.0])
+
+
+def test_derived_cache_ignores_a_parent_input_set_after_branching(system):
+    simulation = _simulation(system, FLOW_INPUT)
+    branch = simulation.get_branch("b")
+    simulation.set_input(FLOW, MONTHS[-1], [999.0, 999.0])
+    branch.calculate(FLOW, MONTHS[-1])
+    np.testing.assert_array_equal(branch.calculate(FLOW, 2025), [120.0, 12.0])
+    np.testing.assert_array_equal(simulation.calculate(FLOW, 2025), [999.0, 999.0])
+
+
+def test_derived_cache_ignores_a_deleted_input_at_its_period(system):
+    simulation = _simulation(system, FLOW_INPUT)
+    simulation.set_input(FLOW, MONTHS[-1], [999.0, 999.0])
+    simulation.delete_arrays(FLOW, MONTHS[-1])
+    simulation.calculate(FLOW, MONTHS[-1])
+    np.testing.assert_array_equal(simulation.calculate(FLOW, 2025), [120.0, 12.0])
+
+
+def test_derivative_leaves_later_years_intact(system):
+    simulation = _simulation(system, FLOW_INPUT)
+    simulation.derivative(FLOW, FLOW, MONTHS[-1])
+    np.testing.assert_array_equal(simulation.calculate(FLOW, 2025), [120.0, 12.0])
+
+
+def test_input_written_over_a_derived_cache_carries_over(system):
+    simulation = _simulation(system, FLOW_INPUT)
+    simulation.calculate(FLOW, MONTHS[-1])
+    simulation.set_input(FLOW, MONTHS[-1], [999.0, 999.0])
+    np.testing.assert_array_equal(simulation.calculate(FLOW, 2025), [999.0, 999.0])
+
+
+def test_value_cached_in_another_unit_without_the_derived_mark_carries_over(system):
+    simulation = _simulation(system, {})
+    simulation.get_holder("day_stock_input").put_in_cache(
+        np.array([24.0, 7.0]), periods.period("2024-12")
+    )
+    np.testing.assert_array_equal(
+        simulation.calculate("day_stock_input", "2025-01-01"), [24.0, 7.0]
+    )

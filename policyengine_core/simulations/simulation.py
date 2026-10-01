@@ -919,21 +919,17 @@ class Simulation:
                     # alphabetically, so a known "2023" annual value would
                     # win over a later "2024-06" monthly value (bug H1).
                     #
-                    # A period in a unit other than the definition period only
-                    # counts if it was set as an input (with no ``set_input``
-                    # helper, an input is stored at whatever period it is
-                    # given). Otherwise it is a derived cache: a YEAR flow
-                    # requested for a month caches a twelfth of the year's
-                    # value there (``calculate_divide``), and a MONTH flow
-                    # requested for a year caches the sum of its months
-                    # (``calculate_add``). Carrying one of those forward
-                    # rescales the variable.
-                    input_periods = self._get_user_input_periods(variable.name)
+                    # Skip values derived by rescaling another period's value:
+                    # a YEAR flow requested for a month caches a twelfth of the
+                    # year's value there (``calculate_divide``), and a sum over
+                    # several sub-periods is cached at the larger period
+                    # (``calculate_add``). Carrying either forward rescales the
+                    # variable. Inputs, at any period, still carry over.
+                    derived_periods = getattr(holder, "_derived_periods", ())
                     carry_over_periods = [
                         known_period
                         for known_period in known_periods
-                        if known_period.unit == variable.definition_period
-                        or known_period in input_periods
+                        if known_period not in derived_periods
                     ]
                     if carry_over_periods:
                         last_known_period = max(
@@ -1037,12 +1033,14 @@ class Simulation:
                 )
             )
 
+        sub_periods = list(period.get_subperiods(variable.definition_period))
         result = sum(
-            self.calculate(variable_name, sub_period)
-            for sub_period in period.get_subperiods(variable.definition_period)
+            self.calculate(variable_name, sub_period) for sub_period in sub_periods
         )
         holder = self.get_holder(variable.name)
-        holder.put_in_cache(result, period, self.branch_name)
+        holder.put_in_cache(
+            result, period, self.branch_name, derived=len(sub_periods) > 1
+        )
         return result
 
     def calculate_divide(
@@ -1075,7 +1073,7 @@ class Simulation:
             computation_period = period.this_year
             result = self.calculate(variable_name, period=computation_period) / 12.0
             holder = self.get_holder(variable.name)
-            holder.put_in_cache(result, period, self.branch_name)
+            holder.put_in_cache(result, period, self.branch_name, derived=True)
             return result
         elif period.unit == periods.YEAR:
             return self.calculate(variable_name, period)
@@ -1726,19 +1724,6 @@ class Simulation:
         branch_names.append("default")
         return list(dict.fromkeys(branch_names))
 
-    def _get_user_input_periods(self, variable_name: str) -> set:
-        """Periods at which ``variable_name`` was set as an input on a branch
-        this simulation reads."""
-        visible_branch_names = self._get_visible_branch_names()
-        return {
-            period
-            for input_variable_name, branch_name, period in getattr(
-                self, "_user_input_keys", set()
-            )
-            if input_variable_name == variable_name
-            and branch_name in visible_branch_names
-        }
-
     def _get_exportable_input_periods(
         self,
         variable_name: str,
@@ -1750,7 +1735,14 @@ class Simulation:
         if not self._is_exportable_input_variable(variable_name):
             return []
 
-        user_input_periods = self._get_user_input_periods(variable_name)
+        user_input_periods = {
+            period
+            for input_variable_name, branch_name, period in getattr(
+                self, "_user_input_keys", set()
+            )
+            if input_variable_name == variable_name
+            and branch_name in self._get_visible_branch_names()
+        }
         if not user_input_periods:
             return []
         variable = self.tax_benefit_system.get_variable(variable_name)

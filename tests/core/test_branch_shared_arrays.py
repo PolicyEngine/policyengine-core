@@ -268,6 +268,40 @@ def test_masked_array_mask_is_not_shared_with_the_branch(tax_benefit_system):
     assert parent_value.tolist() == [10.0, 20.0, 30.0, 40.0]
 
 
+def test_masked_arrays_are_copied_up_front():
+    """Not even code reaching into ``_arrays`` gets the parent's mask."""
+    storage = InMemoryStorage(is_eternal=False)
+    masked = np.ma.array([1.0, 2.0], mask=[False, False])
+    storage.put(masked, "2017-01")
+
+    shared = storage.clone(share_arrays=True)
+
+    assert not shared._shared
+    stored = shared._arrays["default:2017-01"]
+    assert not np.shares_memory(stored.mask, masked.mask)
+    assert not np.shares_memory(stored.data, masked.data)
+    stored.mask[0] = True
+    assert storage.get("2017-01").mask.tolist() == [False, False]
+
+
+def test_values_that_are_not_arrays_are_copied_once():
+    class CountingList(list):
+        copies = 0
+
+        def copy(self):
+            type(self).copies += 1
+            return type(self)(self)
+
+    storage = InMemoryStorage(is_eternal=False)
+    storage._arrays["default:2017-01"] = CountingList([1, 2])
+
+    shared = storage.clone(share_arrays=True)
+
+    assert shared.get("2017-01") == [1, 2]
+    assert shared.get("2017-01") is not storage.get("2017-01")
+    assert CountingList.copies == 1
+
+
 def test_branch_of_a_traced_simulation_shares_arrays(tax_benefit_system):
     simulation = _build(tax_benefit_system)
     simulation.trace = True
@@ -830,6 +864,37 @@ def test_other_clones_made_during_get_branch_still_copy(tax_benefit_system):
     assert _shared_keys(branch)
     assert not _shared_keys(made["other"])
     assert not _shared_keys(made["again"])
+
+
+def test_clone_of_the_same_simulation_before_super_clone_takes_the_sharing(
+    tax_benefit_system,
+):
+    """The first clone of the branched simulation shares; pinned, not wanted.
+
+    Core cannot tell a ``clone`` override's own early clone of ``self`` from
+    its ``super().clone`` call. The early clone shares, the branch is then a
+    full copy, and both read the right values.
+    """
+    made = {}
+
+    class EarlyCloneSimulation(Simulation):
+        def clone(self, debug=False, trace=False, clone_tax_benefit_system=True):
+            made["early"] = Simulation.clone(self)
+            return super().clone(debug, trace, clone_tax_benefit_system)
+
+    simulation = _build(tax_benefit_system)
+    simulation.__class__ = EarlyCloneSimulation
+    salary = simulation.calculate("salary", JANUARY).copy()
+
+    branch = simulation.get_branch("branch")
+
+    assert _shared_keys(made["early"])
+    assert not _shared_keys(branch)
+    assert np.array_equal(branch.calculate("salary", JANUARY), salary)
+    assert np.array_equal(made["early"].calculate("salary", JANUARY), salary)
+    made["early"].calculate("salary", JANUARY)[0] = -1.0
+    branch.calculate("salary", JANUARY)[0] = -2.0
+    assert np.array_equal(simulation.calculate("salary", JANUARY), salary)
 
 
 def test_thread_started_during_get_branch_clones_by_copying(tax_benefit_system):

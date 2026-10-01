@@ -7,7 +7,19 @@ from policyengine_core import periods
 from policyengine_core.periods import Period
 
 
-def _read_only_view(array: ArrayLike) -> ArrayLike:
+def _can_share(array: ArrayLike) -> bool:
+    """Whether a read-only view of ``array`` protects everything in it.
+
+    A masked array's mask is a second array that a view shares and leaves
+    writeable, and anything that is not a numpy array has no views, so both
+    are copied straight away instead.
+    """
+    return isinstance(array, numpy.ndarray) and not isinstance(
+        array, numpy.ma.MaskedArray
+    )
+
+
+def _read_only_view(array: numpy.ndarray) -> numpy.ndarray:
     """Return ``array`` as a view whose data cannot be written through.
 
     Used for arrays a storage shares with the one it was cloned from, until
@@ -15,8 +27,6 @@ def _read_only_view(array: ArrayLike) -> ArrayLike:
     read-only (such as a view shared from a further ancestor) is shared as
     it is.
     """
-    if not isinstance(array, numpy.ndarray):
-        return array.copy()
     if not array.flags.writeable:
         return array
     view = array.view()
@@ -36,7 +46,8 @@ class InMemoryStorage:
         self._arrays = {}
         # Keys of ``_arrays`` whose array still belongs to the storage this
         # one was cloned from with ``share_arrays``. ``get`` replaces each
-        # with a copy the first time it is read.
+        # with a copy the first time it is read. A key left here after code
+        # outside this class empties ``_arrays`` costs one extra copy at most.
         self._shared = set()
         self.is_eternal = is_eternal
 
@@ -49,7 +60,8 @@ class InMemoryStorage:
         arrays and copies an array only when it is first read through
         ``get``, so an array the clone never reads is never copied. What
         ``get`` returns is the clone's own array either way, so writing into
-        it in place does not change this storage.
+        it in place does not change this storage. (Masked arrays are copied
+        straight away: a view would share their mask.)
 
         The clone has its own index in both cases: ``put`` and ``delete`` on
         either storage replace or drop index entries without touching the
@@ -62,10 +74,12 @@ class InMemoryStorage:
         """
         clone = InMemoryStorage(self.is_eternal)
         if share_arrays:
-            clone._arrays = {
-                key: _read_only_view(array) for key, array in self._arrays.items()
-            }
-            clone._shared = set(clone._arrays)
+            for key, array in self._arrays.items():
+                if _can_share(array):
+                    clone._arrays[key] = _read_only_view(array)
+                    clone._shared.add(key)
+                else:
+                    clone._arrays[key] = array.copy()
         else:
             clone._arrays = {key: array.copy() for key, array in self._arrays.items()}
         return clone

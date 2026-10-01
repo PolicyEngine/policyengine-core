@@ -39,8 +39,12 @@ class _BranchClone:
 
     ``get_branch`` announces the clone it is about to make, and ``clone``
     shares the cached arrays with the copy (instead of copying them) only for
-    that simulation, and only once: any other ``clone`` call made meanwhile,
-    or after ``get_branch`` returns, copies as usual.
+    that simulation, and only once: the first ``clone`` of it while
+    ``get_branch`` runs. Any other ``clone`` call made meanwhile, or after
+    ``get_branch`` returns, copies as usual. A subclass's ``clone`` normally
+    reaches this class's ``clone`` once, through ``super().clone``; if it
+    first clones the same simulation directly, that clone is the one that
+    shares.
     """
 
     def __init__(self, simulation: "Simulation"):

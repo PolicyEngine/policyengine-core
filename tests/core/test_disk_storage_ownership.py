@@ -124,6 +124,8 @@ def test_branch_keeps_the_values_it_started_with(on_disk):
 
 def test_simulation_stores_on_disk_after_its_branch_storage_is_removed():
     simulation = _simulation()
+    # Branches made once the directory exists share it.
+    simulation.data_storage_dir
     branch = simulation.get_branch("branch")
     branch.set_input("salary", PERIOD, np.array([1.0]))
     del branch

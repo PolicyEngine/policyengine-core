@@ -1,11 +1,12 @@
-"""Auto-carry-over reads only values stored at the variable's definition period.
+"""Auto-carry-over never carries a derived cache stored in another unit.
 
-A YEAR variable also caches month values: ``calculate_divide`` stores a
-twelfth of the year's value, and the STOCK path stores the whole value. A
-MONTH variable caches year values: ``calculate_add`` stores the sum of its
-months. Since 3.24.0 auto-carry-over took the latest-starting known period
-of any unit, so once any month of 2024 had been requested, a YEAR input
-known only for 2024 carried a twelfth of its value into 2025.
+A YEAR flow variable requested for a month caches a twelfth of the year's
+value at that month (``calculate_divide``), and a MONTH flow variable
+requested for a year caches the sum of its months (``calculate_add``). STOCK
+variables cache nothing in another unit. Since 3.24.0 auto-carry-over took
+the latest-starting known period of any unit, so once a month of 2024 after
+January had been requested, a YEAR flow input known only for 2024 carried a
+twelfth of its value into 2025.
 
 policyengine-us computes ``monthly_age`` from ``age`` one month at a time.
 A microsimulation that calculated 2024 and then 2025 on a single-year
@@ -13,9 +14,16 @@ dataset therefore aged every person to a twelfth of their age in 2025. On a
 3,000-household Enhanced CPS subsample, 2025 federal income tax came to
 $31.6bn, against $1,846.9bn in a simulation that calculated only 2025.
 
+A period in another unit still counts when it was set as an input: a
+variable with no ``set_input`` helper, and every DAY variable, stores an
+input at whatever period it is given, and carry-over keeps using it.
+
 The invariant pinned here: what a simulation calculates for a later period
 does not depend on which earlier periods it calculated first. Each case
 compares against a fresh simulation that calculates only the later period.
+The YEAR flow cases fail on 3.24.0 to 3.32.11. The integer, boolean and
+STOCK year cases and the MONTH cases are controls: those variables never
+cached a rescaled value in another unit, so they pass on those versions too.
 """
 
 from __future__ import annotations
@@ -72,6 +80,40 @@ class carried_monthly_flow(Variable):
     label = "Monthly flow input with no formula and no uprating"
 
 
+class day_stock_input(Variable):
+    value_type = float
+    entity = entities.Person
+    definition_period = periods.DAY
+    quantity_type = QuantityType.STOCK
+    label = "Daily stock input; DAY variables have no set_input helper"
+
+
+class month_stock_input_without_helper(Variable):
+    value_type = float
+    entity = entities.Person
+    definition_period = periods.MONTH
+    quantity_type = QuantityType.STOCK
+    set_input = None
+    label = "Monthly stock input with no set_input helper"
+
+
+class year_stock_input_without_helper(Variable):
+    value_type = float
+    entity = entities.Person
+    definition_period = periods.YEAR
+    quantity_type = QuantityType.STOCK
+    set_input = None
+    label = "Yearly stock input with no set_input helper"
+
+
+class year_flow_input_without_helper(Variable):
+    value_type = float
+    entity = entities.Person
+    definition_period = periods.YEAR
+    set_input = None
+    label = "Yearly flow input with no set_input helper"
+
+
 YEAR_INPUTS = {
     "carried_flow": np.array([40.0, 6.0]),
     "carried_stock": np.array([40.0, 6.0]),
@@ -90,6 +132,10 @@ def system():
         carried_count,
         carried_flag,
         carried_monthly_flow,
+        day_stock_input,
+        month_stock_input_without_helper,
+        year_stock_input_without_helper,
+        year_flow_input_without_helper,
     )
     return system
 
@@ -214,3 +260,39 @@ def test_month_input_carries_latest_month_not_year_sum(system):
     np.testing.assert_array_equal(
         simulation.calculate("carried_monthly_flow", "2025-02"), [12.0, 111.0]
     )
+
+
+# Inputs stored at a period in another unit than the definition period, as a
+# variable with no set_input helper keeps them, and the later period asked.
+OFF_UNIT_INPUTS = [
+    ("day_stock_input", "2024-12", "2025-01-01"),
+    ("month_stock_input_without_helper", str(BASE_YEAR), "2025-01"),
+    ("year_stock_input_without_helper", MONTHS[-1], "2025"),
+    ("year_flow_input_without_helper", MONTHS[-1], "2025"),
+]
+
+
+@pytest.mark.parametrize(
+    "variable,input_period,later_period", OFF_UNIT_INPUTS, ids=lambda x: str(x)
+)
+def test_input_in_another_unit_still_carries_over(
+    system, variable, input_period, later_period
+):
+    simulation = _simulation(system, {variable: {input_period: [24.0, 7.0]}})
+    np.testing.assert_array_equal(
+        simulation.calculate(variable, later_period), [24.0, 7.0]
+    )
+
+
+@pytest.mark.parametrize(
+    "variable,input_period,later_period", OFF_UNIT_INPUTS, ids=lambda x: str(x)
+)
+def test_input_in_another_unit_set_on_a_branch_carries_over_there(
+    system, variable, input_period, later_period
+):
+    simulation = _simulation(system, {})
+    branch = simulation.get_branch("reform")
+    branch.set_input(variable, input_period, [24.0, 7.0])
+    np.testing.assert_array_equal(branch.calculate(variable, later_period), [24.0, 7.0])
+    nested = branch.get_branch("nested")
+    np.testing.assert_array_equal(nested.calculate(variable, later_period), [24.0, 7.0])

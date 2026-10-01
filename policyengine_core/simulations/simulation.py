@@ -865,22 +865,12 @@ class Simulation:
             # If no result, use the default value and cache it
             if array is None:
                 # Check if the variable has a previously defined value
-                # Only a value stored at the variable's own definition period
-                # can stand in for another period. A YEAR variable also caches
-                # month values (``calculate_divide`` stores a twelfth of the
-                # year's value, the STOCK path the whole value) and a MONTH
-                # variable caches year values (``calculate_add`` stores the sum
-                # of the months). Those are derived from a stored value, so
-                # carrying one forward would rescale the variable.
-                known_periods = [
-                    known_period
-                    for known_period in holder.get_known_periods()
-                    if known_period.unit == variable.definition_period
-                ]
+                known_periods = holder.get_known_periods()
                 earlier_known_periods = [
                     known_period
                     for known_period in known_periods
-                    if known_period.start < period.start
+                    if known_period.unit == variable.definition_period
+                    and known_period.start < period.start
                 ]
                 if variable.uprating is not None and len(earlier_known_periods) > 0:
                     # Take the latest period from the filtered list itself.
@@ -925,17 +915,38 @@ class Simulation:
                 ):
                     # Variables with a calculate-output property specify
                     # Sort by period.start (temporal order). Sorting Period
-                    # tuples lexicographically compares their unit strings
-                    # first (bug H1). Every period here has the definition
-                    # period's unit, so a twelfth of a year's value cached at
-                    # "2024-12" cannot stand in for "2025".
-                    last_known_period = max(known_periods, key=lambda p: p.start)
-                    if last_known_period.start > period.start:
-                        return holder.default_array()
-                    # Pass branch_name through so auto-carry-over respects the
-                    # active branch instead of reaching for the "default"
-                    # branch's cache (bug H2).
-                    array = holder.get_array(last_known_period, self.branch_name)
+                    # tuples lexicographically puts "year" before "month"
+                    # alphabetically, so a known "2023" annual value would
+                    # win over a later "2024-06" monthly value (bug H1).
+                    #
+                    # A period in a unit other than the definition period only
+                    # counts if it was set as an input (with no ``set_input``
+                    # helper, an input is stored at whatever period it is
+                    # given). Otherwise it is a derived cache: a YEAR flow
+                    # requested for a month caches a twelfth of the year's
+                    # value there (``calculate_divide``), and a MONTH flow
+                    # requested for a year caches the sum of its months
+                    # (``calculate_add``). Carrying one of those forward
+                    # rescales the variable.
+                    input_periods = self._get_user_input_periods(variable.name)
+                    carry_over_periods = [
+                        known_period
+                        for known_period in known_periods
+                        if known_period.unit == variable.definition_period
+                        or known_period in input_periods
+                    ]
+                    if carry_over_periods:
+                        last_known_period = max(
+                            carry_over_periods, key=lambda p: p.start
+                        )
+                        if last_known_period.start > period.start:
+                            return holder.default_array()
+                        # Pass branch_name through so auto-carry-over respects
+                        # the active branch instead of reaching for the
+                        # "default" branch's cache (bug H2).
+                        array = holder.get_array(last_known_period, self.branch_name)
+                    else:
+                        array = holder.default_array()
                 else:
                     array = holder.default_array()
 
@@ -1715,6 +1726,19 @@ class Simulation:
         branch_names.append("default")
         return list(dict.fromkeys(branch_names))
 
+    def _get_user_input_periods(self, variable_name: str) -> set:
+        """Periods at which ``variable_name`` was set as an input on a branch
+        this simulation reads."""
+        visible_branch_names = self._get_visible_branch_names()
+        return {
+            period
+            for input_variable_name, branch_name, period in getattr(
+                self, "_user_input_keys", set()
+            )
+            if input_variable_name == variable_name
+            and branch_name in visible_branch_names
+        }
+
     def _get_exportable_input_periods(
         self,
         variable_name: str,
@@ -1726,14 +1750,7 @@ class Simulation:
         if not self._is_exportable_input_variable(variable_name):
             return []
 
-        user_input_periods = {
-            period
-            for input_variable_name, branch_name, period in getattr(
-                self, "_user_input_keys", set()
-            )
-            if input_variable_name == variable_name
-            and branch_name in self._get_visible_branch_names()
-        }
+        user_input_periods = self._get_user_input_periods(variable_name)
         if not user_input_periods:
             return []
         variable = self.tax_benefit_system.get_variable(variable_name)

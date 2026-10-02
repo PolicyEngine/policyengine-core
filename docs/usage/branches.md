@@ -58,16 +58,19 @@ values were all stored earlier) and records again the inputs it keeps, unless a
 formula is still running in the branch: such a formula may hold, in its own
 variables, a value it read before the drop, so the records stay. A
 calculation that was running then (one whose formula sets an input, say) may
-have read the replaced value, so its result is not kept; `calculate` runs it
-once more from the new inputs and keeps that result, so uprating and
-carry-over find its period as they would had the input come first. If the
-second run changes an input again, its result is returned but not kept. An
-input set for the very period being calculated, while it is calculated, is
-the result, as it would be had it been set first.
+have read the replaced value, so its result is not kept; `calculate` (and a
+direct `calculate_add`) runs it again from the new inputs until a run changes
+no input, and keeps that result, so uprating and carry-over find its period as
+they would had the inputs come first. A formula that changes an input on every
+run stops after ten reruns; its last result is returned but not kept. An input
+set for the very period being calculated, while it is calculated (under the
+branch's name, or any it reads, such as `default` through
+`Holder.set_input`), is the result, as it would be had it been set first.
 
 A custom `set_input` handler that calculates values between its own stores
-calculates them from inputs it has not yet replaced, so the branch drops
-again, by the same rule, once the handler returns.
+calculates them from inputs it has not yet replaced, so if it calculated
+anything, the branch drops again, by the same rule, once the handler returns
+or raises (the inputs it stored before raising stay).
 
 If there is no such record, the branch drops nothing. That is the case when a
 formula creates the branch while it is still calculating the variable the
@@ -145,12 +148,15 @@ calculated from, nor what was read without being kept, so the restored
 simulation records that values from that number on may depend on anything:
 an input set for any variable on a branch of it drops all of them. A dump
 written before inputs were recorded is restored with every value as an
-input, as before, so such values never drop.
+input, as before, so such values never drop. With disk storage, a branch whose
+name contains `_` cannot be dumped yet: `OnDiskStorage.get_known_periods`
+splits its keys on every `_` (as on master).
 
-Two related behaviours: a branch whose input dropped values stops reading
-macro-cache files, which are keyed by branch and period but not by inputs
-(and a branch that read one drops, on any input, everything calculated from
-the first read on); and
+Two related behaviours: a branch stops reading macro-cache files once an input
+is set on it, since they are keyed by branch name and period but not by inputs
+(a file for its name may have been written by this branch before the input, or
+by another simulation's branch of the same name), and a branch that read one
+drops, on any input, everything calculated from the first read on; and
 `requires_computation_after` is satisfied by a prerequisite requested before a
 drop removed its values.
 

@@ -878,6 +878,124 @@ def test_result_calculated_again_is_kept_for_carry_over():
     assert branch.calculate("source", "2022").tolist() == [3.0]  # carried over
 
 
+def test_result_is_calculated_again_until_no_input_changes():
+    """Each run may change another input it read; the kept result follows the last."""
+    from policyengine_core.country_template import entities
+    from policyengine_core.variables import Variable
+
+    def flag(name):
+        return type(
+            name,
+            (Variable,),
+            dict(
+                value_type=float,
+                entity=entities.Person,
+                definition_period=periods.YEAR,
+                label=name,
+            ),
+        )
+
+    class source(Variable):
+        value_type = float
+        entity = entities.Person
+        definition_period = periods.YEAR
+        label = "source"
+
+        def formula_2021(person, period):
+            for name in ("first_flag", "second_flag"):
+                if np.any(person(name, "2021") == 0):
+                    person.simulation.set_input(name, "2021", np.ones(person.count))
+                    break
+            return np.full(person.count, 3.0)
+
+        def formula_2022(person, period):
+            return None
+
+    system = _one_person_system(flag("first_flag"), flag("second_flag"), source)
+    system.auto_carry_over_input_variables = True
+    root = SimulationBuilder().build_default_simulation(system)
+    root.set_input("first_flag", "2021", np.array([0.0]))
+    root.set_input("second_flag", "2021", np.array([0.0]))
+    branch = root.get_branch("branch")
+
+    assert branch.calculate("source", "2021").tolist() == [3.0]
+    assert branch.calculate("source", "2022").tolist() == [3.0]  # carried over
+
+
+def test_direct_sum_is_taken_again_when_a_term_changes_an_earlier_input():
+    from policyengine_core.country_template import entities
+    from policyengine_core.variables import Variable
+
+    class source(Variable):
+        value_type = float
+        entity = entities.Person
+        definition_period = periods.MONTH
+        label = "source"
+
+    class result(Variable):
+        value_type = float
+        entity = entities.Person
+        definition_period = periods.MONTH
+        label = "result"
+
+        def formula(person, period):
+            if str(period) == "2020-02":
+                january = person("source", "2020-01")
+                if np.any(january == 1):
+                    person.simulation.set_input(
+                        "source", "2020-01", np.full(person.count, 3.0)
+                    )
+            return person("source", period)
+
+    system = _one_person_system(source, result)
+    root = SimulationBuilder().build_default_simulation(system)
+    for month in periods.period("2020").get_subperiods(periods.MONTH):
+        root.set_input("source", month, np.array([1.0]))
+    branch = root.get_branch("branch")
+
+    assert branch.calculate_add("result", "2020").tolist() == [14.0]
+
+
+def test_input_a_formula_sets_wins_over_a_carried_over_default():
+    """A formula returning None after setting its own period's input."""
+    from policyengine_core.country_template import entities
+    from policyengine_core.variables import Variable
+
+    class source(Variable):
+        value_type = float
+        entity = entities.Person
+        definition_period = periods.YEAR
+        label = "source"
+
+        def formula_2020(person, period):
+            person.simulation.set_input("source", period, np.full(person.count, 3.0))
+            return None
+
+    system = _one_person_system(source)
+    system.auto_carry_over_input_variables = True
+    root = SimulationBuilder().build_default_simulation(system)
+    root.set_input("source", "2021", np.array([9.0]))  # later: no carry-over
+    branch = root.get_branch("branch")
+
+    assert branch.calculate("source", "2020").tolist() == [3.0]
+
+
+def test_input_set_under_the_default_key_during_a_branch_calculation_wins():
+    """Holder.set_input stores under "default", which the branch reads."""
+
+    def source(person, period):
+        person.simulation.get_holder("source").set_input(
+            period, np.full(person.count, 3.0)
+        )
+        return np.ones(person.count)
+
+    system = _one_person_system(_yearly_variable("source", source))
+    branch = SimulationBuilder().build_default_simulation(system).get_branch("b")
+
+    assert branch.calculate("source", "2020").tolist() == [3.0]
+    assert branch.calculate("source", "2020").tolist() == [3.0]
+
+
 def test_input_a_formula_sets_for_its_own_period_wins():
     """As it would had the input been set before the calculation."""
 
@@ -928,6 +1046,89 @@ def test_input_handler_that_calculates_between_its_stores():
     branch.set_input("source", "2020", np.array([3.0]))
 
     assert branch.calculate("total", "2020").tolist() == [6.0]
+
+
+def test_input_handler_that_fails_after_calculating():
+    """The inputs it stored stay, so what it calculated before them drops."""
+    from policyengine_core.country_template import entities
+    from policyengine_core.variables import Variable
+
+    def two_months_then_fail(holder, period, array):
+        holder._set(period.first_month, array)
+        holder.simulation.calculate("total", period)
+        holder._set(period.first_month.offset(1), array)
+        raise RuntimeError("handler failed")
+
+    class source(Variable):
+        value_type = float
+        entity = entities.Person
+        definition_period = periods.MONTH
+        label = "source"
+        set_input = two_months_then_fail
+
+    class total(Variable):
+        value_type = float
+        entity = entities.Person
+        definition_period = periods.YEAR
+        label = "total"
+
+        def formula(person, period):
+            first = period.first_month
+            return person("source", first) + person("source", first.offset(1))
+
+    system = _one_person_system(source, total)
+    root = SimulationBuilder().build_default_simulation(system)
+    root.set_input("source", "2020-01", np.array([1.0]))
+    root.set_input("source", "2020-02", np.array([1.0]))
+    branch = root.get_branch("branch")
+    with pytest.raises(RuntimeError, match="handler failed"):
+        branch.set_input("source", "2020", np.array([3.0]))
+
+    assert branch.calculate("total", "2020").tolist() == [6.0]
+
+
+def test_branch_input_stops_macro_reads_before_any_read(monkeypatch):
+    """A macro file for the branch's name may come from a branch without the input."""
+    import policyengine_core.simulations.simulation as simulation_module
+
+    class CachedResult:
+        def __init__(self, tax_benefit_system):
+            pass
+
+        def set_cache_path(self, *args):
+            pass
+
+        def get_cache_path(self):
+            return type("Path", (), {"exists": lambda self: True})()
+
+        def get_cache_value(self, path):
+            return np.array([2.0])  # written by another simulation's "override"
+
+        def set_cache_value(self, path, value):
+            pass
+
+    monkeypatch.setattr(simulation_module, "SimulationMacroCache", CachedResult)
+    system = _one_person_system(
+        _yearly_variable("source", lambda person, period: np.ones(person.count)),
+        _yearly_variable("result", lambda person, period: person("source", period) * 2),
+        _yearly_variable("total", lambda person, period: person("result", period) * 2),
+    )
+    simulation = SimulationBuilder().build_default_simulation(system)
+    system.data_modified = False
+    simulation.macro_cache_read = True
+    simulation.dataset = type(
+        "Dataset", (), {"file_path": simulation_module.Path("cache"), "name": "d"}
+    )()
+    monkeypatch.setattr(
+        type(simulation),
+        "check_macro_cache",
+        lambda self, variable, period: variable == "result",
+    )
+
+    branch = simulation.get_branch("override")
+    branch.set_input("source", "2020", np.array([3.0]))  # before any calculation
+
+    assert branch.calculate("total", "2020").tolist() == [12.0]
 
 
 def test_macro_cache_read_counts_as_depending_on_every_input(monkeypatch):

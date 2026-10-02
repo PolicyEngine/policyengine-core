@@ -129,6 +129,12 @@ _formula_simulation: ContextVar[Optional["Simulation"]] = ContextVar(
     "_formula_simulation", default=None
 )
 
+# How many times ``calculate`` runs a calculation again when an input set on
+# the simulation while it ran (by a formula, say) dropped values. A formula
+# that changes an input on every run is kept from looping; its last result is
+# returned but not kept.
+_RERUNS_AFTER_INPUT_CHANGE = 10
+
 
 class Simulation:
     """
@@ -611,15 +617,21 @@ class Simulation:
         # local variables; a drop meanwhile must not forget what they came
         # from (see ``_drop_computed``).
         self._calculations_in_flight = getattr(self, "_calculations_in_flight", 0) + 1
+        # Lets a custom ``set_input`` handler tell whether it calculated.
+        self._calculations_started = getattr(self, "_calculations_started", 0) + 1
         try:
             input_epoch = getattr(self, "_input_epoch", 0)
             result = self._calculate(variable_name, period)
-            if input_epoch != getattr(self, "_input_epoch", 0):
+            for _ in range(_RERUNS_AFTER_INPUT_CHANGE):
+                if input_epoch == getattr(self, "_input_epoch", 0):
+                    break
                 # An input set here while it ran (by a formula, say) dropped
                 # values, so the result was not kept (``_cache_result``).
-                # Calculate it once more from the new inputs and keep it, as
-                # a simulation given those inputs first would: later
-                # uprating and carry-over look for the periods held.
+                # Calculate it again from the new inputs, until a run changes
+                # none, and keep that result, as a simulation given those
+                # inputs first would: later uprating and carry-over look for
+                # the periods held.
+                input_epoch = getattr(self, "_input_epoch", 0)
                 result = self._calculate(variable_name, period)
             # Satisfies ``requires_computation_after`` from now on, even if a
             # branch input later drops the values.
@@ -937,6 +949,13 @@ class Simulation:
                     # win over a later "2024-06" monthly value (bug H1).
                     last_known_period = max(known_periods, key=lambda p: p.start)
                     if last_known_period.start > period.start:
+                        stored_input = (
+                            self._input_set_meanwhile(holder, period, input_state)
+                            if input_state[1] != getattr(self, "_inputs_set", 0)
+                            else None
+                        )
+                        if stored_input is not None:
+                            return stored_input
                         return holder.default_array()
                     # Pass branch_name through so auto-carry-over respects the
                     # active branch instead of reaching for the "default"
@@ -989,6 +1008,21 @@ class Simulation:
         """How many drops ran during calculations, and inputs were set, here."""
         return getattr(self, "_input_epoch", 0), getattr(self, "_inputs_set", 0)
 
+    def _input_set_meanwhile(
+        self, holder: Holder, period: Period, input_state: Tuple[int, int]
+    ) -> Optional[ArrayLike]:
+        """The input this simulation reads for ``period``, if one was set during the calculation.
+
+        Only called once an input was set since ``input_state``. A value the
+        simulation could read for ``period`` when the calculation began
+        would have been returned without calculating, so an input it reads
+        now was set meanwhile, under any branch name it reads.
+        """
+        stored_on = holder._branch_holding(period, self.branch_name)
+        if stored_on is not None and holder._is_input(period, stored_on):
+            return holder._get_array_from_storage(period, stored_on)
+        return None
+
     def _cache_result(
         self,
         holder: Holder,
@@ -1006,10 +1040,10 @@ class Simulation:
         result is returned but not kept (see ``_drop_computed``).
         """
         epoch, inputs_set = input_state
-        if inputs_set != getattr(self, "_inputs_set", 0) and holder._is_input(
-            period, self.branch_name
-        ):
-            return holder.get_array(period, self.branch_name)
+        if inputs_set != getattr(self, "_inputs_set", 0):
+            stored_input = self._input_set_meanwhile(holder, period, input_state)
+            if stored_input is not None:
+                return stored_input
         if epoch == getattr(self, "_input_epoch", 0):
             holder.put_in_cache(array, period, self.branch_name)
         else:
@@ -1066,11 +1100,21 @@ class Simulation:
                 )
             )
 
+        def total():
+            return sum(
+                self.calculate(variable_name, sub_period)
+                for sub_period in period.get_subperiods(variable.definition_period)
+            )
+
         input_state = self._input_state()
-        result = sum(
-            self.calculate(variable_name, sub_period)
-            for sub_period in period.get_subperiods(variable.definition_period)
-        )
+        result = total()
+        for _ in range(_RERUNS_AFTER_INPUT_CHANGE):
+            if input_state[0] == getattr(self, "_input_epoch", 0):
+                break
+            # An input changed while summing: earlier terms may be obsolete
+            # (see ``calculate``). Sum again.
+            input_state = self._input_state()
+            result = total()
         holder = self.get_holder(variable.name)
         return self._cache_result(holder, result, period, input_state)
 
@@ -1492,11 +1536,12 @@ class Simulation:
         calculated from the variable; then only what came back from there,
         and what was calculated after, is dropped.
 
-        After such a drop the branch stops reading macro-cache files, which
-        are keyed by branch and period but not by inputs. A calculation that
-        was running in the branch when its input changed is run once more
-        from the new inputs, and an input set for the very period it
-        calculates is its result.
+        Once an input is set on it, the branch stops reading macro-cache
+        files, which are keyed by branch name and period but not by inputs.
+        A calculation that was running in the branch when its input changed
+        is run again from the new inputs until a run changes none (at most
+        ten times; after that its result is returned but not kept), and an
+        input set for the very period it calculates is its result.
 
         What this does not track: a branch given a different tax-benefit
         system or parameters (call :meth:`drop_computed_arrays` on it);
@@ -1564,6 +1609,11 @@ class Simulation:
         """
         if getattr(self, "parent_branch", None) is None:
             return 0
+        # Macro-cache files are keyed by branch and period, not by inputs, so
+        # a file for this branch's name (written by this branch, or by another
+        # simulation's branch of the same name) may hold values calculated
+        # without this input, even before the branch has read any.
+        self.macro_cache_read = False
         since = self._get_store_history().earliest_dependency(
             variable_name, periods.period(period)
         )
@@ -1573,9 +1623,6 @@ class Simulation:
             since = 0
         if since is None:
             return 0
-        # Macro-cache files are keyed by branch and period, not by inputs, so
-        # those this branch wrote may hold values calculated from the old one.
-        self.macro_cache_read = False
         return self._drop_computed(since)
 
     def _drop_computed(self, since: Optional[int] = None) -> int:

@@ -339,14 +339,20 @@ class Holder:
                 self.variable.set_input
                 and period.unit != self.variable.definition_period
             ):
-                self.variable.set_input(self, period, array)
-                if simulation is not None:
-                    # The handler may have calculated values between its
-                    # stores, from inputs it had not yet replaced.
-                    simulation._drop_values_that_may_depend_on(
-                        self.variable.name, period
-                    )
-                return
+                started = getattr(simulation, "_calculations_started", 0)
+                try:
+                    return self.variable.set_input(self, period, array)
+                finally:
+                    if (
+                        simulation is not None
+                        and getattr(simulation, "_calculations_started", 0) != started
+                    ):
+                        # The handler calculated, maybe between its stores,
+                        # from inputs it had not yet replaced (also if it
+                        # then failed: the inputs it stored stay).
+                        simulation._drop_values_that_may_depend_on(
+                            self.variable.name, period
+                        )
             return self._set(period, array, branch_name, validate_nan=True)
         finally:
             if simulation is not None:

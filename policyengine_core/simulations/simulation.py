@@ -1,5 +1,6 @@
 import hashlib
 import tempfile
+from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 
@@ -135,13 +136,32 @@ _formula_simulation: ContextVar[Optional["Simulation"]] = ContextVar(
 # returned but not kept.
 _RERUNS_AFTER_INPUT_CHANGE = 10
 
-# Counts drops made while calculations were running (``_drop_computed``), in
-# any simulation. A result calculated across one, wherever it happened, may
-# come from the replaced value (a formula in one simulation can calculate in
-# another, which calls back into the first), so it is not kept. Each
-# simulation also counts its own (``_input_epoch``): those decide which
-# calculation runs again.
-_input_epoch_anywhere = [0]
+# The calculations running in this context, innermost last, as (simulation,
+# frame) pairs. A frame notes whether its result was not kept, or whether a
+# calculation it called returned a result that was not kept: either way what
+# it returns may come from a replaced value, so its caller does not keep its
+# own result either (see ``_cache_result``).
+_calculation_frames: ContextVar[tuple] = ContextVar("_calculation_frames", default=())
+
+
+def _family_root(simulation: "Simulation") -> "Simulation":
+    while getattr(simulation, "parent_branch", None) is not None:
+        simulation = simulation.parent_branch
+    return simulation
+
+
+@contextmanager
+def _calculation_frame(simulation: "Simulation"):
+    """Run a calculation in a new frame of ``_calculation_frames``."""
+    frames = _calculation_frames.get()
+    frame = {"received": False, "refused": False}
+    token = _calculation_frames.set(frames + ((simulation, frame),))
+    try:
+        yield frame
+    finally:
+        _calculation_frames.reset(token)
+        if frames and (frame["received"] or frame["refused"]):
+            frames[-1][1]["received"] = True
 
 
 class Simulation:
@@ -628,6 +648,8 @@ class Simulation:
         # an input change here: running it again runs the inner ones too.
         outermost = not getattr(self, "_calculations_in_flight", 0)
         self._calculations_in_flight = getattr(self, "_calculations_in_flight", 0) + 1
+        frame_context = _calculation_frame(self)
+        frame = frame_context.__enter__()
         try:
             input_epoch = getattr(self, "_input_epoch", 0)
             result = self._calculate(variable_name, period)
@@ -641,6 +663,7 @@ class Simulation:
                 # inputs first would: later uprating and carry-over look for
                 # the periods held.
                 input_epoch = getattr(self, "_input_epoch", 0)
+                frame["received"] = frame["refused"] = False
                 result = self._calculate(variable_name, period)
             # Satisfies ``requires_computation_after`` from now on, even if a
             # branch input later drops the values.
@@ -661,6 +684,7 @@ class Simulation:
                 self._share_store_history_with_caller()
             finally:
                 self._calculations_in_flight -= 1
+                frame_context.__exit__(None, None, None)
                 self.tracer.record_calculation_end()
                 self.purge_cache_of_invalid_values()
 
@@ -865,7 +889,7 @@ class Simulation:
                 values = self.calculate_divide(variable_name, period)
 
         if alternate_period_handling:
-            if is_cache_available and input_state[:2] == self._input_state():
+            if is_cache_available and self._may_keep(input_state):
                 smc.set_cache_value(cache_path, values)
             return values
 
@@ -1009,7 +1033,7 @@ class Simulation:
 
         # Neither cache keeps a result an input change may have made obsolete
         # (see ``_cache_result``).
-        unchanged = input_state[:2] == self._input_state()
+        unchanged = self._may_keep(input_state)
         if is_cache_available and unchanged:
             smc.set_cache_value(cache_path, array)
 
@@ -1020,7 +1044,14 @@ class Simulation:
 
     def _input_state(self) -> Tuple[int, int]:
         """How many drops ran during calculations, and inputs were set, here."""
-        return _input_epoch_anywhere[0], getattr(self, "_inputs_set", 0)
+        return getattr(self, "_cache_epoch", 0), getattr(self, "_inputs_set", 0)
+
+    def _may_keep(self, input_state: Tuple[int, int, int]) -> bool:
+        """Whether a result calculated since ``input_state`` may be kept (see ``_cache_result``)."""
+        frames = _calculation_frames.get()
+        return input_state[:2] == self._input_state() and not (
+            frames and frames[-1][1]["received"]
+        )
 
     def _calculation_start(self) -> Tuple[int, int, int]:
         """:meth:`_input_state` when a calculation begins, and a sequence number then."""
@@ -1065,11 +1096,15 @@ class Simulation:
             stored_input = self._input_set_meanwhile(holder, period, started_at)
             if stored_input is not None:
                 return stored_input
-        if epoch == _input_epoch_anywhere[0]:
+        frames = _calculation_frames.get()
+        received = bool(frames) and frames[-1][1]["received"]
+        if epoch == getattr(self, "_cache_epoch", 0) and not received:
             holder.put_in_cache(array, period, self.branch_name)
         else:
             # Not kept, but whatever reads it is stored after it all the same.
             holder._record_store(period, next_sequence_number())
+            if frames:
+                frames[-1][1]["refused"] = True
         return array
 
     def purge_cache_of_invalid_values(self) -> None:
@@ -1133,21 +1168,23 @@ class Simulation:
         outermost = not getattr(self, "_calculations_in_flight", 0)
         self._calculations_in_flight = getattr(self, "_calculations_in_flight", 0) + 1
         try:
-            input_epoch = getattr(self, "_input_epoch", 0)
-            input_state = self._calculation_start()
-            result = total()
-            for _ in range(_RERUNS_AFTER_INPUT_CHANGE if outermost else 0):
-                if input_epoch == getattr(self, "_input_epoch", 0):
-                    break
-                # An input changed while summing: earlier terms may be
-                # obsolete (see ``calculate``). Sum again.
+            with _calculation_frame(self) as frame:
                 input_epoch = getattr(self, "_input_epoch", 0)
                 input_state = self._calculation_start()
                 result = total()
+                for _ in range(_RERUNS_AFTER_INPUT_CHANGE if outermost else 0):
+                    if input_epoch == getattr(self, "_input_epoch", 0):
+                        break
+                    # An input changed while summing: earlier terms may be
+                    # obsolete (see ``calculate``). Sum again.
+                    input_epoch = getattr(self, "_input_epoch", 0)
+                    frame["received"] = frame["refused"] = False
+                    input_state = self._calculation_start()
+                    result = total()
+                holder = self.get_holder(variable.name)
+                return self._cache_result(holder, result, period, input_state)
         finally:
             self._calculations_in_flight -= 1
-        holder = self.get_holder(variable.name)
-        return self._cache_result(holder, result, period, input_state)
 
     def calculate_divide(
         self,
@@ -1176,11 +1213,12 @@ class Simulation:
             )
 
         if period.unit == periods.MONTH:
-            input_state = self._calculation_start()
-            computation_period = period.this_year
-            result = self.calculate(variable_name, period=computation_period) / 12.0
-            holder = self.get_holder(variable.name)
-            return self._cache_result(holder, result, period, input_state)
+            with _calculation_frame(self):
+                input_state = self._calculation_start()
+                computation_period = period.this_year
+                result = self.calculate(variable_name, period=computation_period) / 12.0
+                holder = self.get_holder(variable.name)
+                return self._cache_result(holder, result, period, input_state)
         elif period.unit == periods.YEAR:
             return self.calculate(variable_name, period)
 
@@ -1673,7 +1711,16 @@ class Simulation:
             # simulations calling into this one (``_cache_result``); the
             # outermost one here runs again (``calculate``).
             self._input_epoch = getattr(self, "_input_epoch", 0) + 1
-            _input_epoch_anywhere[0] += 1
+            self._cache_epoch = getattr(self, "_cache_epoch", 0) + 1
+            # Calculations of this family running in this context, in other
+            # simulations, may hold values read from this one before the
+            # drop (a parent formula that read its branch, then called into
+            # it): keep none of their results either. Other families get
+            # only what calculations return here (``_calculation_frames``).
+            root = _family_root(self)
+            for simulation, _ in _calculation_frames.get():
+                if simulation is not self and _family_root(simulation) is root:
+                    simulation._cache_epoch = getattr(simulation, "_cache_epoch", 0) + 1
             return dropped
         # Nothing the simulation still holds was calculated from what the
         # records numbered ``since`` or later describe, except the inputs it

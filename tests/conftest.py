@@ -29,8 +29,8 @@ def _diag_parameter_trace(request):
     for obj in gc.get_objects():
         if (
             type(obj) is ParameterNode
-            and obj.name == ""
-            and obj.trace
+            and getattr(obj, "name", None) == ""
+            and getattr(obj, "trace", False)
             and id(obj) not in _DIAG_TRACED
         ):
             _DIAG_TRACED.add(id(obj))

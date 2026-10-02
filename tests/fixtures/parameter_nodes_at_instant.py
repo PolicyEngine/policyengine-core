@@ -6,6 +6,8 @@ without using ``ParameterNodeAtInstant``. ``materialise`` reads the same
 thing out of a ``ParameterNodeAtInstant``.
 """
 
+import numpy as np
+
 from policyengine_core.parameters import (
     Parameter,
     ParameterNode,
@@ -73,14 +75,24 @@ def build_tree() -> ParameterNode:
 
 def describe(value):
     """A comparable form of one at-instant value."""
-    if isinstance(value, (dict, int, float, bool, str)) or value is None:
+    if isinstance(value, (int, float, bool, str)) or value is None:
         return value
-    # Tax scales refuse ``==``.
-    return (
-        type(value).__name__,
-        tuple(value.thresholds),
-        tuple(getattr(value, "rates", getattr(value, "amounts", ()))),
-    )
+    if isinstance(value, (list, tuple)):
+        return tuple(describe(item) for item in value)
+    if isinstance(value, dict):
+        return {key: describe(item) for key, item in value.items()}
+    if hasattr(value, "thresholds"):
+        # Tax scales refuse ``==``.
+        return (
+            type(value).__name__,
+            tuple(value.thresholds),
+            tuple(getattr(value, "rates", getattr(value, "amounts", ()))),
+        )
+    if isinstance(value, np.ndarray):
+        return ("ndarray", str(value.dtype), value.tolist())
+    if isinstance(value, np.generic):
+        return value.item()
+    return (type(value).__name__, repr(value))
 
 
 def snapshot(node: ParameterNode, instant_str: str) -> dict:

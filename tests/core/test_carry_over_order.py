@@ -546,6 +546,44 @@ def test_marks_are_cleared_with_the_values_apply_reform_wipes(system):
     np.testing.assert_array_equal(built.calculate("carried", "2013"), [10, 10])
 
 
+def test_marks_are_cleared_with_in_memory_values_apply_reform_wipes(system):
+    built = simulation(system, {})
+    holder = built.get_holder("carried")
+    for year in range(2010, 2020):
+        built.calculate("carried", str(year))
+        built.apply_reform(_noop)
+    assert not holder._memory_storage._derived
+
+
+def test_rebuilding_a_disk_index_reads_files_as_inputs(system):
+    """A derived file replaced by an input, then re-indexed, is an input."""
+    built = simulation(system, {})
+    built.memory_config = MemoryConfig(max_memory_occupation=0)
+    holder = built.get_holder("carried")
+    holder._disk_storage = holder.create_disk_storage()
+    holder._on_disk_storable = True
+    built.calculate("carried", "2012")
+    assert holder.is_derived(periods.period("2012"))
+    writer = OnDiskStorage(holder._disk_storage.storage_dir, preserve_storage_dir=True)
+    writer.put(np.array([10.0, 10.0]), periods.period("2012"))
+    holder._disk_storage.restore()
+    assert not holder.is_derived(periods.period("2012"))
+    np.testing.assert_array_equal(built.calculate("carried", "2013"), [10, 10])
+
+
+def test_a_value_in_memory_takes_precedence_over_one_on_disk(system):
+    """``get_array`` reads memory before disk for the same key, and so does
+    the input test."""
+    built = simulation(system, {})
+    holder = built.get_holder("carried")
+    holder._disk_storage = holder.create_disk_storage()
+    year = periods.period("2012")
+    holder._disk_storage.put(np.array([0.0, 0.0]), year, derived=True)
+    holder._memory_storage.put(np.array([7.0, 8.0]), year)
+    assert year in holder.get_input_periods()
+    np.testing.assert_array_equal(built.calculate("carried", "2013"), [7, 8])
+
+
 @pytest.mark.parametrize("on_disk", [False, True], ids=["memory", "disk"])
 def test_storages_pickled_without_marks_still_work(on_disk, tmp_path):
     import pickle

@@ -175,14 +175,21 @@ def test_input_set_after_a_period_defaulted_still_carries(system):
     np.testing.assert_array_equal(built.calculate("carried", "2014"), [7, 8])
 
 
-def test_periods_with_no_earlier_input_are_cached(system):
-    built = simulation(system, {"carried_monthly": {"2013-06": [1, 2]}})
+def test_defaults_are_cached_as_before(system):
+    """With nothing stored, or only earlier calculated values, the default is
+    cached (as master cached the value it carried); before a later stored
+    period it is not (as master returned it)."""
+    built = simulation(system, {})
+    holder = built.get_holder("carried_monthly")
     for month in range(1, 13):
         for _ in range(2):
             built.calculate("carried_monthly", f"2012-{month:02d}")
-    holder = built.get_holder("carried_monthly")
     for month in range(1, 13):
         assert holder.get_array(periods.period(f"2012-{month:02d}")) is not None
+    built = simulation(system, {"carried_monthly": {"2013-06": [1, 2]}})
+    holder = built.get_holder("carried_monthly")
+    np.testing.assert_array_equal(built.calculate("carried_monthly", "2012-03"), [0, 0])
+    assert holder.get_array(periods.period("2012-03")) is None
 
 
 def test_branch_input_is_not_hidden_by_a_value_the_parent_carried(system):

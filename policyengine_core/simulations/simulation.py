@@ -989,10 +989,15 @@ class Simulation:
                         # the active branch instead of reaching for the
                         # "default" branch's cache (bug H2).
                         array = holder.get_array(last_known_period, self.branch_name)
-                    elif variable.uprating is not None:
-                        # Not cached: the uprating path above would take a
-                        # cached default as the value to uprate later periods
-                        # from.
+                    elif any(
+                        known_period.start > period.start
+                        for known_period in known_periods
+                    ):
+                        # No input to carry, but a later period is stored: as
+                        # before, return the default without caching it. A
+                        # cached default would change what a formula testing
+                        # whether a value is stored sees, and the uprating path
+                        # above would uprate later periods from it.
                         return holder.default_array()
                     else:
                         array = holder.default_array()

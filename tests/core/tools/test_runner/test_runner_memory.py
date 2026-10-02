@@ -145,3 +145,26 @@ def test_reform_cache_size_option_reaches_the_cache(tmp_path, monkeypatch):
     path = write_cases(tmp_path / "cases.yaml", 3)
     run_with_probe(CountryTaxBenefitSystem(), path, {"reform_cache_size": 0})
     assert seen == [0, 0, 0]
+
+
+@pytest.mark.parametrize(
+    "arguments, expected", [([], None), (["--reform-cache-size", "3"], 3)]
+)
+def test_command_line_passes_reform_cache_size(monkeypatch, arguments, expected):
+    from policyengine_core.scripts import policyengine_command, run_test
+
+    seen = {}
+
+    def fake_run_tests(tax_benefit_system, paths, options):
+        seen.update(options)
+        return 0
+
+    monkeypatch.setattr(run_test, "run_tests", fake_run_tests)
+    monkeypatch.setattr(run_test, "build_tax_benefit_system", lambda *args: object())
+    monkeypatch.setattr(
+        "sys.argv", ["policyengine-core", "test", "cases.yaml", *arguments]
+    )
+    with pytest.raises(SystemExit) as exit_info:
+        run_test.main(policyengine_command.get_parser())
+    assert exit_info.value.code == 0
+    assert seen["reform_cache_size"] == expected

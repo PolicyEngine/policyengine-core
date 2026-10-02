@@ -103,6 +103,16 @@ def run_tests(tax_benefit_system, paths, options=None):
     +-------------------------------+-----------+ See :any:`openfisca_test` options doc +
     | name_filter                   | ``str``   |                                           |
     +-------------------------------+-----------+-------------------------------------------+
+    | reform_cache_size             | ``int``   | Reform systems kept cached (default 2)    |
+    +-------------------------------+-----------+-------------------------------------------+
+
+    **Memory**: a case that names ``reforms`` or ``extensions``, or sets a
+    parameter with a dotted input key, runs on a system built for that
+    combination, which is a full copy of ``tax_benefit_system``. The runner
+    keeps the ``reform_cache_size`` most recently used of them and the
+    reform-free system every other case shares, and each case releases its
+    simulation when it finishes, so memory does not grow with the number of
+    cases or of distinct combinations.
 
     """
 

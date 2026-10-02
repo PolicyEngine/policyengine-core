@@ -1112,6 +1112,134 @@ def test_input_handler_calling_calculate_directly_still_drops():
     assert branch(handler_input=True).calculate("source", "2020-03").tolist() == [3.0]
 
 
+@pytest.mark.parametrize("mode", ["calculate", "add", "divide"])
+def test_result_refused_in_one_simulation_is_not_kept_by_its_caller_in_another(mode):
+    """A parent formula calling into a branch whose formula changes its own input."""
+    from policyengine_core.country_template import entities
+    from policyengine_core.variables import Variable
+
+    def variable(name, formula=None, definition_period=periods.YEAR):
+        namespace = dict(
+            value_type=float,
+            entity=entities.Person,
+            definition_period=definition_period,
+            label=name,
+        )
+        if formula is not None:
+            namespace["formula"] = formula
+        return type(name, (Variable,), namespace)
+
+    def leaf(person, period):
+        previous = person("source", period.this_year)
+        if np.any(previous != 3.0):
+            person.simulation.set_input(
+                "source", period.this_year, np.full(person.count, 3.0)
+            )
+        return previous * 2
+
+    def from_child(person, period):
+        worker = person.simulation.get_branch("worker")
+        if mode == "add":
+            return worker.calculate_add("leaf", period)
+        if mode == "divide":
+            return worker.calculate_divide("leaf", period.first_month)
+        return worker.calculate("leaf", period)
+
+    def child_outer(person, period):
+        return person.simulation.parent_branch.calculate("from_child", period)
+
+    def result_with(input_first):
+        def result(person, period):
+            simulation = person.simulation
+            worker = simulation.get_branch("worker")
+            try:
+                if input_first:
+                    worker.set_input("source", period, np.full(person.count, 3.0))
+                return worker.calculate("child_outer", period)
+            finally:
+                del simulation.branches["worker"]
+
+        return result
+
+    def run(input_first):
+        system = _one_person_system(
+            variable("source"),
+            variable("leaf", leaf, periods.MONTH if mode == "add" else periods.YEAR),
+            variable("from_child", from_child),
+            variable("child_outer", child_outer),
+            variable("result", result_with(input_first)),
+        )
+        root = SimulationBuilder().build_default_simulation(system)
+        root.set_input("source", "2020", np.array([1.0]))
+        return (
+            root.calculate("result", "2020").tolist(),
+            root.calculate("from_child", "2020").tolist(),
+        )
+
+    assert run(input_first=False) == run(input_first=True)
+
+
+def test_input_stored_with_an_earlier_number_still_wins():
+    """Inputs are numbered when stored, whatever number a caller passes."""
+    from policyengine_core.country_template import entities
+    from policyengine_core.variables import Variable
+
+    def january_only(holder, period, array):
+        holder._set(period.first_month, array, sequence_number=1)
+
+    class source(Variable):
+        value_type = float
+        entity = entities.Person
+        definition_period = periods.MONTH
+        label = "source"
+        set_input = january_only
+
+        def formula(person, period):
+            person.simulation.set_input("source", "2020", np.full(person.count, 42.0))
+            return np.ones(person.count)
+
+    system = _one_person_system(source)
+    branch = SimulationBuilder().build_default_simulation(system).get_branch("b")
+
+    assert branch.calculate("source", "2020-01").tolist() == [42.0]
+    assert branch.get_holder("source")._is_input(periods.period("2020-01"), "b")
+
+
+def test_direct_sum_runs_its_terms_again_only_as_a_whole():
+    from collections import Counter
+
+    from policyengine_core.country_template import entities
+    from policyengine_core.variables import Variable
+
+    calls = Counter()
+
+    class source(Variable):
+        value_type = float
+        entity = entities.Person
+        definition_period = periods.MONTH
+        label = "source"
+
+    class counted(Variable):
+        value_type = float
+        entity = entities.Person
+        definition_period = periods.MONTH
+        label = "counted"
+
+        def formula(person, period):
+            calls["counted"] += 1
+            value = person("source", period)
+            person.simulation.set_input("source", period, value + 1)  # every run
+            return value
+
+    system = _one_person_system(source, counted)
+    root = SimulationBuilder().build_default_simulation(system)
+    root.set_input("source", "2020-01", np.array([0.0]))
+    branch = root.get_branch("branch")
+    branch.calculate_add("counted", "2020-01")
+
+    assert calls["counted"] == simulation_module._RERUNS_AFTER_INPUT_CHANGE + 1
+
+
 def test_input_a_formula_sets_for_its_own_period_wins():
     """As it would had the input been set before the calculation."""
 

@@ -59,13 +59,18 @@ formula is still running in the branch: such a formula may hold, in its own
 variables, a value it read before the drop, so the records stay. A
 calculation that was running then (one whose formula sets an input, say) may
 have read the replaced value, so its result is kept neither in storage nor in
-the macro cache. The outermost calculation running in the simulation (a
-`calculate`, or a direct `calculate_add`) then runs again from the new inputs,
-inner calculations included, until a run changes no input, and keeps that
-result, so uprating and carry-over find its period as they would had the inputs
-come first. After ten reruns it stops: a formula that keeps changing inputs
-returns its last result without keeping it, and a later uprating or carry-over
-may then not find that period. An input stored for the very period being
+the macro cache; nor is any result calculated meanwhile in another simulation,
+which may have called into this one (a parent formula calculating in a branch
+whose formula calls back into the parent, say). The outermost calculation
+running in the simulation whose input changed (a `calculate`, or a direct
+`calculate_add`, whose terms run within it) then runs again from the new
+inputs, inner calculations included, until a run changes no input, and keeps
+that result, so uprating and carry-over find its period as they would had the
+inputs come first. After ten reruns it stops: a formula that keeps changing
+inputs returns its last result without keeping it, and a later uprating or
+carry-over may then not find that period. The budget is per simulation whose
+input changes, so calculations nested across several such simulations can
+rerun more. An input stored for the very period being
 calculated after the calculation began (by its own formula, say; under the
 branch's name or any it reads, such as `default` through `Holder.set_input`)
 is the result, as it would be had it been set first.

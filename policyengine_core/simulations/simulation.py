@@ -135,6 +135,14 @@ _formula_simulation: ContextVar[Optional["Simulation"]] = ContextVar(
 # returned but not kept.
 _RERUNS_AFTER_INPUT_CHANGE = 10
 
+# Counts drops made while calculations were running (``_drop_computed``), in
+# any simulation. A result calculated across one, wherever it happened, may
+# come from the replaced value (a formula in one simulation can calculate in
+# another, which calls back into the first), so it is not kept. Each
+# simulation also counts its own (``_input_epoch``): those decide which
+# calculation runs again.
+_input_epoch_anywhere = [0]
+
 
 class Simulation:
     """
@@ -616,8 +624,8 @@ class Simulation:
         # Formulas running in this simulation may hold values they read in
         # local variables; a drop meanwhile must not forget what they came
         # from (see ``_drop_computed``).
-        # Only the outermost calculation here runs again after an input
-        # change: running it again runs the inner ones again too.
+        # Only the outermost calculation in this simulation runs again after
+        # an input change here: running it again runs the inner ones too.
         outermost = not getattr(self, "_calculations_in_flight", 0)
         self._calculations_in_flight = getattr(self, "_calculations_in_flight", 0) + 1
         try:
@@ -1012,7 +1020,7 @@ class Simulation:
 
     def _input_state(self) -> Tuple[int, int]:
         """How many drops ran during calculations, and inputs were set, here."""
-        return getattr(self, "_input_epoch", 0), getattr(self, "_inputs_set", 0)
+        return _input_epoch_anywhere[0], getattr(self, "_inputs_set", 0)
 
     def _calculation_start(self) -> Tuple[int, int, int]:
         """:meth:`_input_state` when a calculation begins, and a sequence number then."""
@@ -1057,7 +1065,7 @@ class Simulation:
             stored_input = self._input_set_meanwhile(holder, period, started_at)
             if stored_input is not None:
                 return stored_input
-        if epoch == getattr(self, "_input_epoch", 0):
+        if epoch == _input_epoch_anywhere[0]:
             holder.put_in_cache(array, period, self.branch_name)
         else:
             # Not kept, but whatever reads it is stored after it all the same.
@@ -1119,17 +1127,25 @@ class Simulation:
                 for sub_period in period.get_subperiods(variable.definition_period)
             )
 
-        # As in ``calculate``, only an outermost sum runs again.
+        # As in ``calculate``: only an outermost sum runs again, and while it
+        # sums it is in flight, so its terms do not run again on their own
+        # (and a drop meanwhile keeps the records of what they read).
         outermost = not getattr(self, "_calculations_in_flight", 0)
-        input_state = self._calculation_start()
-        result = total()
-        for _ in range(_RERUNS_AFTER_INPUT_CHANGE if outermost else 0):
-            if input_state[0] == getattr(self, "_input_epoch", 0):
-                break
-            # An input changed while summing: earlier terms may be obsolete
-            # (see ``calculate``). Sum again.
+        self._calculations_in_flight = getattr(self, "_calculations_in_flight", 0) + 1
+        try:
+            input_epoch = getattr(self, "_input_epoch", 0)
             input_state = self._calculation_start()
             result = total()
+            for _ in range(_RERUNS_AFTER_INPUT_CHANGE if outermost else 0):
+                if input_epoch == getattr(self, "_input_epoch", 0):
+                    break
+                # An input changed while summing: earlier terms may be
+                # obsolete (see ``calculate``). Sum again.
+                input_epoch = getattr(self, "_input_epoch", 0)
+                input_state = self._calculation_start()
+                result = total()
+        finally:
+            self._calculations_in_flight -= 1
         holder = self.get_holder(variable.name)
         return self._cache_result(holder, result, period, input_state)
 
@@ -1553,11 +1569,12 @@ class Simulation:
 
         Once an input is set on it, the branch stops reading macro-cache
         files, which are keyed by branch name and period but not by inputs.
-        A calculation that was running in the branch when its input changed
-        is not kept; the outermost one is run again from the new inputs until
-        a run changes none (at most ten times; after that its result is
-        returned but not kept), and an input stored for the very period it
-        calculates after it began is its result.
+        A calculation that was running when its input changed, in the branch
+        or in a simulation calling into it, is not kept; the outermost one in
+        the branch is run again from the new inputs until a run changes none
+        (at most ten times; after that its result is returned but not kept),
+        and an input stored for the very period it calculates after it began
+        is its result.
 
         What this does not track: a branch given a different tax-benefit
         system or parameters (call :meth:`drop_computed_arrays` on it);
@@ -1652,8 +1669,11 @@ class Simulation:
         if getattr(self, "_calculations_in_flight", 0):
             # A formula running here may still hold values calculated from
             # what the records describe: keep the records, and keep none of
-            # the results the running calculations return (``_cache_result``).
+            # the results running calculations return, here or in the
+            # simulations calling into this one (``_cache_result``); the
+            # outermost one here runs again (``calculate``).
             self._input_epoch = getattr(self, "_input_epoch", 0) + 1
+            _input_epoch_anywhere[0] += 1
             return dropped
         # Nothing the simulation still holds was calculated from what the
         # records numbered ``since`` or later describe, except the inputs it

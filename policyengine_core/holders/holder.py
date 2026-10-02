@@ -458,7 +458,9 @@ class Holder:
             >= self.simulation.memory_config.max_memory_occupation_pc
         )
 
-        if sequence_number is None:
+        if sequence_number is None or is_input:
+            # Inputs are always numbered when stored: a calculation running
+            # meanwhile looks for inputs stored after it began.
             sequence_number = next_sequence_number()
         storage = self._disk_storage if should_store_on_disk else self._memory_storage
         storage.put(

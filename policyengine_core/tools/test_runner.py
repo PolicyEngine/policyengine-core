@@ -493,22 +493,32 @@ def _get_tax_benefit_system(
         cached_systems = _CachedSystems()
         _tax_benefit_system_cache[baseline] = cached_systems
 
+    # This call's bound applies to what earlier calls cached under a larger
+    # one, least recently used first.
+    reform_systems = cached_systems.reforms
+    while len(reform_systems) > cache_size:
+        reform_systems.popitem(last=False)
+
     if not reforms and not extensions and not reform_key:
         if cached_systems.reform_free is None:
             cached_systems.reform_free = baseline.clone()
         return cached_systems.reform_free
 
-    # Key: (reforms in order, reform_key, extensions as a frozenset). Inline
-    # reform classes are rebuilt for every case, so they key by their
-    # ``reform_key`` (the parameter values they set), not by identity.
+    # Key: (reforms in order, reform_key, extensions as a frozenset). The
+    # runner rebuilds its inline reform class for every case, so with a
+    # ``reform_key`` (the parameter values it sets) a class reform keys by
+    # that; without one, by the class itself.
     inner_key = (
-        ":".join([reform if isinstance(reform, str) else "" for reform in reforms]),
+        tuple(
+            reform if isinstance(reform, str) or not reform_key else ""
+            for reform in reforms
+        ),
         reform_key,
         frozenset(extensions),
     )
-    cached = cached_systems.reforms.get(inner_key)
+    cached = reform_systems.get(inner_key)
     if cached is not None:
-        cached_systems.reforms.move_to_end(inner_key)
+        reform_systems.move_to_end(inner_key)
         return cached
 
     current_tax_benefit_system = baseline.clone()
@@ -527,9 +537,9 @@ def _get_tax_benefit_system(
         current_tax_benefit_system.load_extension(extension)
 
     if cache_size > 0:
-        cached_systems.reforms[inner_key] = current_tax_benefit_system
-        while len(cached_systems.reforms) > cache_size:
-            cached_systems.reforms.popitem(last=False)
+        reform_systems[inner_key] = current_tax_benefit_system
+        while len(reform_systems) > cache_size:
+            reform_systems.popitem(last=False)
 
     return current_tax_benefit_system
 

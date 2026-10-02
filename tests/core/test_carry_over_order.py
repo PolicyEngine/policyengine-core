@@ -398,6 +398,12 @@ def test_storages_keep_the_derived_mark_with_the_value(on_disk, tmp_path):
     storage.delete(year)
     assert not storage.has(year) and not storage.is_derived(year)
     assert not storage._derived
+    storage.put(value, year, derived=True)
+    storage.put(value, year, "reform", derived=True)
+    storage.delete(branch_name="reform")
+    assert storage.is_derived(year) and not storage.has(year, "reform")
+    storage.delete()
+    assert not storage._derived
     storage.put(value, year)
     assert not storage.is_derived(year)
 

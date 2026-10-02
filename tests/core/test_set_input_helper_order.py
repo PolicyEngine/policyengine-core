@@ -337,6 +337,20 @@ def test_calculate_returns_the_input_after_a_repeated_read():
     assert_reads(simulation, "count_m", {"2013-01": [7, 9]})
 
 
+def test_a_dropped_sum_leaves_calculates_fast_cache():
+    simulation = build_simulation()
+    assert_reads(simulation, "flow_m", {"year:2013:2": [0, 0]})
+    # ``calculate`` does not put a sum in its fast cache today; a value held
+    # there for a period whose stored value is dropped goes with it.
+    two_years = periods.period("year:2013:2")
+    simulation._fast_cache[("flow_m", two_years)] = np.zeros(2, dtype=np.float32)
+
+    simulation.set_input("flow_m", "2014", YEARLY_INPUT)
+
+    assert ("flow_m", two_years) not in simulation._fast_cache
+    assert_reads(simulation, "flow_m", {"year:2013:2": YEARLY_INPUT})
+
+
 def test_a_helper_called_directly_stores_inputs():
     simulation = build_simulation()
     assert_reads(simulation, "flow_m", {"2013-01": [0, 0]})

@@ -110,6 +110,7 @@ def _drop_calculated_overlapping(
     its values.
     """
     branch_names = set(_branches_read_with(holder, branch_name))
+    dropped_periods = set()
     # Memory keys are "{branch}:{period}"; branch names cannot contain ":".
     # Disk keys are "{branch}_{period}"; branch names can contain "_", but
     # period strings cannot, so the period follows the last "_".
@@ -121,6 +122,7 @@ def _drop_calculated_overlapping(
         ):
             del memory._arrays[key]
             memory._shared.discard(key)
+            dropped_periods.add(period_string)
     disk = holder._disk_storage
     if disk is not None:
         for key in list(disk._files):
@@ -129,6 +131,11 @@ def _drop_calculated_overlapping(
                 holder, stored_branch_name, period_string, branch_names, period
             ):
                 del disk._files[key]
+                dropped_periods.add(period_string)
+    fast_cache = getattr(getattr(holder, "simulation", None), "_fast_cache", None)
+    if fast_cache and dropped_periods:
+        for dropped_period in dropped_periods:
+            fast_cache.pop((holder.variable.name, periods.period(dropped_period)), None)
 
 
 def _is_calculated_overlapping(

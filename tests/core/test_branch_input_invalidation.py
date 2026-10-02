@@ -1381,6 +1381,204 @@ def test_caller_in_the_same_family_does_not_keep_what_it_read_before_the_change(
     assert live_next == run(input_first=True)[1] == [6.0]  # but it was not kept
 
 
+def _worker_and_consumer(leaf, auto_carry_over=False, worker_inputs=()):
+    """A worker family whose ``worker_outer`` calls back into a consumer's ``from_worker``."""
+    from policyengine_core.country_template import entities
+    from policyengine_core.variables import Variable
+
+    def variable(name, formula=None):
+        namespace = dict(
+            value_type=float,
+            entity=entities.Person,
+            definition_period=periods.YEAR,
+            label=name,
+        )
+        if formula is not None:
+            namespace["formula"] = formula
+        return type(name, (Variable,), namespace)
+
+    def run(input_first):
+        holders = {}
+        worker_system = _one_person_system(
+            variable("source"),
+            variable("leaf", leaf),
+            variable(
+                "worker_outer",
+                lambda person, period: holders["consumer"].calculate(
+                    "from_worker", period
+                ),
+            ),
+        )
+        worker_system.auto_carry_over_input_variables = auto_carry_over
+        worker_root = SimulationBuilder().build_default_simulation(worker_system)
+        worker_root.set_input("source", "2020", np.array([1.0]))
+        for variable_name, period, value in worker_inputs:
+            worker_root.set_input(variable_name, period, np.array([value]))
+        worker = worker_root.get_branch("worker")
+        if input_first:
+            worker.set_input("source", "2020", np.array([3.0]))
+        consumer = (
+            SimulationBuilder()
+            .build_default_simulation(
+                _one_person_system(
+                    variable(
+                        "from_worker",
+                        lambda person, period: worker.calculate("leaf", period),
+                    ),
+                    variable(
+                        "result",
+                        lambda person, period: worker.calculate("worker_outer", period),
+                    ),
+                )
+            )
+            .get_branch("consumer")
+        )
+        holders["consumer"] = consumer
+        first = consumer.calculate("result", "2020").tolist()
+        return first, consumer.calculate("result", "2020").tolist()
+
+    return run
+
+
+def test_refused_result_that_returns_early_still_taints_its_caller():
+    """A carry-over default returned before any cache decision, after an input change."""
+
+    def leaf(person, period):
+        if np.any(person("source", period) != 3):
+            person.simulation.set_input("source", period, np.full(person.count, 3.0))
+            return None  # carry-over finds only 2021: the default, early
+        return np.full(person.count, 6.0)
+
+    run = _worker_and_consumer(
+        leaf, auto_carry_over=True, worker_inputs=[("leaf", "2021", 9.0)]
+    )
+
+    assert run(input_first=False) == run(input_first=True) == ([6.0], [6.0])
+
+
+def test_caller_that_catches_an_error_after_an_input_change_does_not_keep_its_result():
+    from policyengine_core.country_template import entities
+    from policyengine_core.variables import Variable
+
+    def leaf(person, period):
+        if np.any(person("source", period) != 3):
+            person.simulation.set_input("source", period, np.full(person.count, 3.0))
+            raise ValueError("changed")
+        return np.full(person.count, 6.0)
+
+    worker_root = SimulationBuilder().build_default_simulation(
+        _one_person_system(_yearly_variable("source"), _yearly_variable("leaf", leaf))
+    )
+    worker_root.set_input("source", "2020", np.array([1.0]))
+    worker = worker_root.get_branch("worker")
+
+    def result(person, period):
+        try:
+            return worker.calculate("leaf", period)
+        except ValueError:
+            return np.zeros(person.count)
+
+    consumer = (
+        SimulationBuilder()
+        .build_default_simulation(
+            _one_person_system(_yearly_variable("result", result))
+        )
+        .get_branch("consumer")
+    )
+
+    assert consumer.calculate("result", "2020").tolist() == [0.0]  # its own fallback
+    assert consumer.calculate("result", "2020").tolist() == [6.0]  # not kept
+
+
+@pytest.mark.parametrize("worker_kind", ["other_family", "own_branch_in_a_thread"])
+def test_earlier_read_is_not_kept_after_the_worker_changes_its_input(worker_kind):
+    """What a formula read before stays read, but its result is not kept."""
+    import threading
+
+    def changes_source(person, period):
+        if np.any(person("source", period) != 3.0):
+            person.simulation.set_input("source", period, np.full(person.count, 3.0))
+        return np.zeros(person.count)
+
+    worker_variables = (
+        _yearly_variable("source"),
+        _yearly_variable(
+            "doubled", lambda person, period: person("source", period) * 2
+        ),
+        _yearly_variable("changes_source", changes_source),
+    )
+
+    if worker_kind == "other_family":
+        worker_root = SimulationBuilder().build_default_simulation(
+            _one_person_system(*worker_variables)
+        )
+        worker_root.set_input("source", "2020", np.array([1.0]))
+        worker = worker_root.get_branch("worker")
+
+        def result(person, period):
+            doubled = worker.calculate("doubled", period)
+            worker.calculate("changes_source", period)
+            return doubled
+
+        simulation = SimulationBuilder().build_default_simulation(
+            _one_person_system(_yearly_variable("result", result))
+        )
+    else:
+
+        def result(person, period):
+            branch = person.simulation.branches["kept"]
+            doubled = branch.calculate("doubled", period)
+            thread = threading.Thread(
+                target=branch.calculate, args=("changes_source", period)
+            )
+            thread.start()
+            thread.join()
+            return doubled
+
+        simulation = SimulationBuilder().build_default_simulation(
+            _one_person_system(*worker_variables, _yearly_variable("result", result))
+        )
+        simulation.set_input("source", "2020", np.array([1.0]))
+        simulation.get_branch("kept")
+
+    assert simulation.calculate("result", "2020").tolist() == [2.0]  # read before
+    assert simulation.calculate("result", "2020").tolist() == [6.0]  # not kept
+
+
+def test_settled_call_into_own_branch_keeps_the_result_for_carry_over():
+    """The branch's change settles before returning: nothing the caller holds is old."""
+    from policyengine_core.country_template import entities
+    from policyengine_core.variables import Variable
+
+    def leaf(person, period):
+        if np.any(person("source", period) != 3):
+            person.simulation.set_input("source", period, np.full(person.count, 3.0))
+        return person("source", period) * 2
+
+    class result(Variable):
+        value_type = float
+        entity = entities.Person
+        definition_period = periods.YEAR
+        label = "result"
+
+        def formula_2020(person, period):
+            return person.simulation.branches["worker"].calculate("leaf", "2020")
+
+        def formula_2021(person, period):
+            return None
+
+    system = _one_person_system(
+        _yearly_variable("source"), _yearly_variable("leaf", leaf), result
+    )
+    system.auto_carry_over_input_variables = True
+    root = SimulationBuilder().build_default_simulation(system)
+    root.set_input("source", "2020", np.array([1.0]))
+    root.get_branch("worker")
+
+    assert root.calculate("result", "2020").tolist() == [6.0]
+    assert root.calculate("result", "2021").tolist() == [6.0]  # carried over
+
+
 def test_input_a_formula_sets_for_its_own_period_wins():
     """As it would had the input been set before the calculation."""
 

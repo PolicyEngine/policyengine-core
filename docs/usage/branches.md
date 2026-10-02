@@ -59,12 +59,17 @@ formula is still running in the branch: such a formula may hold, in its own
 variables, a value it read before the drop, so the records stay. A
 calculation that was running then (one whose formula sets an input, say) may
 have read the replaced value, so its result is kept neither in storage nor in
-the macro cache. Neither is any result calculated from it: a calculation in any
-simulation that received it, directly or through other calculations (a parent
-formula calculating in a branch whose formula calls back into the parent, say),
-or one still running in this context in another simulation of the same family,
-which may hold values it read from the simulation before the drop. Unrelated
-simulations, and other threads, keep caching. The outermost calculation
+the macro cache. Neither is any result calculated from it, in any simulation:
+each calculation notes, for every other simulation it got a value from
+(directly or through the calculations it called), that simulation's count of
+such input changes when the value's calculation began, and keeps its own
+result only if none has changed since. So a parent formula calculating in a
+branch whose formula calls back into the parent and then changes the branch's
+input does not keep what it got, nor does a formula that read a branch and
+then calculated there something that changed the branch's input. A
+calculation whose call into another simulation settled before returning keeps
+its result, and unrelated simulations and other threads keep caching. The
+outermost calculation
 running in the simulation whose input changed (a `calculate`, or a direct
 `calculate_add`, whose terms run within it) then runs again from the new
 inputs, inner calculations included, until a run changes no input, and keeps
@@ -142,11 +147,12 @@ depend on the input is calculated again) but not less, within these limits:
   calculated stay.
 - **Existing child branches keep their values.** An input set on a branch does
   not reach branches already created from it.
-- **Values already read stay read.** A formula that read a value from a branch
-  and then calculates there a formula that changes that branch's input keeps
-  what it read before the change. Its result is returned but not kept (it is
-  in the same family), and it is not run again: running it again would create
-  and read its branches the same way.
+- **Values already read stay read.** A formula that read a value from another
+  simulation and then calculates there a formula that changes that
+  simulation's input keeps what it read before the change. Its result is
+  returned but not kept, and it is not run again: running it again would
+  create and read its branches the same way. Likewise a formula that catches
+  an error raised after such a change returns its own fallback, unkept.
 
 With disk storage (`MemoryConfig`), every store writes a new file, named with
 the sequence number and a token for the process (a forked child gets its own),

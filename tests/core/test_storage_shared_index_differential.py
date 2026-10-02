@@ -187,8 +187,10 @@ def _assert_index_invariants(storages, cleared):
     own_sets = []
     for index, storage in enumerate(storages):
         shared = storage._shared
-        # The one shared-nothing object, exactly when nothing is shared.
+        # The one shared-nothing object, exactly when nothing is shared, and
+        # an attribute of the storage's own exactly when something is.
         assert (shared is _NOTHING_SHARED) == (not shared), index
+        assert ("_shared" in vars(storage)) == bool(shared), index
         if shared is not _NOTHING_SHARED:
             own_sets.append(shared)
         if index not in cleared:

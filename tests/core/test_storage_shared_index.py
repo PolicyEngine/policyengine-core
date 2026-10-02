@@ -16,7 +16,11 @@ operations against the storage that always had its own set.
 
 from __future__ import annotations
 
+import copy
+import pickle
+
 import numpy as np
+import pytest
 
 from policyengine_core import periods
 from policyengine_core.data_storage import InMemoryStorage
@@ -154,6 +158,59 @@ def test_storage_keeps_working_after_releasing_its_set():
     grandchild = clone.clone(share_arrays=True)
     assert grandchild._shared == {"default:2017-01"}
     assert clone._shared is _NOTHING_SHARED
+
+
+def test_storage_sharing_nothing_has_no_attribute_of_its_own():
+    storage = _storage_with("2017-01")
+    assert "_shared" not in vars(storage)
+
+    clone = storage.clone(share_arrays=True)
+    assert "_shared" in vars(clone)
+    clone.get("2017-01")
+
+    # Released, not replaced by another empty object.
+    assert "_shared" not in vars(clone)
+
+
+@pytest.mark.parametrize(
+    "duplicate",
+    [copy.deepcopy, lambda storage: pickle.loads(pickle.dumps(storage))],
+    ids=["deepcopy", "pickle"],
+)
+def test_copied_or_unpickled_storage_keeps_the_index_rules(duplicate):
+    storage = _storage_with("2017-01", "2017-02")
+    released = storage.clone(share_arrays=True)
+    released.get("2017-01")
+    released.get("2017-02")
+    sharing = storage.clone(share_arrays=True)
+
+    for original in (storage, released):
+        twin = duplicate(original)
+        assert twin._shared is _NOTHING_SHARED
+        assert np.array_equal(twin.get("2017-01"), original.get("2017-01"))
+
+    twin = duplicate(sharing)
+    assert twin._shared == sharing._shared == {"default:2017-01", "default:2017-02"}
+    assert twin._shared is not sharing._shared
+    assert np.array_equal(twin.get("2017-01"), [0.0, 1.0])
+    assert twin._shared == {"default:2017-02"}
+    assert sharing._shared == {"default:2017-01", "default:2017-02"}
+    twin.get("2017-02")
+    assert twin._shared is _NOTHING_SHARED
+
+
+def test_storage_from_a_pickle_with_an_empty_set_still_works():
+    # 3.32.12 pickled every storage with an empty set of its own.
+    storage = _storage_with("2017-01")
+    storage.__dict__["_shared"] = set()
+    restored = pickle.loads(pickle.dumps(storage))
+    assert restored._shared == set()
+
+    restored.get("2017-01")
+    restored.put(np.array([2.0, 3.0]), "2017-02")
+    restored.delete("2017-02")
+    restored.delete()
+    assert restored.get("2017-01") is None
 
 
 def test_simulation_storages_have_no_sets_of_their_own(tax_benefit_system):

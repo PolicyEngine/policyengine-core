@@ -1,4 +1,4 @@
-from typing import AbstractSet, Dict, Union
+from typing import Dict, FrozenSet, Set, Union
 
 import numpy
 from numpy.typing import ArrayLike
@@ -36,7 +36,7 @@ def _read_only_view(array: numpy.ndarray) -> numpy.ndarray:
 # such storage refers to this one object instead of holding an empty set of
 # its own: a simulation has a storage for each variable, nearly all of them
 # share nothing, and an empty set is 216 bytes.
-_NOTHING_SHARED: AbstractSet[str] = frozenset()
+_NOTHING_SHARED: FrozenSet[str] = frozenset()
 
 
 class InMemoryStorage:
@@ -47,11 +47,11 @@ class InMemoryStorage:
     _arrays: Dict[Period, ArrayLike]
     # Keys of ``_arrays`` whose array still belongs to the storage this one
     # was cloned from with ``share_arrays``. ``get`` replaces each with a copy
-    # the first time it is read. It is ``_NOTHING_SHARED`` unless at least one
-    # key is shared, and a set of this storage's own otherwise. A key left
-    # here after code outside this class empties ``_arrays`` costs one extra
-    # copy at most.
-    _shared: AbstractSet[str] = _NOTHING_SHARED
+    # the first time it is read. A storage has a ``_shared`` attribute of its
+    # own, a set, only while at least one key is shared; otherwise it reads
+    # this class attribute. A key left in the set after code outside this
+    # class empties ``_arrays`` costs one extra copy at most.
+    _shared: Union[Set[str], FrozenSet[str]] = _NOTHING_SHARED
     is_eternal: bool
 
     def __init__(self, is_eternal: bool):
@@ -117,15 +117,23 @@ class InMemoryStorage:
         """Record that ``key`` no longer refers to a shared array."""
         if key in self._shared:
             self._shared.discard(key)
-            if not self._shared:
-                self._shared = _NOTHING_SHARED
+            self._release_empty_set()
 
     def _stop_sharing_dropped_keys(self) -> None:
         """Forget the shared keys that ``_arrays`` no longer has."""
         if self._shared:
             self._shared.intersection_update(self._arrays)
-            if not self._shared:
-                self._shared = _NOTHING_SHARED
+            self._release_empty_set()
+
+    def _release_empty_set(self) -> None:
+        """Go back to the class's shared-nothing object once nothing is shared.
+
+        The attribute is deleted rather than set, so that a storage sharing
+        nothing never carries one, and a copy or pickle of it reads the class
+        attribute too.
+        """
+        if not self._shared:
+            del self._shared
 
     def put(
         self, value: ArrayLike, period: Period, branch_name: str = "default"

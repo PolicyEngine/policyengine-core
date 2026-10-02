@@ -3,6 +3,7 @@ plugin that measures what a run keeps alive."""
 
 import gc
 import tracemalloc
+import weakref
 from pathlib import Path
 
 import pytest
@@ -43,17 +44,17 @@ def write_cases(path: Path, count: int, reform_every: int = 3) -> Path:
     return path
 
 
-def live(cls) -> int:
-    """Number of live instances of ``cls`` after a full collection."""
+def live(cls) -> weakref.WeakSet:
+    """The live instances of ``cls`` after a full collection."""
     gc.collect()
-    return sum(1 for o in gc.get_objects() if isinstance(o, cls))
+    return weakref.WeakSet(o for o in gc.get_objects() if isinstance(o, cls))
 
 
 class MemoryProbe:
     """pytest plugin recording, after every ``sample_every``-th case, the bytes
     Python has allocated (``tracemalloc``, after a full collection) and, at the
     end of the session, how many simulations and tax-benefit systems are
-    alive."""
+    alive that the run created (not ones other tests left behind)."""
 
     def __init__(self, sample_every: int = 10):
         self.sample_every = sample_every
@@ -63,6 +64,8 @@ class MemoryProbe:
         self.live_systems = None
 
     def pytest_sessionstart(self, session):
+        self.simulations_before = live(Simulation)
+        self.systems_before = live(TaxBenefitSystem)
         tracemalloc.start()
 
     def pytest_runtest_logreport(self, report):
@@ -76,8 +79,8 @@ class MemoryProbe:
 
     def pytest_sessionfinish(self, session, exitstatus):
         tracemalloc.stop()
-        self.live_simulations = live(Simulation)
-        self.live_systems = live(TaxBenefitSystem)
+        self.live_simulations = len(live(Simulation) - self.simulations_before)
+        self.live_systems = len(live(TaxBenefitSystem) - self.systems_before)
 
 
 def run_with_probe(tax_benefit_system, path: Path, options=None) -> MemoryProbe:

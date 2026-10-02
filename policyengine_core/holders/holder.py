@@ -100,11 +100,56 @@ class Holder:
         If ``period`` is ``None``, remove all known values of the variable.
 
         If ``period`` is not ``None``, only remove all values for any period included in period (e.g. if period is "2017", values for "2017-01", "2017-07", etc. would be removed)
+
+        A deleted value set with ``set_input`` stops counting as an input, so
+        a value calculated later for the same period is not taken for one.
         """
 
         self._memory_storage.delete(period, branch_name)
         if self._disk_storage:
             self._disk_storage.delete(period, branch_name)
+        self._forget_deleted_inputs(period, branch_name)
+
+    def _forget_deleted_inputs(self, period: Period, branch_name: str) -> None:
+        """Drop the simulation's record of the inputs ``delete_arrays`` deleted.
+
+        ``_user_input_keys`` records each (variable, branch, period) stored
+        through ``set_input``. ``_invalidate_all_caches`` keeps the values it
+        names and ``to_input_dataframe`` exports them, so an entry left
+        behind for a deleted value would make a formula result stored later
+        for that period count as an input.
+
+        The entries dropped are this variable's, for ``branch_name``, in the
+        periods in-memory storage deletes: every period if ``period`` is
+        ``None`` or the variable is eternal, otherwise those within
+        ``period``. Disk storage deletes only ``period`` itself, so the entry
+        for a value it still holds is kept.
+        """
+        simulation = getattr(self, "simulation", None)
+        user_input_keys = getattr(simulation, "_user_input_keys", None)
+        if not user_input_keys:
+            return
+        if period is not None:
+            period = periods.period(period)
+        name = self.variable.name
+        deleted = [
+            key
+            for key in user_input_keys
+            if key[0] == name
+            and key[1] == branch_name
+            and (
+                period is None
+                or self._memory_storage.is_eternal
+                or period.contains(periods.period(key[2]))
+            )
+        ]
+        if self._disk_storage is not None:
+            deleted = [
+                key
+                for key in deleted
+                if self._disk_storage.get(key[2], branch_name) is None
+            ]
+        user_input_keys.difference_update(deleted)
 
     def _get_array_from_storage(
         self, period: Period, branch_name: str = "default"

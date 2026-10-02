@@ -1,0 +1,1 @@
+`delete_arrays` now drops the record of the inputs it deletes, and `clone` (so also `get_branch`) gives the copy its own record, so `apply_reform` and `to_input_dataframe` no longer treat a later formula result, or another simulation's input, as an input.

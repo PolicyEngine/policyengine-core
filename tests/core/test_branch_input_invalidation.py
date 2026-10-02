@@ -955,23 +955,30 @@ def test_disk_restore_reads_older_file_names_and_breaks_time_ties(tmp_path):
 
 
 def test_forked_process_gets_its_own_disk_file_token():
-    import multiprocessing
+    import os
+    import warnings
 
     import policyengine_core.data_storage.on_disk_storage as on_disk_storage
 
-    if "fork" not in multiprocessing.get_all_start_methods():
+    if not hasattr(os, "fork"):
         pytest.skip("no fork on this platform")
-    context = multiprocessing.get_context("fork")
-    with context.Pool(1) as pool:
-        child_token = pool.apply(_process_token)
+    # A bare fork whose child only writes to a pipe: a process pool forked
+    # from a multi-threaded test process can deadlock.
+    read, write = os.pipe()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        pid = os.fork()
+    if pid == 0:
+        try:
+            os.write(write, on_disk_storage._PROCESS_TOKEN.encode())
+        finally:
+            os._exit(0)
+    os.close(write)
+    child_token = os.read(read, 64).decode()
+    os.close(read)
+    os.waitpid(pid, 0)
 
-    assert child_token != on_disk_storage._PROCESS_TOKEN
-
-
-def _process_token():
-    import policyengine_core.data_storage.on_disk_storage as on_disk_storage
-
-    return on_disk_storage._PROCESS_TOKEN
+    assert child_token and child_token != on_disk_storage._PROCESS_TOKEN
 
 
 # ----- Only what may depend on the input is dropped ----- #

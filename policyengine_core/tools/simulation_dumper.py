@@ -70,23 +70,18 @@ def restore_simulation(directory, tax_benefit_system, **kwargs):
 
 def _dump_holder(holder, directory):
     disk_storage = holder.create_disk_storage(directory, preserve=True)
+    derived_periods = set()
     for period in holder.get_known_periods():
         value = holder.get_array(period)
         disk_storage.put(value, period)
-    _dump_derived_periods(holder, disk_storage.storage_dir)
-
-
-def _dump_derived_periods(holder, storage_dir, branch_name="default"):
-    derived = sorted(
-        {
-            str(period)
-            for period in holder.get_known_periods()
-            if holder.is_derived(period, branch_name)
-        }
-    )
-    if derived:
-        with open(os.path.join(storage_dir, DERIVED_PERIODS_FILE), "w") as file:
-            file.write("\n".join(derived) + "\n")
+        # Read the mark of exactly the value dumped: the same period on the
+        # same branch as ``get_array``.
+        if holder.is_derived(period):
+            derived_periods.add(str(period))
+    if derived_periods:
+        path = os.path.join(disk_storage.storage_dir, DERIVED_PERIODS_FILE)
+        with open(path, "w") as file:
+            file.write("\n".join(sorted(derived_periods)) + "\n")
 
 
 def _dump_entity(population, directory):

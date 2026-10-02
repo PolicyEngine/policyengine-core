@@ -350,7 +350,12 @@ class Holder:
         derived: bool = False,
     ) -> None:
         simulation = getattr(self, "simulation", None)
-        user_input_contexts = getattr(simulation, "_user_input_contexts", None)
+        # A value calculated while an input is being set (say, by a
+        # ``set_input`` helper that calculates) is not part of that input: it
+        # belongs to the branch it was calculated on.
+        user_input_contexts = (
+            None if derived else getattr(simulation, "_user_input_contexts", None)
+        )
         if user_input_contexts and branch_name == "default":
             branch_name = user_input_contexts[-1]
         value = self._to_array(value, validate_nan=validate_nan)

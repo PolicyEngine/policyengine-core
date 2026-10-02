@@ -963,26 +963,37 @@ class Simulation:
                     # a value already masked by ``defined_for``, or given by a
                     # formula that has since ended, would carry forward.
                     # A later input does not carry backwards.
-                    carry_over_periods = [
-                        known_period
-                        for known_period in known_periods
-                        if known_period.start <= period.start
-                        and not holder.is_derived(known_period, self.branch_name)
-                    ]
-                    own_unit_periods = [
-                        known_period
-                        for known_period in carry_over_periods
-                        if known_period.unit == variable.definition_period
-                    ]
-                    if carry_over_periods:
-                        last_known_period = max(
-                            own_unit_periods or carry_over_periods,
-                            key=lambda p: (p.start, p.stop),
-                        )
+                    candidates = sorted(
+                        dict.fromkeys(
+                            known_period
+                            for known_period in known_periods
+                            if known_period.start <= period.start
+                        ),
+                        key=lambda p: (
+                            p.unit == variable.definition_period,
+                            p.start,
+                            p.stop,
+                        ),
+                        reverse=True,
+                    )
+                    last_known_period = next(
+                        (
+                            candidate
+                            for candidate in candidates
+                            if not holder.is_derived(candidate, self.branch_name)
+                        ),
+                        None,
+                    )
+                    if last_known_period is not None:
                         # Pass branch_name through so auto-carry-over respects
                         # the active branch instead of reaching for the
                         # "default" branch's cache (bug H2).
                         array = holder.get_array(last_known_period, self.branch_name)
+                    elif variable.uprating is not None:
+                        # Not cached: the uprating path above would take a
+                        # cached default as the value to uprate later periods
+                        # from.
+                        return holder.default_array()
                     else:
                         array = holder.default_array()
                 else:

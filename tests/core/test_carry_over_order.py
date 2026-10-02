@@ -33,6 +33,8 @@ import numpy as np
 import pytest
 
 from policyengine_core import periods
+from policyengine_core.data_storage import InMemoryStorage, OnDiskStorage
+from policyengine_core.experimental import MemoryConfig
 from policyengine_core.reforms import Reform
 from policyengine_core.tools.simulation_dumper import (
     dump_simulation,
@@ -100,6 +102,21 @@ def test_inputs_starting_together_carry_the_one_ending_last(system, first, secon
     }
     np.testing.assert_array_equal(
         alone(system, inputs, "year_input_without_helper", "2014"), [1, 1]
+    )
+
+
+@pytest.mark.parametrize(
+    "first,second", [("2013", "year:2013:2"), ("year:2013:2", "2013")]
+)
+def test_inputs_at_one_unit_starting_together_carry_the_one_ending_last(
+    system, first, second
+):
+    values = {"2013": [1, 1], "year:2013:2": [2, 2]}
+    inputs = {
+        "year_input_without_helper": {first: values[first], second: values[second]}
+    }
+    np.testing.assert_array_equal(
+        alone(system, inputs, "year_input_without_helper", "2015"), [2, 2]
     )
 
 
@@ -357,6 +374,107 @@ def test_carry_over_in_a_branch_copies_only_the_array_it_reads(system):
     shared = len(storage._shared)
     np.testing.assert_array_equal(branch.calculate("carried", "2020"), [3, 3])
     assert len(storage._shared) == shared - 1
+
+
+@pytest.mark.parametrize("on_disk", [False, True], ids=["memory", "disk"])
+def test_storages_keep_the_derived_mark_with_the_value(on_disk, tmp_path):
+    storage = (
+        OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
+        if on_disk
+        else InMemoryStorage(is_eternal=False)
+    )
+    year = periods.period("2013")
+    value = np.array([1.0, 2.0])
+    assert not storage.has(year) and not storage.is_derived(year)
+    storage.put(value, year, derived=True)
+    assert storage.has(year) and storage.is_derived(year)
+    assert not storage.has(year, "reform") and not storage.is_derived(year, "reform")
+    clone = storage.clone()
+    assert clone.is_derived(year)
+    storage.put(value, year)
+    assert storage.has(year) and not storage.is_derived(year)
+    assert clone.is_derived(year)
+    storage.put(value, year, derived=True)
+    storage.delete(year)
+    assert not storage.has(year) and not storage.is_derived(year)
+    assert not storage._derived
+    storage.put(value, year)
+    assert not storage.is_derived(year)
+
+
+def test_carry_over_reads_derived_marks_from_disk_storage(system):
+    built = simulation(system, {})
+    built.memory_config = MemoryConfig(max_memory_occupation=0)
+    holder = built.get_holder("carried")
+    holder._disk_storage = holder.create_disk_storage()
+    holder._on_disk_storable = True
+    built.set_input("carried", "2012", np.array([7.0, 8.0]))
+    np.testing.assert_array_equal(built.calculate("carried", "2014"), [7, 8])
+    assert holder._disk_storage.is_derived(periods.period("2014"))
+    np.testing.assert_array_equal(built.calculate("carried", "2013"), [7, 8])
+    holder.delete_arrays(periods.period("2014"))
+    built.set_input("carried", "2014", np.array([9.0, 10.0]))
+    assert not holder.is_derived(periods.period("2014"))
+    np.testing.assert_array_equal(built.calculate("carried", "2015"), [9, 10])
+
+
+def test_a_default_cached_before_an_input_does_not_become_an_uprating_base(system):
+    """With no input at or before 2012 the default is not cached for an
+    uprated variable, so 2014 still carries the 2013-01 input."""
+    inputs = {"uprated_input_without_helper": {"2013-01": [10, 20]}}
+    expected = alone(system, inputs, "uprated_input_without_helper", "2014")
+    np.testing.assert_array_equal(expected, [10, 20])
+    built = simulation(system, inputs)
+    np.testing.assert_array_equal(
+        built.calculate("uprated_input_without_helper", "2012"), [0, 0]
+    )
+    np.testing.assert_array_equal(
+        built.calculate("uprated_input_without_helper", "2014"), expected
+    )
+
+
+def test_a_value_calculated_while_an_input_is_set_stays_on_its_own_branch(system):
+    """A ``set_input`` helper that calculates writes the calculated value to
+    the simulation's own branch, as a derived value, not to the input's."""
+    built = simulation(system, {"carried": {"2012": [1, 2]}})
+    holder = built.get_holder("formula_until_2013")
+    holder.set_input(periods.period("2012"), np.array([20.0, 20.0]), "other")
+    built.get_holder("input_with_calculating_helper").set_input(
+        periods.period("2013-06"), np.array([1.0, 1.0]), "other"
+    )
+    np.testing.assert_array_equal(
+        holder.get_array(periods.period("2012"), "other"), [20, 20]
+    )
+    np.testing.assert_array_equal(
+        holder.get_array(periods.period("2012"), "default"), [6, 7]
+    )
+    assert holder.is_derived(periods.period("2012"), "default")
+    assert not holder.is_derived(periods.period("2012"), "other")
+    assert ("formula_until_2013", "default", periods.period("2012")) not in (
+        built._user_input_keys
+    )
+    other = built.get_branch("other")
+    np.testing.assert_array_equal(
+        other.calculate("formula_until_2013", "2014"), [20, 20]
+    )
+
+
+def test_carry_over_checks_only_the_latest_candidates(system, monkeypatch):
+    from policyengine_core.holders import Holder
+
+    years = {str(year): [year, year] for year in range(1900, 2010)}
+    built = simulation(system, {"carried": years})
+    branch = built.get_branch("a").get_branch("b").get_branch("c")
+    calls = []
+    is_derived = Holder.is_derived
+
+    def counting(self, period, branch_name="default"):
+        calls.append(period)
+        return is_derived(self, period, branch_name)
+
+    monkeypatch.setattr(Holder, "is_derived", counting)
+    np.testing.assert_array_equal(branch.calculate("carried", "2020"), [2009, 2009])
+    assert len(calls) == 1
 
 
 def test_input_starting_with_the_requested_period_carries(system):

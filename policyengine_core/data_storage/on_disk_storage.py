@@ -118,6 +118,7 @@ class OnDiskStorage:
                 for period_item, value in self._files.items()
                 if not period_item.startswith(branch_prefix)
             }
+            self._derived.intersection_update(self._files)
             return
 
         if self.is_eternal:
@@ -130,6 +131,7 @@ class OnDiskStorage:
                 for period_item, value in self._files.items()
                 if not period_item == f"{branch_name}_{period}"
             }
+            self._derived.intersection_update(self._files)
 
     def get_known_periods(self) -> list:
         return list([periods.period(x.split("_")[1]) for x in self._files.keys()])

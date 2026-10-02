@@ -168,6 +168,7 @@ class InMemoryStorage:
                 if not period_item.startswith(branch_prefix)
             }
             self._shared.intersection_update(self._arrays)
+            self._derived.intersection_update(self._arrays)
             return
 
         if self.is_eternal:
@@ -186,6 +187,7 @@ class InMemoryStorage:
             )
         }
         self._shared.intersection_update(self._arrays)
+        self._derived.intersection_update(self._arrays)
 
     def get_known_periods(self) -> list:
         # Split on the first colon only: an anchored period's string form

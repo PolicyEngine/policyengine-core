@@ -17,6 +17,7 @@ import numpy as np
 
 from policyengine_core import periods
 from policyengine_core.country_template import CountryTaxBenefitSystem, entities
+from policyengine_core.parameters import ParameterNode
 from policyengine_core.simulations import SimulationBuilder
 from policyengine_core.variables import Variable
 
@@ -87,6 +88,29 @@ class month_input_without_helper(Variable):
     label = "Monthly input with no set_input helper, stored at any period"
 
 
+class uprated_input_without_helper(Variable):
+    value_type = float
+    entity = entities.Person
+    definition_period = periods.YEAR
+    set_input = None
+    uprating = "carry_over_test.index"
+    label = "Yearly uprated input with no set_input helper"
+
+
+def _calculate_while_setting(holder, period, array):
+    """A ``set_input`` helper that calculates another variable first."""
+    holder.simulation.calculate("formula_until_2013", "2012")
+    holder._set(period.this_year, array)
+
+
+class input_with_calculating_helper(Variable):
+    value_type = float
+    entity = entities.Person
+    definition_period = periods.YEAR
+    set_input = _calculate_while_setting
+    label = "Yearly input whose set_input helper calculates"
+
+
 VARIABLES = (
     carried,
     carried_count,
@@ -96,12 +120,20 @@ VARIABLES = (
     carried_monthly,
     year_input_without_helper,
     month_input_without_helper,
+    uprated_input_without_helper,
+    input_with_calculating_helper,
 )
 
 
 def build_system() -> CountryTaxBenefitSystem:
     system = CountryTaxBenefitSystem()
     system.auto_carry_over_input_variables = True
+    system.parameters.add_child(
+        "carry_over_test",
+        ParameterNode(
+            "carry_over_test", data={"index": {"values": {"2010-01-01": 1.0}}}
+        ),
+    )
     system.add_variables(*VARIABLES)
     return system
 

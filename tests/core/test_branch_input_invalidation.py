@@ -1189,7 +1189,9 @@ def test_values_unpickled_from_another_process_stay_earlier(monkeypatch):
         next_sequence_number()
     storage.put(np.array([1.0]), periods.period("2020"))
     history.record_store("v", periods.period("2020"), next_sequence_number())
-    history.merge(StoreHistory())  # weak references must not stop pickling
+    source = StoreHistory()  # kept alive: its weak read position must not stop pickling
+    history.merge(source)
+    assert len(history._merged) == 1
     payloads = pickle.dumps(storage), pickle.dumps(history)
 
     monkeypatch.setattr(store_history, "_sequence", itertools.count(1))  # a new process

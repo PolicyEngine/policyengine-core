@@ -12,6 +12,7 @@ from policyengine_core.data_storage.store_history import (
     next_sequence_number,
 )
 from policyengine_core.enums import EnumArray
+from policyengine_core.periods import Period
 
 # Distinguishes the files this process writes from other processes' files in
 # the same directory, whose sequence numbers may repeat this process's.
@@ -26,7 +27,6 @@ def _new_process_token() -> None:
 # A forked child inherits the parent's token and counter: give it its own token.
 if hasattr(os, "register_at_fork"):
     os.register_at_fork(after_in_child=_new_process_token)
-from policyengine_core.periods import Period
 
 
 class OnDiskStorage:

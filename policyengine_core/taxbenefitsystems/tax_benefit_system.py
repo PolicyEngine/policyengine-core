@@ -51,6 +51,7 @@ from policyengine_core.parameters.operations.uprate_parameters import (
 from policyengine_core.periods import Instant, Period
 from policyengine_core.populations import GroupPopulation, Population
 from policyengine_core.variables import Variable
+from policyengine_core.variables.variable import NUMERIC_VALUE_TYPES
 
 log = logging.getLogger(__name__)
 
@@ -92,6 +93,8 @@ class TaxBenefitSystem:
     """Short list of basic inputs to get medium accuracy."""
     modelled_policies: str = None
     """A YAML filepath containing metadata describing the modelled policies."""
+    _defined_for_checks_deferred: bool = False
+    """Whether ``load_variable`` leaves ``defined_for`` checks to a later pass over every variable."""
 
     def __init__(self, entities: Sequence[Entity] = None, reform=None) -> None:
         if entities is None:
@@ -119,7 +122,14 @@ class TaxBenefitSystem:
         self.variable_module_metadata = {}
 
         if self.variables_dir is not None:
-            self.add_variables_from_directory(self.variables_dir)
+            # A variable's defined_for variable may be in a file loaded after
+            # it, so check every variable once the whole directory is loaded.
+            self._defined_for_checks_deferred = True
+            try:
+                self.add_variables_from_directory(self.variables_dir)
+            finally:
+                self._defined_for_checks_deferred = False
+            self._check_defined_for_variables()
         self.data_modified = False
 
         if self.parameters_dir is not None:
@@ -215,9 +225,43 @@ class TaxBenefitSystem:
             )
 
         variable = variable_class(baseline_variable=baseline_variable)
+        if not self._defined_for_checks_deferred:
+            self._check_defined_for(variable)
         self.variables[variable.name] = variable
 
         return variable
+
+    def _check_defined_for(self, variable: Variable) -> None:
+        """Check the ``defined_for`` links that ``variable`` takes part in.
+
+        Both directions: the variable ``variable`` is defined for, if it is
+        registered, and, when ``variable`` cannot be compared with zero, every
+        registered variable defined for it. See
+        :meth:`Variable.check_defined_for_variable`.
+        """
+        defined_for = variable.defined_for
+        if defined_for is not None:
+            defined_for_variable = (
+                variable
+                if defined_for == variable.name
+                else self.variables.get(defined_for)
+            )
+            if defined_for_variable is not None:
+                variable.check_defined_for_variable(defined_for_variable)
+        if variable.value_type in NUMERIC_VALUE_TYPES:
+            return
+        for other in self.variables.values():
+            if other.defined_for == variable.name and other.name != variable.name:
+                other.check_defined_for_variable(variable)
+
+    def _check_defined_for_variables(self) -> None:
+        """Check every registered variable's ``defined_for`` variable."""
+        for variable in self.variables.values():
+            if variable.defined_for is None:
+                continue
+            defined_for_variable = self.variables.get(variable.defined_for)
+            if defined_for_variable is not None:
+                variable.check_defined_for_variable(defined_for_variable)
 
     def add_variable(self, variable: Type[Variable]) -> Variable:
         """Adds an OpenFisca variable to the tax and benefit system.

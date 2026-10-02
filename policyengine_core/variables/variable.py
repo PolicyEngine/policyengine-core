@@ -42,6 +42,21 @@ class VariableCategory:
     DEMOGRAPHIC = "demographic"
 
 
+NUMERIC_VALUE_TYPES = (bool, int, float)
+"""Value types whose arrays support arithmetic and comparison with numbers.
+
+Only these can be uprated (multiplied by an index ratio) or used as a
+``defined_for`` mask (compared with zero). Enum arrays allow only ``==`` and
+``!=``, and ``str`` and date arrays cannot be multiplied by a float or
+compared with a number, so either use raised a ``TypeError`` in the middle
+of a calculation.
+"""
+
+
+def _value_type_name(value_type: type) -> str:
+    return getattr(value_type, "__name__", str(value_type))
+
+
 class Variable:
     """
     A `variable <https://openfisca.org/doc/key-concepts/variables.html>`_ of the legislation.
@@ -105,7 +120,7 @@ class Variable:
     """Categorical attribute describing whether the variable is a stock or a flow."""
 
     defined_for: str = None
-    """The name of another variable, nonzero values of which are used to define the set of entities for which this variable is defined."""
+    """The name of another variable, nonzero values of which are used to define the set of entities for which this variable is defined. That variable must be a ``bool``, ``int`` or ``float`` variable; the tax-benefit system rejects an Enum, ``str`` or date one when both variables are registered. An Enum member is also accepted, and names the variable called after its value (``StateCode.CA`` names ``CA``)."""
 
     metadata: dict = None
     """Free dictionary field used to store any metadata."""
@@ -123,7 +138,7 @@ class Variable:
     """List of variables that are subtracted from the variable. Alternatively, can be a parameter name."""
 
     uprating: str = None
-    """Name of a parameter used to uprate the variable. When the variable has no value for a requested period, its value in the latest known earlier period (an input, or a value already calculated or defaulted and cached) is multiplied by the ratio of this parameter at the two period starts, or carried over unchanged if the parameter is zero at the earlier start. Where the parameter has no value it is held flat: before its first value it takes that first value, and after an explicit null it keeps the last value before the null. The variable therefore carries over unchanged across any span the parameter does not cover."""
+    """Name of a parameter used to uprate the variable. Only ``bool``, ``int`` and ``float`` variables can be uprated; ``uprating`` on an Enum, ``str`` or date variable raises a ``ValueError`` when the variable is defined or the attribute is assigned. When the variable has no value for a requested period, its value in the latest known earlier period (an input, or a value already calculated or defaulted and cached) is multiplied by the ratio of this parameter at the two period starts, or carried over unchanged if the parameter is zero at the earlier start. Where the parameter has no value it is held flat: before its first value it takes that first value, and after an explicit null it keeps the last value before the null. The variable therefore carries over unchanged across any span the parameter does not cover."""
 
     hidden_input: bool = False
     """Whether the variable is hidden from the input screen entirely on PolicyEngine."""
@@ -327,6 +342,7 @@ class Variable:
         self.formulas = self.set_formulas(formulas_attr)
 
         self.check_computation_modes()
+        self.check_uprating_value_type()
         check_formula_determinism(self)
 
         if unexpected_attrs:
@@ -357,6 +373,7 @@ class Variable:
                 self._explicit_attribute_names = old_explicit | {"uprating"}
             try:
                 self.check_computation_modes()
+                self.check_uprating_value_type()
             except ValueError:
                 self._uprating = old_value
                 self._explicit_attribute_names = old_explicit
@@ -402,6 +419,54 @@ class Variable:
                 "most one of formula, adds/subtracts, or uprating; plain "
                 "input or constant variables should use none."
             )
+
+    def check_uprating_value_type(self):
+        """Reject ``uprating`` on a variable whose values cannot be multiplied.
+
+        Uprating multiplies the latest earlier value by a ratio of index
+        values. Enum arrays allow only ``==`` and ``!=``, and ``str`` and date
+        arrays cannot be multiplied by a float, so ``uprating`` on such a
+        variable raised a ``TypeError`` the first time a later period was
+        uprated. The check covers an ``uprating`` inherited from a baseline
+        variable too, since the inherited one is what ``calculate`` uses.
+        """
+        if self.uprating is None:
+            return
+        value_type = getattr(self, "value_type", None)
+        if value_type is None or value_type in NUMERIC_VALUE_TYPES:
+            return
+        raise ValueError(
+            f'Variable "{self.name}" has uprating "{self.uprating}", but its '
+            f"value_type is {_value_type_name(value_type)}. Uprating "
+            "multiplies the latest earlier value by an index ratio, so only "
+            "bool, int and float variables can be uprated. Remove uprating: "
+            "with auto_carry_over_input_variables, an input without it "
+            "carries over to later periods unchanged."
+        )
+
+    def check_defined_for_variable(self, defined_for_variable: "Variable") -> None:
+        """Reject a ``defined_for`` variable that cannot be compared with zero.
+
+        ``calculate`` keeps this variable's formula result where the
+        ``defined_for`` variable is greater than zero, and uses the default
+        value elsewhere. That needs a ``bool``, ``int`` or ``float`` variable:
+        an Enum array allows only ``==`` and ``!=``, and ``str`` and date
+        arrays cannot be compared with a number, so the comparison raised a
+        ``TypeError`` in the middle of a calculation. For an Enum condition,
+        define a ``bool`` variable that compares it with a member and name
+        that variable instead.
+        """
+        value_type = getattr(defined_for_variable, "value_type", None)
+        if value_type is None or value_type in NUMERIC_VALUE_TYPES:
+            return
+        raise ValueError(
+            f'Variable "{self.name}" is defined_for "{defined_for_variable.name}", '
+            f"whose value_type is {_value_type_name(value_type)}. defined_for "
+            "keeps values where that variable is greater than zero, so it must "
+            "name a bool, int or float variable. For an Enum condition, define "
+            "a bool variable that compares it with a member (for example "
+            "`state == State.present`) and name that variable instead."
+        )
 
     def set(
         self,

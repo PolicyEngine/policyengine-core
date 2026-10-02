@@ -1,4 +1,3 @@
-import itertools
 import os
 import shutil
 import tempfile
@@ -126,7 +125,9 @@ class OnDiskStorage:
         # may read, which must not be overwritten.
         self._written_files: Set[str] = set()
         self._shared_files: Set[str] = set()
-        self._versions = itertools.count(1)
+        # The last number given to a ``{key}.{n}.npy`` file. A plain integer,
+        # not ``itertools.count``, so storages still copy and pickle on Python 3.14.
+        self._last_version = 0
 
     @classmethod
     def temporary(
@@ -217,7 +218,8 @@ class OnDiskStorage:
         storage_dir = self._get_storage_dir()
         path = os.path.join(storage_dir, f"{key}.npy")
         while path in self._shared_files:
-            path = os.path.join(storage_dir, f"{key}.{next(self._versions)}.npy")
+            self._last_version += 1
+            path = os.path.join(storage_dir, f"{key}.{self._last_version}.npy")
         return path
 
     def put(

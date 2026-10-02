@@ -10,8 +10,10 @@ checks it as a property over random sequences of operations.
 
 from __future__ import annotations
 
+import copy
 import gc
 import os
+import pickle
 import warnings
 
 import numpy as np
@@ -269,6 +271,27 @@ def test_preserved_storage_directory_stays(tmp_path, preserve_when):
     gc.collect()
 
     assert (storage_dir / f"default_{PERIOD}.npy").is_file()
+
+
+@pytest.mark.parametrize("copy_storage", [copy.copy, copy.deepcopy, "pickle"])
+def test_copies_of_a_storage_read_its_values_and_keep_its_directory(
+    tmp_path, copy_storage
+):
+    storage = OnDiskStorage.temporary("salary", str(tmp_path))
+    storage.put(np.array([1.0]), PERIOD)
+    clone = storage.clone()
+    storage.put(np.array([2.0]), PERIOD)
+    if copy_storage == "pickle":
+        copied = pickle.loads(pickle.dumps(storage))
+    else:
+        copied = copy_storage(storage)
+
+    np.testing.assert_array_equal(copied.get(PERIOD), [2.0])
+    del copied
+    gc.collect()
+
+    assert os.path.isdir(storage.storage_dir)
+    np.testing.assert_array_equal(clone.get(PERIOD), [1.0])
 
 
 def test_a_plain_array_stored_over_an_enum_reads_back_plain(tmp_path):

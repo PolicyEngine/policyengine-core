@@ -1,5 +1,6 @@
 import hashlib
 import tempfile
+from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
@@ -31,6 +32,34 @@ from policyengine_core.tools.google_cloud import (
 )
 
 import json
+
+
+class _BranchClone:
+    """The simulation ``get_branch`` is cloning into a new branch.
+
+    ``get_branch`` announces the clone it is about to make, and ``clone``
+    shares the cached arrays with the copy (instead of copying them) only for
+    that simulation, and only once: the first ``clone`` of it while
+    ``get_branch`` runs. Any other ``clone`` call made meanwhile, or after
+    ``get_branch`` returns, copies as usual. A subclass's ``clone`` normally
+    reaches this class's ``clone`` once, through ``super().clone``; if it
+    first clones the same simulation directly, that clone is the one that
+    shares.
+    """
+
+    def __init__(self, simulation: "Simulation"):
+        self.simulation = simulation
+        self.pending = True
+
+
+# Set by ``get_branch`` around its ``clone`` call. This is a context variable
+# rather than a ``clone`` argument because country packages override ``clone``
+# with its existing signature and call ``super().clone`` (policyengine-us's
+# SPM ``Simulation`` does), so an extra argument could not reach this class's
+# ``clone`` through them.
+_branch_clone: ContextVar[Optional[_BranchClone]] = ContextVar(
+    "_branch_clone", default=None
+)
 
 
 def _stable_hash_to_seed(value: str) -> int:
@@ -1444,8 +1473,22 @@ class Simulation:
         clone_tax_benefit_system: bool = True,
     ) -> "Simulation":
         """
-        Copy the simulation just enough to be able to run the copy without modifying the original simulation
+        Copy the simulation just enough to be able to run the copy without modifying the original simulation.
+
+        Every cached array is copied, except in the first ``clone`` of this
+        simulation made while ``get_branch`` is creating a branch of it: that
+        copy shares the arrays until it reads them (see :meth:`get_branch`).
+        A subclass's ``clone`` that calls this one through ``super().clone``
+        takes part in that the same way. A subclass ``clone`` that first
+        clones the same simulation directly gets the sharing in that direct
+        clone instead, and its branch is a full copy.
         """
+        request = _branch_clone.get()
+        share_arrays = (
+            request is not None and request.pending and request.simulation is self
+        )
+        if share_arrays:
+            request.pending = False
         new = commons.empty_clone(self)
         new_dict = new.__dict__
 
@@ -1460,13 +1503,16 @@ class Simulation:
                 new_dict[key] = value
         new._fast_cache = {}
 
-        new.persons = self.persons.clone(new)
+        # Only pass ``share_arrays`` when sharing, so a population or holder
+        # ``clone`` override with the earlier signature still deep-copies.
+        sharing = {"share_arrays": True} if share_arrays else {}
+        new.persons = self.persons.clone(new, **sharing)
         setattr(new, new.persons.entity.key, new.persons)
         new.populations = {new.persons.entity.key: new.persons}
         new.branches = {}
 
         for entity in self.tax_benefit_system.group_entities:
-            population = self.populations[entity.key].clone(new, new.persons)
+            population = self.populations[entity.key].clone(new, new.persons, **sharing)
             new.populations[entity.key] = population
             setattr(
                 new, entity.key, population
@@ -1485,6 +1531,28 @@ class Simulation:
     ) -> "Simulation":
         """Create a clone of this simulation, whose calculations are traced in the original.
 
+        The branch starts from the values this simulation has cached when the
+        branch is created. It does not copy them up front: each of the
+        branch's holders gets its own index of this simulation's arrays, and
+        copies an array the first time the branch reads it. A numpy array the
+        branch never reads is never copied (masked arrays, and values that
+        are not numpy arrays, are copied when the branch is created).
+
+        What the branch stores (``set_input``, calculations, deletions) goes
+        into its own index only, and what it reads is its own copy, so
+        nothing done through the branch changes this simulation's values.
+        What this simulation stores after branching stays out of the branch.
+
+        The one difference from copying every array up front: code that
+        writes in place into one of this simulation's cached arrays
+        (``array[mask] = 0`` or ``array += 1``, instead of storing a new
+        array with ``set_input``) after branching also changes the value the
+        branch reads, if the branch has not read that array yet.
+
+        As with the rest of a simulation, a branch is not safe to read from
+        several threads at once: two first reads of the same array can each
+        make a copy.
+
         Args:
             name (str, optional): Name of the branch. Defaults to "branch".
             clone_system (bool, optional): Whether to clone the tax-benefit system. Use this if you're changing policy parameters. Defaults to False.
@@ -1496,7 +1564,13 @@ class Simulation:
             return self
         if name in self.branches:
             return self.branches[name]
-        branch = self.clone(clone_tax_benefit_system=clone_system)
+        request = _BranchClone(self)
+        token = _branch_clone.set(request)
+        try:
+            branch = self.clone(clone_tax_benefit_system=clone_system)
+        finally:
+            request.pending = False
+            _branch_clone.reset(token)
         self.branches[name] = branch
         branch.branch_name = name
         branch.parent_branch = self

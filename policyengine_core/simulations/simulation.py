@@ -209,9 +209,10 @@ class Simulation:
         # source data apart from formula-computed caches. Without this the
         # post-``apply_reform`` cache wipe would also wipe the dataset the
         # simulation was loaded from. The record follows this simulation's
-        # storage: ``delete_arrays`` drops the entries for the values it
-        # deletes, and ``clone`` (so also ``get_branch``) gives the copy its
-        # own record.
+        # storage: each entry names one stored value (the period is the one
+        # storage keys it under), ``delete_arrays`` drops the entries for the
+        # values it deletes, and ``clone`` (so also ``get_branch``) gives the
+        # copy its own record.
         self._user_input_keys: set[tuple[str, str, Period]] = set()
         self.debug: bool = False
         self.trace: bool = trace
@@ -1987,8 +1988,11 @@ class Simulation:
 
         df = subset_df
 
-        # Update the dataset and rebuild the simulation
+        # Update the dataset and rebuild the simulation. Rebuilding replaces
+        # every stored value, so the record of inputs starts again with the
+        # ones the rebuild sets.
         self.dataset = Dataset.from_dataframe(df, self.dataset.time_period)
+        self._user_input_keys = set()
         self.build_from_dataset()
 
         # Purge ``_fast_cache`` entries populated by ``to_input_dataframe``

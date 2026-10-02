@@ -12,6 +12,9 @@ every simulation:
 - each entry names a value the simulation stores, equal to the input;
 - ``to_input_dataframe`` exports the periods the model says are inputs.
 
+One input variable is set through a custom ``set_input`` handler that
+calculates another variable first and stores months under string periods.
+
 After ``_invalidate_all_caches`` the simulation and its branches store their
 inputs and nothing else. ``test_user_input_keys.py`` pins the same behaviour
 with examples.
@@ -27,6 +30,9 @@ hypothesis = pytest.importorskip("hypothesis")
 st = hypothesis.strategies
 
 from policyengine_core import periods
+from policyengine_core.country_template import CountryTaxBenefitSystem
+from policyengine_core.country_template.entities import Household
+from policyengine_core.model_api import MONTH, Variable
 from policyengine_core.simulations import SimulationBuilder
 
 SITUATION = {
@@ -37,7 +43,29 @@ SITUATION = {
     "households": {"h": {"parents": ["a", "b"], "rent": {"2025-01": 800}}},
 }
 MONTHS = ["2025-01", "2025-02", "2025-03"]
-EXPORTABLE = ["salary", "rent", "birth"]
+
+
+def _calculate_then_set_months(holder, period, array):
+    holder.simulation.calculate("income_tax", MONTHS[0])
+    for month in MONTHS:
+        holder._set(month, array)
+
+
+class quarterly_rent(Variable):
+    """Set for a year through a custom handler that calculates income tax
+    first, then stores the first quarter's months under string periods."""
+
+    value_type = float
+    entity = Household
+    definition_period = MONTH
+    label = "Rent for the first quarter"
+    set_input = _calculate_then_set_months
+
+
+TAX_BENEFIT_SYSTEM = CountryTaxBenefitSystem()
+TAX_BENEFIT_SYSTEM.add_variable(quarterly_rent)
+INPUTS = ["salary", "income_tax", "rent", "quarterly_rent", "birth"]
+EXPORTABLE = ["salary", "rent", "quarterly_rent", "birth"]
 CALCULATED = [
     "salary",
     "income_tax",
@@ -64,7 +92,7 @@ def _slot(key):
 def _input_value(variable, number):
     if variable == "birth":
         return [f"19{50 + number % 50}-01-01"] * 2
-    if variable == "rent":
+    if variable in ("rent", "quarterly_rent"):
         return [float(number)]
     return [float(number), float(number) / 2]
 
@@ -133,15 +161,14 @@ class _Family:
             variable, period, number = arguments
             value = _input_value(variable, number)
             simulation.set_input(variable, period, value)
-            key = (variable, model.branch_name, periods.period(period))
             array = simulation.get_holder(variable)._to_array(np.asarray(value))
-            # An eternal variable stores one value whatever the period, so a
-            # value set for another period replaces it, and every period it
-            # was set for keeps its entry.
-            for other in model.inputs:
-                if _slot(other) == _slot(key):
-                    model.inputs[other] = array
-            model.inputs[key] = array
+            # The handler stores the quarter's months. An eternal variable
+            # stores one value whatever the period it is set for, and its
+            # entry names that value.
+            stored = MONTHS if variable == "quarterly_rent" else [period]
+            for stored_period in stored:
+                key = (variable, model.branch_name, _canonical(variable, stored_period))
+                model.inputs[key] = array
         elif kind == "calculate":
             variable, period = arguments
             simulation.calculate(variable, period)
@@ -225,6 +252,13 @@ _operation = st.one_of(
         st.integers(min_value=0, max_value=49),
     ),
     st.tuples(
+        st.just("set_input"),
+        _index,
+        st.just("quarterly_rent"),
+        st.just("2025"),
+        st.integers(min_value=0, max_value=5_000),
+    ),
+    st.tuples(
         st.just("calculate"),
         _index,
         st.sampled_from(CALCULATED),
@@ -233,13 +267,13 @@ _operation = st.one_of(
     st.tuples(
         st.just("delete"),
         _index,
-        st.sampled_from(["salary", "income_tax", "rent", "birth"]),
+        st.sampled_from(INPUTS),
         _months_or_all,
     ),
     st.tuples(
         st.just("holder_delete"),
         _index,
-        st.sampled_from(["salary", "income_tax", "rent", "birth"]),
+        st.sampled_from(INPUTS),
         _months_or_all,
         st.integers(min_value=0, max_value=3),
     ),
@@ -255,8 +289,8 @@ _operation = st.one_of(
     suppress_health_check=[hypothesis.HealthCheck.too_slow],
 )
 @hypothesis.given(operations=st.lists(_operation, max_size=30))
-def test_user_input_keys_match_reference_model(tax_benefit_system, operations):
-    family = _Family(tax_benefit_system)
+def test_user_input_keys_match_reference_model(operations):
+    family = _Family(TAX_BENEFIT_SYSTEM)
     family.assert_records_match()
     for step, operation in enumerate(operations):
         family.apply(operation)

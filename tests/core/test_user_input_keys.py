@@ -16,10 +16,13 @@ their values separately.
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 
 from policyengine_core import periods
 from policyengine_core.country_template import CountryTaxBenefitSystem
+from policyengine_core.country_template import Simulation as CountryTemplateSimulation
 from policyengine_core.country_template.entities import Person
+from policyengine_core.data import Dataset
 from policyengine_core.experimental import MemoryConfig
 from policyengine_core.model_api import MONTH, Reform, Variable
 from policyengine_core.simulations import SimulationBuilder
@@ -117,6 +120,16 @@ def test_delete_for_a_period_drops_only_entries_within_it():
     assert _input_periods(simulation, "salary") == {("default", "2024-12")}
 
 
+def test_eternal_input_is_recorded_for_the_one_value_it_stores():
+    """An eternal variable stores one value whatever period it was set for,
+    so its entry names that value's period, eternity."""
+    simulation = _simulation()
+    simulation.set_input("birth", "2020", ["1980-01-01"])
+    simulation.set_input("birth", "2025-03", ["1981-01-01"])
+
+    assert _input_periods(simulation, "birth") == {("default", "ETERNITY")}
+
+
 def test_delete_of_an_eternal_variable_drops_its_entry_for_any_period():
     """Eternal values are stored once, whatever period they were set for,
     so deleting any period deletes the value and its entry."""
@@ -187,6 +200,50 @@ def test_entry_is_kept_for_a_value_disk_storage_did_not_delete():
     assert _input_periods(simulation, "rent") == {("default", FEBRUARY)}
     assert holder.get_array(FEBRUARY)[0] == 600.0
 
+    simulation.delete_arrays("rent")
+    assert _input_periods(simulation, "rent") == set()
+
+
+def test_entry_is_dropped_for_an_eternal_value_deleted_from_disk():
+    simulation = _simulation()
+    simulation.memory_config = MemoryConfig(max_memory_occupation=0)
+    holder = simulation.get_holder("birth")
+    holder._disk_storage = holder.create_disk_storage()
+    holder._on_disk_storable = True
+    simulation.set_input("birth", "2020", ["1980-01-01"])
+    assert holder._memory_storage.get("2020") is None
+
+    simulation.delete_arrays("birth", "2031-07")
+
+    assert holder.get_array("2020") is None
+    assert _input_periods(simulation, "birth") == set()
+
+
+class _RecordThatMustNotBeScanned(set):
+    def __iter__(self):
+        raise AssertionError("delete_arrays looked through the whole record")
+
+
+def test_delete_does_not_look_through_the_whole_record():
+    """Deleting reads what the holder stores, not every entry of the record,
+    so its cost does not grow with the number of inputs (country packages
+    delete every variable on a branch for each marginal rate)."""
+    simulation = _simulation()
+    simulation.set_input("salary", FEBRUARY, [2_000.0])
+    simulation.calculate("income_tax", JANUARY)
+    simulation._user_input_keys = _RecordThatMustNotBeScanned(
+        simulation._user_input_keys
+        | {_key(f"other_{index}", JANUARY) for index in range(1_000)}
+    )
+
+    for variable in ("income_tax", "salary", "rent", "birth"):
+        simulation.delete_arrays(variable, JANUARY)
+    simulation.delete_arrays("salary")
+
+    assert _key("salary", JANUARY) not in simulation._user_input_keys
+    assert _key("salary", FEBRUARY) not in simulation._user_input_keys
+    assert len(simulation._user_input_keys) == 1_000
+
 
 def test_clone_keeps_its_own_record():
     simulation = _simulation()
@@ -232,23 +289,88 @@ def test_parent_does_not_see_inputs_set_on_its_branch():
     assert _input_periods(simulation, "salary") == {("default", JANUARY)}
 
 
-def test_set_input_on_a_clone_does_not_make_the_original_record_inputs():
-    """While ``set_input`` runs on a clone, values the original calculates
-    are formula results, not inputs."""
+def test_set_input_on_a_clone_is_not_running_on_the_original():
+    """While ``set_input`` runs on a clone, values the original stores, by
+    calculating or through its holders, are not inputs of that call."""
     tax_benefit_system = CountryTaxBenefitSystem()
     simulation = _simulation(tax_benefit_system)
     clone = simulation.clone()
 
-    def set_rent_and_calculate_on_the_original(holder, period, array):
+    def set_rent_and_store_on_the_original(holder, period, array):
         simulation.calculate("income_tax", JANUARY)
+        simulation.get_holder("accommodation_size")._set(JANUARY, [80.0])
         for month in period.get_subperiods(periods.MONTH):
             holder._set(month, array)
 
-    tax_benefit_system.variables[
-        "rent"
-    ].set_input = set_rent_and_calculate_on_the_original
+    tax_benefit_system.variables["rent"].set_input = set_rent_and_store_on_the_original
     clone.set_input("rent", "2025", [500.0])
 
     assert _key("income_tax", JANUARY) not in simulation._user_input_keys
+    assert _key("accommodation_size", JANUARY) not in simulation._user_input_keys
     assert _key("rent", JANUARY) in clone._user_input_keys
     assert _key("rent", JANUARY) not in simulation._user_input_keys
+
+
+def test_values_a_set_input_handler_calculates_are_not_inputs():
+    """A custom ``set_input`` handler may calculate other variables before it
+    stores the input; those are formula results, which ``apply_reform``
+    recalculates."""
+    tax_benefit_system = CountryTaxBenefitSystem()
+    simulation = _simulation(tax_benefit_system)
+
+    def calculate_then_set_rent(holder, period, array):
+        holder.simulation.calculate("income_tax", JANUARY)
+        holder._set(period.start.period(periods.MONTH), array)
+
+    tax_benefit_system.variables["rent"].set_input = calculate_then_set_rent
+    simulation.set_input("rent", "2025", [500.0])
+
+    assert _input_periods(simulation, "income_tax") == set()
+    assert _input_periods(simulation, "rent") == {("default", JANUARY)}
+
+    simulation.set_input("salary", JANUARY, [2_000.0])
+    simulation._invalidate_all_caches()
+
+    assert simulation.calculate("income_tax", JANUARY)[0] == 300.0
+
+
+def test_input_a_handler_sets_for_a_period_string_is_recorded_as_that_period():
+    tax_benefit_system = CountryTaxBenefitSystem()
+    simulation = _simulation(tax_benefit_system)
+
+    def set_january_rent(holder, period, array):
+        holder._set(JANUARY, array)
+
+    tax_benefit_system.variables["rent"].set_input = set_january_rent
+    simulation.set_input("rent", "2025", [123.0])
+
+    assert _key("rent", JANUARY) in simulation._user_input_keys
+    assert simulation.to_input_dataframe()["rent__2025-01"].tolist() == [123.0]
+
+
+def test_subsample_records_only_the_inputs_it_stores():
+    data = pd.DataFrame(
+        {
+            "person_id__2022": [1, 2],
+            "household_id__2022": [1, 2],
+            "person_household_id__2022": [1, 2],
+            "household_weight__2022": [1.0, 1.0],
+            "salary__2022-01": [1_000.0, 2_000.0],
+        }
+    )
+    simulation = CountryTemplateSimulation(dataset=Dataset.from_dataframe(data, "2022"))
+    branch = simulation.get_branch("sample")
+    branch.set_input("salary", "2022-01", [3_000.0, 4_000.0])
+
+    branch.subsample(n=1, seed="user-input-keys", time_period="2022")
+
+    holder = branch.get_holder("salary")
+    for name, branch_name, period in branch._user_input_keys:
+        assert (
+            branch.get_holder(name)._memory_storage.get(period, branch_name) is not None
+        )
+    assert _input_periods(branch, "salary") == {("sample", "2022-01")}
+    assert holder._memory_storage.get("2022-01", "sample").tolist() in (
+        [3_000.0],
+        [4_000.0],
+    )

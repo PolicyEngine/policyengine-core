@@ -21,6 +21,9 @@ if typing.TYPE_CHECKING:
     Child = Union[ParameterNode, ArrayLike]
 
 
+_OWN_ATTRIBUTES = frozenset({"parameter_node_at_instant", "tracer", "branch_name"})
+
+
 class TracingParameterNodeAtInstant:
     def __init__(
         self,
@@ -36,6 +39,9 @@ class TracingParameterNodeAtInstant:
         self,
         key: str,
     ) -> Union[TracingParameterNodeAtInstant, Child]:
+        if key in _OWN_ATTRIBUTES:
+            # Not set yet: copy or pickle is rebuilding this wrapper.
+            raise AttributeError(key)
         child = getattr(self.parameter_node_at_instant, key)
         return self.get_traced_child(child, key)
 

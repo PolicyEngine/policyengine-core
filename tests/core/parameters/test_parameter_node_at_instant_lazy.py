@@ -9,13 +9,18 @@ everything read is what the up-front build held.
 
 import copy
 import gc
+import pickle
+import threading
+import weakref
 
 import numpy as np
 import pytest
 
 from policyengine_core.country_template import CountryTaxBenefitSystem
 from policyengine_core.errors import ParameterNotFoundError
-from policyengine_core.parameters import ParameterNodeAtInstant
+from policyengine_core.parameters import ParameterNode, ParameterNodeAtInstant
+from policyengine_core.parameters.parameter_node_at_instant import _RESOLVED
+from policyengine_core.tracers import FullTracer
 from tests.fixtures.parameter_nodes_at_instant import (
     INSTANTS,
     build_tree,
@@ -43,14 +48,18 @@ def test_country_template_matches_the_up_front_build(instant):
     )
 
 
+def resolved(node_at_instant):
+    return list(node_at_instant.__dict__[_RESOLVED])
+
+
 def test_nothing_is_resolved_until_it_is_read():
     at_instant = build_tree().get_at_instant("2017-03-01")
-    assert at_instant._resolved == {}
+    assert resolved(at_instant) == []
 
     assert at_instant.group.x == 0.1
     # Only the path that was read: the root's ``group`` and the group's ``x``.
-    assert list(at_instant._resolved) == ["group"]
-    assert list(at_instant.group._resolved) == ["x"]
+    assert resolved(at_instant) == ["group"]
+    assert resolved(at_instant.group) == ["x"]
 
 
 def test_asking_for_many_instants_builds_one_node_each():
@@ -124,7 +133,7 @@ def test_vectorial_indexing_reads_the_whole_subtree():
     np.testing.assert_array_equal(at_instant.by_zone[zones].amount, [200, 600, 400])
     np.testing.assert_allclose(at_instant.by_zone[zones].rate, [0.1, 0.3, 0.2])
     # Nothing outside the indexed subtree was resolved for it.
-    assert list(at_instant._resolved) == ["by_zone"]
+    assert resolved(at_instant) == ["by_zone"]
 
 
 def test_dir_lists_children_for_completion():
@@ -192,3 +201,165 @@ def test_copy_of_a_node_at_instant_reads_the_same_values():
     at_instant.group
     for duplicate in (copy.copy(at_instant), copy.deepcopy(at_instant)):
         assert materialise(duplicate) == materialise(at_instant)
+
+
+@pytest.mark.parametrize(
+    "child_name",
+    # Not ``add_child``: ParameterNode itself cannot hold a child of that name.
+    ["_name", "_instant_str", "_vectorial_node", "_node", "_resolved"]
+    + ["_resolve", "_resolve_all", "_store", "_materialise"],
+)
+def test_children_named_like_the_nodes_own_attributes(child_name):
+    """Such a child reads as its value whatever the read order, as when every
+    child was set up front, and leaves its siblings readable."""
+    tree = ParameterNode(
+        "",
+        data={
+            child_name: {"values": {"2010-01-01": 42}},
+            "ok": {"values": {"2010-01-01": 7}},
+        },
+    )
+    for read_name_first in (True, False):
+        tree._at_instant_cache.clear()
+        at_instant = tree.get_at_instant("2017-03-01")
+        if read_name_first:
+            assert getattr(at_instant, child_name) == 42
+            assert at_instant.ok == 7 and at_instant["ok"] == 7
+        else:
+            assert at_instant["ok"] == 7 and at_instant.ok == 7
+            assert getattr(at_instant, child_name) == 42
+        assert at_instant[child_name] == 42
+        assert set(at_instant._children) == {child_name, "ok"}
+
+
+class BlockingChild:
+    """A parameter child whose first resolution waits until released."""
+
+    def __init__(self):
+        self.calls = 0
+        self.entered = threading.Event()
+        self.release = threading.Event()
+
+    def _get_at_instant(self, instant):
+        self.calls += 1
+        if self.calls == 1:
+            self.entered.set()
+            assert self.release.wait(10), "never released"
+        return object()
+
+
+@pytest.mark.parametrize(
+    "second_read",
+    [
+        lambda node: node.slow,
+        lambda node: node["slow"],
+        lambda node: node._children["slow"],
+        lambda node: [node[name] for name in node][0],
+    ],
+)
+def test_concurrent_first_reads_resolve_a_child_once(second_read):
+    tree = ParameterNode("", data={"other": {"values": {"2010-01-01": 1}}})
+    slow = BlockingChild()
+    tree.children = {"slow": slow, **tree.children}
+    at_instant = tree.get_at_instant("2017-03-01")
+    results, errors = [], []
+
+    def read(reader):
+        try:
+            results.append(reader(at_instant))
+        except Exception as error:  # noqa: BLE001 - recorded for the assertion
+            errors.append(error)
+
+    first = threading.Thread(target=read, args=(lambda node: node.slow,))
+    first.start()
+    assert slow.entered.wait(10)
+    second = threading.Thread(target=read, args=(second_read,))
+    second.start()
+    second.join(0.2)  # let the second reader reach the child too
+    slow.release.set()
+    first.join(10)
+    second.join(10)
+
+    assert not errors, errors
+    assert len(results) == 2 and results[0] is results[1]
+    assert slow.calls == 1
+
+
+def test_shallow_copies_read_the_same_children():
+    held = build_tree().get_at_instant("2017-03-01")
+    duplicate = copy.copy(held)
+    original_scale = held.scale
+    # A scale is rebuilt by each resolution, so identity shows one resolution.
+    assert duplicate.scale is original_scale
+    assert duplicate["scale"] is original_scale
+    assert held["scale"] is original_scale
+    duplicate._children
+    assert held._children["scale"] is original_scale
+    assert held.by_zone is duplicate["by_zone"]
+
+
+@pytest.mark.parametrize(
+    "duplicate", [copy.deepcopy, lambda n: pickle.loads(pickle.dumps(n))]
+)
+def test_traced_nodes_copy_and_pickle(duplicate):
+    tree = build_tree()
+    tree.trace = True
+    tree.tracer = FullTracer()
+    tree.branch_name = "default"
+    traced = tree.get_at_instant("2017-03-01")
+    traced.group.x  # partly resolved, through the tracing wrapper
+    raw = traced.parameter_node_at_instant
+    for node in (raw, traced):
+        assert duplicate(node).flat_rate == 0.1
+        assert duplicate(node).group.x == 0.1
+
+
+def test_a_child_without_a_value_is_resolved_once():
+    tree = ParameterNode("", data={"late": {"values": {"2030-01-01": 1}}})
+    held = tree.get_at_instant("2020-01-01")
+    calls = []
+    original = tree.children["late"]._get_at_instant
+
+    def counting(instant):
+        calls.append(instant)
+        return original(instant)
+
+    tree.children["late"]._get_at_instant = counting
+    for _ in range(3):
+        with pytest.raises(ParameterNotFoundError):
+            held.late
+        with pytest.raises(KeyError):
+            held["late"]
+    assert list(held) == []
+    assert len(calls) == 1
+
+    # A child already read keeps what that read found, value or none.
+    tree.children["late"].update(value=2, period="year:2020:1")
+    with pytest.raises(KeyError):
+        held["late"]
+    assert tree.get_at_instant("2020-01-01").late == 2
+
+
+def test_a_node_lets_go_of_its_parameter_node_once_every_child_is_read():
+    tree = ParameterNode(
+        "",
+        data={
+            "group": {
+                "x": {"values": {"2010-01-01": 1}},
+                "late": {"values": {"2030-01-01": 2}},
+            },
+            "unused": {"values": {"2010-01-01": 3}},
+        },
+    )
+    group = tree.get_at_instant("2017-03-01").group
+    tree_ref = weakref.ref(tree)
+    del tree
+    gc.collect()
+    # Partly read: the node still needs the tree to resolve the rest.
+    assert tree_ref() is not None
+    assert group.x == 1
+    with pytest.raises(ParameterNotFoundError):
+        group.late
+    gc.collect()
+    assert tree_ref() is None
+    assert group.x == 1 and list(group) == ["x"]

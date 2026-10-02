@@ -1,0 +1,1 @@
+Uprating now starts from the latest earlier input in the variable's own unit and skips periods the simulation calculated, so calculating intermediate periods first no longer compounds rounding or truncation, or carries an eligibility mask or a default into later uprated values.

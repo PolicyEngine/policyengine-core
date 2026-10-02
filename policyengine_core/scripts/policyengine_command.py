@@ -9,6 +9,13 @@ from policyengine_core.scripts import add_tax_benefit_system_arguments
 """
 
 
+def non_negative_int(value: str) -> int:
+    number = int(value)
+    if number < 0:
+        raise argparse.ArgumentTypeError(f"must be 0 or more, got {number}")
+    return number
+
+
 def get_parser():
     parser = argparse.ArgumentParser()
 
@@ -93,7 +100,7 @@ def get_parser():
         )
         parser.add_argument(
             "--reform-cache-size",
-            type=int,
+            type=non_negative_int,
             default=None,
             help="how many reform systems (built for tests with reforms, extensions or parameter inputs) to keep cached; each is a full copy of the tax-benefit system. Defaults to 2; 0 caches none.",
         )

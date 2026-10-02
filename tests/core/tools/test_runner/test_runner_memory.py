@@ -93,6 +93,31 @@ def test_cache_size_zero_builds_a_fresh_reform_system_each_time():
     assert len(_tax_benefit_system_cache[baseline].reforms) == 0
 
 
+def test_a_smaller_cache_size_applies_to_what_is_already_cached():
+    baseline = CountryTaxBenefitSystem()
+    first = _system_for_rate(baseline, 0.21, cache_size=3)
+    _system_for_rate(baseline, 0.22, cache_size=3)
+    _system_for_rate(baseline, 0.23, cache_size=3)
+    # A cache hit under a smaller bound still trims, least recently used first.
+    assert _system_for_rate(baseline, 0.23, cache_size=1) is not None
+    assert len(_tax_benefit_system_cache[baseline].reforms) == 1
+    # Any request applies its bound, a reform-free one too; 0 empties it.
+    _get_tax_benefit_system(baseline, [], [], cache_size=0)
+    assert len(_tax_benefit_system_cache[baseline].reforms) == 0
+    assert _system_for_rate(baseline, 0.21, cache_size=0) is not first
+
+
+def test_class_reforms_without_a_key_are_cached_apart():
+    baseline = CountryTaxBenefitSystem()
+    (reform_a,), _ = _rate_reform(0.21)
+    (reform_b,), _ = _rate_reform(0.22)
+    system_a = _get_tax_benefit_system(baseline, [reform_a], [])
+    system_b = _get_tax_benefit_system(baseline, [reform_b], [])
+    assert _rate(system_a) == pytest.approx(0.21)
+    assert _rate(system_b) == pytest.approx(0.22)
+    assert _get_tax_benefit_system(baseline, [reform_a], []) is system_a
+
+
 def test_negative_cache_size_is_rejected():
     with pytest.raises(ValueError):
         _system_for_rate(CountryTaxBenefitSystem(), 0.25, cache_size=-1)
@@ -145,6 +170,17 @@ def test_reform_cache_size_option_reaches_the_cache(tmp_path, monkeypatch):
     path = write_cases(tmp_path / "cases.yaml", 3)
     run_with_probe(CountryTaxBenefitSystem(), path, {"reform_cache_size": 0})
     assert seen == [0, 0, 0]
+
+
+def test_command_line_rejects_a_negative_reform_cache_size(capsys):
+    from policyengine_core.scripts import policyengine_command
+
+    with pytest.raises(SystemExit) as exit_info:
+        policyengine_command.get_parser().parse_args(
+            ["test", "cases.yaml", "--reform-cache-size", "-1"]
+        )
+    assert exit_info.value.code == 2
+    assert "must be 0 or more" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize(

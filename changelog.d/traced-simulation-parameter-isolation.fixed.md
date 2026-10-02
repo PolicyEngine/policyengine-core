@@ -1,0 +1,1 @@
+Tracing a simulation no longer switches tracing on in the parameter tree of its tax-benefit system, so other simulations, branches and clones of the system stay untraced, every traced simulation and branch records the parameters its formulas read under its own tracer and branch name, and traced parameter nodes can be copied, deep-copied and pickled.

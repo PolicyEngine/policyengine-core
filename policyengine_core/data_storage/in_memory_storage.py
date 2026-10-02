@@ -20,15 +20,13 @@ def _can_share(array: ArrayLike) -> bool:
 
 
 def _read_only_view(array: numpy.ndarray) -> numpy.ndarray:
-    """Return ``array`` as a view whose data cannot be written through.
+    """Return a new view of ``array`` whose data cannot be written through.
 
     Used for arrays a storage shares with the one it was cloned from, until
-    it copies them (see ``InMemoryStorage.clone``). An array that is already
-    read-only (such as a view shared from a further ancestor) is shared as
-    it is.
+    it copies them (see ``InMemoryStorage.clone``). The view is a new array
+    object even when ``array`` is already read-only, so that reassigning the
+    source's ``shape`` or ``dtype`` does not change what the clone reads.
     """
-    if not array.flags.writeable:
-        return array
     view = array.view()
     view.flags.writeable = False
     return view
@@ -71,6 +69,9 @@ class InMemoryStorage:
         The one difference from copying straight away: writing in place into
         one of this storage's arrays, after cloning and before the clone
         first reads it, changes the value the clone reads.
+
+        A storage is not safe to read from several threads at once: two first
+        reads of the same key can each make a copy.
         """
         clone = InMemoryStorage(self.is_eternal)
         if share_arrays:

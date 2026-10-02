@@ -127,7 +127,7 @@ def _result(function):
     try:
         value = function()
     except Exception as error:  # Compare failures as well as values.
-        return ("error", type(error).__name__)
+        return ("error", type(error).__name__, str(error))
     if value is None:
         return ("none",)
     if isinstance(value, EnumArray):
@@ -135,13 +135,22 @@ def _result(function):
     return ("array", np.asarray(value))
 
 
+def _same_bytes(left, right):
+    """Same dtype, shape and bytes (values, for object arrays)."""
+    if left.dtype != right.dtype or left.shape != right.shape:
+        return False
+    if left.dtype.kind == "O":
+        return left.tolist() == right.tolist()
+    return left.tobytes() == right.tobytes()
+
+
 def _same(left, right):
     if left[0] != right[0]:
         return False
     if left[0] == "array":
-        return left[1].dtype == right[1].dtype and np.array_equal(left[1], right[1])
+        return _same_bytes(left[1], right[1])
     if left[0] == "enum":
-        return left[1] is right[1] and np.array_equal(left[2], right[2])
+        return left[1] is right[1] and _same_bytes(left[2], right[2])
     return left == right
 
 

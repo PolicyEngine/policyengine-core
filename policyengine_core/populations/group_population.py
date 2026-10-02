@@ -50,8 +50,9 @@ class GroupPopulation(Population):
         # pointing back at its parent simulation; that broke ``branch_name``
         # and ``parent_branch`` lookups for group-entity variables
         # (e.g. ``tax_unit_itemizes``) on nested branches.
+        sharing = {"share_arrays": True} if share_arrays else {}
         result._holders = {
-            variable: holder.clone(result, share_arrays=share_arrays)
+            variable: holder.clone(result, **sharing)
             for (variable, holder) in self._holders.items()
         }
         result.count = self.count

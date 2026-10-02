@@ -23,6 +23,7 @@ to agree.
 from __future__ import annotations
 
 import threading
+import warnings
 
 import numpy as np
 import pytest
@@ -75,6 +76,7 @@ def test_new_branch_shares_every_parent_array(tax_benefit_system):
         assert np.shares_memory(array, parent_arrays[key]), key
         # Nothing reaching into the storage can write through to the parent.
         assert not array.flags.writeable, key
+        assert array is not parent_arrays[key], key
         assert parent_arrays[key].flags.writeable, key
     assert not shared_keys(simulation)
 
@@ -234,6 +236,56 @@ def test_values_that_are_not_arrays_are_copied_once():
     assert shared.get("2017-01") == [1, 2]
     assert shared.get("2017-01") is not storage.get("2017-01")
     assert CountingList.copies == 1
+
+
+@pytest.mark.parametrize("attribute", ["shape", "dtype"])
+def test_reshaping_a_read_only_parent_array_does_not_reach_the_branch(
+    tax_benefit_system, attribute
+):
+    """A read-only input is shared through a new view, not as the same object.
+
+    ``set_input`` stores an array of the right dtype as it is, so the parent
+    holds the caller's object. Reassigning that object's ``shape`` or
+    ``dtype`` leaves its bytes alone, but a branch sharing the same object
+    would read them differently.
+    """
+    simulation = build_simulation(tax_benefit_system)
+    salary = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
+    salary.flags.writeable = False
+    simulation.set_input("salary", "2017-03", salary)
+    assert simulation.get_array("salary", "2017-03") is salary
+    branch = simulation.get_branch("branch")
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        if attribute == "shape":
+            salary.shape = (2, 2)
+        else:
+            salary.dtype = np.int32
+
+    value = branch.calculate("salary", "2017-03")
+    assert value.dtype == np.float32
+    assert value.shape == (4,)
+    assert value.tolist() == [1.0, 2.0, 3.0, 4.0]
+
+
+def test_population_clone_override_with_the_earlier_signature_still_clones(
+    tax_benefit_system,
+):
+    """``clone()`` passes ``share_arrays`` only when sharing."""
+
+    class LegacyPopulation(type(build_simulation(tax_benefit_system).persons)):
+        def clone(self, simulation):
+            return super().clone(simulation)
+
+    simulation = build_simulation(tax_benefit_system)
+    salary = simulation.calculate("salary", JANUARY)
+    simulation.persons.__class__ = LegacyPopulation
+
+    clone = simulation.clone()
+
+    assert np.array_equal(clone.calculate("salary", JANUARY), salary)
+    assert not np.shares_memory(clone.calculate("salary", JANUARY), salary)
 
 
 def test_branch_of_a_traced_simulation_shares_arrays(tax_benefit_system):

@@ -1475,10 +1475,13 @@ class Simulation:
         """
         Copy the simulation just enough to be able to run the copy without modifying the original simulation.
 
-        Every cached array is copied, except when ``get_branch`` is cloning
-        this simulation into a branch: the branch then shares them until it
-        reads them (see :meth:`get_branch`). A subclass's ``clone`` that
-        calls this one takes part in that the same way.
+        Every cached array is copied, except in the first ``clone`` of this
+        simulation made while ``get_branch`` is creating a branch of it: that
+        copy shares the arrays until it reads them (see :meth:`get_branch`).
+        A subclass's ``clone`` that calls this one through ``super().clone``
+        takes part in that the same way. A subclass ``clone`` that first
+        clones the same simulation directly gets the sharing in that direct
+        clone instead, and its branch is a full copy.
         """
         request = _branch_clone.get()
         share_arrays = (
@@ -1500,15 +1503,16 @@ class Simulation:
                 new_dict[key] = value
         new._fast_cache = {}
 
-        new.persons = self.persons.clone(new, share_arrays=share_arrays)
+        # Only pass ``share_arrays`` when sharing, so a population or holder
+        # ``clone`` override with the earlier signature still deep-copies.
+        sharing = {"share_arrays": True} if share_arrays else {}
+        new.persons = self.persons.clone(new, **sharing)
         setattr(new, new.persons.entity.key, new.persons)
         new.populations = {new.persons.entity.key: new.persons}
         new.branches = {}
 
         for entity in self.tax_benefit_system.group_entities:
-            population = self.populations[entity.key].clone(
-                new, new.persons, share_arrays=share_arrays
-            )
+            population = self.populations[entity.key].clone(new, new.persons, **sharing)
             new.populations[entity.key] = population
             setattr(
                 new, entity.key, population
@@ -1530,8 +1534,9 @@ class Simulation:
         The branch starts from the values this simulation has cached when the
         branch is created. It does not copy them up front: each of the
         branch's holders gets its own index of this simulation's arrays, and
-        copies an array the first time the branch reads it. An array the
-        branch never reads is never copied.
+        copies an array the first time the branch reads it. A numpy array the
+        branch never reads is never copied (masked arrays, and values that
+        are not numpy arrays, are copied when the branch is created).
 
         What the branch stores (``set_input``, calculations, deletions) goes
         into its own index only, and what it reads is its own copy, so
@@ -1543,6 +1548,10 @@ class Simulation:
         (``array[mask] = 0`` or ``array += 1``, instead of storing a new
         array with ``set_input``) after branching also changes the value the
         branch reads, if the branch has not read that array yet.
+
+        As with the rest of a simulation, a branch is not safe to read from
+        several threads at once: two first reads of the same array can each
+        make a copy.
 
         Args:
             name (str, optional): Name of the branch. Defaults to "branch".

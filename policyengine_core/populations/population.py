@@ -28,8 +28,9 @@ class Population:
     ) -> "Population":
         result = Population(self.entity)
         result.simulation = simulation
+        sharing = {"share_arrays": True} if share_arrays else {}
         result._holders = {
-            variable: holder.clone(result, share_arrays=share_arrays)
+            variable: holder.clone(result, **sharing)
             for (variable, holder) in self._holders.items()
         }
         result.count = self.count

@@ -65,7 +65,11 @@ class Holder:
             ):
                 new_dict[key] = value
 
-        new._memory_storage = self._memory_storage.clone(share_arrays=share_arrays)
+        new._memory_storage = (
+            self._memory_storage.clone(share_arrays=True)
+            if share_arrays
+            else self._memory_storage.clone()
+        )
         new._disk_storage = (
             self._disk_storage.clone() if self._disk_storage is not None else None
         )

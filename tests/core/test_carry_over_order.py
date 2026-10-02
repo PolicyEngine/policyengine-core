@@ -120,6 +120,18 @@ def test_inputs_at_one_unit_starting_together_carry_the_one_ending_last(
     )
 
 
+@pytest.mark.parametrize("reverse", [False, True], ids=["month-first", "day-first"])
+def test_inputs_with_the_same_extent_carry_the_larger_unit(system, reverse):
+    """Two inputs covering the same days in other units than the variable's
+    resolve the same way whichever was stored first."""
+    values = {"month:2013-01:2": [10, 10], "day:2013-01-01:59": [20, 20]}
+    order = list(values)[::-1] if reverse else list(values)
+    inputs = {"year_input_without_helper": {key: values[key] for key in order}}
+    np.testing.assert_array_equal(
+        alone(system, inputs, "year_input_without_helper", "2014"), [10, 10]
+    )
+
+
 def test_later_input_does_not_carry_backwards(system):
     built = simulation(system, {"carried": {"2012": [7, 8], "2014": [9, 10]}})
     np.testing.assert_array_equal(built.calculate("carried", "2011"), [0, 0])

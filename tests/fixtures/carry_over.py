@@ -6,7 +6,8 @@ Shared by ``tests/core/test_carry_over_order.py`` (regressions) and
 The reference rule, for a variable with no formula result for a period: an
 input stored for the period itself is read back as stored; otherwise the
 period takes the input stored for the latest-starting period that starts no
-later than it (on a tie, the one that ends last), preferring inputs at the
+later than it (on a tie, the one that ends last, then the larger unit),
+preferring inputs at the
 variable's own definition-period unit, masked by the variable's
 ``defined_for`` at the period; with no such input, the default.
 """
@@ -193,7 +194,13 @@ def reference(system, inputs, variable, period):
     ]
     if earlier:
         latest = max(
-            own_unit or earlier, key=lambda stored: (stored.start, stored.stop)
+            own_unit or earlier,
+            key=lambda stored: (
+                stored.start,
+                stored.stop,
+                periods.unit_weight(stored.unit),
+                str(stored),
+            ),
         )
         value = np.array(stored_inputs[latest]).astype(default.dtype)
     else:

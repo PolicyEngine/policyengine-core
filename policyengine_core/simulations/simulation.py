@@ -946,7 +946,9 @@ class Simulation:
                 ):
                     # Carry over the latest input: of the stored periods that
                     # start no later than ``period``, the one that starts last
-                    # (on a tie, the one that ends last), preferring periods at
+                    # (on a tie, the one that ends last, then the larger unit,
+                    # so the choice never depends on the order inputs were
+                    # stored), preferring periods at
                     # the variable's own definition-period unit and using
                     # another unit only when there is none, as for an input to
                     # a variable with no ``set_input`` helper. Compare
@@ -977,6 +979,8 @@ class Simulation:
                             p.unit == variable.definition_period,
                             p.start,
                             p.stop,
+                            periods.unit_weight(p.unit),
+                            str(p),
                         ),
                         default=None,
                     )

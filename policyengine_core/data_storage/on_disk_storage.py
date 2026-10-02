@@ -20,6 +20,15 @@ def _split_key(key: str) -> tuple:
     return branch_name, period
 
 
+def _is_within(key: str, branch_name: str, period: Period) -> bool:
+    """Whether file key ``key`` stores a value of ``branch_name`` for a
+    period that ``period`` contains."""
+    key_branch_name, key_period = _split_key(key)
+    return key_branch_name == branch_name and period.contains(
+        periods.period(key_period)
+    )
+
+
 class OnDiskStorage:
     """
     Low-level class responsible for storing and retrieving calculated vectors on disk
@@ -107,11 +116,15 @@ class OnDiskStorage:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
 
+        # Delete every period of the branch that ``period`` contains, as
+        # ``InMemoryStorage.delete`` does and ``Holder.delete_arrays``
+        # documents: deleting ``2025`` also deletes ``2025-01``. Previously
+        # only the file keyed exactly ``period`` was deleted.
         if period is not None:
             self._files = {
                 period_item: value
                 for period_item, value in self._files.items()
-                if not period_item == f"{branch_name}_{period}"
+                if not _is_within(period_item, branch_name, period)
             }
 
     def get_known_periods(self) -> list:

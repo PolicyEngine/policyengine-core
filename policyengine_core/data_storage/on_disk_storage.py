@@ -1,5 +1,6 @@
 import os
 import shutil
+import uuid
 from typing import Dict, List, Optional, Set, Tuple
 
 import numpy
@@ -11,6 +12,10 @@ from policyengine_core.data_storage.store_history import (
     next_sequence_number,
 )
 from policyengine_core.enums import EnumArray
+
+# Distinguishes the files this process writes from other processes' files in
+# the same directory, whose sequence numbers may repeat this process's.
+_PROCESS_TOKEN = uuid.uuid4().hex[:12]
 from policyengine_core.periods import Period
 
 
@@ -49,11 +54,11 @@ class OnDiskStorage:
         """Create a private metadata view over this storage directory.
 
         The file and enum mappings are copied so deleting or rewiring entries
-        through the clone does not mutate the source storage. The underlying
-        ``.npy`` files remain shared: writing the same ``{branch}_{period}``
-        key from two views targets the same path and can overwrite the file.
-        Clones retain the original cleanup owner so the shared directory stays
-        alive, but never own cleanup themselves.
+        through the clone does not mutate the source storage. The directory
+        is shared, but every store writes a new file, so writing a key
+        through one view leaves the file another view maps. Files stay until
+        the directory is removed. Clones retain the original cleanup owner so
+        the shared directory stays alive, but never own cleanup themselves.
         """
         clone = OnDiskStorage(
             self.storage_dir,
@@ -105,8 +110,14 @@ class OnDiskStorage:
         if sequence_number is None:
             sequence_number = next_sequence_number()
         # A new file for every store: clones share this directory and may
-        # still map an earlier file for the same key.
-        path = os.path.join(self.storage_dir, f"{filename}.{sequence_number}") + ".npy"
+        # still map an earlier file for the same key. The process token keeps
+        # files from processes whose counters restarted apart.
+        path = (
+            os.path.join(
+                self.storage_dir, f"{filename}.{_PROCESS_TOKEN}.{sequence_number}"
+            )
+            + ".npy"
+        )
         if isinstance(value, EnumArray):
             self._enums[path] = value.possible_values
             value = value.view(numpy.ndarray)
@@ -204,14 +215,16 @@ class OnDiskStorage:
                 continue
             path = os.path.join(self.storage_dir, filename)
             filename_core = filename.rsplit(".", 1)[0]
-            # Files are named "<key>.<sequence number>.npy" (each store writes
-            # a new file); older dumps are "<key>.npy". Keep each key's most
-            # recently written file: sequence numbers restart in every
-            # process, so they only order files one process wrote.
-            key, _, number = filename_core.rpartition(".")
-            if not (key and number.isdigit()):
-                key, number = filename_core, "0"
-            order = (os.stat(path).st_mtime_ns, int(number))
+            # Files are named "<key>.<process token>.<sequence number>.npy"
+            # (each store writes a new file); older dumps are "<key>.npy".
+            # Keep each key's most recently written file: sequence numbers
+            # restart in every process, so they only order one process's files.
+            parts = filename_core.rsplit(".", 2)
+            if len(parts) == 3 and parts[2].isdigit():
+                key, number = parts[0], int(parts[2])
+            else:
+                key, number = filename_core, 0
+            order = (os.stat(path).st_mtime_ns, number)
             if key not in latest or order > latest[key]:
                 latest[key] = order
                 files[key] = path

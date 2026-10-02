@@ -752,6 +752,77 @@ def test_uprated_value_another_simulation_returns_is_tracked():
     )
 
 
+def test_value_a_formula_calculates_in_a_worker_thread_is_tracked():
+    """A thread started without the formula's context still hands its history up."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    def result(person, period):
+        simulation = person.simulation
+        child = simulation.get_branch("worker")
+        try:
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                return pool.submit(child.calculate, "value", period).result() * 2
+        finally:
+            del simulation.branches["worker"]
+
+    system = _one_person_system(
+        _yearly_variable("value", lambda person, period: np.zeros(person.count)),
+        _yearly_variable("result", result),
+    )
+    simulation = SimulationBuilder().build_default_simulation(system)
+    simulation.calculate("result", "2020")
+
+    branch = simulation.get_branch("branch")
+    branch.set_input("value", "2020", np.array([10.0]))
+
+    assert branch.calculate("result", "2020").tolist() == [20.0]
+
+
+def test_failed_prerequisite_request_does_not_satisfy_the_gate():
+    def prerequisite(person, period):
+        raise RuntimeError("the prerequisite failed")
+
+    dependent = _yearly_variable(
+        "dependent", lambda person, period: np.full(person.count, 42.0)
+    )
+    dependent.requires_computation_after = "prerequisite"
+    system = _one_person_system(
+        _yearly_variable("prerequisite", prerequisite), dependent
+    )
+    simulation = SimulationBuilder().build_default_simulation(system)
+    with pytest.raises(RuntimeError):
+        simulation.calculate("prerequisite", "2020")
+
+    with pytest.raises(ValueError, match="requires prerequisite"):
+        simulation.calculate("dependent", "2020")
+
+
+def test_disk_files_from_another_process_are_not_overwritten(tmp_path, monkeypatch):
+    """Processes write their own files even when their sequence numbers repeat."""
+    import itertools
+
+    import policyengine_core.data_storage.on_disk_storage as on_disk_storage
+    import policyengine_core.data_storage.store_history as store_history
+    from policyengine_core.data_storage import OnDiskStorage
+
+    monkeypatch.setattr(store_history, "_sequence", itertools.count(1))
+    monkeypatch.setattr(on_disk_storage, "_PROCESS_TOKEN", "first")
+    writer = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
+    writer.put(np.array([1.0]), periods.period("2020"))
+    snapshot = writer.clone()
+
+    # A later process: its counter restarts.
+    monkeypatch.setattr(store_history, "_sequence", itertools.count(1))
+    monkeypatch.setattr(on_disk_storage, "_PROCESS_TOKEN", "second")
+    reader = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
+    reader.restore()
+    reader.put(np.array([99.0]), periods.period("2020"))
+
+    assert snapshot.get(periods.period("2020")).tolist() == [1.0]
+    reader.restore()
+    assert reader.get(periods.period("2020")).tolist() == [99.0]
+
+
 # ----- Only what may depend on the input is dropped ----- #
 
 

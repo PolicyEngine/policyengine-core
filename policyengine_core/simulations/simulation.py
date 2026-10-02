@@ -183,8 +183,8 @@ class Simulation:
         # post-``apply_reform`` cache wipe would also wipe the dataset the
         # simulation was loaded from.
         self._user_input_keys: set[tuple[str, str, Period]] = set()
-        # When each variable's values were first stored, shared with every
-        # branch created from this simulation (see ``set_input``).
+        # What this simulation's values may have been calculated from; each
+        # branch starts with a copy (see ``set_input``).
         self._store_history = StoreHistory()
         self.debug: bool = False
         self.trace: bool = trace
@@ -585,6 +585,9 @@ class Simulation:
         self._calculations_in_flight = getattr(self, "_calculations_in_flight", 0) + 1
         try:
             result = self._calculate(variable_name, period)
+            # Satisfies ``requires_computation_after`` from now on, even if a
+            # branch input later drops the values.
+            self._get_requested_variables().add(variable_name)
             if isinstance(result, EnumArray) and decode_enums:
                 result = result.decode_to_str()
             self.tracer.record_calculation_result(result)
@@ -710,7 +713,6 @@ class Simulation:
         """
         if variable_name not in self.tax_benefit_system.variables:
             raise ValueError(f"Variable {variable_name} does not exist.")
-        self._get_requested_variables().add(variable_name)
         population = self.get_variable_population(variable_name)
         holder = population.get_holder(variable_name)
         variable = self.tax_benefit_system.get_variable(
@@ -1421,10 +1423,11 @@ class Simulation:
         formulas that write into an array they read instead of returning a
         new one; formulas that test whether a value is stored
         (``get_known_periods``, ``get_array``) or read another simulation's
-        storage directly, rather than calculating; ``calculate`` called from
-        a thread a formula starts without copying its context; and branches a
-        formula keeps between calls, which hold what their parent held when
-        they were created. Inputs set on a simulation that is not a branch drop
+        storage directly, rather than calculating; a simulation other than
+        the formula's own branches calculated from a thread the formula
+        starts without copying its context; and branches a formula keeps
+        between calls, which hold what their parent held when they were
+        created. Inputs set on a simulation that is not a branch drop
         nothing, as before, and branches already created from the branch
         keep their values.
         """
@@ -1456,8 +1459,20 @@ class Simulation:
     def _share_store_history_with_caller(self) -> None:
         """Merge this simulation's store history into that of a formula calling it."""
         caller = _formula_simulation.get()
-        if caller is not None and caller is not self:
-            caller._get_store_history().merge(self._get_store_history())
+        if caller is not None:
+            if caller is not self:
+                caller._get_store_history().merge(self._get_store_history())
+            return
+        # No formula is visible here: the call comes from code outside any
+        # formula, or from a thread a formula started without copying its
+        # context. In the second case a formula in one of this simulation's
+        # ancestors is waiting for the result, so give it to every ancestor
+        # with a calculation running (more records only make drops broader).
+        ancestor = getattr(self, "parent_branch", None)
+        while ancestor is not None:
+            if getattr(ancestor, "_calculations_in_flight", 0):
+                ancestor._get_store_history().merge(self._get_store_history())
+            ancestor = getattr(ancestor, "parent_branch", None)
 
     def _drop_values_that_may_depend_on(
         self, variable_name: str, period: Period

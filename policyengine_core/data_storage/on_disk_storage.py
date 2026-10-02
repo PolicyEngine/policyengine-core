@@ -274,7 +274,11 @@ class OnDiskStorage:
         ]
 
     def restore(self) -> None:
-        """Map each key to its latest file in ``storage_dir``."""
+        """Map each key to its latest file in ``storage_dir``.
+
+        Other storages, including ones in other processes, may read the
+        restored files, so storing one of their keys again writes a new file.
+        """
         self._files = files = {}
         if self.storage_dir is None:
             return
@@ -287,3 +291,4 @@ class OnDiskStorage:
                 versions[key] = version
                 files[key] = os.path.join(self.storage_dir, filename)
         self._written_files.update(files.values())
+        self._shared_files.update(files.values())

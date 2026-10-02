@@ -222,6 +222,26 @@ def test_restore_reads_the_latest_file_of_each_key(tmp_path):
     np.testing.assert_array_equal(clone.get(PERIOD), [1.0])
 
 
+def test_storing_after_restore_leaves_the_restored_files(tmp_path):
+    """Another storage that restored the same directory keeps its values."""
+    storage_dir = tmp_path / "salary"
+    storage_dir.mkdir()
+    writer = OnDiskStorage(str(storage_dir), preserve_storage_dir=True)
+    writer.put(np.array([1.0]), PERIOD)
+    first = OnDiskStorage(str(storage_dir), preserve_storage_dir=True)
+    first.restore()
+    second = OnDiskStorage(str(storage_dir), preserve_storage_dir=True)
+    second.restore()
+
+    first.put(np.array([2.0]), PERIOD)
+
+    np.testing.assert_array_equal(second.get(PERIOD), [1.0])
+    np.testing.assert_array_equal(first.get(PERIOD), [2.0])
+    latest = OnDiskStorage(str(storage_dir), preserve_storage_dir=True)
+    latest.restore()
+    np.testing.assert_array_equal(latest.get(PERIOD), [2.0])
+
+
 def test_storage_removes_only_its_own_directory(tmp_path):
     storage_dir = tmp_path / "parent" / "salary"
     storage_dir.mkdir(parents=True)

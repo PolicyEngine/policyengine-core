@@ -347,6 +347,7 @@ class Holder:
         value: ArrayLike,
         branch_name: str = "default",
         validate_nan: bool = False,
+        derived: bool = False,
     ) -> None:
         simulation = getattr(self, "simulation", None)
         user_input_contexts = getattr(simulation, "_user_input_contexts", None)
@@ -367,17 +368,34 @@ class Holder:
         )
 
         if should_store_on_disk:
-            self._disk_storage.put(value, period, branch_name)
+            self._disk_storage.put(value, period, branch_name, derived=derived)
         else:
-            self._memory_storage.put(value, period, branch_name)
+            self._memory_storage.put(value, period, branch_name, derived=derived)
         if user_input_contexts:
             if not hasattr(simulation, "_user_input_keys"):
                 simulation._user_input_keys = set()
             simulation._user_input_keys.add((self.variable.name, branch_name, period))
 
     def put_in_cache(
-        self, value: ArrayLike, period: Period, branch_name: str = "default"
+        self,
+        value: ArrayLike,
+        period: Period,
+        branch_name: str = "default",
+        derived: bool = False,
     ) -> None:
+        """Cache ``value`` for ``period``.
+
+        ``derived`` marks a value the simulation calculated rather than took
+        as input: a formula result, a carried, uprated or default value, a
+        twelfth of a yearly flow cached at a month by ``calculate_divide``,
+        or a sum over several sub-periods cached by ``calculate_add``.
+        Auto-carry-over never carries such a value into another period (see
+        ``is_derived``). The mark is stored with the value, for the (branch,
+        period) key written, and any later write to that key replaces it.
+
+        A derived value never replaces an input that ``get_array(period,
+        branch_name)`` reads: the input is kept and nothing is stored.
+        """
         if self._do_not_store:
             return
 
@@ -388,7 +406,14 @@ class Holder:
         ):
             return
 
-        self._set(period, value, branch_name)
+        if (
+            derived
+            and self._branch_storing(period, branch_name) is not None
+            and not self.is_derived(period, branch_name)
+        ):
+            return
+
+        self._set(period, value, branch_name, derived=derived)
 
     def default_array(self) -> ArrayLike:
         """
@@ -396,3 +421,43 @@ class Holder:
         """
 
         return self.variable.default_array(self.population.count)
+
+    def _stores(self, period: Period, branch_name: str) -> bool:
+        """Whether a value is stored for ``period`` under ``branch_name``,
+        without reading or copying it."""
+        return self._memory_storage.has(period, branch_name) or (
+            self._disk_storage is not None
+            and self._disk_storage.has(period, branch_name)
+        )
+
+    def _branch_storing(self, period: Period, branch_name: str = "default") -> str:
+        """The branch whose stored value ``get_array(period, branch_name)``
+        reads, in ``get_array``'s lookup order, or ``None`` if none stores one.
+        """
+        if self._stores(period, branch_name):
+            return branch_name
+        if branch_name == "default":
+            return None
+        parent = (
+            getattr(self.simulation, "parent_branch", None) if self.simulation else None
+        )
+        while parent is not None:
+            if self._stores(period, parent.branch_name):
+                return parent.branch_name
+            parent = getattr(parent, "parent_branch", None)
+        return "default" if self._stores(period, "default") else None
+
+    def is_derived(self, period: Period, branch_name: str = "default") -> bool:
+        """Whether the value ``get_array(period, branch_name)`` reads was
+        calculated by the simulation rather than set as an input.
+
+        The answer comes from the branch that stores the value read: the
+        branch itself, else its ``parent_branch`` ancestors, else
+        ``default``. ``False`` if no value is stored for ``period``.
+        """
+        storing = self._branch_storing(period, branch_name)
+        if storing is None:
+            return False
+        if self._memory_storage.has(period, storing):
+            return self._memory_storage.is_derived(period, storing)
+        return self._disk_storage.is_derived(period, storing)

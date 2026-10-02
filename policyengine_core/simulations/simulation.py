@@ -881,7 +881,7 @@ class Simulation:
             if np.all(~mask):
                 array = holder.default_array()
                 array = self._cast_formula_result(array, variable)
-                holder.put_in_cache(array, period, self.branch_name)
+                holder.put_in_cache(array, period, self.branch_name, derived=True)
                 return array
 
         array = None
@@ -942,18 +942,49 @@ class Simulation:
                     and variable.calculate_output is None
                     and len(known_periods) > 0
                 ):
-                    # Variables with a calculate-output property specify
-                    # Sort by period.start (temporal order). Sorting Period
-                    # tuples lexicographically puts "year" before "month"
-                    # alphabetically, so a known "2023" annual value would
-                    # win over a later "2024-06" monthly value (bug H1).
-                    last_known_period = max(known_periods, key=lambda p: p.start)
-                    if last_known_period.start > period.start:
-                        return holder.default_array()
-                    # Pass branch_name through so auto-carry-over respects the
-                    # active branch instead of reaching for the "default"
-                    # branch's cache (bug H2).
-                    array = holder.get_array(last_known_period, self.branch_name)
+                    # Carry over the latest input: of the stored periods that
+                    # start no later than ``period``, the one that starts last
+                    # (on a tie, the one that ends last), preferring periods at
+                    # the variable's own definition-period unit and using
+                    # another unit only when there is none, as for an input to
+                    # a variable with no ``set_input`` helper. Compare
+                    # period.start (temporal order): sorting Period tuples
+                    # lexicographically puts "year" before "month"
+                    # alphabetically, so a known "2023" annual value would win
+                    # over a later "2024-06" monthly value (bug H1).
+                    #
+                    # Only inputs carry. Every value this simulation
+                    # calculated is marked derived when cached (formula
+                    # results, carried, uprated and default values, a twelfth
+                    # cached by ``calculate_divide``, a sum cached by
+                    # ``calculate_add``), and carrying one would make the
+                    # result depend on what was calculated first: a later
+                    # period's carried value would hide an earlier input, and
+                    # a value already masked by ``defined_for``, or given by a
+                    # formula that has since ended, would carry forward.
+                    # A later input does not carry backwards.
+                    carry_over_periods = [
+                        known_period
+                        for known_period in known_periods
+                        if known_period.start <= period.start
+                        and not holder.is_derived(known_period, self.branch_name)
+                    ]
+                    own_unit_periods = [
+                        known_period
+                        for known_period in carry_over_periods
+                        if known_period.unit == variable.definition_period
+                    ]
+                    if carry_over_periods:
+                        last_known_period = max(
+                            own_unit_periods or carry_over_periods,
+                            key=lambda p: (p.start, p.stop),
+                        )
+                        # Pass branch_name through so auto-carry-over respects
+                        # the active branch instead of reaching for the
+                        # "default" branch's cache (bug H2).
+                        array = holder.get_array(last_known_period, self.branch_name)
+                    else:
+                        array = holder.default_array()
                 else:
                     array = holder.default_array()
 
@@ -969,7 +1000,8 @@ class Simulation:
                     array = EnumArray(array, variable.possible_values)
 
             array = self._cast_formula_result(array, variable)
-            holder.put_in_cache(array, period, self.branch_name)
+            # Calculated, not input: auto-carry-over never carries it.
+            holder.put_in_cache(array, period, self.branch_name, derived=True)
 
         except SpiralError:
             array = holder.default_array()
@@ -1044,12 +1076,16 @@ class Simulation:
                 )
             )
 
+        sub_periods = list(period.get_subperiods(variable.definition_period))
         result = sum(
-            self.calculate(variable_name, sub_period)
-            for sub_period in period.get_subperiods(variable.definition_period)
+            self.calculate(variable_name, sub_period) for sub_period in sub_periods
         )
-        holder = self.get_holder(variable.name)
-        holder.put_in_cache(result, period, self.branch_name)
+        # Cache only a sum over several sub-periods, as derived from them. A
+        # single sub-period's value is already stored, as an input or
+        # derived, by ``calculate``.
+        if len(sub_periods) > 1:
+            holder = self.get_holder(variable.name)
+            holder.put_in_cache(result, period, self.branch_name, derived=True)
         return result
 
     def calculate_divide(
@@ -1082,7 +1118,7 @@ class Simulation:
             computation_period = period.this_year
             result = self.calculate(variable_name, period=computation_period) / 12.0
             holder = self.get_holder(variable.name)
-            holder.put_in_cache(result, period, self.branch_name)
+            holder.put_in_cache(result, period, self.branch_name, derived=True)
             return result
         elif period.unit == periods.YEAR:
             return self.calculate(variable_name, period)

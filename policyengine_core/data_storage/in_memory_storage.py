@@ -47,6 +47,10 @@ class InMemoryStorage:
         # with a copy the first time it is read. A key left here after code
         # outside this class empties ``_arrays`` costs one extra copy at most.
         self._shared = set()
+        # Keys whose value was stored with ``put(..., derived=True)``: calculated
+        # by the simulation rather than taken as input. A key counts only
+        # while it is stored, and every ``put`` sets or clears its mark.
+        self._derived = set()
         self.is_eternal = is_eternal
 
     def clone(self, share_arrays: bool = False) -> "InMemoryStorage":
@@ -83,6 +87,7 @@ class InMemoryStorage:
                     clone._arrays[key] = array.copy()
         else:
             clone._arrays = {key: array.copy() for key, array in self._arrays.items()}
+        clone._derived = set(self._derived)
         return clone
 
     def get(self, period: Period, branch_name: str = "default") -> ArrayLike:
@@ -101,8 +106,29 @@ class InMemoryStorage:
             self._shared.discard(key)
         return values
 
+    def has(self, period: Period, branch_name: str = "default") -> bool:
+        """Whether a value is stored for ``period`` under ``branch_name``.
+
+        Unlike ``get``, this never copies an array shared by ``clone``.
+        """
+        if self.is_eternal:
+            period = periods.period(periods.ETERNITY)
+        return f"{branch_name}:{periods.period(period)}" in self._arrays
+
+    def is_derived(self, period: Period, branch_name: str = "default") -> bool:
+        """Whether the value stored for ``period`` under ``branch_name`` was
+        stored with ``derived=True``; ``False`` if none is stored."""
+        if self.is_eternal:
+            period = periods.period(periods.ETERNITY)
+        key = f"{branch_name}:{periods.period(period)}"
+        return key in self._derived and key in self._arrays
+
     def put(
-        self, value: ArrayLike, period: Period, branch_name: str = "default"
+        self,
+        value: ArrayLike,
+        period: Period,
+        branch_name: str = "default",
+        derived: bool = False,
     ) -> None:
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
@@ -126,6 +152,10 @@ class InMemoryStorage:
         key = f"{branch_name}:{period}"
         self._arrays[key] = value
         self._shared.discard(key)
+        if derived:
+            self._derived.add(key)
+        else:
+            self._derived.discard(key)
 
     def delete(self, period: Period = None, branch_name: str = "default") -> None:
         if period is None:

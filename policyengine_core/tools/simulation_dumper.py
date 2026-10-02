@@ -9,6 +9,10 @@ from policyengine_core.data_storage import OnDiskStorage
 from policyengine_core.periods import ETERNITY
 from policyengine_core.simulations import Simulation
 
+# Periods, one per line, whose dumped value the simulation calculated (see
+# ``Holder.is_derived``), so a restored simulation does not carry them over.
+DERIVED_PERIODS_FILE = "derived_periods.txt"
+
 
 def dump_simulation(simulation, directory):
     """
@@ -69,6 +73,20 @@ def _dump_holder(holder, directory):
     for period in holder.get_known_periods():
         value = holder.get_array(period)
         disk_storage.put(value, period)
+    _dump_derived_periods(holder, disk_storage.storage_dir)
+
+
+def _dump_derived_periods(holder, storage_dir, branch_name="default"):
+    derived = sorted(
+        {
+            str(period)
+            for period in holder.get_known_periods()
+            if holder.is_derived(period, branch_name)
+        }
+    )
+    if derived:
+        with open(os.path.join(storage_dir, DERIVED_PERIODS_FILE), "w") as file:
+            file.write("\n".join(derived) + "\n")
 
 
 def _dump_entity(population, directory):
@@ -135,6 +153,12 @@ def _restore_holder(simulation, variable, directory):
 
     holder = simulation.get_holder(variable)
 
+    derived_periods_path = os.path.join(storage_dir, DERIVED_PERIODS_FILE)
+    derived_periods = set()
+    if os.path.exists(derived_periods_path):
+        with open(derived_periods_path) as file:
+            derived_periods = set(file.read().split())
+
     for period in disk_storage.get_known_periods():
         value = disk_storage.get(period)
-        holder.put_in_cache(value, period)
+        holder.put_in_cache(value, period, derived=str(period) in derived_periods)

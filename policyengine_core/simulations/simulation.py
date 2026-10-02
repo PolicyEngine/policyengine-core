@@ -579,6 +579,10 @@ class Simulation:
         # check_formula_determinism), so there is nothing to make reproducible
         # here.
 
+        # Formulas running in this simulation may hold values they read in
+        # local variables; a drop meanwhile must not forget what they came
+        # from (see ``_drop_computed``).
+        self._calculations_in_flight = getattr(self, "_calculations_in_flight", 0) + 1
         try:
             result = self._calculate(variable_name, period)
             if isinstance(result, EnumArray) and decode_enums:
@@ -592,6 +596,7 @@ class Simulation:
             self._share_store_history_with_caller()
             return result
         finally:
+            self._calculations_in_flight -= 1
             self.tracer.record_calculation_end()
             self.purge_cache_of_invalid_values()
 
@@ -1416,9 +1421,10 @@ class Simulation:
         formulas that write into an array they read instead of returning a
         new one; formulas that test whether a value is stored
         (``get_known_periods``, ``get_array``) or read another simulation's
-        storage directly, rather than calculating; and branches a formula
-        keeps between calls, which hold what their parent held when they
-        were created. Inputs set on a simulation that is not a branch drop
+        storage directly, rather than calculating; ``calculate`` called from
+        a thread a formula starts without copying its context; and branches a
+        formula keeps between calls, which hold what their parent held when
+        they were created. Inputs set on a simulation that is not a branch drop
         nothing, as before, and branches already created from the branch
         keep their values.
         """
@@ -1485,6 +1491,11 @@ class Simulation:
                 dropped += holder._drop_computed(since)
         # The fast cache can also hold values a holder does not keep.
         self._fast_cache = {}
+        if getattr(self, "_calculations_in_flight", 0):
+            # A formula running here may still hold values calculated from
+            # what the records describe, and store a result from them: keep
+            # the records.
+            return dropped
         # Nothing the simulation still holds was calculated from what the
         # records numbered ``since`` or later describe, except the inputs it
         # keeps, which are recorded again.
@@ -1564,6 +1575,8 @@ class Simulation:
         # those values may have been calculated from, and diverges from there.
         new._store_history = self._get_store_history().copy()
         new._requested_variables = set(self._get_requested_variables())
+        # Calculations running in this simulation are not running in the copy.
+        new._calculations_in_flight = 0
 
         return new
 

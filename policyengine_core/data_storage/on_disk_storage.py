@@ -6,7 +6,10 @@ import numpy
 from numpy.typing import ArrayLike
 
 from policyengine_core import periods
-from policyengine_core.data_storage.store_history import next_sequence_number
+from policyengine_core.data_storage.store_history import (
+    advance_sequence_past,
+    next_sequence_number,
+)
 from policyengine_core.enums import EnumArray
 from policyengine_core.periods import Period
 
@@ -37,6 +40,10 @@ class OnDiskStorage:
         state.setdefault("_sequence_numbers", {})
         state.setdefault("_input_keys", set())
         self.__dict__.update(state)
+        # Numbers from the process that pickled this storage must stay below
+        # those of stores made after unpickling it.
+        if self._sequence_numbers:
+            advance_sequence_past(max(self._sequence_numbers.values()))
 
     def clone(self) -> "OnDiskStorage":
         """Create a private metadata view over this storage directory.
@@ -198,12 +205,15 @@ class OnDiskStorage:
             path = os.path.join(self.storage_dir, filename)
             filename_core = filename.rsplit(".", 1)[0]
             # Files are named "<key>.<sequence number>.npy" (each store writes
-            # a new file); older dumps are "<key>.npy". Keep each key's latest.
+            # a new file); older dumps are "<key>.npy". Keep each key's most
+            # recently written file: sequence numbers restart in every
+            # process, so they only order files one process wrote.
             key, _, number = filename_core.rpartition(".")
             if not (key and number.isdigit()):
                 key, number = filename_core, "0"
-            if key not in latest or int(number) > latest[key]:
-                latest[key] = int(number)
+            order = (os.stat(path).st_mtime_ns, int(number))
+            if key not in latest or order > latest[key]:
+                latest[key] = order
                 files[key] = path
 
     def __del__(self) -> None:

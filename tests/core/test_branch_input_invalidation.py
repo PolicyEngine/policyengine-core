@@ -658,6 +658,100 @@ def test_history_is_taken_in_again_after_a_drop_forgets_it():
     )
 
 
+def _one_person_system(*variables):
+    from policyengine_core.country_template import CountryTaxBenefitSystem
+
+    system = CountryTaxBenefitSystem()
+    system.add_variables(*variables)
+    return system
+
+
+def _yearly_variable(name, formula=None):
+    from policyengine_core.country_template import entities
+    from policyengine_core.variables import Variable
+
+    namespace = dict(
+        value_type=float,
+        entity=entities.Person,
+        definition_period=periods.YEAR,
+        label=name,
+    )
+    if formula is not None:
+        namespace["formula"] = formula
+    return type(name, (Variable,), namespace)
+
+
+@pytest.mark.parametrize("drop", ["drop_computed_arrays", "set_input"])
+def test_drop_while_a_formula_runs_keeps_what_it_read_recorded(drop):
+    """A formula still holding a value it read keeps that value's record."""
+
+    def result(person, period):
+        source = person("source", period)
+        if drop == "drop_computed_arrays":
+            person.simulation.drop_computed_arrays()
+        else:
+            person.simulation.set_input("trigger", period, np.ones(person.count))
+        return source * 2
+
+    system = _one_person_system(
+        _yearly_variable("source", lambda person, period: np.ones(person.count)),
+        _yearly_variable("trigger", lambda person, period: np.zeros(person.count)),
+        _yearly_variable("result", result),
+    )
+    simulation = SimulationBuilder().build_default_simulation(system)
+    simulation.calculate("trigger", "2020")  # stored before ``source``
+    branch = simulation.get_branch("branch")
+    assert branch.calculate("result", "2020").tolist() == [2.0]
+
+    branch.set_input("source", "2020", np.array([3.0]))
+
+    assert branch.calculate("result", "2020").tolist() == [6.0]
+
+
+def test_disk_restore_reads_the_latest_file_of_each_key(tmp_path):
+    """Sequence numbers restart in each process; restore goes by write time."""
+    import itertools
+    import os
+
+    import policyengine_core.data_storage.store_history as store_history
+    from policyengine_core.data_storage import OnDiskStorage
+
+    writer = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
+    for _ in range(5):
+        writer.put(np.array([1.0]), periods.period("2020"))
+    first = writer._files["default_2020"]
+    saved = store_history._sequence
+    store_history._sequence = itertools.count(1)  # a later process
+    try:
+        later = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
+        later.put(np.array([2.0]), periods.period("2020"))
+        stat = os.stat(first)
+        os.utime(first, ns=(stat.st_atime_ns, stat.st_mtime_ns - 10**9))
+    finally:
+        store_history._sequence = saved
+
+    reader = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
+    reader.restore()
+
+    assert reader.get(periods.period("2020")).tolist() == [2.0]
+
+
+def test_uprated_value_another_simulation_returns_is_tracked():
+    """Taking in another simulation's history includes its uprated values."""
+    inputs = {("p_up", "2012"): (100.0, 100.0, 100.0)}
+    simulation = synthetic_simulation(inputs)
+    simulation.calculate("p_imported_up", "2015")  # uprated in a temporary branch
+
+    branch = simulation.get_branch("branch")
+    branch.set_input("p_up", "2014", np.full(3, 300.0))
+
+    fresh = synthetic_simulation({**inputs, ("p_up", "2014"): (300.0,) * 3})
+    assert np.allclose(
+        branch.calculate("p_imported_up", "2015"),
+        fresh.calculate("p_imported_up", "2015"),
+    )
+
+
 # ----- Only what may depend on the input is dropped ----- #
 
 
@@ -858,6 +952,33 @@ def test_disk_branches_with_the_same_name_keep_their_own_values():
     assert np.array_equal(second.calculate("p_a", "2013"), [4.0] * 3)
     assert np.array_equal(old.calculate("p_a", "2013"), [7.0] * 3)
     assert np.array_equal(new.calculate("p_a", "2013"), [8.0] * 3)
+
+
+def test_values_unpickled_from_another_process_stay_earlier(monkeypatch):
+    """Sequence numbers restart in each process; unpickling moves this one past them."""
+    import itertools
+    import pickle
+
+    import policyengine_core.data_storage.store_history as store_history
+
+    storage = InMemoryStorage(is_eternal=False)
+    history = StoreHistory()
+    for _ in range(100):
+        next_sequence_number()
+    storage.put(np.array([1.0]), periods.period("2020"))
+    history.record_store("v", periods.period("2020"), next_sequence_number())
+    history.merge(StoreHistory())  # weak references must not stop pickling
+    payloads = pickle.dumps(storage), pickle.dumps(history)
+
+    monkeypatch.setattr(store_history, "_sequence", itertools.count(1))  # a new process
+    restored_storage, restored_history = (pickle.loads(p) for p in payloads)
+    restored_storage.put(np.array([2.0]), periods.period("2021"))
+
+    numbers = restored_storage._sequence_numbers
+    assert numbers["default:2021"] > numbers["default:2020"]
+    assert next_sequence_number() > restored_history.earliest_dependency(
+        "v", periods.period("2020")
+    )
 
 
 def test_storage_pickled_before_stores_were_numbered_still_stores():

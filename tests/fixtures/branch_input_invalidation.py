@@ -36,6 +36,16 @@ def _inner_branch_formula(person, period):
     return inner_value + person("p_sum", period)
 
 
+def _imported_uprating_formula(person, period):
+    """An uprated value, calculated in a branch that exists only while this runs."""
+    simulation = person.simulation
+    temporary = simulation.get_branch("temporary_uprating")
+    try:
+        return temporary.calculate("p_up", period) * 2
+    finally:
+        del simulation.branches["temporary_uprating"]
+
+
 def _monthly_formula(person, period):
     return (
         person("p_a", period)
@@ -99,6 +109,7 @@ SYNTHETIC_VARIABLES = [
         lambda person, period: 3 * person("p_a", period) + person("p_switch", period),
     ),
     _yearly("p_inner", _inner_branch_formula),
+    _yearly("p_imported_up", _imported_uprating_formula),
     # Reads itself a year earlier, back until core's spiral detection gives
     # up and returns the default.
     _yearly(

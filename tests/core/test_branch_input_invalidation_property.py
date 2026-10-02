@@ -50,6 +50,7 @@ CALCULABLE = [
     "p_months",
     "p_inner",
     "p_inner_only",
+    "p_imported_up",
     "p_up",
     "p_c",
 ]
@@ -115,11 +116,12 @@ single_operation = st.one_of(
 )
 # Pairs of a calculated value and an input it depends on, each reaching it a
 # different way: through a formula's own branch, uprating from an earlier
-# year, a month of a year, a value the holder may not keep, a lagged year,
-# and a year summed from months.
+# year (directly, and through a formula's own branch), a month of a year, a
+# value the holder may not keep, a lagged year, and a year summed from months.
 DEPENDENCIES = [
     ("p_inner", "2013", "p_inner_only", "2013"),
     ("p_prod", "2015", "p_up", "2014"),
+    ("p_imported_up", "2015", "p_up", "2014"),
     ("p_month", "2013-07", "p_m", "2013"),
     ("p_month", "2015-03", "p_m", "2015"),
     ("p_prod", "2013", "p_sum", "2013"),

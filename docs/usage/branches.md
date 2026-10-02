@@ -48,7 +48,9 @@ drops each value it holds, other than an input, whose number is at least the
 earliest recorded store of the variable for a period that shares a day with
 `period`, or the earliest recorded uprated or carried-over value of the
 variable. It then forgets the records numbered from there on (its remaining
-values were all stored earlier) and records again the inputs it keeps.
+values were all stored earlier) and records again the inputs it keeps, unless a
+formula is still running in the branch: such a formula may hold, in its own
+variables, a value it read before the drop, so the records stay.
 
 If there is no such record, the branch drops nothing. That is the case when a
 formula creates the branch while it is still calculating the variable the
@@ -87,6 +89,9 @@ depend on the input is calculated again) but not less, within these limits:
   `holder.get_known_periods()`, `simulation.get_array()` or another
   simulation's storage directly, and acts on what it finds, depends on values
   that are not recorded.
+- **Calculations in other threads.** A formula that calls `calculate` from a
+  thread it starts without copying its context (`contextvars.copy_context`,
+  which `asyncio.to_thread` does) does not take in that simulation's history.
 - **A branch a formula keeps between calls is a snapshot.** It holds what its
   parent held when it was created, so inputs set on the parent afterwards do
   not reach what the formula reads from it.

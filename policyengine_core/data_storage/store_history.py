@@ -12,18 +12,29 @@ can depend on the input it replaces: see
 """
 
 import itertools
-from typing import Dict, Optional
+import weakref
+from typing import Dict, List, Optional, Tuple
 
 from policyengine_core import periods
 from policyengine_core.periods import Period
 
 _sequence = itertools.count(1)
-_history_ids = itertools.count(1)
 
 
 def next_sequence_number() -> int:
     """Return a sequence number larger than every one returned before."""
     return next(_sequence)
+
+
+def advance_sequence_past(number: int) -> None:
+    """Make every later sequence number larger than ``number``.
+
+    Numbers come from a counter in each process, so values unpickled from
+    another process may carry larger numbers than this process has handed
+    out; stores made after them must still be numbered later.
+    """
+    global _sequence
+    _sequence = itertools.count(max(next(_sequence), number + 1))
 
 
 def periods_overlap(first: Period, second: Period) -> bool:
@@ -61,11 +72,34 @@ class StoreHistory:
     def __init__(self):
         self._first_stored: Dict[str, Dict[Period, int]] = {}
         self._first_derived: Dict[str, int] = {}
-        # Changes on every new record, so a merge can skip a history it has
-        # already taken in unchanged.
-        self._id = next(_history_ids)
-        self._version = 0
-        self._merged_versions: Dict[int, int] = {}
+        # Every change to the records since this history was created or last
+        # pruned, in order, so a merge takes in only what changed since it
+        # last read this history (``period`` is None for a derived record).
+        self._journal: List[Tuple[str, Optional[Period], int]] = []
+        self._generation = 0  # changes when a prune empties the journal
+        # For each history merged into this one, the generation and journal
+        # length read last. Keyed weakly: an entry goes with the history it
+        # describes (a formula's temporary branch, say).
+        self._merged: "weakref.WeakKeyDictionary[StoreHistory, Tuple[int, int]]" = (
+            weakref.WeakKeyDictionary()
+        )
+
+    def __getstate__(self) -> dict:
+        state = dict(self.__dict__)
+        # Weak references do not pickle; merging again only repeats work.
+        state["_merged"] = {}
+        return state
+
+    def __setstate__(self, state: dict) -> None:
+        self.__dict__.update(state)
+        self._merged = weakref.WeakKeyDictionary()
+        numbers = [
+            number
+            for stored in self._first_stored.values()
+            for number in stored.values()
+        ] + list(self._first_derived.values())
+        if numbers:
+            advance_sequence_past(max(numbers))
 
     def copy(self) -> "StoreHistory":
         new = StoreHistory()
@@ -74,7 +108,7 @@ class StoreHistory:
             for variable_name, stored in self._first_stored.items()
         }
         new._first_derived = dict(self._first_derived)
-        new._merged_versions = dict(self._merged_versions)
+        new._merged = weakref.WeakKeyDictionary(self._merged)
         return new
 
     def record_store(self, variable_name: str, period: Period, sequence_number: int):
@@ -82,24 +116,36 @@ class StoreHistory:
         recorded = stored.get(period)
         if recorded is None or sequence_number < recorded:
             stored[period] = sequence_number
-            self._version += 1
+            self._journal.append((variable_name, period, sequence_number))
 
     def record_derived(self, variable_name: str, sequence_number: int):
         recorded = self._first_derived.get(variable_name)
         if recorded is None or sequence_number < recorded:
             self._first_derived[variable_name] = sequence_number
-            self._version += 1
+            self._journal.append((variable_name, None, sequence_number))
 
     def merge(self, other: "StoreHistory") -> None:
         """Take in ``other``'s records, keeping the earlier number of each."""
-        if other is self or self._merged_versions.get(other._id) == other._version:
+        if other is self:
             return
-        for variable_name, stored in other._first_stored.items():
-            for period, sequence_number in stored.items():
+        read = self._merged.get(other)
+        if read is not None and read[0] == other._generation:
+            changes = other._journal[read[1] :]
+        else:
+            changes = [
+                (variable_name, period, sequence_number)
+                for variable_name, stored in other._first_stored.items()
+                for period, sequence_number in stored.items()
+            ] + [
+                (variable_name, None, sequence_number)
+                for variable_name, sequence_number in other._first_derived.items()
+            ]
+        for variable_name, period, sequence_number in changes:
+            if period is None:
+                self.record_derived(variable_name, sequence_number)
+            else:
                 self.record_store(variable_name, period, sequence_number)
-        for variable_name, sequence_number in other._first_derived.items():
-            self.record_derived(variable_name, sequence_number)
-        self._merged_versions[other._id] = other._version
+        self._merged[other] = (other._generation, len(other._journal))
 
     def prune(self, since: Optional[int] = None) -> None:
         """Forget the records numbered ``since`` or later (all, without ``since``).
@@ -125,9 +171,10 @@ class StoreHistory:
             for variable_name, sequence_number in self._first_derived.items()
             if since is not None and sequence_number < since
         }
-        self._version += 1
+        self._journal = []
+        self._generation += 1
         # Merging a history again must restore what was forgotten here.
-        self._merged_versions = {}
+        self._merged = weakref.WeakKeyDictionary()
 
     def earliest_dependency(self, variable_name: str, period: Period) -> Optional[int]:
         """The first sequence number from which a value may depend on ``variable_name`` at ``period``.

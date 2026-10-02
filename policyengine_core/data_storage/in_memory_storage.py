@@ -4,7 +4,10 @@ import numpy
 from numpy.typing import ArrayLike
 
 from policyengine_core import periods
-from policyengine_core.data_storage.store_history import next_sequence_number
+from policyengine_core.data_storage.store_history import (
+    advance_sequence_past,
+    next_sequence_number,
+)
 from policyengine_core.periods import Period
 
 
@@ -30,6 +33,10 @@ class InMemoryStorage:
         state.setdefault("_sequence_numbers", {})
         state.setdefault("_input_keys", set())
         self.__dict__.update(state)
+        # Numbers from the process that pickled this storage must stay below
+        # those of stores made after unpickling it.
+        if self._sequence_numbers:
+            advance_sequence_past(max(self._sequence_numbers.values()))
 
     def clone(self) -> "InMemoryStorage":
         clone = InMemoryStorage(self.is_eternal)

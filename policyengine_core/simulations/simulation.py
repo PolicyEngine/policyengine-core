@@ -919,30 +919,29 @@ class Simulation:
                     # alphabetically, so a known "2023" annual value would
                     # win over a later "2024-06" monthly value (bug H1).
                     #
-                    # Skip values derived by rescaling another period's value:
-                    # a YEAR flow requested for a month caches a twelfth of the
-                    # year's value there (``calculate_divide``), and a sum over
-                    # several sub-periods is cached at the larger period
-                    # (``calculate_add``). Carrying either forward rescales the
-                    # variable. Inputs, at any period, still carry over.
-                    derived_periods = getattr(holder, "_derived_periods", ())
-                    carry_over_periods = [
+                    # Prefer values at the variable's own definition period. A
+                    # YEAR flow requested for a month caches a twelfth of the
+                    # year's value at that month (``calculate_divide``), and a
+                    # MONTH flow requested for a year caches the sum of its
+                    # months (``calculate_add``): both coexist with the value
+                    # they were derived from, and carrying either forward
+                    # rescales the variable. A value at another unit is used
+                    # only when there is none at the variable's own unit, as for
+                    # an input to a variable with no ``set_input`` helper.
+                    own_unit_periods = [
                         known_period
                         for known_period in known_periods
-                        if known_period not in derived_periods
+                        if known_period.unit == variable.definition_period
                     ]
-                    if carry_over_periods:
-                        last_known_period = max(
-                            carry_over_periods, key=lambda p: p.start
-                        )
-                        if last_known_period.start > period.start:
-                            return holder.default_array()
-                        # Pass branch_name through so auto-carry-over respects
-                        # the active branch instead of reaching for the
-                        # "default" branch's cache (bug H2).
-                        array = holder.get_array(last_known_period, self.branch_name)
-                    else:
-                        array = holder.default_array()
+                    last_known_period = max(
+                        own_unit_periods or known_periods, key=lambda p: p.start
+                    )
+                    if last_known_period.start > period.start:
+                        return holder.default_array()
+                    # Pass branch_name through so auto-carry-over respects the
+                    # active branch instead of reaching for the "default"
+                    # branch's cache (bug H2).
+                    array = holder.get_array(last_known_period, self.branch_name)
                 else:
                     array = holder.default_array()
 
@@ -1033,14 +1032,12 @@ class Simulation:
                 )
             )
 
-        sub_periods = list(period.get_subperiods(variable.definition_period))
         result = sum(
-            self.calculate(variable_name, sub_period) for sub_period in sub_periods
+            self.calculate(variable_name, sub_period)
+            for sub_period in period.get_subperiods(variable.definition_period)
         )
         holder = self.get_holder(variable.name)
-        holder.put_in_cache(
-            result, period, self.branch_name, derived=len(sub_periods) > 1
-        )
+        holder.put_in_cache(result, period, self.branch_name)
         return result
 
     def calculate_divide(
@@ -1073,7 +1070,7 @@ class Simulation:
             computation_period = period.this_year
             result = self.calculate(variable_name, period=computation_period) / 12.0
             holder = self.get_holder(variable.name)
-            holder.put_in_cache(result, period, self.branch_name, derived=True)
+            holder.put_in_cache(result, period, self.branch_name)
             return result
         elif period.unit == periods.YEAR:
             return self.calculate(variable_name, period)

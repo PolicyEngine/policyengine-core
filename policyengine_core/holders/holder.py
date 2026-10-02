@@ -30,10 +30,6 @@ class Holder:
             is_eternal=(self.variable.definition_period == periods.ETERNITY)
         )
 
-        # Periods whose stored value core derived by rescaling another
-        # period's value (see ``put_in_cache``); auto-carry-over skips them.
-        self._derived_periods = set()
-
         # By default, do not activate on-disk storage, or variable dropping
         self._disk_storage = None
         self._on_disk_storable = False
@@ -69,7 +65,6 @@ class Holder:
         new._disk_storage = (
             self._disk_storage.clone() if self._disk_storage is not None else None
         )
-        new._derived_periods = set(getattr(self, "_derived_periods", ()))
 
         new_dict["population"] = population
         new_dict["simulation"] = population.simulation
@@ -363,29 +358,14 @@ class Holder:
             self._disk_storage.put(value, period, branch_name)
         else:
             self._memory_storage.put(value, period, branch_name)
-        derived_periods = getattr(self, "_derived_periods", None)
-        if derived_periods and period is not None:
-            derived_periods.discard(periods.period(period))
         if user_input_contexts:
             if not hasattr(simulation, "_user_input_keys"):
                 simulation._user_input_keys = set()
             simulation._user_input_keys.add((self.variable.name, branch_name, period))
 
     def put_in_cache(
-        self,
-        value: ArrayLike,
-        period: Period,
-        branch_name: str = "default",
-        derived: bool = False,
+        self, value: ArrayLike, period: Period, branch_name: str = "default"
     ) -> None:
-        """Cache ``value`` for ``period``.
-
-        ``derived`` marks a value computed by rescaling another period's
-        value: a twelfth of a yearly flow cached at a month by
-        ``calculate_divide``, or a sum over several sub-periods cached by
-        ``calculate_add``. Auto-carry-over never carries such a value into
-        another period. Any later write to the period clears the mark.
-        """
         if self._do_not_store:
             return
 
@@ -397,10 +377,6 @@ class Holder:
             return
 
         self._set(period, value, branch_name)
-        if derived:
-            if not hasattr(self, "_derived_periods"):
-                self._derived_periods = set()
-            self._derived_periods.add(periods.period(period))
 
     def default_array(self) -> ArrayLike:
         """

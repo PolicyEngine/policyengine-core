@@ -1789,6 +1789,15 @@ class Simulation:
         if not self._is_exportable_input_variable(variable_name):
             return []
 
+        return self._get_set_input_periods(variable_name)
+
+    def _get_set_input_periods(self, variable_name: str) -> List[Period]:
+        """Periods of ``variable_name`` whose stored value the simulation was given.
+
+        That is every value loaded from the dataset or passed to ``set_input``
+        on a branch this simulation reads, including for a variable that has
+        a formula. Values the simulation calculated are left out.
+        """
         user_input_periods = {
             period
             for input_variable_name, branch_name, period in getattr(
@@ -1824,13 +1833,19 @@ class Simulation:
             pd.DataFrame: The DataFrame containing the input values.
         """
 
+        return self._to_person_dataframe(
+            lambda variable: self._get_exportable_input_periods(
+                variable, include_computed_variables
+            )
+        )
+
+    def _to_person_dataframe(self, get_periods) -> pd.DataFrame:
+        """Person-level DataFrame of each variable at ``get_periods(variable)``."""
         df = pd.DataFrame()
 
         for variable in self.tax_benefit_system.variables:
             variable_meta = self.tax_benefit_system.variables[variable]
-            for period in self._get_exportable_input_periods(
-                variable, include_computed_variables
-            ):
+            for period in get_periods(variable):
                 # Test if period matches entity definition period
                 if variable_meta.definition_period != period.unit:
                     continue
@@ -1898,9 +1913,14 @@ class Simulation:
         if time_period is None:
             time_period = self.default_calculation_period
 
-        # Subsampling rebuilds the complete dataset, so preserve computed
-        # structural variables such as formula-backed IDs.
-        df = self.to_input_dataframe(include_computed_variables=True)
+        # Subsampling rebuilds the simulation from what it was given: every
+        # value loaded from the dataset or set with ``set_input``, including
+        # for variables that have a formula (structural IDs, for instance).
+        # Calculated values are left out. Reloaded as inputs they would
+        # replace their formulas for good, so later results (after a reform,
+        # or carried over to another year) would depend on what happened to
+        # be calculated before subsampling.
+        df = self._to_person_dataframe(self._get_set_input_periods)
 
         # Extract time period from DataFrame columns
         df_time_period = (

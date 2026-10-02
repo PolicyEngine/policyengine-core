@@ -1,0 +1,1 @@
+Rebuild a simulation in `subsample` from the values it was given (the dataset and `set_input`), leaving calculated values out, so results after subsampling no longer depend on what was calculated before it.

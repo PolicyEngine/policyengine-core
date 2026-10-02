@@ -44,9 +44,13 @@ class Holder:
             if self.variable.name in self.simulation.memory_config.variables_to_drop:
                 self._do_not_store = True
 
-    def clone(self, population: "Population") -> "Holder":
+    def clone(self, population: "Population", share_arrays: bool = False) -> "Holder":
         """
         Copy the holder just enough to be able to run a new simulation without modifying the original simulation.
+
+        With ``share_arrays``, the new holder's in-memory storage shares
+        this holder's arrays and copies each one when it is first read,
+        instead of copying them all now (see :meth:`InMemoryStorage.clone`).
         """
         new = commons.empty_clone(self)
         new_dict = new.__dict__
@@ -61,7 +65,11 @@ class Holder:
             ):
                 new_dict[key] = value
 
-        new._memory_storage = self._memory_storage.clone()
+        new._memory_storage = (
+            self._memory_storage.clone(share_arrays=True)
+            if share_arrays
+            else self._memory_storage.clone()
+        )
         new._disk_storage = (
             self._disk_storage.clone() if self._disk_storage is not None else None
         )
@@ -149,6 +157,10 @@ class Holder:
     def get_memory_usage(self) -> dict:
         """
         Get data about the virtual memory usage of the holder.
+
+        An array a branch still shares with the simulation it was created
+        from (see :meth:`Simulation.get_branch`) is counted for both, though
+        it is held in memory once.
 
         :returns: Memory usage data
         :rtype: dict

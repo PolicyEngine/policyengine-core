@@ -1,0 +1,1 @@
+Stop the YAML test runner keeping every case's simulation and every reform system alive for the whole run: finished cases release their simulation, and the reform-system cache keeps the 2 most recently used (`--reform-cache-size`).

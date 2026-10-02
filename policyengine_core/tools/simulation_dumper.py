@@ -62,27 +62,37 @@ def restore_simulation(directory, tax_benefit_system, **kwargs):
     variables_to_restore = [
         variable for variable in os.listdir(directory) if variable != "__entities__"
     ]
-    # Inputs first, then every calculated value under one later number: the
-    # dump does not say what each value was calculated from, so any input set
-    # on a branch of the restored simulation counts it as possibly dependent.
+    # Inputs first, then every calculated value under one later number. The
+    # dump does not say what each value was calculated from (nor what was read
+    # without being kept), so an input set for any variable on a branch of the
+    # restored simulation drops them all.
     for variable in variables_to_restore:
         _restore_holder(simulation, variable, directory, inputs=True)
     calculated_number = next_sequence_number()
-    for variable in variables_to_restore:
+    restored = sum(
         _restore_holder(
             simulation, variable, directory, calculated_number=calculated_number
         )
+        for variable in variables_to_restore
+    )
+    if restored:
+        simulation._get_store_history().record_unknown_sources(calculated_number)
 
     return simulation
 
 
 def _dump_holder(holder, directory):
     disk_storage = holder.create_disk_storage(directory, preserve=True)
+    branch_name = holder.simulation.branch_name
     inputs = []
-    for period in holder.get_known_periods():
-        value = holder.get_array(period)
-        disk_storage.put(value, period)
-        if holder._is_input(period):
+    for period in dict.fromkeys(holder.get_known_periods()):
+        # What the simulation itself reads: on a branch, its own value, else
+        # its nearest ancestor's or the default one.
+        stored_on = holder._branch_holding(period, branch_name)
+        if stored_on is None:
+            continue
+        disk_storage.put(holder._get_array_from_storage(period, stored_on), period)
+        if holder._is_input(period, stored_on):
             inputs.append(str(period))
     with open(os.path.join(disk_storage.storage_dir, _INPUTS_FILE), "w") as file:
         file.write("\n".join(inputs))
@@ -161,10 +171,12 @@ def _restore_holder(
         # Dumped before inputs were recorded: keep every value, as inputs.
         input_periods = None
 
+    restored = 0
     for period in disk_storage.get_known_periods():
         is_input = input_periods is None or str(period) in input_periods
         if is_input != inputs:
             continue
+        restored += 1
         value = disk_storage.get(period)
         holder._set(
             period,
@@ -172,3 +184,4 @@ def _restore_holder(
             is_input=is_input,
             sequence_number=None if is_input else calculated_number,
         )
+    return restored

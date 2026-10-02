@@ -190,6 +190,24 @@ class Holder:
             if default_value is not None:
                 return default_value
 
+    def _branch_holding(self, period: Period, branch_name: str) -> Optional[str]:
+        """The branch whose value :meth:`get_array` returns for ``period``, if any.
+
+        As there: ``branch_name`` itself, else its nearest ancestor, else
+        ``default``.
+        """
+        names = [branch_name]
+        if branch_name != "default":
+            parent = getattr(self.simulation, "parent_branch", None)
+            while parent is not None:
+                names.append(parent.branch_name)
+                parent = getattr(parent, "parent_branch", None)
+            names.append("default")
+        for name in names:
+            if self._get_array_from_storage(period, name) is not None:
+                return name
+        return None
+
     def get_memory_usage(self) -> dict:
         """
         Get data about the virtual memory usage of the holder.
@@ -308,6 +326,9 @@ class Holder:
             # On a branch, drop what may have been calculated from the value
             # this input replaces (see ``Simulation.set_input``).
             simulation._drop_values_that_may_depend_on(self.variable.name, period)
+            # A calculation running meanwhile looks for inputs set for its own
+            # period (``Simulation._cache_result``).
+            simulation._inputs_set = getattr(simulation, "_inputs_set", 0) + 1
             if not hasattr(simulation, "_user_input_keys"):
                 simulation._user_input_keys = set()
             if not hasattr(simulation, "_user_input_contexts"):
@@ -318,7 +339,14 @@ class Holder:
                 self.variable.set_input
                 and period.unit != self.variable.definition_period
             ):
-                return self.variable.set_input(self, period, array)
+                self.variable.set_input(self, period, array)
+                if simulation is not None:
+                    # The handler may have calculated values between its
+                    # stores, from inputs it had not yet replaced.
+                    simulation._drop_values_that_may_depend_on(
+                        self.variable.name, period
+                    )
+                return
             return self._set(period, array, branch_name, validate_nan=True)
         finally:
             if simulation is not None:

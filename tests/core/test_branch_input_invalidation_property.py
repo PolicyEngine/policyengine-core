@@ -1,7 +1,8 @@
 """Branch results do not depend on what was calculated before.
 
 Random sequences of calculations, branches (including reused and forgotten
-names), inputs and ``drop_computed_arrays`` run on a synthetic system, with
+names), inputs, ``drop_computed_arrays`` and dumps restored as new
+simulations run on a synthetic system, with
 values held in memory, on disk, not kept, or blacklisted. Every calculation
 in a branch must equal the same calculation in a new simulation given the
 branch's inputs, its own and those it inherited when it was created, before
@@ -13,6 +14,8 @@ same behaviour with examples.
 from __future__ import annotations
 
 import os
+import shutil
+import tempfile
 
 import numpy as np
 import pytest
@@ -23,6 +26,10 @@ st = hypothesis.strategies
 
 from policyengine_core import periods
 from policyengine_core.experimental import MemoryConfig
+from policyengine_core.tools.simulation_dumper import (
+    dump_simulation,
+    restore_simulation,
+)
 from tests.fixtures.branch_input_invalidation import (
     PEOPLE,
     ROOT_INPUTS,
@@ -113,6 +120,8 @@ single_operation = st.one_of(
     st.tuples(st.just("branch"), simulation_index, branch_name),
     st.tuples(st.just("forget"), simulation_index),
     st.tuples(st.just("drop"), simulation_index),
+    # Dump a simulation (a branch, say) and restore it as a new one.
+    st.tuples(st.just("dump"), simulation_index),
 )
 # Pairs of a calculated value and an input it depends on, each reaching it a
 # different way: through a formula's own branch, uprating from an earlier
@@ -151,10 +160,24 @@ override_after_calculating = st.tuples(
         ]
     )
 )
+# The same through a dump: calculate the value, dump that simulation, restore
+# it, branch from the restored one, override the input and calculate again.
+override_after_restoring = st.tuples(
+    simulation_index, st.sampled_from(DEPENDENCIES), values
+).map(
+    lambda drawn: [
+        ("calculate", drawn[0], drawn[1][0], drawn[1][1]),
+        ("dump", drawn[0]),
+        ("branch", -1, None),
+        ("set", -1, drawn[1][2], drawn[1][3], drawn[2]),
+        ("calculate", -1, drawn[1][0], drawn[1][1]),
+    ]
+)
 operations = st.lists(
     st.one_of(
         single_operation.map(lambda operation: [operation]),
         override_after_calculating,
+        override_after_restoring,
     ),
     min_size=1,
     max_size=15,
@@ -192,7 +215,8 @@ def _run(program, mode):
     """Run ``program``; return each calculation with the inputs it should reflect.
 
     A branch's inputs are those of the simulation it was created from, as
-    they were then, and those set on it since.
+    they were then, and those set on it since. A simulation restored from a
+    dump has the inputs the dumped one had.
     """
     options = MODES[mode]
     root = synthetic_simulation(
@@ -204,6 +228,7 @@ def _run(program, mode):
     inputs = [dict(ROOT_INPUTS)]
     own_inputs = [{}]
     children = {}  # (parent index, name) -> index, while the parent keeps it
+    roots = {0}  # the root and simulations restored from dumps
     results = []
     for operation in program:
         kind, index = operation[0], operation[1] % len(simulations)
@@ -226,8 +251,8 @@ def _run(program, mode):
                 del simulation.branches[names[0]]
                 del children[(index, names[0])]
         elif kind == "set":
-            if index == 0:
-                continue  # Inputs on the root after calculating are out of scope.
+            if index in roots:
+                continue  # Inputs on a root after calculating are out of scope.
             _, _, variable, period, value = operation
             stored = _stored_inputs(own_inputs[index], variable, period, value)
             if stored is None:
@@ -239,6 +264,17 @@ def _run(program, mode):
             _, _, variable, period = operation
             value = np.array(simulation.calculate(variable, period), copy=True)
             results.append((dict(inputs[index]), variable, period, value))
+        elif kind == "dump":
+            directory = tempfile.mkdtemp(prefix="policyengine-branch-dump-")
+            try:
+                dump_simulation(simulation, directory)
+                restored = restore_simulation(directory, SYNTHETIC_SYSTEM)
+            finally:
+                shutil.rmtree(directory, ignore_errors=True)
+            simulations.append(restored)
+            inputs.append(dict(inputs[index]))
+            own_inputs.append({})
+            roots.add(len(simulations) - 1)
         else:
             simulation.drop_computed_arrays()
     return results

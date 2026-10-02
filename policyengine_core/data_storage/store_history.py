@@ -60,6 +60,13 @@ class StoreHistory:
       from holds a value). Such a value depends on which other periods hold
       values, so an input set for any period can change it.
 
+    It also records the first sequence number from which held values may
+    have been calculated from anything (:meth:`record_unknown_sources`):
+    values restored from a dump, which does not say what each was
+    calculated from, and values calculated from a macro-cache read, whose
+    sources were never calculated here. An input for any variable can
+    change those.
+
     The simulation's own stores are recorded as they happen. A branch starts
     with a copy of its parent's history, as it starts with a copy of its
     parent's values. When a formula running in one simulation calculates a
@@ -72,10 +79,13 @@ class StoreHistory:
     def __init__(self):
         self._first_stored: Dict[str, Dict[Period, int]] = {}
         self._first_derived: Dict[str, int] = {}
+        # Values numbered from here on may have been calculated from anything.
+        self._unknown_sources_since: Optional[int] = None
         # Every change to the records since this history was created or last
         # pruned, in order, so a merge takes in only what changed since it
-        # last read this history (``period`` is None for a derived record).
-        self._journal: List[Tuple[str, Optional[Period], int]] = []
+        # last read this history (``period`` is None for a derived record,
+        # and ``variable_name`` too for an unknown-sources record).
+        self._journal: List[Tuple[Optional[str], Optional[Period], int]] = []
         self._generation = 0  # changes when a prune empties the journal
         # For each history merged into this one, the generation and journal
         # length read last. Keyed weakly: an entry goes with the history it
@@ -93,6 +103,7 @@ class StoreHistory:
     def __setstate__(self, state: dict) -> None:
         state.setdefault("_journal", [])
         state.setdefault("_generation", 0)
+        state.setdefault("_unknown_sources_since", None)
         self.__dict__.update(state)
         self._merged = weakref.WeakKeyDictionary()
         numbers = [
@@ -100,6 +111,8 @@ class StoreHistory:
             for stored in self._first_stored.values()
             for number in stored.values()
         ] + list(self._first_derived.values())
+        if self._unknown_sources_since is not None:
+            numbers.append(self._unknown_sources_since)
         if numbers:
             advance_sequence_past(max(numbers))
 
@@ -110,6 +123,7 @@ class StoreHistory:
             for variable_name, stored in self._first_stored.items()
         }
         new._first_derived = dict(self._first_derived)
+        new._unknown_sources_since = self._unknown_sources_since
         new._merged = weakref.WeakKeyDictionary(self._merged)
         return new
 
@@ -125,6 +139,13 @@ class StoreHistory:
         if recorded is None or sequence_number < recorded:
             self._first_derived[variable_name] = sequence_number
             self._journal.append((variable_name, None, sequence_number))
+
+    def record_unknown_sources(self, sequence_number: int):
+        """Values numbered ``sequence_number`` or later may depend on any input."""
+        recorded = self._unknown_sources_since
+        if recorded is None or sequence_number < recorded:
+            self._unknown_sources_since = sequence_number
+            self._journal.append((None, None, sequence_number))
 
     def merge(self, other: "StoreHistory") -> None:
         """Take in ``other``'s records, keeping the earlier number of each."""
@@ -145,8 +166,13 @@ class StoreHistory:
                 (variable_name, None, sequence_number)
                 for variable_name, sequence_number in list(other._first_derived.items())
             ]
+            unknown_sources_since = other._unknown_sources_since
+            if unknown_sources_since is not None:
+                changes.append((None, None, unknown_sources_since))
         for variable_name, period, sequence_number in changes:
-            if period is None:
+            if variable_name is None:
+                self.record_unknown_sources(sequence_number)
+            elif period is None:
                 self.record_derived(variable_name, sequence_number)
             else:
                 self.record_store(variable_name, period, sequence_number)
@@ -176,6 +202,11 @@ class StoreHistory:
             for variable_name, sequence_number in self._first_derived.items()
             if since is not None and sequence_number < since
         }
+        if since is None or (
+            self._unknown_sources_since is not None
+            and self._unknown_sources_since >= since
+        ):
+            self._unknown_sources_since = None
         self._journal = []
         self._generation += 1
         # Merging a history again must restore what was forgotten here.
@@ -185,8 +216,9 @@ class StoreHistory:
         """The first sequence number from which a value may depend on ``variable_name`` at ``period``.
 
         This is the earliest recorded store of the variable for any period
-        that shares a day with ``period``, or the earliest recorded derivation
-        of one of its values from other periods, whichever came first.
+        that shares a day with ``period``, the earliest recorded derivation
+        of one of its values from other periods, or the first number from
+        which values may depend on anything, whichever came first.
         ``None`` means no value the simulation holds can depend on the
         variable's value at ``period``.
         """
@@ -200,4 +232,6 @@ class StoreHistory:
         derived = self._first_derived.get(variable_name)
         if derived is not None:
             candidates.append(derived)
+        if self._unknown_sources_since is not None:
+            candidates.append(self._unknown_sources_since)
         return min(candidates) if candidates else None

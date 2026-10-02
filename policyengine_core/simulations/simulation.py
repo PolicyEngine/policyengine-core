@@ -1,7 +1,7 @@
 import hashlib
 import tempfile
 from contextvars import ContextVar
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy as np
 import pandas as pd
@@ -612,7 +612,15 @@ class Simulation:
         # from (see ``_drop_computed``).
         self._calculations_in_flight = getattr(self, "_calculations_in_flight", 0) + 1
         try:
+            input_epoch = getattr(self, "_input_epoch", 0)
             result = self._calculate(variable_name, period)
+            if input_epoch != getattr(self, "_input_epoch", 0):
+                # An input set here while it ran (by a formula, say) dropped
+                # values, so the result was not kept (``_cache_result``).
+                # Calculate it once more from the new inputs and keep it, as
+                # a simulation given those inputs first would: later
+                # uprating and carry-over look for the periods held.
+                result = self._calculate(variable_name, period)
             # Satisfies ``requires_computation_after`` from now on, even if a
             # branch input later drops the values.
             self._get_requested_variables().add(variable_name)
@@ -626,12 +634,14 @@ class Simulation:
                 result = self.map_result(result, source_entity, map_to)
             return result
         finally:
-            # Also when the calculation fails: whether it fails can depend on
-            # what it read, and a calling formula may catch the error.
-            self._share_store_history_with_caller()
-            self._calculations_in_flight -= 1
-            self.tracer.record_calculation_end()
-            self.purge_cache_of_invalid_values()
+            try:
+                # Also when the calculation fails: whether it fails can depend
+                # on what it read, and a calling formula may catch the error.
+                self._share_store_history_with_caller()
+            finally:
+                self._calculations_in_flight -= 1
+                self.tracer.record_calculation_end()
+                self.purge_cache_of_invalid_values()
 
     def map_result(
         self,
@@ -743,7 +753,7 @@ class Simulation:
         """
         if variable_name not in self.tax_benefit_system.variables:
             raise ValueError(f"Variable {variable_name} does not exist.")
-        input_epoch = getattr(self, "_input_epoch", 0)
+        input_state = self._input_state()
         population = self.get_variable_population(variable_name)
         holder = population.get_holder(variable_name)
         variable = self.tax_benefit_system.get_variable(
@@ -788,7 +798,11 @@ class Simulation:
                 if value is not None:
                     # Served without being stored: record it, so values
                     # calculated from it count as later (see ``set_input``).
-                    holder._record_store(period, next_sequence_number())
+                    # What it was calculated from was never calculated here,
+                    # so values from here on may depend on any input.
+                    sequence_number = next_sequence_number()
+                    holder._record_store(period, sequence_number)
+                    self._get_store_history().record_unknown_sources(sequence_number)
                     return value
 
         if variable.requires_computation_after is not None:
@@ -842,8 +856,7 @@ class Simulation:
             if np.all(~mask):
                 array = holder.default_array()
                 array = self._cast_formula_result(array, variable)
-                self._cache_result(holder, array, period, input_epoch)
-                return array
+                return self._cache_result(holder, array, period, input_state)
 
         array = None
 
@@ -944,7 +957,7 @@ class Simulation:
                     array = EnumArray(array, variable.possible_values)
 
             array = self._cast_formula_result(array, variable)
-            self._cache_result(holder, array, period, input_epoch)
+            array = self._cache_result(holder, array, period, input_state)
 
         except SpiralError:
             array = holder.default_array()
@@ -967,27 +980,42 @@ class Simulation:
         if is_cache_available:
             smc.set_cache_value(cache_path, array)
 
-        if hasattr(self, "_fast_cache") and input_epoch == getattr(
-            self, "_input_epoch", 0
-        ):
+        if hasattr(self, "_fast_cache") and input_state == self._input_state():
             self._fast_cache[(variable_name, period)] = array
 
         return array
 
-    def _cache_result(
-        self, holder: Holder, array: ArrayLike, period: Period, input_epoch: int
-    ) -> None:
-        """Cache a calculated value, unless inputs changed while it was calculated.
+    def _input_state(self) -> Tuple[int, int]:
+        """How many drops ran during calculations, and inputs were set, here."""
+        return getattr(self, "_input_epoch", 0), getattr(self, "_inputs_set", 0)
 
-        A calculation that was running when an input set on this simulation
-        dropped values may have read the replaced value, so its result is
-        returned but not kept (see ``_drop_computed``).
+    def _cache_result(
+        self,
+        holder: Holder,
+        array: ArrayLike,
+        period: Period,
+        input_state: Tuple[int, int],
+    ) -> ArrayLike:
+        """Cache a calculated value, and return the value to use for it.
+
+        ``input_state`` is :meth:`_input_state` when the calculation began.
+        If an input for the same period was set meanwhile (by the formula
+        itself, say), that input is the value, as it would be had it been set
+        first. A calculation that was running when an input set on this
+        simulation dropped values may have read the replaced value, so its
+        result is returned but not kept (see ``_drop_computed``).
         """
-        if input_epoch == getattr(self, "_input_epoch", 0):
+        epoch, inputs_set = input_state
+        if inputs_set != getattr(self, "_inputs_set", 0) and holder._is_input(
+            period, self.branch_name
+        ):
+            return holder.get_array(period, self.branch_name)
+        if epoch == getattr(self, "_input_epoch", 0):
             holder.put_in_cache(array, period, self.branch_name)
         else:
             # Not kept, but whatever reads it is stored after it all the same.
             holder._record_store(period, next_sequence_number())
+        return array
 
     def purge_cache_of_invalid_values(self) -> None:
         # We wait for the end of calculate(), signalled by an empty stack, before purging the cache
@@ -1038,14 +1066,13 @@ class Simulation:
                 )
             )
 
-        input_epoch = getattr(self, "_input_epoch", 0)
+        input_state = self._input_state()
         result = sum(
             self.calculate(variable_name, sub_period)
             for sub_period in period.get_subperiods(variable.definition_period)
         )
         holder = self.get_holder(variable.name)
-        self._cache_result(holder, result, period, input_epoch)
-        return result
+        return self._cache_result(holder, result, period, input_state)
 
     def calculate_divide(
         self,
@@ -1074,12 +1101,11 @@ class Simulation:
             )
 
         if period.unit == periods.MONTH:
-            input_epoch = getattr(self, "_input_epoch", 0)
+            input_state = self._input_state()
             computation_period = period.this_year
             result = self.calculate(variable_name, period=computation_period) / 12.0
             holder = self.get_holder(variable.name)
-            self._cache_result(holder, result, period, input_epoch)
-            return result
+            return self._cache_result(holder, result, period, input_state)
         elif period.unit == periods.YEAR:
             return self.calculate(variable_name, period)
 
@@ -1457,16 +1483,20 @@ class Simulation:
         other than an input, stored at or after the earliest recorded store of
         ``variable_name`` for a period that shares a day with ``period``, or
         the earliest recorded value of ``variable_name`` uprated or carried
-        over from another period (or given the default for want of one). If
-        there is neither, nothing it holds depends on the value and nothing
-        is dropped. That is the case when a formula creates the branch while
+        over from another period (or given the default for want of one), or
+        the first value that may depend on anything (restored from a dump,
+        or calculated from a macro-cache read). If there is none of these,
+        nothing it holds depends on the value and nothing is dropped. That is the case when a formula creates the branch while
         still calculating the variable it overrides, unless another branch
         it created for the same comparison already returned a value
         calculated from the variable; then only what came back from there,
         and what was calculated after, is dropped.
 
         After such a drop the branch stops reading macro-cache files, which
-        are keyed by branch and period but not by inputs.
+        are keyed by branch and period but not by inputs. A calculation that
+        was running in the branch when its input changed is run once more
+        from the new inputs, and an input set for the very period it
+        calculates is its result.
 
         What this does not track: a branch given a different tax-benefit
         system or parameters (call :meth:`drop_computed_arrays` on it);

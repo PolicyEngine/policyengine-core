@@ -38,6 +38,10 @@ from another period. The history records:
 - the simulation's own stores, including values a holder calculates but does
   not keep (`variables_to_drop`, the cache blacklist), values read from the
   macro cache, and the default a spiral returns;
+- the number from which values may have been calculated from anything: the
+  first value read from the macro cache (what it was calculated from was
+  never calculated here) and the values restored from a dump (see below), so
+  an input for any variable drops them;
 - a copy of its parent's history, taken when the branch is created;
 - the history of any simulation its formulas calculate in, taken in each time
   `calculate` there returns or raises (a formula that branches, sets an input
@@ -52,8 +56,18 @@ earliest recorded store of the variable for a period that shares a day with
 variable. It then forgets the records numbered from there on (its remaining
 values were all stored earlier) and records again the inputs it keeps, unless a
 formula is still running in the branch: such a formula may hold, in its own
-variables, a value it read before the drop, so the records stay, and the
-results of the calculations that were running are returned but not kept.
+variables, a value it read before the drop, so the records stay. A
+calculation that was running then (one whose formula sets an input, say) may
+have read the replaced value, so its result is not kept; `calculate` runs it
+once more from the new inputs and keeps that result, so uprating and
+carry-over find its period as they would had the input come first. If the
+second run changes an input again, its result is returned but not kept. An
+input set for the very period being calculated, while it is calculated, is
+the result, as it would be had it been set first.
+
+A custom `set_input` handler that calculates values between its own stores
+calculates them from inputs it has not yet replaced, so the branch drops
+again, by the same rule, once the handler returns.
 
 If there is no such record, the branch drops nothing. That is the case when a
 formula creates the branch while it is still calculating the variable the
@@ -70,14 +84,20 @@ every calculated value.
 A formula's result is stored after everything the formula read was stored or
 recorded, so a calculated value carries a larger number than each value it was
 calculated from, directly or through other calculated values. Every value a
-simulation holds was calculated there, inherited from its parent, or handed
-back by another simulation's `calculate`. In each case, for every variable it
-was calculated from, the simulation's history holds a record of that variable
-for an overlapping period numbered no later than the value read (for a value
-summed or divided from other periods, the record may be of those periods). So
-any value that depends on the overridden variable at an overlapping period was
-stored after the earliest record of it. Uprating and carry-over read which periods hold values at all,
-which is why the first uprated or carried-over value also counts.
+simulation holds was calculated there, inherited from its parent, handed back
+by another simulation's `calculate`, or restored from a dump. In the first
+three cases, for every variable it was calculated from, the simulation's
+history holds a record of that variable for an overlapping period numbered no
+later than the value read (for a value summed or divided from other periods,
+the record may be of those periods), unless it was calculated from a
+macro-cache read; restored values and values calculated from a macro-cache
+read are covered by the record that values from a number on may depend on
+anything. So any value that depends on the overridden variable at an
+overlapping period was stored after the earliest record that applies. Uprating
+and carry-over read which periods hold values at all, which is why the first
+uprated or carried-over value also counts. A result whose calculation was
+running when an input changed is not kept unless it was calculated again from
+the new inputs.
 
 The rule can drop more than it needs to (a value stored later that does not
 depend on the input is calculated again) but not less, within these limits:
@@ -117,15 +137,20 @@ written file, and on a timestamp tie the current process's own; between two
 other processes' files written within one clock tick it cannot tell which came
 last.
 
-A simulation dump (`dump_simulation`) records which values were inputs.
+A simulation dump (`dump_simulation`) holds the values the simulation reads
+(on a branch, its own and those it inherited) and records which were inputs.
 `restore_simulation` restores those as inputs and every other value as
-calculated under one number, since the dump does not say what each was
-calculated from: an input set on a branch of the restored simulation drops all
-of them that are not inputs. A dump written before inputs were recorded is
-restored with every value as an input, as before, so such values never drop.
+calculated under one later number. The dump does not say what each value was
+calculated from, nor what was read without being kept, so the restored
+simulation records that values from that number on may depend on anything:
+an input set for any variable on a branch of it drops all of them. A dump
+written before inputs were recorded is restored with every value as an
+input, as before, so such values never drop.
 
 Two related behaviours: a branch whose input dropped values stops reading
-macro-cache files, which are keyed by branch and period but not by inputs; and
+macro-cache files, which are keyed by branch and period but not by inputs
+(and a branch that read one drops, on any input, everything calculated from
+the first read on); and
 `requires_computation_after` is satisfied by a prerequisite requested before a
 drop removed its values.
 

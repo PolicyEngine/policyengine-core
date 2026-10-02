@@ -38,6 +38,7 @@ from policyengine_core.data_storage.store_history import (
 from policyengine_core.experimental import MemoryConfig
 from policyengine_core.model_api import Reform
 from policyengine_core.simulations import SimulationBuilder
+import policyengine_core.simulations.simulation as simulation_module
 from tests.fixtures.branch_input_invalidation import (
     CARRY_OVER_SYSTEM,
     FORMULA_RUNS,
@@ -996,6 +997,121 @@ def test_input_set_under_the_default_key_during_a_branch_calculation_wins():
     assert branch.calculate("source", "2020").tolist() == [3.0]
 
 
+def test_direct_divide_keeps_ignoring_an_earlier_monthly_input():
+    """Only an input set during the calculation wins; one stored before does not."""
+    from policyengine_core.country_template import entities
+    from policyengine_core.variables import Variable
+
+    def store_whole_period(holder, period, array):
+        holder._set(period, array)
+
+    class flag(Variable):
+        value_type = float
+        entity = entities.Person
+        definition_period = periods.YEAR
+        label = "flag"
+
+    class source(Variable):
+        value_type = float
+        entity = entities.Person
+        definition_period = periods.YEAR
+        label = "source"
+        set_input = store_whole_period
+
+        def formula(person, period):
+            if np.any(person("flag", "2020") == 0):
+                person.simulation.set_input("flag", "2020", np.ones(person.count))
+            return np.full(person.count, 120.0)
+
+    system = _one_person_system(flag, source)
+
+    def branch(final_inputs):
+        root = SimulationBuilder().build_default_simulation(system)
+        root.set_input("flag", "2020", np.array([0.0]))
+        root.set_input("source", "2020-01", np.array([99.0]))
+        child = root.get_branch("b")
+        if final_inputs:
+            child.set_input("flag", "2020", np.array([1.0]))
+        return child
+
+    fresh = branch(final_inputs=True).calculate_divide("source", "2020-01")
+    assert fresh.tolist() == [10.0]
+    assert branch(final_inputs=False).calculate_divide(
+        "source", "2020-01"
+    ).tolist() == [10.0]
+
+
+def test_reruns_do_not_multiply_through_nested_calculations():
+    """Only the outermost calculation runs again; the inner ones run with it."""
+    from collections import Counter
+
+    calls = Counter()
+
+    def leaf(person, period):
+        calls["leaf"] += 1
+        value = person("source", period)
+        person.simulation.set_input("source", period, value + 1)  # every run
+        return value
+
+    def level(name, inner):
+        def formula(person, period):
+            calls[name] += 1
+            return person(inner, period)
+
+        return formula
+
+    system = _one_person_system(
+        _yearly_variable("source"),
+        _yearly_variable("level1", leaf),
+        _yearly_variable("level2", level("level2", "level1")),
+        _yearly_variable("level3", level("level3", "level2")),
+    )
+    root = SimulationBuilder().build_default_simulation(system)
+    root.set_input("source", "2020", np.array([0.0]))
+    branch = root.get_branch("branch")
+    branch.calculate("level3", "2020")
+
+    reruns = simulation_module._RERUNS_AFTER_INPUT_CHANGE
+    assert calls == {"leaf": reruns + 1, "level2": reruns + 1, "level3": reruns + 1}
+    assert branch._calculations_in_flight == 0
+
+
+def test_input_handler_calling_calculate_directly_still_drops():
+    """A private _calculate (here a carry-over, no formula) also counts as calculating."""
+    from policyengine_core.country_template import entities
+    from policyengine_core.variables import Variable
+
+    def two_months(holder, period, array):
+        holder._set(period.first_month, array)
+        holder.simulation._calculate("source", periods.period("2020-03"))
+        holder._set(period.first_month.offset(1), array)
+
+    class source(Variable):
+        value_type = float
+        entity = entities.Person
+        definition_period = periods.MONTH
+        label = "source"
+        set_input = two_months
+
+    system = _one_person_system(source)
+    system.auto_carry_over_input_variables = True
+
+    def branch(handler_input):
+        root = SimulationBuilder().build_default_simulation(system)
+        root.set_input("source", "2020-01", np.array([1.0]))
+        root.set_input("source", "2020-02", np.array([1.0]))
+        child = root.get_branch("branch")
+        if handler_input:
+            child.set_input("source", "2020", np.array([3.0]))
+        else:
+            child.set_input("source", "2020-01", np.array([3.0]))
+            child.set_input("source", "2020-02", np.array([3.0]))
+        return child
+
+    assert branch(handler_input=False).calculate("source", "2020-03").tolist() == [3.0]
+    assert branch(handler_input=True).calculate("source", "2020-03").tolist() == [3.0]
+
+
 def test_input_a_formula_sets_for_its_own_period_wins():
     """As it would had the input been set before the calculation."""
 
@@ -1129,6 +1245,55 @@ def test_branch_input_stops_macro_reads_before_any_read(monkeypatch):
     branch.set_input("source", "2020", np.array([3.0]))  # before any calculation
 
     assert branch.calculate("total", "2020").tolist() == [12.0]
+
+
+def test_result_obsolete_after_its_own_input_change_is_not_written_to_the_macro_cache(
+    monkeypatch,
+):
+    import policyengine_core.simulations.simulation as simulation_module
+
+    written = []
+
+    class RecordingCache:
+        def __init__(self, tax_benefit_system):
+            pass
+
+        def set_cache_path(self, *args):
+            pass
+
+        def get_cache_path(self):
+            return type("Path", (), {"exists": lambda self: False})()
+
+        def get_cache_value(self, path):
+            return None
+
+        def set_cache_value(self, path, value):
+            written.append(np.array(value).tolist())
+
+    def result(person, period):
+        source = person("source", period)
+        if np.any(source == 1):
+            person.simulation.set_input("source", period, np.full(person.count, 3.0))
+        return source * 2
+
+    monkeypatch.setattr(simulation_module, "SimulationMacroCache", RecordingCache)
+    system = _one_person_system(
+        _yearly_variable("source", lambda person, period: np.ones(person.count)),
+        _yearly_variable("result", result),
+    )
+    simulation = SimulationBuilder().build_default_simulation(system)
+    simulation.dataset = type(
+        "Dataset", (), {"file_path": simulation_module.Path("cache"), "name": "d"}
+    )()
+    monkeypatch.setattr(
+        type(simulation),
+        "check_macro_cache",
+        lambda self, variable, period: variable == "result",
+    )
+    branch = simulation.get_branch("b")
+
+    assert branch.calculate("result", "2020").tolist() == [6.0]
+    assert [2.0] not in written  # the first run's result, from the old input
 
 
 def test_macro_cache_read_counts_as_depending_on_every_input(monkeypatch):

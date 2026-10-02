@@ -58,19 +58,23 @@ values were all stored earlier) and records again the inputs it keeps, unless a
 formula is still running in the branch: such a formula may hold, in its own
 variables, a value it read before the drop, so the records stay. A
 calculation that was running then (one whose formula sets an input, say) may
-have read the replaced value, so its result is not kept; `calculate` (and a
-direct `calculate_add`) runs it again from the new inputs until a run changes
-no input, and keeps that result, so uprating and carry-over find its period as
-they would had the inputs come first. A formula that changes an input on every
-run stops after ten reruns; its last result is returned but not kept. An input
-set for the very period being calculated, while it is calculated (under the
-branch's name, or any it reads, such as `default` through
-`Holder.set_input`), is the result, as it would be had it been set first.
+have read the replaced value, so its result is kept neither in storage nor in
+the macro cache. The outermost calculation running in the simulation (a
+`calculate`, or a direct `calculate_add`) then runs again from the new inputs,
+inner calculations included, until a run changes no input, and keeps that
+result, so uprating and carry-over find its period as they would had the inputs
+come first. After ten reruns it stops: a formula that keeps changing inputs
+returns its last result without keeping it, and a later uprating or carry-over
+may then not find that period. An input stored for the very period being
+calculated after the calculation began (by its own formula, say; under the
+branch's name or any it reads, such as `default` through `Holder.set_input`)
+is the result, as it would be had it been set first.
 
 A custom `set_input` handler that calculates values between its own stores
 calculates them from inputs it has not yet replaced, so if it calculated
-anything, the branch drops again, by the same rule, once the handler returns
-or raises (the inputs it stored before raising stay).
+anything (through `calculate`, `calculate_add` or `_calculate`), the branch
+drops again, by the same rule, once the handler returns or raises (the inputs
+it stored before raising stay).
 
 If there is no such record, the branch drops nothing. That is the case when a
 formula creates the branch while it is still calculating the variable the

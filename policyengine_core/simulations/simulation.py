@@ -616,13 +616,14 @@ class Simulation:
         # Formulas running in this simulation may hold values they read in
         # local variables; a drop meanwhile must not forget what they came
         # from (see ``_drop_computed``).
+        # Only the outermost calculation here runs again after an input
+        # change: running it again runs the inner ones again too.
+        outermost = not getattr(self, "_calculations_in_flight", 0)
         self._calculations_in_flight = getattr(self, "_calculations_in_flight", 0) + 1
-        # Lets a custom ``set_input`` handler tell whether it calculated.
-        self._calculations_started = getattr(self, "_calculations_started", 0) + 1
         try:
             input_epoch = getattr(self, "_input_epoch", 0)
             result = self._calculate(variable_name, period)
-            for _ in range(_RERUNS_AFTER_INPUT_CHANGE):
+            for _ in range(_RERUNS_AFTER_INPUT_CHANGE if outermost else 0):
                 if input_epoch == getattr(self, "_input_epoch", 0):
                     break
                 # An input set here while it ran (by a formula, say) dropped
@@ -765,7 +766,9 @@ class Simulation:
         """
         if variable_name not in self.tax_benefit_system.variables:
             raise ValueError(f"Variable {variable_name} does not exist.")
-        input_state = self._input_state()
+        input_state = self._calculation_start()
+        # Lets a custom ``set_input`` handler tell whether it calculated.
+        self._calculations_started = getattr(self, "_calculations_started", 0) + 1
         population = self.get_variable_population(variable_name)
         holder = population.get_holder(variable_name)
         variable = self.tax_benefit_system.get_variable(
@@ -854,7 +857,7 @@ class Simulation:
                 values = self.calculate_divide(variable_name, period)
 
         if alternate_period_handling:
-            if is_cache_available:
+            if is_cache_available and input_state[:2] == self._input_state():
                 smc.set_cache_value(cache_path, values)
             return values
 
@@ -950,7 +953,7 @@ class Simulation:
                     last_known_period = max(known_periods, key=lambda p: p.start)
                     if last_known_period.start > period.start:
                         stored_input = (
-                            self._input_set_meanwhile(holder, period, input_state)
+                            self._input_set_meanwhile(holder, period, input_state[2])
                             if input_state[1] != getattr(self, "_inputs_set", 0)
                             else None
                         )
@@ -996,10 +999,13 @@ class Simulation:
                 f"RecursionError while calculating {variable_name} for period {period}. The full computation stack is:\n{stack_formatted}"
             )
 
-        if is_cache_available:
+        # Neither cache keeps a result an input change may have made obsolete
+        # (see ``_cache_result``).
+        unchanged = input_state[:2] == self._input_state()
+        if is_cache_available and unchanged:
             smc.set_cache_value(cache_path, array)
 
-        if hasattr(self, "_fast_cache") and input_state == self._input_state():
+        if hasattr(self, "_fast_cache") and unchanged:
             self._fast_cache[(variable_name, period)] = array
 
         return array
@@ -1008,18 +1014,25 @@ class Simulation:
         """How many drops ran during calculations, and inputs were set, here."""
         return getattr(self, "_input_epoch", 0), getattr(self, "_inputs_set", 0)
 
-    def _input_set_meanwhile(
-        self, holder: Holder, period: Period, input_state: Tuple[int, int]
-    ) -> Optional[ArrayLike]:
-        """The input this simulation reads for ``period``, if one was set during the calculation.
+    def _calculation_start(self) -> Tuple[int, int, int]:
+        """:meth:`_input_state` when a calculation begins, and a sequence number then."""
+        return (*self._input_state(), next_sequence_number())
 
-        Only called once an input was set since ``input_state``. A value the
-        simulation could read for ``period`` when the calculation began
-        would have been returned without calculating, so an input it reads
-        now was set meanwhile, under any branch name it reads.
+    def _input_set_meanwhile(
+        self, holder: Holder, period: Period, started_at: int
+    ) -> Optional[ArrayLike]:
+        """The input this simulation reads for ``period``, if it was stored after ``started_at``.
+
+        That is an input set while the calculation that began at
+        ``started_at`` ran (by its own formula, say), under any branch name
+        the simulation reads.
         """
         stored_on = holder._branch_holding(period, self.branch_name)
-        if stored_on is not None and holder._is_input(period, stored_on):
+        if (
+            stored_on is not None
+            and holder._is_input(period, stored_on)
+            and (holder._stored_sequence_number(period, stored_on) or 0) > started_at
+        ):
             return holder._get_array_from_storage(period, stored_on)
         return None
 
@@ -1028,20 +1041,20 @@ class Simulation:
         holder: Holder,
         array: ArrayLike,
         period: Period,
-        input_state: Tuple[int, int],
+        input_state: Tuple[int, int, int],
     ) -> ArrayLike:
         """Cache a calculated value, and return the value to use for it.
 
-        ``input_state`` is :meth:`_input_state` when the calculation began.
+        ``input_state`` is :meth:`_calculation_start` when the calculation began.
         If an input for the same period was set meanwhile (by the formula
         itself, say), that input is the value, as it would be had it been set
         first. A calculation that was running when an input set on this
         simulation dropped values may have read the replaced value, so its
         result is returned but not kept (see ``_drop_computed``).
         """
-        epoch, inputs_set = input_state
+        epoch, inputs_set, started_at = input_state
         if inputs_set != getattr(self, "_inputs_set", 0):
-            stored_input = self._input_set_meanwhile(holder, period, input_state)
+            stored_input = self._input_set_meanwhile(holder, period, started_at)
             if stored_input is not None:
                 return stored_input
         if epoch == getattr(self, "_input_epoch", 0):
@@ -1106,14 +1119,16 @@ class Simulation:
                 for sub_period in period.get_subperiods(variable.definition_period)
             )
 
-        input_state = self._input_state()
+        # As in ``calculate``, only an outermost sum runs again.
+        outermost = not getattr(self, "_calculations_in_flight", 0)
+        input_state = self._calculation_start()
         result = total()
-        for _ in range(_RERUNS_AFTER_INPUT_CHANGE):
+        for _ in range(_RERUNS_AFTER_INPUT_CHANGE if outermost else 0):
             if input_state[0] == getattr(self, "_input_epoch", 0):
                 break
             # An input changed while summing: earlier terms may be obsolete
             # (see ``calculate``). Sum again.
-            input_state = self._input_state()
+            input_state = self._calculation_start()
             result = total()
         holder = self.get_holder(variable.name)
         return self._cache_result(holder, result, period, input_state)
@@ -1145,7 +1160,7 @@ class Simulation:
             )
 
         if period.unit == periods.MONTH:
-            input_state = self._input_state()
+            input_state = self._calculation_start()
             computation_period = period.this_year
             result = self.calculate(variable_name, period=computation_period) / 12.0
             holder = self.get_holder(variable.name)
@@ -1539,9 +1554,10 @@ class Simulation:
         Once an input is set on it, the branch stops reading macro-cache
         files, which are keyed by branch name and period but not by inputs.
         A calculation that was running in the branch when its input changed
-        is run again from the new inputs until a run changes none (at most
-        ten times; after that its result is returned but not kept), and an
-        input set for the very period it calculates is its result.
+        is not kept; the outermost one is run again from the new inputs until
+        a run changes none (at most ten times; after that its result is
+        returned but not kept), and an input stored for the very period it
+        calculates after it began is its result.
 
         What this does not track: a branch given a different tax-benefit
         system or parameters (call :meth:`drop_computed_arrays` on it);

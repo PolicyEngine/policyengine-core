@@ -136,6 +136,18 @@ class Holder:
             and f"{branch_name}_{period}" in self._disk_storage._input_keys
         )
 
+    def _stored_sequence_number(
+        self, period: Period, branch_name: str = "default"
+    ) -> Optional[int]:
+        """The sequence number of the value stored for ``period`` on ``branch_name``."""
+        if self.variable.definition_period == periods.ETERNITY:
+            period = periods.period(periods.ETERNITY)
+        period = periods.period(period)
+        number = self._memory_storage._sequence_numbers.get(f"{branch_name}:{period}")
+        if number is None and self._disk_storage is not None:
+            number = self._disk_storage._sequence_numbers.get(f"{branch_name}_{period}")
+        return number
+
     def _has_unnumbered_values(self) -> bool:
         return self._memory_storage.has_unnumbered_values() or (
             self._disk_storage is not None

@@ -91,6 +91,12 @@ def get_parser():
             default=None,
             help="variables to ignore. If specified, do not test the given variables.",
         )
+        parser.add_argument(
+            "--reform-cache-size",
+            type=int,
+            default=None,
+            help="how many reform systems (built for tests with reforms, extensions or parameter inputs) to keep cached; each is a full copy of the tax-benefit system. Defaults to 2; 0 caches none.",
+        )
 
         return parser
 

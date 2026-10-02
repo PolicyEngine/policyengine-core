@@ -895,6 +895,24 @@ class Simulation:
             if array is None:
                 # Check if the variable has a previously defined value
                 known_periods = holder.get_known_periods()
+                if variable.set_input is not None:
+                    # A ``set_input`` helper stores every input at the
+                    # variable's definition period (it converts an input given
+                    # for another period), so for such a variable a value at
+                    # another unit is never an input. The ones core writes are
+                    # derived from a stored value: a YEAR flow requested for a
+                    # month caches a twelfth of the year's value there
+                    # (``calculate_divide``), and a sum over several
+                    # sub-periods is cached at the larger period
+                    # (``calculate_add``). Carrying either forward rescales the
+                    # variable. Variables without a helper (DAY variables, and
+                    # any declaring ``set_input = None``) store inputs at
+                    # whatever period they are given and keep every period.
+                    known_periods = [
+                        known_period
+                        for known_period in known_periods
+                        if known_period.unit == variable.definition_period
+                    ]
                 earlier_known_periods = [
                     known_period
                     for known_period in known_periods
@@ -947,24 +965,7 @@ class Simulation:
                     # tuples lexicographically puts "year" before "month"
                     # alphabetically, so a known "2023" annual value would
                     # win over a later "2024-06" monthly value (bug H1).
-                    #
-                    # Prefer values at the variable's own definition period. A
-                    # YEAR flow requested for a month caches a twelfth of the
-                    # year's value at that month (``calculate_divide``), and a
-                    # MONTH flow requested for a year caches the sum of its
-                    # months (``calculate_add``): both coexist with the value
-                    # they were derived from, and carrying either forward
-                    # rescales the variable. A value at another unit is used
-                    # only when there is none at the variable's own unit, as for
-                    # an input to a variable with no ``set_input`` helper.
-                    own_unit_periods = [
-                        known_period
-                        for known_period in known_periods
-                        if known_period.unit == variable.definition_period
-                    ]
-                    last_known_period = max(
-                        own_unit_periods or known_periods, key=lambda p: p.start
-                    )
+                    last_known_period = max(known_periods, key=lambda p: p.start)
                     if last_known_period.start > period.start:
                         return holder.default_array()
                     # Pass branch_name through so auto-carry-over respects the

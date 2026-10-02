@@ -8,6 +8,7 @@ from numpy.typing import ArrayLike
 
 from policyengine_core import commons, periods, tools
 from policyengine_core.data_storage import InMemoryStorage, OnDiskStorage
+from policyengine_core.data_storage.on_disk_storage import StorageDirectory
 from policyengine_core.enums import Enum
 from policyengine_core.errors import PeriodMismatchError
 from policyengine_core.periods import Period
@@ -99,16 +100,24 @@ class Holder:
                 self.simulation._get_data_storage_directory(),
                 is_eternal=is_eternal,
             )
+        data_storage_directory = None
         if directory is None:
             directory = self.simulation.data_storage_dir
+            data_storage_directory = self.simulation._get_data_storage_directory()
         storage_dir = os.path.join(directory, self.variable.name)
         if not os.path.isdir(storage_dir):
             os.mkdir(storage_dir)
-        return OnDiskStorage(
+        storage = OnDiskStorage(
             storage_dir,
             is_eternal=is_eternal,
             preserve_storage_dir=preserve,
         )
+        if isinstance(data_storage_directory, StorageDirectory):
+            # Keep the simulation's directory while the storage is alive, and
+            # after it too if the storage is preserved.
+            storage._directory.parent = data_storage_directory
+            storage.preserve_storage_dir = preserve
+        return storage
 
     def delete_arrays(
         self, period: Period = None, branch_name: str = "default"

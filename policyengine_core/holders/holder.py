@@ -144,12 +144,13 @@ class Holder:
         """
         name = self.variable.name
         memory_before, disk_before = stored_before
-        memory_after, disk_after = self._stored_keys()
+        arrays = self._memory_storage._arrays
+        files = self._disk_storage._files if self._disk_storage is not None else {}
         # Memory keys are "{branch}:{period}"; branch names cannot contain ":".
-        removed = [key.split(":", 1) for key in memory_before - memory_after]
+        removed = [key.split(":", 1) for key in memory_before if key not in arrays]
         # Disk keys are "{branch}_{period}"; branch names can contain "_" but
         # period strings cannot, so the period follows the last "_".
-        removed += [key.rsplit("_", 1) for key in disk_before - disk_after]
+        removed += [key.rsplit("_", 1) for key in disk_before if key not in files]
         forgotten = []
         for branch, period_string in removed:
             try:

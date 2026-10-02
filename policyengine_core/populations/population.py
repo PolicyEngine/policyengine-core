@@ -53,6 +53,14 @@ class Population:
         return numpy.full(self.count, value, dtype)
 
     def __getattr__(self, attribute: str) -> Any:
+        # The shortcut lookup reads ``self.entity`` and ``self.simulation``.
+        # They are missing while copy or pickle rebuilds a population (both
+        # probe the new, empty instance for ``__setstate__`` before restoring
+        # its ``__dict__``), and looking them up would recurse here.
+        if attribute in ("entity", "simulation"):
+            raise AttributeError(
+                f"{type(self).__name__!s} has no attribute {attribute!r}"
+            )
         projector = projectors.get_projector_from_shortcut(self, attribute)
         if not projector:
             raise AttributeError(

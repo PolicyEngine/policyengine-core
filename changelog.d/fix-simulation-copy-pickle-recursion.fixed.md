@@ -1,0 +1,1 @@
+Stop `copy.deepcopy(simulation)`, `copy.copy(population)` and unpickling a simulation in the process that pickled it from raising `RecursionError`, keep vectorial parameter nodes as nodes when deep-copied, and keep an `EnumArray`'s `possible_values` through pickling.

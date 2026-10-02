@@ -209,6 +209,14 @@ class VectorialParameterNodeAtInstant:
         self._instant_str = instant_str
 
     def __getattr__(self, attribute: str) -> Any:
+        # ``vector`` is missing while copy or pickle rebuilds a node, and
+        # looking it up would recurse here. ``copy.deepcopy`` looks
+        # ``__deepcopy__`` up on the instance, and the vector's would copy the
+        # vector alone and hand back a bare ``numpy.recarray``.
+        if attribute in ("vector", "__deepcopy__"):
+            raise AttributeError(
+                f"{type(self).__name__!s} has no attribute {attribute!r}"
+            )
         result = getattr(self.vector, attribute)
         if isinstance(result, numpy.recarray):
             return VectorialParameterNodeAtInstant(result)

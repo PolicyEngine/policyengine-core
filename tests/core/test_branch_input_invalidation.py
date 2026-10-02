@@ -709,27 +709,28 @@ def test_drop_while_a_formula_runs_keeps_what_it_read_recorded(drop):
     assert branch.calculate("result", "2020").tolist() == [6.0]
 
 
-def test_disk_restore_reads_the_latest_file_of_each_key(tmp_path):
+def test_disk_restore_reads_the_latest_file_of_each_key(tmp_path, monkeypatch):
     """Sequence numbers restart in each process; restore goes by write time."""
     import itertools
     import os
 
+    import policyengine_core.data_storage.on_disk_storage as on_disk_storage
     import policyengine_core.data_storage.store_history as store_history
     from policyengine_core.data_storage import OnDiskStorage
 
+    monkeypatch.setattr(on_disk_storage, "_PROCESS_TOKEN", "aaaaaaaaaaaa")
     writer = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
     for _ in range(5):
         writer.put(np.array([1.0]), periods.period("2020"))
-    first = writer._files["default_2020"]
-    saved = store_history._sequence
-    store_history._sequence = itertools.count(1)  # a later process
-    try:
-        later = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
-        later.put(np.array([2.0]), periods.period("2020"))
-        stat = os.stat(first)
-        os.utime(first, ns=(stat.st_atime_ns, stat.st_mtime_ns - 10**9))
-    finally:
-        store_history._sequence = saved
+    # A later process: its counter restarts, and it has its own token.
+    monkeypatch.setattr(store_history, "_sequence", itertools.count(1))
+    monkeypatch.setattr(on_disk_storage, "_PROCESS_TOKEN", "bbbbbbbbbbbb")
+    later = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
+    later.put(np.array([2.0]), periods.period("2020"))
+    # The writer's files clearly earlier, even on a coarse file clock.
+    for path in tmp_path.glob("default_2020.aaaaaaaaaaaa.*.npy"):
+        stat = os.stat(path)
+        os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns - 10**9))
 
     reader = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
     reader.restore()

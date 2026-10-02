@@ -1,1 +1,0 @@
-An Enum, `str` or date variable with `uprating`, and a variable whose `defined_for` names one, are now rejected with a `ValueError` when registered (or when `uprating` is assigned) instead of raising `TypeError` in the middle of a calculation; `defined_for` must name a `bool`, `int` or `float` variable.

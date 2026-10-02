@@ -15,6 +15,7 @@ exactly those as inputs. The property test is
 from __future__ import annotations
 
 import os
+import warnings
 
 import numpy as np
 import pytest
@@ -141,21 +142,48 @@ def test_restore_records_an_eternity_input_set_for_a_year(system, tmp_path):
     assert restored.calculate("eternal_code_plus_one", "2020").tolist() == [6, 7]
 
 
+def test_an_input_set_on_a_branch_is_not_recorded_for_the_default_value(
+    system, tmp_path
+):
+    # A branch shares its parent's input record. Its input for 2013 must not
+    # make the parent's calculated 2013 value, which is what gets dumped, an
+    # input.
+    simulation = build_simulation(system, [("uprated_count", "2012", [1001, 77])])
+    simulation.calculate("uprated_count", "2013")
+    simulation.get_branch("reform").set_input("uprated_count", "2013", [5, 6])
+    assert ("uprated_count", "reform", periods.period("2013")) in (
+        simulation._user_input_keys
+    )
+
+    restored = _dump_and_restore(simulation, tmp_path)
+
+    assert _inputs(restored, "uprated_count") == ["2012"]
+    restored.apply_reform(NoOp)
+    assert (
+        restored.get_holder("uprated_count").get_array(periods.period("2013")) is None
+    )
+
+
+def _dump_without_input_record(simulation, directory):
+    """A dump as earlier versions wrote it: the arrays and nothing else."""
+    dump_simulation(simulation, str(directory))
+    for variable in os.listdir(directory):
+        if variable == "__entities__":
+            continue
+        for file in (directory / variable).iterdir():
+            if file.suffix != ".npy":
+                file.unlink()
+
+
 def test_restore_of_a_dump_without_an_input_record_keeps_every_value(system, tmp_path):
     # Dumps written before inputs were recorded say nothing about which
     # values were calculated, so every value is restored as an input.
     simulation = build_simulation(system, [("uprated_count", "2012", [1001, 77])])
     simulation.calculate("uprated_count", "2013")
-    dump_simulation(simulation, str(tmp_path))
-    # Such a dump holds the arrays and nothing else.
-    for variable in os.listdir(tmp_path):
-        if variable == "__entities__":
-            continue
-        for file in (tmp_path / variable).iterdir():
-            if file.suffix != ".npy":
-                file.unlink()
+    _dump_without_input_record(simulation, tmp_path)
 
-    restored = restore_simulation(str(tmp_path), system)
+    with pytest.warns(UserWarning, match="does not record which values were inputs"):
+        restored = restore_simulation(str(tmp_path), system)
 
     assert _inputs(restored, "uprated_count") == ["2012", "2013"]
     restored.apply_reform(NoOp)
@@ -164,6 +192,16 @@ def test_restore_of_a_dump_without_an_input_record_keeps_every_value(system, tmp
         restored.calculate("uprated_count", "2013"),
         simulation.calculate("uprated_count", "2013"),
     )
+
+
+def test_restore_of_a_dump_with_an_input_record_does_not_warn(system, tmp_path):
+    simulation = build_simulation(system, [("uprated_count", "2012", [1001, 77])])
+    simulation.calculate("uprated_count", "2013")
+    dump_simulation(simulation, str(tmp_path))
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        restore_simulation(str(tmp_path), system)
 
 
 def test_restored_simulation_exports_its_inputs(system, tmp_path):

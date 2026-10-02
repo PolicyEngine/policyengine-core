@@ -2,6 +2,7 @@
 
 
 import os
+import warnings
 
 import numpy as np
 
@@ -53,7 +54,8 @@ def restore_simulation(directory, tax_benefit_system, **kwargs):
     every other value as a calculated one, so ``apply_reform`` keeps and drops
     the same values it would have in the dumped simulation. A dump written
     before inputs were recorded (no ``inputs.txt``) does not say which values
-    were inputs, so every value in it is restored as an input.
+    were inputs, so every value in it is restored as an input, with a
+    warning: ``apply_reform`` then keeps its calculated values as dumped.
     """
     simulation = Simulation(
         tax_benefit_system, tax_benefit_system.instantiate_entities()
@@ -74,8 +76,22 @@ def restore_simulation(directory, tax_benefit_system, **kwargs):
     variables_to_restore = (
         variable for variable in os.listdir(directory) if variable != "__entities__"
     )
-    for variable in variables_to_restore:
-        _restore_holder(simulation, variable, directory)
+    without_input_record = [
+        variable
+        for variable in variables_to_restore
+        if not _restore_holder(simulation, variable, directory)
+    ]
+    if without_input_record:
+        warnings.warn(
+            f"The simulation dump in {directory} does not record which values "
+            f"were inputs ({len(without_input_record)} variables have no "
+            f"{INPUT_PERIODS_FILE}; it was written by an earlier version of "
+            "policyengine-core). Every value in it is restored as an input, "
+            "so apply_reform keeps the calculated values as dumped instead of "
+            "recalculating them. Dump the simulation again to record its "
+            "inputs.",
+            stacklevel=2,
+        )
 
     return simulation
 
@@ -166,6 +182,7 @@ def _restore_entity(population, directory):
 
 
 def _restore_holder(simulation, variable, directory):
+    """Restore one variable's values; return whether its inputs were recorded."""
     storage_dir = os.path.join(directory, variable)
     is_variable_eternal = (
         simulation.tax_benefit_system.get_variable(variable).definition_period
@@ -193,6 +210,7 @@ def _restore_holder(simulation, variable, directory):
             _restore_input(simulation, holder, period, value)
         else:
             holder.put_in_cache(value, period)
+    return input_periods is not None
 
 
 def _restore_input(simulation, holder, period, value):

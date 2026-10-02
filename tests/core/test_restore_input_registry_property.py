@@ -1,8 +1,8 @@
 """Property: a restored simulation keeps and drops what the dumped one would.
 
 For random inputs (including inputs replaced after calculating, inputs split
-by a ``set_input`` helper, and ETERNITY inputs set for a year) and random
-calculations before the dump:
+by a ``set_input`` helper, ETERNITY inputs set for a year, and inputs set on
+a branch of the dumped simulation) and random calculations before the dump:
 
 1. **Round trip.** The restored simulation stores exactly the dumped
    simulation's values (default branch), byte for byte, and records the same
@@ -89,10 +89,12 @@ _request = st.tuples(st.integers(0, len(REQUESTS) - 1), st.integers(0, 3)).map(
         REQUESTS[draw[0]][1][draw[1] % len(REQUESTS[draw[0]][1])],
     )
 )
-# Before the dump: set an input or calculate, in any order.
+# Before the dump: set an input, calculate, or set an input on a branch (a
+# branch shares the simulation's input record), in any order.
 _step = st.one_of(
     st.tuples(st.just("input"), _input),
     st.tuples(st.just("calculate"), _request),
+    st.tuples(st.just("branch_input"), _input),
 )
 
 
@@ -170,6 +172,10 @@ def test_restored_simulation_keeps_and_drops_what_the_dumped_one_would(
             # split into months): the new simulation gets the same refusal.
             inputs.append(step)
             _result(lambda: dumped.set_input(*step))
+        elif kind == "branch_input":
+            # Stays on the branch: the dumped simulation's own values and
+            # inputs are what a new simulation is given.
+            _result(lambda: dumped.get_branch("reform").set_input(*step))
         else:
             _result(lambda: dumped.calculate(*step))
 

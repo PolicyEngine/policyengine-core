@@ -122,8 +122,9 @@ class TaxBenefitSystem:
         self.variable_module_metadata = {}
 
         if self.variables_dir is not None:
-            # A variable's defined_for variable may be in a file loaded after
-            # it, so check every variable once the whole directory is loaded.
+            # Check every variable once, after the whole directory is loaded,
+            # instead of scanning the variables loaded so far each time a
+            # non-numeric one is added.
             self._defined_for_checks_deferred = True
             try:
                 self.add_variables_from_directory(self.variables_dir)
@@ -287,9 +288,14 @@ class TaxBenefitSystem:
         :param Variable variable: New variable class to add. Must be a subclass of Variable.
         """
         name = variable.__name__
-        if self.variables.get(name) is not None:
-            del self.variables[name]
-        self.load_variable(variable, update=False)
+        replaced = self.variables.pop(name, None)
+        try:
+            self.load_variable(variable, update=False)
+        except Exception:
+            # A rejected replacement leaves the system as it was.
+            if replaced is not None:
+                self.variables[name] = replaced
+            raise
         self.data_modified = True
 
     def update_variable(self, variable: Type[Variable]) -> Variable:

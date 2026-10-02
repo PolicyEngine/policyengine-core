@@ -912,6 +912,9 @@ class Simulation:
                     and known_period.start < period.start
                 ]
                 if variable.uprating is not None and len(earlier_known_periods) > 0:
+                    # Registration rejects these; an ``uprating`` assigned
+                    # past the setter gets the same message here.
+                    variable.check_uprating_value_type()
                     # Take the latest period from the filtered list itself.
                     # Indexing ``known_periods`` with a position in the
                     # filtered list picked the wrong period whenever a later

@@ -429,19 +429,36 @@ class Variable:
         variable raised a ``TypeError`` the first time a later period was
         uprated. The check covers an ``uprating`` inherited from a baseline
         variable too, since the inherited one is what ``calculate`` uses.
+
+        It runs when the variable is defined and when ``uprating`` is
+        assigned. A class that declares ``uprating`` itself (even as
+        ``None``) replaces the property that checks assignments, so
+        ``calculate`` runs it again before it uprates.
         """
         if self.uprating is None:
             return
         value_type = getattr(self, "value_type", None)
         if value_type is None or value_type in NUMERIC_VALUE_TYPES:
             return
+        explicit = getattr(self, "_explicit_attribute_names", frozenset())
+        if self.baseline_variable is not None and "uprating" not in explicit:
+            # ``update_variable`` keeps every attribute the new class leaves
+            # unset, so the new class cannot drop the uprating itself.
+            advice = (
+                "The uprating is inherited from the variable this one "
+                "updates: use replace_variable, which inherits nothing, to "
+                "change its value_type."
+            )
+        else:
+            advice = (
+                "Remove uprating: with auto_carry_over_input_variables, an "
+                "input without it carries over to later periods unchanged."
+            )
         raise ValueError(
             f'Variable "{self.name}" has uprating "{self.uprating}", but its '
             f"value_type is {_value_type_name(value_type)}. Uprating "
             "multiplies the latest earlier value by an index ratio, so only "
-            "bool, int and float variables can be uprated. Remove uprating: "
-            "with auto_carry_over_input_variables, an input without it "
-            "carries over to later periods unchanged."
+            f"bool, int and float variables can be uprated. {advice}"
         )
 
     def check_defined_for_variable(self, defined_for_variable: "Variable") -> None:

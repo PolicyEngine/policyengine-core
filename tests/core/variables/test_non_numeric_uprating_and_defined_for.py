@@ -124,8 +124,16 @@ def test_a_reform_cannot_turn_an_uprated_variable_into_an_enum():
     system = _system()
     system.add_variable(_variable("uprated", value_type=float, uprating="probe.index"))
 
-    with pytest.raises(ValueError, match="value_type is Enum"):
+    with pytest.raises(ValueError) as error:
         system.update_variable(_variable("uprated", **NON_NUMERIC["Enum"]))
+
+    # ``update_variable`` cannot drop an inherited attribute, so the message
+    # points to the way that can.
+    assert "value_type is Enum" in str(error.value)
+    assert "use replace_variable" in str(error.value)
+
+    system.replace_variable(_variable("uprated", **NON_NUMERIC["Enum"]))
+    assert system.variables["uprated"].uprating is None
 
 
 def test_an_enum_input_without_uprating_carries_over():
@@ -292,16 +300,74 @@ def test_a_variables_directory_with_a_bool_condition_loads(tmp_path):
     assert system.variables["amount"].defined_for == "condition"
 
 
-def test_defined_for_changed_after_registration_fails_with_the_same_message():
+@pytest.mark.parametrize("type_name", NON_NUMERIC)
+def test_defined_for_changed_after_registration_fails_with_the_same_message(
+    type_name,
+):
     # Registration cannot see an attribute assigned afterwards; ``calculate``
     # then raises the same error instead of a TypeError from ``> 0``.
     system = _system()
     system.add_variables(
-        _variable("state", **NON_NUMERIC["Enum"]),
+        _variable("condition", **NON_NUMERIC[type_name]),
         _variable("amount", value_type=float),
     )
-    system.variables["amount"].defined_for = "state"
-    simulation = _simulation(system, state={"2015": "present"}, amount={"2012": 5.0})
+    system.variables["amount"].defined_for = "condition"
+    simulation = _simulation(system, amount={"2012": 5.0})
 
-    with pytest.raises(ValueError, match='"amount" is defined_for "state"'):
+    with pytest.raises(ValueError) as error:
         simulation.calculate("amount", "2015")
+
+    message = str(error.value)
+    assert 'Variable "amount" is defined_for "condition"' in message
+    assert f"value_type is {type_name}" in message
+
+
+def test_a_group_variable_defined_for_a_person_enum_is_rejected():
+    # Mapped to the group, the Enum's indices were summed over its members,
+    # so this masked on a number with no meaning instead of raising.
+    system = _system()
+    system.add_variable(_variable("state", **NON_NUMERIC["Enum"]))
+    household_amount = type(
+        "household_amount",
+        (Variable,),
+        dict(
+            value_type=float,
+            entity=template_entities.Household,
+            definition_period=YEAR,
+            label="household_amount",
+            defined_for="state",
+        ),
+    )
+
+    with pytest.raises(ValueError, match='"household_amount" is defined_for "state"'):
+        system.add_variable(household_amount)
+
+
+def test_a_rejected_replacement_leaves_the_variable_as_it_was():
+    system = _system()
+    system.add_variables(
+        _variable("condition", value_type=bool),
+        _variable("amount", value_type=float, defined_for="condition"),
+    )
+    original = system.variables["condition"]
+
+    with pytest.raises(ValueError, match='"amount" is defined_for "condition"'):
+        system.replace_variable(_variable("condition", **NON_NUMERIC["Enum"]))
+
+    assert system.variables["condition"] is original
+    simulation = _simulation(system, condition={"2015": True}, amount={"2012": 5.0})
+    assert simulation.calculate("amount", "2015").tolist() == [5.0]
+
+
+def test_uprating_assigned_past_the_setter_fails_when_it_would_uprate():
+    # A class that declares ``uprating`` itself, even as ``None``, replaces
+    # the property that checks assignments.
+    system = _system()
+    variable = system.add_variable(
+        _variable("plain", uprating=None, **NON_NUMERIC["Enum"])
+    )
+    variable.uprating = "probe.index"
+    simulation = _simulation(system, plain={"2012": "present"})
+
+    with pytest.raises(ValueError, match='Variable "plain" has uprating'):
+        simulation.calculate("plain", "2015")

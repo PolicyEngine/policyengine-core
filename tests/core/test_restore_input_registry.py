@@ -147,10 +147,13 @@ def test_restore_of_a_dump_without_an_input_record_keeps_every_value(system, tmp
     simulation = build_simulation(system, [("uprated_count", "2012", [1001, 77])])
     simulation.calculate("uprated_count", "2013")
     dump_simulation(simulation, str(tmp_path))
+    # Such a dump holds the arrays and nothing else.
     for variable in os.listdir(tmp_path):
-        record = tmp_path / variable / INPUT_PERIODS_FILE
-        if record.exists():
-            record.unlink()
+        if variable == "__entities__":
+            continue
+        for file in (tmp_path / variable).iterdir():
+            if file.suffix != ".npy":
+                file.unlink()
 
     restored = restore_simulation(str(tmp_path), system)
 

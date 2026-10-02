@@ -2,22 +2,29 @@
 
 Random sequences of ``set_input``, ``calculate``, ``delete_arrays`` (through
 the simulation and through a holder), ``clone``, ``get_branch`` and
-``_invalidate_all_caches`` run on a family of simulations. A reference model
-tracks, for each simulation, which (variable, branch, period) values were
-stored through ``set_input`` and not deleted since. After every step, for
-every simulation:
+``_invalidate_all_caches`` run on a family of simulations. A reference model,
+seeded from the situation the simulations are built from, tracks for each
+simulation which (variable, branch, period) values were stored through
+``set_input`` and not deleted since. After every step, for every simulation:
 
 - ``_user_input_keys`` is exactly the model's set, so a step on one
   simulation never changes another's record;
 - each entry names a value the simulation stores, equal to the input;
-- ``to_input_dataframe`` exports the periods the model says are inputs.
+- ``to_input_dataframe`` exports exactly the model's inputs, with their
+  values, and stores nothing.
 
 One input variable is set through a custom ``set_input`` handler that
 calculates another variable first and stores months under string periods.
+Another is set for twelve months, which storage keys as a year.
 
 After ``_invalidate_all_caches`` the simulation and its branches store their
-inputs and nothing else. ``test_user_input_keys.py`` pins the same behaviour
-with examples.
+inputs and nothing else.
+
+A second property runs ``set_input``, ``calculate``, deletes and
+``_invalidate_all_caches`` on one simulation whose holders store values in
+memory or on disk, switching between the two: the record names exactly the
+inputs some storage still holds. ``test_user_input_keys.py`` pins the same
+behaviour with examples.
 """
 
 from __future__ import annotations
@@ -32,6 +39,7 @@ st = hypothesis.strategies
 from policyengine_core import periods
 from policyengine_core.country_template import CountryTaxBenefitSystem
 from policyengine_core.country_template.entities import Household
+from policyengine_core.experimental import MemoryConfig
 from policyengine_core.model_api import MONTH, Variable
 from policyengine_core.simulations import SimulationBuilder
 
@@ -43,6 +51,17 @@ SITUATION = {
     "households": {"h": {"parents": ["a", "b"], "rent": {"2025-01": 800}}},
 }
 MONTHS = ["2025-01", "2025-02", "2025-03"]
+# The inputs SITUATION sets, as the simulation should store them.
+SITUATION_INPUTS = {
+    ("salary", "default", "2025-01"): np.array([3_000.0, 0.0]),
+    ("birth", "default", "ETERNITY"): np.array(
+        ["1960-05-01", "1990-01-01"], dtype="datetime64[D]"
+    ),
+    ("rent", "default", "2025-01"): np.array([800.0]),
+}
+# Storage keys a value by its period's string form: twelve months starting on
+# the first of a month are the year starting then.
+TWELVE_MONTHS = {"month:2025-01:12": "2025", "month:2025-03:12": "year:2025-03"}
 
 
 def _calculate_then_set_months(holder, period, array):
@@ -81,7 +100,7 @@ MAX_SIMULATIONS = 6
 def _canonical(variable, period):
     if variable == "birth":
         return periods.period(periods.ETERNITY)
-    return periods.period(period)
+    return periods.period(TWELVE_MONTHS.get(period, period))
 
 
 def _slot(key):
@@ -95,6 +114,12 @@ def _input_value(variable, number):
     if variable in ("rent", "quarterly_rent"):
         return [float(number)]
     return [float(number), float(number) / 2]
+
+
+def _expected_array(variable, value):
+    if variable == "birth":
+        return np.array(value, dtype="datetime64[D]")
+    return np.array(value, dtype=float)
 
 
 class _Model:
@@ -137,11 +162,10 @@ class _Model:
 class _Family:
     def __init__(self, tax_benefit_system):
         root = SimulationBuilder().build_from_entities(tax_benefit_system, SITUATION)
-        inputs = {}
-        for key in root._user_input_keys:
-            variable, branch, period = key
-            stored = root.get_holder(variable)._memory_storage._arrays
-            inputs[key] = stored[_slot(key)[1]].copy()
+        inputs = {
+            (variable, branch, _canonical(variable, period)): value
+            for (variable, branch, period), value in SITUATION_INPUTS.items()
+        }
         self.simulations = [root]
         self.models = [_Model("default", None, inputs)]
 
@@ -161,7 +185,7 @@ class _Family:
             variable, period, number = arguments
             value = _input_value(variable, number)
             simulation.set_input(variable, period, value)
-            array = simulation.get_holder(variable)._to_array(np.asarray(value))
+            array = _expected_array(variable, value)
             # The handler stores the quarter's months. An eternal variable
             # stores one value whatever the period it is set for, and its
             # entry names that value.
@@ -220,21 +244,54 @@ class _Family:
                 stored = holder._memory_storage._arrays.get(storage_key)
                 assert stored is not None, key
                 assert np.array_equal(stored, expected), key
-            visible = model.visible_branch_names()
-            for variable in EXPORTABLE:
-                exported = simulation._get_exportable_input_periods(variable, False)
-                expected_periods = {
-                    periods.period(period)
-                    for name, branch, period in model.inputs
-                    if name == variable and branch in visible
-                }
-                if variable == "birth":
-                    assert bool(exported) == bool(expected_periods)
-                else:
-                    assert set(exported) == expected_periods
+            self._assert_export_matches(simulation, model)
+
+    def _assert_export_matches(self, simulation, model):
+        """``to_input_dataframe`` exports the inputs of the branches the
+        simulation reads (for each period, the first such branch's), for
+        periods of the variable's own unit, and stores nothing."""
+        visible = model.visible_branch_names()
+        expected = {}
+        for branch in reversed(visible):
+            for (variable, input_branch, period), value in model.inputs.items():
+                definition_period = TAX_BENEFIT_SYSTEM.get_variable(
+                    variable
+                ).definition_period
+                if (
+                    input_branch == branch
+                    and variable in EXPORTABLE
+                    and period.unit == definition_period
+                ):
+                    if variable in ("rent", "quarterly_rent"):
+                        # One household of both people.
+                        value = np.repeat(value, 2)
+                    expected[f"{variable}__{period}"] = value
+        stored_before = _stored_keys(simulation)
+        fast_cache = dict(simulation._fast_cache)
+
+        exported = simulation.to_input_dataframe()
+
+        # Exporting reads stored inputs only. Restore the reads it cached,
+        # so checking does not change what later steps calculate.
+        simulation._fast_cache = fast_cache
+        assert _stored_keys(simulation) == stored_before
+        assert set(exported.columns) == set(expected)
+        for column, value in expected.items():
+            assert np.array_equal(
+                exported[column].to_numpy().astype(value.dtype), value
+            ), column
 
 
-_months_or_all = st.sampled_from(MONTHS + ["2025", None])
+def _stored_keys(simulation):
+    return {
+        (variable, key)
+        for population in simulation.populations.values()
+        for variable, holder in population._holders.items()
+        for key in holder._memory_storage._arrays
+    }
+
+
+_months_or_all = st.sampled_from(MONTHS + ["2025", "year:2025-03", None])
 _index = st.integers(min_value=0, max_value=MAX_SIMULATIONS - 1)
 _operation = st.one_of(
     st.tuples(
@@ -250,6 +307,13 @@ _operation = st.one_of(
         st.just("birth"),
         st.sampled_from(["ETERNITY", "2025", "2025-02"]),
         st.integers(min_value=0, max_value=49),
+    ),
+    st.tuples(
+        st.just("set_input"),
+        _index,
+        st.just("salary"),
+        st.sampled_from(sorted(TWELVE_MONTHS)),
+        st.integers(min_value=0, max_value=5_000),
     ),
     st.tuples(
         st.just("set_input"),
@@ -278,7 +342,7 @@ _operation = st.one_of(
         st.integers(min_value=0, max_value=3),
     ),
     st.tuples(st.just("clone"), _index),
-    st.tuples(st.just("branch"), _index, st.sampled_from(["b1", "b2"])),
+    st.tuples(st.just("branch"), _index, st.sampled_from(["b1", "no_salt"])),
     st.tuples(st.just("invalidate"), _index),
 )
 
@@ -296,5 +360,112 @@ def test_user_input_keys_match_reference_model(operations):
         family.apply(operation)
         try:
             family.assert_records_match()
+        except AssertionError as error:
+            raise AssertionError((step, operation)) from error
+
+
+DISK_INPUTS = ["salary", "income_tax", "rent", "birth"]
+
+
+class _Storages:
+    """One simulation whose holders store in memory or on disk, and the
+    inputs ``set_input`` stored that some storage still holds."""
+
+    def __init__(self, tax_benefit_system):
+        self.simulation = SimulationBuilder().build_from_entities(
+            tax_benefit_system, SITUATION
+        )
+        self.simulation.memory_config = MemoryConfig(max_memory_occupation=0)
+        for variable in tax_benefit_system.variables:
+            holder = self.simulation.get_holder(variable)
+            holder._disk_storage = holder.create_disk_storage()
+            holder._on_disk_storable = True
+        self.inputs = {
+            (variable, branch, _canonical(variable, period))
+            for variable, branch, period in SITUATION_INPUTS
+        }
+
+    def holds(self, key):
+        variable, branch, period = key
+        holder = self.simulation.get_holder(variable)
+        return (
+            f"{branch}:{period}" in holder._memory_storage._arrays
+            or f"{branch}_{period}" in holder._disk_storage._files
+        )
+
+    def stored(self):
+        return {
+            (variable, branch, periods.period(period))
+            for population in self.simulation.populations.values()
+            for variable, holder in population._holders.items()
+            for branch, period in [
+                key.split(":", 1) for key in holder._memory_storage._arrays
+            ]
+            + [key.rsplit("_", 1) for key in holder._disk_storage._files]
+        }
+
+    def apply(self, operation):
+        kind, *arguments = operation
+        simulation = self.simulation
+        if kind == "set_input":
+            variable, period, number = arguments
+            simulation.set_input(variable, period, _input_value(variable, number))
+            self.inputs.add((variable, "default", _canonical(variable, period)))
+        elif kind == "calculate":
+            simulation.calculate(*arguments)
+        elif kind == "delete":
+            simulation.delete_arrays(*arguments)
+        elif kind == "holder_delete":
+            variable, period = arguments
+            simulation.get_holder(variable).delete_arrays(period)
+        elif kind == "on_disk":
+            (on_disk,) = arguments
+            simulation.memory_config.max_memory_occupation_pc = 0 if on_disk else 101
+        elif kind == "invalidate":
+            simulation._invalidate_all_caches()
+            assert self.stored() == set(simulation._user_input_keys)
+        # An input stops being one when no storage holds its value any more.
+        self.inputs = {key for key in self.inputs if self.holds(key)}
+
+    def assert_record_matches(self):
+        assert set(self.simulation._user_input_keys) == self.inputs
+
+
+_disk_operation = st.one_of(
+    st.tuples(
+        st.just("set_input"),
+        st.sampled_from(["salary", "income_tax", "rent"]),
+        st.sampled_from(MONTHS + sorted(TWELVE_MONTHS)),
+        st.integers(min_value=0, max_value=5_000),
+    ),
+    st.tuples(
+        st.just("set_input"),
+        st.just("birth"),
+        st.sampled_from(["ETERNITY", "2025", "2025-02"]),
+        st.integers(min_value=0, max_value=49),
+    ),
+    st.tuples(
+        st.just("calculate"), st.sampled_from(CALCULATED), st.sampled_from(MONTHS)
+    ),
+    st.tuples(st.just("delete"), st.sampled_from(DISK_INPUTS), _months_or_all),
+    st.tuples(st.just("holder_delete"), st.sampled_from(DISK_INPUTS), _months_or_all),
+    st.tuples(st.just("on_disk"), st.booleans()),
+    st.tuples(st.just("invalidate")),
+)
+
+
+@hypothesis.settings(
+    max_examples=200,
+    deadline=None,
+    suppress_health_check=[hypothesis.HealthCheck.too_slow],
+)
+@hypothesis.given(operations=st.lists(_disk_operation, max_size=25))
+def test_user_input_keys_follow_memory_and_disk_storage(operations):
+    storages = _Storages(TAX_BENEFIT_SYSTEM)
+    storages.assert_record_matches()
+    for step, operation in enumerate(operations):
+        storages.apply(operation)
+        try:
+            storages.assert_record_matches()
         except AssertionError as error:
             raise AssertionError((step, operation)) from error

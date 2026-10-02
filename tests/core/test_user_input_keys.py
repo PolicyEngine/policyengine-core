@@ -17,14 +17,16 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from policyengine_core import periods
 from policyengine_core.country_template import CountryTaxBenefitSystem
 from policyengine_core.country_template import Simulation as CountryTemplateSimulation
 from policyengine_core.country_template.entities import Person
 from policyengine_core.data import Dataset
+from policyengine_core.data_storage import OnDiskStorage
 from policyengine_core.experimental import MemoryConfig
-from policyengine_core.model_api import MONTH, Reform, Variable
+from policyengine_core.model_api import MONTH, YEAR, Reform, Variable
 from policyengine_core.simulations import SimulationBuilder
 
 JANUARY = "2025-01"
@@ -43,6 +45,32 @@ def _simulation(tax_benefit_system=None):
 
 def _key(variable, period, branch="default"):
     return (variable, branch, periods.period(period))
+
+
+def _store_on_disk(simulation, *variables):
+    """Send every value stored from now on for ``variables`` to disk."""
+    simulation.memory_config = MemoryConfig(max_memory_occupation=0)
+    for variable in variables:
+        holder = simulation.get_holder(variable)
+        holder._disk_storage = holder.create_disk_storage()
+        holder._on_disk_storable = True
+
+
+def _held(simulation, variable, entries):
+    """The (branch, period) entries whose value some storage still holds.
+
+    Disk storage deletes only the period it is given (policyengine-core#564)
+    and, for a branch, the files of every branch whose name starts with that
+    branch's name and "_" (#552), so after a delete it can hold values memory
+    no longer does. Tests of disk deletes compare the record with this, so
+    they hold however disk storage deletes.
+    """
+    holder = simulation.get_holder(variable)
+    return {
+        (branch, period)
+        for branch, period in entries
+        if holder._get_array_from_storage(period, branch) is not None
+    }
 
 
 def _input_periods(simulation, variable):
@@ -180,22 +208,21 @@ def test_branch_delete_drops_entries_for_the_branches_it_deletes_from():
 
 def test_entry_is_kept_for_a_value_disk_storage_did_not_delete():
     """Disk storage deletes only the period asked for, not the periods
-    within it, so the entry for a monthly value it still holds stays."""
+    within it (policyengine-core#564), so the entry for a monthly value it
+    still holds stays."""
     simulation = _simulation()
-    simulation.memory_config = MemoryConfig(max_memory_occupation=0)
+    _store_on_disk(simulation, "rent")
     holder = simulation.get_holder("rent")
-    holder._disk_storage = holder.create_disk_storage()
-    holder._on_disk_storable = True
     simulation.set_input("rent", JANUARY, [500.0])
     simulation.set_input("rent", FEBRUARY, [600.0])
     assert holder._memory_storage.get(JANUARY) is None
 
     simulation.delete_arrays("rent", "2025")
-    assert _input_periods(simulation, "rent") == {
-        ("default", JANUARY),
-        ("default", FEBRUARY),
-    }
+    assert _input_periods(simulation, "rent") == _held(
+        simulation, "rent", {("default", JANUARY), ("default", FEBRUARY)}
+    )
 
+    simulation.set_input("rent", FEBRUARY, [600.0])
     simulation.delete_arrays("rent", JANUARY)
     assert _input_periods(simulation, "rent") == {("default", FEBRUARY)}
     assert holder.get_array(FEBRUARY)[0] == 600.0
@@ -373,4 +400,216 @@ def test_subsample_records_only_the_inputs_it_stores():
     assert holder._memory_storage.get("2022-01", "sample").tolist() in (
         [3_000.0],
         [4_000.0],
+    )
+
+
+def _ended(value):
+    class ended(Variable):
+        value_type = float
+        entity = Person
+        definition_period = YEAR
+        end = "2012-12-31"
+        label = "A formula that applies until 2012"
+
+        def formula(person, period, parameters):
+            return person.filled_array(value)
+
+    return ended
+
+
+class ReformEnded(Reform):
+    def apply(self):
+        self.update_variable(_ended(9.0))
+
+
+def _carrying_over_simulation(on_disk):
+    tax_benefit_system = CountryTaxBenefitSystem()
+    tax_benefit_system.auto_carry_over_input_variables = True
+    tax_benefit_system.add_variable(_ended(7.0))
+    simulation = _simulation(tax_benefit_system)
+    if on_disk:
+        _store_on_disk(simulation, "ended")
+    return simulation
+
+
+@pytest.mark.parametrize("on_disk", [False, True])
+def test_formula_result_for_a_deleted_input_is_not_carried_over(on_disk):
+    """A value calculated for the period of a deleted input is a formula
+    result. ``apply_reform`` discards it, so it is not carried over to later
+    periods: after the reform the simulation gives what a simulation that
+    never had the input gives (found in the review of policyengine-core#562).
+    """
+    simulation = _carrying_over_simulation(on_disk)
+    holder = simulation.get_holder("ended")
+    simulation.set_input("ended", "2012", [20.0])
+    simulation.delete_arrays("ended", "2012")
+    assert simulation.calculate("ended", "2012")[0] == 7.0
+    assert (holder._memory_storage.get("2012") is None) == on_disk
+
+    simulation.apply_reform(ReformEnded)
+
+    never_had_the_input = _carrying_over_simulation(on_disk)
+    never_had_the_input.apply_reform(ReformEnded)
+    assert simulation.calculate("ended", "2013")[0] == 0.0
+    assert never_had_the_input.calculate("ended", "2013")[0] == 0.0
+    assert simulation.calculate("ended", "2012")[0] == 9.0
+
+
+@pytest.mark.parametrize("on_disk", [False, True])
+def test_input_that_was_not_deleted_is_carried_over_after_apply_reform(on_disk):
+    simulation = _carrying_over_simulation(on_disk)
+    simulation.set_input("ended", "2012", [20.0])
+
+    simulation.apply_reform(ReformEnded)
+
+    assert simulation.calculate("ended", "2013")[0] == 20.0
+    assert simulation.calculate("ended", "2012")[0] == 20.0
+
+
+def test_entry_is_kept_while_disk_still_holds_a_value_deleted_from_memory():
+    """A value can be stored both in memory and on disk. Deleting a year
+    deletes the months within it from memory, but disk storage deletes only
+    the year itself (policyengine-core#564), so the input survives on disk
+    and stays an input."""
+    simulation = _simulation()
+    _store_on_disk(simulation, "rent")
+    holder = simulation.get_holder("rent")
+    simulation.set_input("rent", JANUARY, [500.0])
+    simulation.memory_config.max_memory_occupation_pc = 101
+    simulation.set_input("rent", JANUARY, [500.0])
+    assert holder._memory_storage.get(JANUARY) is not None
+    assert holder._disk_storage.get(JANUARY) is not None
+
+    simulation.delete_arrays("rent", "2025")
+
+    assert holder._memory_storage.get(JANUARY) is None
+    assert _input_periods(simulation, "rent") == _held(
+        simulation, "rent", {("default", JANUARY)}
+    )
+    if _input_periods(simulation, "rent"):
+        exported = simulation.to_input_dataframe()
+        assert exported["rent__2025-01"].tolist() == [500.0]
+        simulation._invalidate_all_caches()
+        assert holder.get_array(JANUARY)[0] == 500.0
+
+
+@pytest.mark.parametrize(
+    "twelve_months, stored_as, salary_month",
+    [
+        ("month:2025-01:12", "2025", JANUARY),
+        ("month:2025-03:12", "year:2025-03", "2025-03"),
+    ],
+)
+def test_twelve_month_input_is_recorded_as_the_year_it_is_stored_as(
+    twelve_months, stored_as, salary_month
+):
+    """Storage keys twelve months starting on the first of a month as the
+    year starting then, so deleting that year deletes the input's entry."""
+    simulation = _simulation()
+    simulation.set_input("salary", salary_month, [1_000.0])
+    simulation.set_input("income_tax", twelve_months, [5.0])
+    assert _input_periods(simulation, "income_tax") == {("default", stored_as)}
+
+    simulation.get_holder("income_tax").delete_arrays(twelve_months)
+
+    assert _input_periods(simulation, "income_tax") == set()
+    assert simulation.calculate("income_tax", stored_as)[0] == 150.0
+    simulation.apply_reform(DoubleIncomeTaxRate)
+    assert simulation.calculate("income_tax", stored_as)[0] == 300.0
+
+
+def test_disk_delete_reads_no_file_and_does_not_look_through_the_record(
+    monkeypatch,
+):
+    """With disk storage configured, deleting checks which keys each storage
+    still holds without loading any stored file, and without going through
+    every entry of the record."""
+    simulation = _simulation()
+    _store_on_disk(simulation, "rent", "income_tax", "birth", "salary")
+    simulation.set_input("rent", JANUARY, [500.0])
+    simulation.set_input("rent", FEBRUARY, [600.0])
+    simulation.set_input("rent", "2025-03", [700.0])
+    simulation.set_input("birth", "2020", ["1980-01-01"])
+    simulation.calculate("income_tax", JANUARY)
+    # March's rent is also stored in memory, so deleting the year deletes
+    # memory's copy and leaves the one on disk.
+    simulation.memory_config.max_memory_occupation_pc = 101
+    simulation.set_input("rent", "2025-03", [700.0])
+    simulation._user_input_keys = _RecordThatMustNotBeScanned(
+        simulation._user_input_keys
+        | {_key(f"other_{index}", JANUARY) for index in range(1_000)}
+    )
+
+    def no_file_reads(self, file):
+        raise AssertionError(f"delete_arrays read {file}")
+
+    monkeypatch.setattr(OnDiskStorage, "_decode_file", no_file_reads)
+
+    simulation.delete_arrays("rent", "2025")
+    simulation.delete_arrays("rent", JANUARY)
+    for variable in ("income_tax", "salary", "birth"):
+        simulation.delete_arrays(variable, JANUARY)
+    simulation.delete_arrays("salary")
+
+    # Any period of an eternal variable deletes its one value.
+    monkeypatch.undo()
+    assert set(simulation._user_input_keys) == {
+        _key("rent", period, branch)
+        for branch, period in _held(
+            simulation, "rent", {("default", FEBRUARY), ("default", "2025-03")}
+        )
+    } | {_key(f"other_{index}", JANUARY) for index in range(1_000)}
+
+
+def test_delete_skips_disk_files_storage_did_not_name():
+    """A file ``restore`` finds in the storage directory need not be named
+    after a period; deleting it removes no entry and raises nothing."""
+    simulation = _simulation()
+    _store_on_disk(simulation, "rent")
+    holder = simulation.get_holder("rent")
+    simulation.set_input("rent", JANUARY, [500.0])
+    holder._disk_storage._files["default_notes"] = "notes.npy"
+
+    simulation.delete_arrays("rent")
+
+    assert holder._disk_storage._files == {}
+    assert _input_periods(simulation, "rent") == set()
+
+
+def test_disk_delete_on_a_branch_whose_name_contains_an_underscore():
+    """Disk keys join the branch name and the period with "_", and branch
+    names can contain "_" (country packages use names like ``no_salt``)."""
+    simulation = _simulation()
+    _store_on_disk(simulation, "rent")
+    branch = simulation.get_branch("no_salt")
+    branch.set_input("rent", JANUARY, [500.0])
+    branch.set_input("rent", FEBRUARY, [600.0])
+    assert branch.get_holder("rent")._memory_storage.get(JANUARY, "no_salt") is None
+
+    branch.delete_arrays("rent", JANUARY)
+    assert _input_periods(branch, "rent") == {("no_salt", FEBRUARY)}
+
+    branch.get_holder("rent").delete_arrays(None, "no_salt")
+    assert _input_periods(branch, "rent") == set()
+
+
+def test_entry_stays_while_memory_holds_a_value_disk_deleted_for_another_branch():
+    """Deleting a branch's values from disk also deletes the files of every
+    branch whose name starts with that branch's name and "_" (fixed in
+    policyengine-core#552). The entry of an input memory still holds stays;
+    the entry of one only disk held goes."""
+    simulation = _simulation()
+    _store_on_disk(simulation, "rent")
+    holder = simulation.get_holder("rent")
+    holder.set_input(JANUARY, [500.0], "x_y")
+    holder.set_input(FEBRUARY, [600.0], "x_y")
+    simulation.memory_config.max_memory_occupation_pc = 101
+    holder.set_input(JANUARY, [500.0], "x_y")
+    assert holder._memory_storage.get(FEBRUARY, "x_y") is None
+
+    holder.delete_arrays(None, "x")
+
+    assert holder._memory_storage.get(JANUARY, "x_y")[0] == 500.0
+    assert _input_periods(simulation, "rent") == _held(
+        simulation, "rent", {("x_y", JANUARY), ("x_y", FEBRUARY)}
     )

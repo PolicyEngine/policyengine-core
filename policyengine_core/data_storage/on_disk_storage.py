@@ -16,6 +16,16 @@ from policyengine_core.enums import EnumArray
 # Distinguishes the files this process writes from other processes' files in
 # the same directory, whose sequence numbers may repeat this process's.
 _PROCESS_TOKEN = uuid.uuid4().hex[:12]
+
+
+def _new_process_token() -> None:
+    global _PROCESS_TOKEN
+    _PROCESS_TOKEN = uuid.uuid4().hex[:12]
+
+
+# A forked child inherits the parent's token and counter: give it its own token.
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_new_process_token)
 from policyengine_core.periods import Period
 
 
@@ -219,12 +229,20 @@ class OnDiskStorage:
             # (each store writes a new file); older dumps are "<key>.npy".
             # Keep each key's most recently written file: sequence numbers
             # restart in every process, so they only order one process's files.
-            parts = filename_core.rsplit(".", 2)
-            if len(parts) == 3 and parts[2].isdigit():
-                key, number = parts[0], int(parts[2])
-            else:
-                key, number = filename_core, 0
-            order = (os.stat(path).st_mtime_ns, number)
+            key, token, number = filename_core, None, 0
+            stem, _, last = filename_core.rpartition(".")
+            if stem and last.isdigit():
+                key, number = stem, int(last)
+                stem, _, middle = key.rpartition(".")
+                if (
+                    stem
+                    and len(middle) == 12
+                    and all(c in "0123456789abcdef" for c in middle)
+                ):
+                    key, token = stem, middle
+            # On a timestamp tie (a coarse filesystem clock), this process's
+            # own file is the later one; numbers only order one process's.
+            order = (os.stat(path).st_mtime_ns, token == _PROCESS_TOKEN, number)
             if key not in latest or order > latest[key]:
                 latest[key] = order
                 files[key] = path

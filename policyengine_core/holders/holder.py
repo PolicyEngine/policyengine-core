@@ -126,6 +126,16 @@ class Holder:
                 for period, sequence_number in storage.inputs_since(since):
                     self._record_store(period, sequence_number)
 
+    def _is_input(self, period: Period, branch_name: str = "default") -> bool:
+        """Whether the value stored for ``period`` on ``branch_name`` is an input."""
+        if self.variable.definition_period == periods.ETERNITY:
+            period = periods.period(periods.ETERNITY)
+        period = periods.period(period)
+        return f"{branch_name}:{period}" in self._memory_storage._input_keys or (
+            self._disk_storage is not None
+            and f"{branch_name}_{period}" in self._disk_storage._input_keys
+        )
+
     def _has_unnumbered_values(self) -> bool:
         return self._memory_storage.has_unnumbered_values() or (
             self._disk_storage is not None
@@ -377,6 +387,7 @@ class Holder:
         branch_name: str = "default",
         validate_nan: bool = False,
         is_input: Optional[bool] = None,
+        sequence_number: Optional[int] = None,
     ) -> None:
         simulation = getattr(self, "simulation", None)
         user_input_contexts = getattr(simulation, "_user_input_contexts", None)
@@ -401,7 +412,8 @@ class Holder:
             >= self.simulation.memory_config.max_memory_occupation_pc
         )
 
-        sequence_number = next_sequence_number()
+        if sequence_number is None:
+            sequence_number = next_sequence_number()
         storage = self._disk_storage if should_store_on_disk else self._memory_storage
         storage.put(
             value,

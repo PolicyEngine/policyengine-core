@@ -40,8 +40,8 @@ from another period. The history records:
   macro cache, and the default a spiral returns;
 - a copy of its parent's history, taken when the branch is created;
 - the history of any simulation its formulas calculate in, taken in each time
-  `calculate` there returns (a formula that branches, sets an input and
-  calculates in the branch hands back values calculated there); a branch
+  `calculate` there returns or raises (a formula that branches, sets an input
+  and calculates in the branch hands back values calculated there); a branch
   calculated from a thread with no formula context hands its history to every
   ancestor with a calculation running.
 
@@ -52,7 +52,8 @@ earliest recorded store of the variable for a period that shares a day with
 variable. It then forgets the records numbered from there on (its remaining
 values were all stored earlier) and records again the inputs it keeps, unless a
 formula is still running in the branch: such a formula may hold, in its own
-variables, a value it read before the drop, so the records stay.
+variables, a value it read before the drop, so the records stay, and the
+results of the calculations that were running are returned but not kept.
 
 If there is no such record, the branch drops nothing. That is the case when a
 formula creates the branch while it is still calculating the variable the
@@ -107,9 +108,21 @@ depend on the input is calculated again) but not less, within these limits:
 - **Existing child branches keep their values.** An input set on a branch does
   not reach branches already created from it.
 
-With disk storage (`MemoryConfig`), every store writes a new file, so a value
-recalculated in one simulation does not change a file another simulation in
-the family still maps; files stay until the storage directory is removed.
+With disk storage (`MemoryConfig`), every store writes a new file, named with
+the sequence number and a token for the process (a forked child gets its own),
+so a value recalculated in one simulation does not change a file another
+simulation, or another process, still maps; files stay until the storage
+directory is removed. `OnDiskStorage.restore` takes each key's most recently
+written file, and on a timestamp tie the current process's own; between two
+other processes' files written within one clock tick it cannot tell which came
+last.
+
+A simulation dump (`dump_simulation`) records which values were inputs.
+`restore_simulation` restores those as inputs and every other value as
+calculated under one number, since the dump does not say what each was
+calculated from: an input set on a branch of the restored simulation drops all
+of them that are not inputs. A dump written before inputs were recorded is
+restored with every value as an input, as before, so such values never drop.
 
 Two related behaviours: a branch whose input dropped values stops reading
 macro-cache files, which are keyed by branch and period but not by inputs; and

@@ -624,9 +624,11 @@ class Simulation:
                     variable_name
                 ).entity.key
                 result = self.map_result(result, source_entity, map_to)
-            self._share_store_history_with_caller()
             return result
         finally:
+            # Also when the calculation fails: whether it fails can depend on
+            # what it read, and a calling formula may catch the error.
+            self._share_store_history_with_caller()
             self._calculations_in_flight -= 1
             self.tracer.record_calculation_end()
             self.purge_cache_of_invalid_values()
@@ -741,6 +743,7 @@ class Simulation:
         """
         if variable_name not in self.tax_benefit_system.variables:
             raise ValueError(f"Variable {variable_name} does not exist.")
+        input_epoch = getattr(self, "_input_epoch", 0)
         population = self.get_variable_population(variable_name)
         holder = population.get_holder(variable_name)
         variable = self.tax_benefit_system.get_variable(
@@ -839,7 +842,7 @@ class Simulation:
             if np.all(~mask):
                 array = holder.default_array()
                 array = self._cast_formula_result(array, variable)
-                holder.put_in_cache(array, period, self.branch_name)
+                self._cache_result(holder, array, period, input_epoch)
                 return array
 
         array = None
@@ -941,7 +944,7 @@ class Simulation:
                     array = EnumArray(array, variable.possible_values)
 
             array = self._cast_formula_result(array, variable)
-            holder.put_in_cache(array, period, self.branch_name)
+            self._cache_result(holder, array, period, input_epoch)
 
         except SpiralError:
             array = holder.default_array()
@@ -964,10 +967,27 @@ class Simulation:
         if is_cache_available:
             smc.set_cache_value(cache_path, array)
 
-        if hasattr(self, "_fast_cache"):
+        if hasattr(self, "_fast_cache") and input_epoch == getattr(
+            self, "_input_epoch", 0
+        ):
             self._fast_cache[(variable_name, period)] = array
 
         return array
+
+    def _cache_result(
+        self, holder: Holder, array: ArrayLike, period: Period, input_epoch: int
+    ) -> None:
+        """Cache a calculated value, unless inputs changed while it was calculated.
+
+        A calculation that was running when an input set on this simulation
+        dropped values may have read the replaced value, so its result is
+        returned but not kept (see ``_drop_computed``).
+        """
+        if input_epoch == getattr(self, "_input_epoch", 0):
+            holder.put_in_cache(array, period, self.branch_name)
+        else:
+            # Not kept, but whatever reads it is stored after it all the same.
+            holder._record_store(period, next_sequence_number())
 
     def purge_cache_of_invalid_values(self) -> None:
         # We wait for the end of calculate(), signalled by an empty stack, before purging the cache
@@ -1018,12 +1038,13 @@ class Simulation:
                 )
             )
 
+        input_epoch = getattr(self, "_input_epoch", 0)
         result = sum(
             self.calculate(variable_name, sub_period)
             for sub_period in period.get_subperiods(variable.definition_period)
         )
         holder = self.get_holder(variable.name)
-        holder.put_in_cache(result, period, self.branch_name)
+        self._cache_result(holder, result, period, input_epoch)
         return result
 
     def calculate_divide(
@@ -1053,10 +1074,11 @@ class Simulation:
             )
 
         if period.unit == periods.MONTH:
+            input_epoch = getattr(self, "_input_epoch", 0)
             computation_period = period.this_year
             result = self.calculate(variable_name, period=computation_period) / 12.0
             holder = self.get_holder(variable.name)
-            holder.put_in_cache(result, period, self.branch_name)
+            self._cache_result(holder, result, period, input_epoch)
             return result
         elif period.unit == periods.YEAR:
             return self.calculate(variable_name, period)
@@ -1536,8 +1558,9 @@ class Simulation:
         self._fast_cache = {}
         if getattr(self, "_calculations_in_flight", 0):
             # A formula running here may still hold values calculated from
-            # what the records describe, and store a result from them: keep
-            # the records.
+            # what the records describe: keep the records, and keep none of
+            # the results the running calculations return (``_cache_result``).
+            self._input_epoch = getattr(self, "_input_epoch", 0) + 1
             return dropped
         # Nothing the simulation still holds was calculated from what the
         # records numbered ``since`` or later describe, except the inputs it

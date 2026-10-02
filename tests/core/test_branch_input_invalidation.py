@@ -494,8 +494,9 @@ def test_value_calculated_only_inside_another_branch_is_tracked():
     """A formula's own branch stores the overridden variable; its result is dropped.
 
     ``p_inner`` calculates ``p_inner_only`` in a branch it deletes when done,
-    so the parent and its later branches never store ``p_inner_only``. The
-    history the whole family shares still records it.
+    so the parent never stores ``p_inner_only`` itself. It takes in that
+    branch's history when its calculation returns, and the parent's later
+    branches copy it.
     """
     simulation = synthetic_simulation(ROOT_INPUTS)
     simulation.calculate("p_inner", "2013")
@@ -806,14 +807,14 @@ def test_disk_files_from_another_process_are_not_overwritten(tmp_path, monkeypat
     from policyengine_core.data_storage import OnDiskStorage
 
     monkeypatch.setattr(store_history, "_sequence", itertools.count(1))
-    monkeypatch.setattr(on_disk_storage, "_PROCESS_TOKEN", "first")
+    monkeypatch.setattr(on_disk_storage, "_PROCESS_TOKEN", "aaaaaaaaaaaa")
     writer = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
     writer.put(np.array([1.0]), periods.period("2020"))
     snapshot = writer.clone()
 
     # A later process: its counter restarts.
     monkeypatch.setattr(store_history, "_sequence", itertools.count(1))
-    monkeypatch.setattr(on_disk_storage, "_PROCESS_TOKEN", "second")
+    monkeypatch.setattr(on_disk_storage, "_PROCESS_TOKEN", "bbbbbbbbbbbb")
     reader = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
     reader.restore()
     reader.put(np.array([99.0]), periods.period("2020"))
@@ -821,6 +822,156 @@ def test_disk_files_from_another_process_are_not_overwritten(tmp_path, monkeypat
     assert snapshot.get(periods.period("2020")).tolist() == [1.0]
     reader.restore()
     assert reader.get(periods.period("2020")).tolist() == [99.0]
+
+
+def test_result_calculated_across_its_own_input_change_is_not_kept():
+    """A formula that read an input and then replaced it returns, but does not cache."""
+
+    def result(person, period):
+        source = person("source", period)
+        person.simulation.set_input("source", period, np.full(person.count, 3.0))
+        return source * 2
+
+    system = _one_person_system(
+        _yearly_variable("source", lambda person, period: np.ones(person.count)),
+        _yearly_variable("result", result),
+    )
+    branch = SimulationBuilder().build_default_simulation(system).get_branch("b")
+    assert branch.calculate("result", "2020").tolist() == [2.0]
+
+    assert branch.calculate("result", "2020").tolist() == [6.0]
+
+
+def test_failed_calculation_in_another_simulation_hands_its_history_back():
+    """Whether a calculation fails can depend on what it read."""
+
+    def checked(person, period):
+        source = person("source", period)
+        if (source == 0).any():
+            raise ValueError("source is zero")
+        return source * 2
+
+    def result(person, period):
+        simulation = person.simulation
+        child = simulation.get_branch("child")
+        try:
+            return child.calculate("checked", period)
+        except ValueError:
+            return np.full(person.count, 7.0)
+        finally:
+            del simulation.branches["child"]
+
+    system = _one_person_system(
+        _yearly_variable("source", lambda person, period: np.zeros(person.count)),
+        _yearly_variable("checked", checked),
+        _yearly_variable("result", result),
+    )
+    simulation = SimulationBuilder().build_default_simulation(system)
+    assert simulation.calculate("result", "2020").tolist() == [7.0]
+
+    branch = simulation.get_branch("branch")
+    branch.set_input("source", "2020", np.array([3.0]))
+
+    assert branch.calculate("result", "2020").tolist() == [6.0]
+
+
+def test_restored_simulation_drops_restored_values_an_input_may_have_fed(tmp_path):
+    from policyengine_core.tools.simulation_dumper import (
+        dump_simulation,
+        restore_simulation,
+    )
+
+    system = _one_person_system(
+        _yearly_variable("source"),
+        _yearly_variable("result", lambda person, period: person("source", period) * 2),
+    )
+    simulation = SimulationBuilder().build_default_simulation(system)
+    simulation.set_input("source", "2020", np.array([1.0]))
+    simulation.calculate("result", "2020")
+    dump_simulation(simulation, str(tmp_path / "dump"))
+
+    restored = restore_simulation(str(tmp_path / "dump"), system)
+    branch = restored.get_branch("branch")
+    branch.set_input("source", "2020", np.array([3.0]))
+
+    assert branch.calculate("result", "2020").tolist() == [6.0]
+    assert restored.calculate("source", "2020").tolist() == [1.0]  # still an input
+
+
+def test_merge_reads_again_what_was_recorded_while_it_merged():
+    """A record added to the source during a merge (another thread) is not skipped."""
+    source = StoreHistory()
+    source.record_store("a", periods.period("2020"), 1)
+    destination = StoreHistory()
+    original = destination.record_store
+    calls = []
+
+    def record_store(variable_name, period, sequence_number):
+        if not calls:  # the other thread records while this merge runs
+            source.record_store("v", periods.period("2020"), 2)
+        calls.append(variable_name)
+        original(variable_name, period, sequence_number)
+
+    destination.record_store = record_store
+    destination.merge(source)
+    destination.merge(source)
+
+    assert destination.earliest_dependency("v", periods.period("2020")) == 2
+
+
+def test_history_pickled_before_journals_still_records():
+    import pickle
+
+    history = StoreHistory()
+    history.record_store("v", periods.period("2020"), 1)
+    del history._journal, history._generation  # as pickled before journals
+    restored = pickle.loads(pickle.dumps(history))
+
+    restored.record_store("w", periods.period("2020"), 2)
+
+    assert restored.earliest_dependency("w", periods.period("2020")) == 2
+
+
+def test_disk_restore_reads_older_file_names_and_breaks_time_ties(tmp_path):
+    import os
+
+    import policyengine_core.data_storage.on_disk_storage as on_disk_storage
+    from policyengine_core.data_storage import OnDiskStorage
+
+    # A file named before process tokens, and one from another process.
+    np.save(tmp_path / "default_2020.4.npy", np.array([1.0]))
+    np.save(tmp_path / "default_2020.cccccccccccc.999999999999.npy", np.array([2.0]))
+    storage = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
+    storage.put(np.array([3.0]), periods.period("2020"))  # this process, number lower
+    for path in tmp_path.glob("*.npy"):
+        os.utime(path, ns=(10**18, 10**18))  # a coarse clock: every time ties
+
+    reader = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
+    reader.restore()
+
+    assert set(reader._files) == {"default_2020"}  # one key, old name included
+    assert reader.get(periods.period("2020")).tolist() == [3.0]
+    assert on_disk_storage._PROCESS_TOKEN in reader._files["default_2020"]
+
+
+def test_forked_process_gets_its_own_disk_file_token():
+    import multiprocessing
+
+    import policyengine_core.data_storage.on_disk_storage as on_disk_storage
+
+    if "fork" not in multiprocessing.get_all_start_methods():
+        pytest.skip("no fork on this platform")
+    context = multiprocessing.get_context("fork")
+    with context.Pool(1) as pool:
+        child_token = pool.apply(_process_token)
+
+    assert child_token != on_disk_storage._PROCESS_TOKEN
+
+
+def _process_token():
+    import policyengine_core.data_storage.on_disk_storage as on_disk_storage
+
+    return on_disk_storage._PROCESS_TOKEN
 
 
 # ----- Only what may depend on the input is dropped ----- #

@@ -91,6 +91,8 @@ class StoreHistory:
         return state
 
     def __setstate__(self, state: dict) -> None:
+        state.setdefault("_journal", [])
+        state.setdefault("_generation", 0)
         self.__dict__.update(state)
         self._merged = weakref.WeakKeyDictionary()
         numbers = [
@@ -128,24 +130,27 @@ class StoreHistory:
         """Take in ``other``'s records, keeping the earlier number of each."""
         if other is self:
             return
+        # Note how far ``other`` had got before reading it: anything it
+        # records meanwhile (another thread) is read next time.
+        generation, end = other._generation, len(other._journal)
         read = self._merged.get(other)
-        if read is not None and read[0] == other._generation:
-            changes = other._journal[read[1] :]
+        if read is not None and read[0] == generation:
+            changes = other._journal[read[1] : end]
         else:
             changes = [
                 (variable_name, period, sequence_number)
-                for variable_name, stored in other._first_stored.items()
-                for period, sequence_number in stored.items()
+                for variable_name, stored in list(other._first_stored.items())
+                for period, sequence_number in list(stored.items())
             ] + [
                 (variable_name, None, sequence_number)
-                for variable_name, sequence_number in other._first_derived.items()
+                for variable_name, sequence_number in list(other._first_derived.items())
             ]
         for variable_name, period, sequence_number in changes:
             if period is None:
                 self.record_derived(variable_name, sequence_number)
             else:
                 self.record_store(variable_name, period, sequence_number)
-        self._merged[other] = (other._generation, len(other._journal))
+        self._merged[other] = (generation, end)
 
     def prune(self, since: Optional[int] = None) -> None:
         """Forget the records numbered ``since`` or later (all, without ``since``).

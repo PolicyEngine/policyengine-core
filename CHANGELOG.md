@@ -1,3 +1,10 @@
+## [3.32.12] - 2026-10-02
+
+### Changed
+
+- `Simulation.get_branch` no longer copies every cached array into the new branch: the branch shares the simulation's numpy arrays (other than masked arrays) and copies each one only when it first reads it, so arrays a branch never reads are not copied, while an ordinary `Simulation.clone()` still copies every array; results are unchanged unless code writes in place into a simulation's cached array after branching, which a branch that has not yet read that array now sees.
+
+
 ## [3.32.11] - 2026-09-30
 
 ### Changed

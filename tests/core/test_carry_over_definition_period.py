@@ -13,20 +13,28 @@ dataset therefore aged every person to a twelfth of their age in 2025. On a
 3,000-household Enhanced CPS subsample, 2025 federal income tax came to
 $31.6bn, against $1,846.9bn in a simulation that calculated only 2025.
 
-A variable with a ``set_input`` helper stores every input at its definition
-period, so a value it holds at another unit is never an input; carry-over now
-ignores those for such variables. Variables without a helper (DAY variables,
-and any declaring ``set_input = None``) store inputs at whatever period they
-are given, so core cannot tell an input from a derived cache there; they keep
-the rule of 3.24.0 to 3.32.x, the latest period of any unit. No variable in
-policyengine-us, policyengine-uk or policyengine-canada lacks a helper.
+A variable with a ``set_input`` helper now prefers periods at its definition
+unit. The helper stores inputs at the definition period, so a value at
+another unit beside them is ordinarily a cache derived from them. A value at
+another unit can still be a genuine input: one stored before a reform changed
+the variable's definition period or helper, one restored from a simulation
+with other definitions, or one written by a custom helper. So other units
+are used when the variable has nothing at its definition unit. Variables
+without a helper (falsy ``set_input``: DAY variables, ``set_input = None``)
+keep the rule of 3.24.0 to 3.32.x, the latest period of any unit.
 
-The invariant pinned for helper variables: what a simulation calculates for
-a later period does not depend on which earlier periods it calculated first.
-Each such case compares against a fresh simulation that calculates only the
-later period. The YEAR flow cases fail on 3.24.0 to 3.32.x; the integer,
-boolean and STOCK year cases and the MONTH cases are controls that pass there
-too.
+Known limits, pinned below: a helper variable that holds both a value at its
+definition unit and a later genuine input at another unit carries the former;
+a variable without a helper still carries a cached twelfth, as before.
+
+The order invariant pinned for YEAR inputs and MONTH flow inputs: what a
+simulation calculates for a later period does not depend on which earlier
+periods it calculated first. Each such case compares against a fresh
+simulation that calculates only the later period. The YEAR flow cases fail on
+3.24.0 to 3.32.x; the integer, boolean and STOCK year cases and the MONTH
+cases are controls that pass there too. (A MONTH stock input asked for a
+later year and then an earlier month of that year still gets the default for
+the month; that predates this change.)
 """
 
 from __future__ import annotations
@@ -40,6 +48,8 @@ from policyengine_core.country_template import (
     entities,
     situation_examples,
 )
+from policyengine_core.holders import set_input_dispatch_by_period
+from policyengine_core.reforms import Reform
 from policyengine_core.simulations import SimulationBuilder
 from policyengine_core.variables import QuantityType, Variable
 
@@ -84,6 +94,30 @@ class carried_monthly_flow(Variable):
     entity = entities.Person
     definition_period = periods.MONTH
     label = "Monthly flow input with no formula and no uprating"
+
+
+class carried_monthly_stock(Variable):
+    value_type = float
+    entity = entities.Person
+    definition_period = periods.MONTH
+    quantity_type = QuantityType.STOCK
+    label = "Monthly stock input with no formula and no uprating"
+
+
+class yearly_flow_with_dispatch_helper(Variable):
+    value_type = float
+    entity = entities.Person
+    definition_period = periods.YEAR
+    set_input = set_input_dispatch_by_period
+    label = "Yearly flow input whose helper copies rather than divides"
+
+
+class yearly_flow_with_false_helper(Variable):
+    value_type = float
+    entity = entities.Person
+    definition_period = periods.YEAR
+    set_input = False
+    label = "Yearly flow input with a falsy set_input, treated as no helper"
 
 
 # Variables without a helper.
@@ -132,24 +166,32 @@ YEAR_INPUTS = {
 FLOW = "carried_flow"
 FLOW_INPUT = {FLOW: {BASE_YEAR: [120.0, 12.0]}}
 NO_HELPER_FLOW = "year_flow_input_without_helper"
+ALL_VARIABLES = (
+    carried_flow,
+    carried_stock,
+    carried_count,
+    carried_flag,
+    carried_monthly_flow,
+    carried_monthly_stock,
+    yearly_flow_with_dispatch_helper,
+    yearly_flow_with_false_helper,
+    day_stock_input,
+    month_stock_input_without_helper,
+    year_stock_input_without_helper,
+    year_flow_input_without_helper,
+)
+
+
+def _new_system():
+    system = CountryTaxBenefitSystem()
+    system.auto_carry_over_input_variables = True
+    system.add_variables(*ALL_VARIABLES)
+    return system
 
 
 @pytest.fixture(scope="module")
 def system():
-    system = CountryTaxBenefitSystem()
-    system.auto_carry_over_input_variables = True
-    system.add_variables(
-        carried_flow,
-        carried_stock,
-        carried_count,
-        carried_flag,
-        carried_monthly_flow,
-        day_stock_input,
-        month_stock_input_without_helper,
-        year_stock_input_without_helper,
-        year_flow_input_without_helper,
-    )
-    return system
+    return _new_system()
 
 
 def _simulation(system, inputs):
@@ -285,13 +327,37 @@ def test_no_carry_over_backwards_from_a_later_input(system):
     np.testing.assert_array_equal(simulation.calculate(FLOW, 2025), [0.0, 0.0])
 
 
-def test_variable_with_helper_never_carries_another_unit(system):
-    """Even when the value at another unit is all it holds."""
+def test_variable_with_helper_uses_another_unit_when_it_has_nothing_else(system):
+    """As before: core cannot tell this value from a genuine input."""
     simulation = _simulation(system, {})
     simulation.get_holder(FLOW).put_in_cache(
         np.array([10.0, 1.0]), periods.period(MONTHS[-1])
     )
-    np.testing.assert_array_equal(simulation.calculate(FLOW, 2025), [0.0, 0.0])
+    np.testing.assert_array_equal(simulation.calculate(FLOW, 2025), [10.0, 1.0])
+
+
+def test_stock_month_cache_from_an_explicit_divide_does_not_carry(system):
+    simulation = _simulation(system, {"carried_stock": {BASE_YEAR: [40.0, 6.0]}})
+    simulation.calculate_divide("carried_stock", MONTHS[-1])
+    np.testing.assert_array_equal(
+        simulation.calculate("carried_stock", 2025), [40.0, 6.0]
+    )
+
+
+def test_flow_with_a_dispatch_helper_does_not_carry_a_twelfth(system):
+    variable = "yearly_flow_with_dispatch_helper"
+    simulation = _simulation(system, {variable: {BASE_YEAR: [120.0, 12.0]}})
+    simulation.calculate(variable, MONTHS[-1])
+    np.testing.assert_array_equal(simulation.calculate(variable, 2025), [120.0, 12.0])
+
+
+def test_month_cache_does_not_block_an_anchored_year_request(system):
+    """The early default return also looks only at the preferred periods."""
+    simulation = _simulation(system, FLOW_INPUT)
+    simulation.calculate(FLOW, MONTHS[-1])
+    np.testing.assert_array_equal(
+        simulation.calculate(FLOW, "year:2024-06"), [120.0, 12.0]
+    )
 
 
 def test_branch_never_carries_an_inherited_twelfth(system):
@@ -448,4 +514,113 @@ def test_variable_without_helper_still_carries_a_derived_twelfth(system):
     simulation.calculate(NO_HELPER_FLOW, MONTHS[-1])
     np.testing.assert_array_equal(
         simulation.calculate(NO_HELPER_FLOW, 2025), [10.0, 1.0]
+    )
+
+
+def test_falsy_set_input_is_treated_as_no_helper(system):
+    variable = "yearly_flow_with_false_helper"
+    simulation = _simulation(
+        system,
+        {variable: {BASE_YEAR: [120.0, 12.0], MONTHS[-1]: [999.0, 999.0]}},
+    )
+    np.testing.assert_array_equal(simulation.calculate(variable, 2025), [999.0, 999.0])
+
+
+def test_helper_variable_with_both_units_carries_its_own_unit(system):
+    """Known limit: a genuine later input at another unit loses to a value at
+    the definition unit. Reached only when a value at another unit is a real
+    input, which the built-in helpers never store."""
+    simulation = _simulation(system, FLOW_INPUT)
+    simulation.get_holder(FLOW).put_in_cache(
+        np.array([999.0, 999.0]), periods.period(MONTHS[-1])
+    )
+    np.testing.assert_array_equal(simulation.calculate(FLOW, 2025), [120.0, 12.0])
+
+
+# Supported paths that leave a helper variable with a genuine input at another
+# unit. Each builds its own system: a reform must not touch the shared one.
+
+
+def _yearly_stock_as_monthly():
+    class carried_stock(Variable):
+        value_type = float
+        entity = entities.Person
+        definition_period = periods.MONTH
+        quantity_type = QuantityType.STOCK
+        label = "carried_stock, redefined monthly"
+
+    return carried_stock
+
+
+def _monthly_stock_as_yearly():
+    class carried_monthly_stock(Variable):
+        value_type = float
+        entity = entities.Person
+        definition_period = periods.YEAR
+        quantity_type = QuantityType.STOCK
+        label = "carried_monthly_stock, redefined yearly"
+
+    return carried_monthly_stock
+
+
+class YearlyStockBecomesMonthly(Reform):
+    def apply(self):
+        self.update_variable(_yearly_stock_as_monthly())
+
+
+class MonthlyStockBecomesYearly(Reform):
+    def apply(self):
+        self.update_variable(_monthly_stock_as_yearly())
+
+
+class NoHelperStockGetsHelper(Reform):
+    def apply(self):
+        class year_stock_input_without_helper(Variable):
+            value_type = float
+            entity = entities.Person
+            definition_period = periods.YEAR
+            quantity_type = QuantityType.STOCK
+            label = "Yearly stock input, now with the default helper"
+
+        self.update_variable(year_stock_input_without_helper)
+
+
+def test_input_kept_when_a_reform_makes_a_yearly_variable_monthly():
+    simulation = _simulation(_new_system(), {"carried_stock": {BASE_YEAR: [40.0, 6.0]}})
+    simulation.apply_reform(YearlyStockBecomesMonthly)
+    np.testing.assert_array_equal(
+        simulation.calculate("carried_stock", "2025-03"), [40.0, 6.0]
+    )
+
+
+def test_input_kept_when_a_reform_makes_a_monthly_variable_yearly():
+    simulation = _simulation(
+        _new_system(), {"carried_monthly_stock": {BASE_YEAR: [3.0, 4.0]}}
+    )
+    simulation.apply_reform(MonthlyStockBecomesYearly)
+    np.testing.assert_array_equal(
+        simulation.calculate("carried_monthly_stock", 2025), [3.0, 4.0]
+    )
+
+
+def test_input_kept_when_a_reform_gives_a_variable_a_helper():
+    variable = "year_stock_input_without_helper"
+    simulation = _simulation(_new_system(), {variable: {MONTHS[-1]: [40.0, 6.0]}})
+    simulation.apply_reform(NoHelperStockGetsHelper)
+    np.testing.assert_array_equal(simulation.calculate(variable, 2025), [40.0, 6.0])
+
+
+def test_input_kept_when_restored_into_a_system_with_another_period(tmp_path):
+    from policyengine_core.tools.simulation_dumper import (
+        dump_simulation,
+        restore_simulation,
+    )
+
+    simulation = _simulation(_new_system(), {"carried_stock": {BASE_YEAR: [40.0, 6.0]}})
+    dump_simulation(simulation, str(tmp_path / "dump"))
+    monthly_system = _new_system()
+    monthly_system.update_variable(_yearly_stock_as_monthly())
+    restored = restore_simulation(str(tmp_path / "dump"), monthly_system)
+    np.testing.assert_array_equal(
+        restored.calculate("carried_stock", "2025-03"), [40.0, 6.0]
     )

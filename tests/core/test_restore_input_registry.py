@@ -145,15 +145,13 @@ def test_restore_records_an_eternity_input_set_for_a_year(system, tmp_path):
 def test_an_input_set_on_a_branch_is_not_recorded_for_the_default_value(
     system, tmp_path
 ):
-    # A branch shares its parent's input record. Its input for 2013 must not
-    # make the parent's calculated 2013 value, which is what gets dumped, an
-    # input.
+    # A branch shares its parent's input record (unless it copies it, as
+    # policyengine-core#561 makes it), so its input for 2013 may be in the
+    # record the dump reads. It must not make the parent's calculated 2013
+    # value, which is what gets dumped, an input.
     simulation = build_simulation(system, [("uprated_count", "2012", [1001, 77])])
     simulation.calculate("uprated_count", "2013")
     simulation.get_branch("reform").set_input("uprated_count", "2013", [5, 6])
-    assert ("uprated_count", "reform", periods.period("2013")) in (
-        simulation._user_input_keys
-    )
 
     restored = _dump_and_restore(simulation, tmp_path)
 

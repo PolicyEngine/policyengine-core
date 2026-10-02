@@ -53,6 +53,13 @@ class InMemoryStorage:
         self._derived = set()
         self.is_eternal = is_eternal
 
+    def __setstate__(self, state: dict) -> None:
+        # A storage pickled before derived marks or shared arrays existed has
+        # neither: its values count as inputs and as its own.
+        state.setdefault("_derived", set())
+        state.setdefault("_shared", set())
+        self.__dict__.update(state)
+
     def clone(self, share_arrays: bool = False) -> "InMemoryStorage":
         """Copy this storage.
 

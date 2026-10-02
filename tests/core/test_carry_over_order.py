@@ -472,22 +472,103 @@ def test_a_value_calculated_while_an_input_is_set_stays_on_its_own_branch(system
     )
 
 
-def test_carry_over_checks_only_the_latest_candidates(system, monkeypatch):
+def test_carry_over_reads_provenance_in_one_pass(system, monkeypatch):
+    """With many calculated periods and deep branches, a decision makes one
+    pass over the stored keys instead of walking the branches per period."""
     from policyengine_core.holders import Holder
 
-    years = {str(year): [year, year] for year in range(1900, 2010)}
-    built = simulation(system, {"carried": years})
-    branch = built.get_branch("a").get_branch("b").get_branch("c")
-    calls = []
-    is_derived = Holder.is_derived
+    built = simulation(system, {"carried": {"1900": [1, 1]}})
+    for year in range(1901, 2010):
+        built.calculate("carried", str(year))
+    branch = built
+    for depth in range(20):
+        branch = branch.get_branch(f"b{depth}")
+    calls = {"stores": 0, "passes": 0}
+    stores, passes = Holder._stores, Holder.get_input_periods
 
-    def counting(self, period, branch_name="default"):
-        calls.append(period)
-        return is_derived(self, period, branch_name)
+    def counting_stores(self, *args, **kwargs):
+        calls["stores"] += 1
+        return stores(self, *args, **kwargs)
 
-    monkeypatch.setattr(Holder, "is_derived", counting)
-    np.testing.assert_array_equal(branch.calculate("carried", "2020"), [2009, 2009])
-    assert len(calls) == 1
+    def counting_passes(self, *args, **kwargs):
+        calls["passes"] += 1
+        return passes(self, *args, **kwargs)
+
+    monkeypatch.setattr(Holder, "_stores", counting_stores)
+    monkeypatch.setattr(Holder, "get_input_periods", counting_passes)
+    np.testing.assert_array_equal(branch.calculate("carried", "2020"), [1, 1])
+    # One pass for the decision; caching the result checks the period on each
+    # branch in the chain once (21), not every stored period on each (2,310).
+    assert calls["passes"] == 1
+    assert calls["stores"] <= 21
+
+
+def test_a_period_stored_only_on_another_branch_does_not_carry(system):
+    """A branch never takes a period it cannot read for an input."""
+    built = simulation(system, {"year_input_without_helper": {"2013-01": [20, 20]}})
+    built.get_holder("year_input_without_helper").set_input(
+        periods.period("2012"), np.array([10.0, 10.0]), "other"
+    )
+    other = built.get_branch("other")
+    np.testing.assert_array_equal(
+        built.calculate("year_input_without_helper", "2014"), [20, 20]
+    )
+    np.testing.assert_array_equal(
+        other.calculate("year_input_without_helper", "2014"), [10, 10]
+    )
+
+
+def test_marks_are_cleared_with_the_values_apply_reform_wipes(system):
+    built = simulation(system, {})
+    built.memory_config = MemoryConfig(max_memory_occupation=0)
+    holder = built.get_holder("carried")
+    holder._disk_storage = holder.create_disk_storage()
+    holder._on_disk_storable = True
+    for year in range(2010, 2020):
+        built.calculate("carried", str(year))
+        built.apply_reform(_noop)
+    assert not holder._memory_storage._derived
+    assert not holder._disk_storage._derived
+    # A file written for a period whose value was derived, then read back
+    # by rebuilding the index, is an input.
+    built = simulation(system, {})
+    built.memory_config = MemoryConfig(max_memory_occupation=0)
+    holder = built.get_holder("carried")
+    holder._disk_storage = holder.create_disk_storage()
+    holder._on_disk_storable = True
+    writer = OnDiskStorage(holder._disk_storage.storage_dir, preserve_storage_dir=True)
+    built.calculate("carried", "2012")
+    assert holder.is_derived(periods.period("2012"))
+    built.apply_reform(_noop)
+    writer.put(np.array([10.0, 10.0]), periods.period("2012"))
+    holder._disk_storage.restore()
+    assert not holder.is_derived(periods.period("2012"))
+    np.testing.assert_array_equal(built.calculate("carried", "2013"), [10, 10])
+
+
+@pytest.mark.parametrize("on_disk", [False, True], ids=["memory", "disk"])
+def test_storages_pickled_without_marks_still_work(on_disk, tmp_path):
+    import pickle
+
+    storage = (
+        OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
+        if on_disk
+        else InMemoryStorage(is_eternal=False)
+    )
+    year = periods.period("2012")
+    storage.put(np.array([10.0]), year)
+    state = dict(storage.__dict__)
+    del state["_derived"]
+    state.pop("_shared", None)
+    old = type(storage).__new__(type(storage))
+    old.__setstate__(state)
+    restored = pickle.loads(pickle.dumps(old))
+    assert restored.has(year) and not restored.is_derived(year)
+    restored.clone()
+    restored.put(np.array([20.0]), periods.period("2013"), derived=True)
+    assert restored.is_derived(periods.period("2013"))
+    restored.delete(periods.period("2013"))
+    np.testing.assert_array_equal(restored.get(year), [10.0])
 
 
 def test_input_starting_with_the_requested_period_carries(system):

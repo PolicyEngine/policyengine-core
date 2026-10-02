@@ -29,6 +29,12 @@ class OnDiskStorage:
         self.preserve_storage_dir = preserve_storage_dir
         self.storage_dir = storage_dir
 
+    def __setstate__(self, state: dict) -> None:
+        # A storage pickled before derived marks existed has none: its values
+        # count as inputs.
+        state.setdefault("_derived", set())
+        self.__dict__.update(state)
+
     def clone(self) -> "OnDiskStorage":
         """Create a private metadata view over this storage directory.
 
@@ -144,6 +150,8 @@ class OnDiskStorage:
 
     def restore(self) -> None:
         self._files = files = {}
+        # Files read back from a directory carry no derived marks.
+        self._derived = set()
         # Restore self._files from content of storage_dir.
         for filename in os.listdir(self.storage_dir):
             if not filename.endswith(".npy"):

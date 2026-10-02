@@ -394,8 +394,10 @@ class Simulation:
         for population in self.populations.values():
             for holder in population._holders.values():
                 holder._memory_storage._arrays = {}
+                holder._memory_storage._derived = set()
                 if holder._disk_storage is not None:
                     holder._disk_storage._files = {}
+                    holder._disk_storage._derived = set()
         # Replay preserved user inputs so ``calculate`` still sees them.
         for user_input in preserved:
             holder = self.get_holder(user_input.variable_name)
@@ -963,26 +965,20 @@ class Simulation:
                     # a value already masked by ``defined_for``, or given by a
                     # formula that has since ended, would carry forward.
                     # A later input does not carry backwards.
-                    candidates = sorted(
-                        dict.fromkeys(
-                            known_period
-                            for known_period in known_periods
-                            if known_period.start <= period.start
+                    last_known_period = max(
+                        (
+                            input_period
+                            for input_period in holder.get_input_periods(
+                                self.branch_name
+                            )
+                            if input_period.start <= period.start
                         ),
                         key=lambda p: (
                             p.unit == variable.definition_period,
                             p.start,
                             p.stop,
                         ),
-                        reverse=True,
-                    )
-                    last_known_period = next(
-                        (
-                            candidate
-                            for candidate in candidates
-                            if not holder.is_derived(candidate, self.branch_name)
-                        ),
-                        None,
+                        default=None,
                     )
                     if last_known_period is not None:
                         # Pass branch_name through so auto-carry-over respects

@@ -435,22 +435,29 @@ class Holder:
             and self._disk_storage.has(period, branch_name)
         )
 
+    def _readable_branches(self, branch_name: str = "default") -> List[str]:
+        """``get_array``'s lookup order: the branch, its ``parent_branch``
+        ancestors, then ``default``."""
+        names = [branch_name]
+        if branch_name != "default":
+            parent = (
+                getattr(self.simulation, "parent_branch", None)
+                if self.simulation
+                else None
+            )
+            while parent is not None:
+                names.append(parent.branch_name)
+                parent = getattr(parent, "parent_branch", None)
+            names.append("default")
+        return list(dict.fromkeys(names))
+
     def _branch_storing(self, period: Period, branch_name: str = "default") -> str:
         """The branch whose stored value ``get_array(period, branch_name)``
-        reads, in ``get_array``'s lookup order, or ``None`` if none stores one.
-        """
-        if self._stores(period, branch_name):
-            return branch_name
-        if branch_name == "default":
-            return None
-        parent = (
-            getattr(self.simulation, "parent_branch", None) if self.simulation else None
-        )
-        while parent is not None:
-            if self._stores(period, parent.branch_name):
-                return parent.branch_name
-            parent = getattr(parent, "parent_branch", None)
-        return "default" if self._stores(period, "default") else None
+        reads, or ``None`` if none stores one."""
+        for name in self._readable_branches(branch_name):
+            if self._stores(period, name):
+                return name
+        return None
 
     def is_derived(self, period: Period, branch_name: str = "default") -> bool:
         """Whether the value ``get_array(period, branch_name)`` reads was
@@ -466,3 +473,33 @@ class Holder:
         if self._memory_storage.has(period, storing):
             return self._memory_storage.is_derived(period, storing)
         return self._disk_storage.is_derived(period, storing)
+
+    def get_input_periods(self, branch_name: str = "default") -> List[Period]:
+        """The periods for which the value ``get_array(period, branch_name)``
+        reads is an input rather than a value the simulation calculated (see
+        ``put_in_cache``). Periods stored only under branches this one cannot
+        read are left out.
+
+        One pass over the stored keys: for each period, the key ``get_array``
+        reads first (the branch before its ancestors, memory before disk).
+        """
+        rank = {
+            name: index
+            for index, name in enumerate(self._readable_branches(branch_name))
+        }
+        storages = [self._memory_storage]
+        if self._disk_storage is not None:
+            storages.append(self._disk_storage)
+        read = {}
+        for order, storage in enumerate(storages):
+            for stored_branch, period in storage.get_known_branch_periods():
+                if stored_branch not in rank:
+                    continue
+                key = (rank[stored_branch], order)
+                if period not in read or key < read[period][0]:
+                    read[period] = (key, storage, stored_branch)
+        return [
+            period
+            for period, (_, storage, stored_branch) in read.items()
+            if not storage.is_derived(period, stored_branch)
+        ]

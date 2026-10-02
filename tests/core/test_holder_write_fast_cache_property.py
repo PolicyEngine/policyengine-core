@@ -14,7 +14,10 @@ branch it does not read; ``Simulation.set_input`` and
    removes all belong to its own simulation and variable, were stored under
    a branch that simulation reads, and are for the period written (any
    period, for an ETERNITY variable) or for a period the deleted one
-   contains. Every other simulation's fast cache is untouched.
+   contains. Every other simulation's fast cache is untouched. One case is
+   left open: an input set on a branch may drop more of that branch's
+   entries, because whether it also drops the values calculated from the
+   input it replaces is a separate question (policyengine-core#560).
 
 ``test_holder_write_fast_cache.py`` pins the same behaviour with examples.
 """
@@ -208,7 +211,11 @@ def _apply(tree, operation):
         else [period]
     )
 
+    on_branch = simulation.parent_branch is not None
+
     def may_drop(key):
+        if kind == "holder_set_input" and on_branch:
+            return True
         return read and key[0] == name and (eternal or key[1] in written)
 
     if kind == "holder_set_input":

@@ -144,7 +144,6 @@ def test_a_branch_write_leaves_the_parent_and_the_parent_write_leaves_the_branch
     simulation = build_simulation(system, [("uprated_count", "2012", [1001, 77])])
     parent_value = simulation.calculate("uprated_count", "2013")
     branch = simulation.get_branch("reform")
-    branch_value = branch.calculate("uprated_count", "2014")
 
     # A branch has its own holders and its own fast cache.
     branch.get_holder("uprated_count").set_input(
@@ -153,9 +152,11 @@ def test_a_branch_write_leaves_the_parent_and_the_parent_write_leaves_the_branch
     assert simulation.calculate("uprated_count", "2013") is parent_value
     assert branch.calculate("uprated_count", "2013").tolist() == [300, 400]
 
+    branch_value = branch.calculate("uprated_count", "2014")
     simulation.get_holder("uprated_count").set_input(periods.period("2014"), [5, 6])
     assert simulation.calculate("uprated_count", "2014").tolist() == [5, 6]
     assert branch.calculate("uprated_count", "2014") is branch_value
+    assert branch_value.tolist() == [311, 414]
 
 
 def test_storing_a_calculated_value_keeps_it_in_the_fast_cache(system):

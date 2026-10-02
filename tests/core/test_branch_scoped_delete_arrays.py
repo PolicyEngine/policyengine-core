@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import gc
 
+from pathlib import Path
+
 import numpy as np
 
 from policyengine_core.country_template import CountryTaxBenefitSystem
@@ -149,7 +151,9 @@ def test_child_disk_delete_keeps_parent_view_intact(tmp_path):
         np.testing.assert_array_equal(inherited_value, [3_000.0])
         assert disk_key in parent_storage._files
         assert disk_key not in child_storage._files
-        assert (tmp_path / "salary" / f"{disk_key}.npy").is_file()
+        # Each store writes its own file; the parent's is still there.
+        assert Path(parent_storage._files[disk_key]).is_file()
+        assert Path(parent_storage._files[disk_key]).parent == tmp_path / "salary"
         np.testing.assert_array_equal(
             parent_holder._disk_storage.get(PERIOD, "default"),
             [3_000.0],

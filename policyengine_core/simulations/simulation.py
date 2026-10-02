@@ -1,8 +1,8 @@
 import hashlib
 import tempfile
+from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy as np
 import pandas as pd
@@ -12,6 +12,10 @@ from pathlib import Path
 
 from policyengine_core import commons, periods
 from policyengine_core.data.dataset import Dataset
+from policyengine_core.data_storage.store_history import (
+    StoreHistory,
+    next_sequence_number,
+)
 from policyengine_core.entities.entity import Entity
 from policyengine_core.enums import Enum, EnumArray
 from policyengine_core.errors import CycleError, SpiralError
@@ -117,16 +121,76 @@ from policyengine_core.simulations.simulation_macro_cache import (
 )
 
 
-@dataclass(frozen=True)
-class PreservedUserInput:
-    variable_name: str
-    branch_name: str
-    period: Period
-    value: object
-    storage: str
-    disk_key: Optional[str] = None
-    disk_file: Optional[str] = None
-    disk_enum: object = None
+# The simulation whose formula is running. When that formula calculates a
+# value in another simulation (a branch it created, say), what the formula
+# returns, and so what its simulation stores, may be calculated from the other
+# simulation's values: ``calculate`` then merges the other's store history into
+# this one's (see ``StoreHistory``).
+_formula_simulation: ContextVar[Optional["Simulation"]] = ContextVar(
+    "_formula_simulation", default=None
+)
+
+# How many times ``calculate`` runs a calculation again when an input set on
+# the simulation while it ran (by a formula, say) dropped values. A formula
+# that changes an input on every run is kept from looping; its last result is
+# returned but not kept.
+_RERUNS_AFTER_INPUT_CHANGE = 10
+
+# The calculations running in this context, innermost last, as (simulation,
+# frame) pairs. A frame notes ``start``, its simulation's ``_input_epoch`` when
+# it (last) began, and ``reads``: for each other simulation it got a value
+# from, directly or through the calculations it called, that simulation's
+# ``_input_epoch`` when the calculation that produced the value began. If any
+# of those has changed since (a drop while calculations ran there), the value
+# may come from a replaced one, and so may what the frame calculates from it,
+# which is then not kept (``_frame_is_stale``).
+_calculation_frames: ContextVar[tuple] = ContextVar("_calculation_frames", default=())
+
+
+def _new_frame(simulation: "Simulation") -> dict:
+    return {"start": getattr(simulation, "_input_epoch", 0), "reads": {}}
+
+
+def _frame_is_stale(simulation: "Simulation", frame: dict) -> bool:
+    """Whether what the frame calculates may come from a value since replaced."""
+    return getattr(simulation, "_input_epoch", 0) != frame["start"] or any(
+        getattr(other, "_input_epoch", 0) != epoch
+        for other, epoch in frame["reads"].items()
+    )
+
+
+def _hand_to_caller(frames: tuple, simulation: "Simulation", frame: dict) -> None:
+    """Pass what a calculation in ``simulation`` read on to the calling frame.
+
+    The calculation's own simulation counts at its ``start``: if an input
+    there changed while it ran, its caller's result is stale too.
+    """
+    if not frames:
+        return
+    caller_simulation, caller = frames[-1]
+    reads = caller["reads"]
+    for other, epoch in frame["reads"].items():
+        if other is not caller_simulation and other not in reads:
+            reads[other] = epoch
+    if simulation is not caller_simulation and simulation not in reads:
+        reads[simulation] = frame["start"]
+
+
+@contextmanager
+def _calculation_frame(simulation: "Simulation"):
+    """Run a calculation in a new frame of ``_calculation_frames``.
+
+    Whatever way it ends (a value, an early default, an error), its caller
+    learns what it read and whether that may since have been replaced.
+    """
+    frames = _calculation_frames.get()
+    frame = _new_frame(simulation)
+    token = _calculation_frames.set(frames + ((simulation, frame),))
+    try:
+        yield frame
+    finally:
+        _calculation_frames.reset(token)
+        _hand_to_caller(frames, simulation, frame)
 
 
 class Simulation:
@@ -210,6 +274,9 @@ class Simulation:
         # post-``apply_reform`` cache wipe would also wipe the dataset the
         # simulation was loaded from.
         self._user_input_keys: set[tuple[str, str, Period]] = set()
+        # What this simulation's values may have been calculated from; each
+        # branch starts with a copy (see ``set_input``).
+        self._store_history = StoreHistory()
         self.debug: bool = False
         self.trace: bool = trace
         self.tracer: SimpleTracer = SimpleTracer() if not trace else FullTracer()
@@ -334,83 +401,15 @@ class Simulation:
         Called after ``apply_reform`` and any other operation that changes
         the tax-benefit system underneath an already-calculated simulation.
 
-        Every (variable, branch, period) that was populated via
-        ``set_input`` is preserved — those are source data, not stale
-        formula output — so a structural reform applied after dataset
-        load doesn't silently discard the dataset. Everything else
-        (formula outputs, cached short-path results, on-disk caches) is
-        wiped so the next ``calculate`` recomputes under the new
-        tax-benefit system.
+        Every value stored through ``set_input`` is preserved — those are
+        source data, not stale formula output — so a structural reform
+        applied after dataset load doesn't silently discard the dataset.
+        Everything else (formula outputs, cached short-path results, on-disk
+        caches) is wiped, here and in every branch, so the next ``calculate``
+        recomputes under the new tax-benefit system.
         """
-        self._fast_cache = {}
         self.invalidated_caches = set()
-        # Snapshot user-provided inputs before wiping so they can be
-        # replayed into the fresh storage. Use the storage API instead of
-        # hand-building keys, since ETERNITY variables canonicalize every
-        # period to the single ETERNITY storage key.
-        preserved: list[PreservedUserInput] = []
-        user_input_keys = getattr(self, "_user_input_keys", None) or set()
-        for variable_name, branch_name, period in user_input_keys:
-            holder = self.get_holder(variable_name)
-            stored_value = holder._memory_storage.get(period, branch_name)
-            if stored_value is not None:
-                preserved.append(
-                    PreservedUserInput(
-                        variable_name=variable_name,
-                        branch_name=branch_name,
-                        period=period,
-                        value=stored_value,
-                        storage="memory",
-                    )
-                )
-                continue
-            if holder._disk_storage is not None:
-                disk_period = (
-                    periods.period(periods.ETERNITY)
-                    if holder._disk_storage.is_eternal
-                    else periods.period(period)
-                )
-                disk_key = f"{branch_name}_{disk_period}"
-                disk_file = holder._disk_storage._files.get(disk_key)
-                if disk_file is not None:
-                    preserved.append(
-                        PreservedUserInput(
-                            variable_name=variable_name,
-                            branch_name=branch_name,
-                            period=period,
-                            value=None,
-                            storage="disk",
-                            disk_key=disk_key,
-                            disk_file=disk_file,
-                            disk_enum=holder._disk_storage._enums.get(disk_file),
-                        )
-                    )
-        # Iterate only over holders that already exist on each population —
-        # lazy-creating a holder for every variable in the tax-benefit
-        # system (thousands in policyengine-us) inflated the cost of
-        # ``apply_reform`` from milliseconds to seconds and broke the
-        # YAML full-suite on downstream repos. Untouched variables have
-        # no holder and therefore nothing to wipe.
-        for population in self.populations.values():
-            for holder in population._holders.values():
-                holder._memory_storage._arrays = {}
-                if holder._disk_storage is not None:
-                    holder._disk_storage._files = {}
-        # Replay preserved user inputs so ``calculate`` still sees them.
-        for user_input in preserved:
-            holder = self.get_holder(user_input.variable_name)
-            if user_input.storage == "disk" and holder._disk_storage is not None:
-                holder._disk_storage._files[user_input.disk_key] = user_input.disk_file
-                if user_input.disk_enum is not None:
-                    holder._disk_storage._enums[user_input.disk_file] = (
-                        user_input.disk_enum
-                    )
-            else:
-                holder._memory_storage.put(
-                    user_input.value,
-                    user_input.period,
-                    user_input.branch_name,
-                )
+        self._drop_computed()
         for branch in self.branches.values():
             branch._invalidate_all_caches()
 
@@ -661,6 +660,12 @@ class Simulation:
             if _fast_cache is not None:
                 _cached = _fast_cache.get(_fast_key)
                 if _cached is not None:
+                    self._share_store_history_with_caller()
+                    frames = _calculation_frames.get()
+                    if frames and frames[-1][0] is not self:
+                        frames[-1][1]["reads"].setdefault(
+                            self, getattr(self, "_input_epoch", 0)
+                        )
                     return _cached
 
         self.tracer.record_calculation_start(variable_name, period, self.branch_name)
@@ -670,8 +675,33 @@ class Simulation:
         # check_formula_determinism), so there is nothing to make reproducible
         # here.
 
+        # Formulas running in this simulation may hold values they read in
+        # local variables; a drop meanwhile must not forget what they came
+        # from (see ``_drop_computed``).
+        # Only the outermost calculation in this simulation runs again after
+        # an input change here: running it again runs the inner ones too.
+        outermost = not getattr(self, "_calculations_in_flight", 0)
+        self._calculations_in_flight = getattr(self, "_calculations_in_flight", 0) + 1
+        frame_context = _calculation_frame(self)
+        frame = frame_context.__enter__()
         try:
+            input_epoch = getattr(self, "_input_epoch", 0)
             result = self._calculate(variable_name, period)
+            for _ in range(_RERUNS_AFTER_INPUT_CHANGE if outermost else 0):
+                if input_epoch == getattr(self, "_input_epoch", 0):
+                    break
+                # An input set here while it ran (by a formula, say) dropped
+                # values, so the result was not kept (``_cache_result``).
+                # Calculate it again from the new inputs, until a run changes
+                # none, and keep that result, as a simulation given those
+                # inputs first would: later uprating and carry-over look for
+                # the periods held.
+                input_epoch = getattr(self, "_input_epoch", 0)
+                frame.update(_new_frame(self))
+                result = self._calculate(variable_name, period)
+            # Satisfies ``requires_computation_after`` from now on, even if a
+            # branch input later drops the values.
+            self._get_requested_variables().add(variable_name)
             if isinstance(result, EnumArray) and decode_enums:
                 result = result.decode_to_str()
             self.tracer.record_calculation_result(result)
@@ -682,8 +712,15 @@ class Simulation:
                 result = self.map_result(result, source_entity, map_to)
             return result
         finally:
-            self.tracer.record_calculation_end()
-            self.purge_cache_of_invalid_values()
+            try:
+                # Also when the calculation fails: whether it fails can depend
+                # on what it read, and a calling formula may catch the error.
+                self._share_store_history_with_caller()
+            finally:
+                self._calculations_in_flight -= 1
+                frame_context.__exit__(None, None, None)
+                self.tracer.record_calculation_end()
+                self.purge_cache_of_invalid_values()
 
     def map_result(
         self,
@@ -795,6 +832,9 @@ class Simulation:
         """
         if variable_name not in self.tax_benefit_system.variables:
             raise ValueError(f"Variable {variable_name} does not exist.")
+        input_state = self._calculation_start()
+        # Lets a custom ``set_input`` handler tell whether it calculated.
+        self._calculations_started = getattr(self, "_calculations_started", 0) + 1
         population = self.get_variable_population(variable_name)
         holder = population.get_holder(variable_name)
         variable = self.tax_benefit_system.get_variable(
@@ -837,6 +877,13 @@ class Simulation:
                     value = smc.get_cache_value(cache_path)
 
                 if value is not None:
+                    # Served without being stored: record it, so values
+                    # calculated from it count as later (see ``set_input``).
+                    # What it was calculated from was never calculated here,
+                    # so values from here on may depend on any input.
+                    sequence_number = next_sequence_number()
+                    holder._record_store(period, sequence_number)
+                    self._get_store_history().record_unknown_sources(sequence_number)
                     return value
 
         if variable.requires_computation_after is not None:
@@ -847,7 +894,16 @@ class Simulation:
             required_is_known_periods = self.get_holder(
                 variable.requires_computation_after
             ).get_known_periods()
-            if (not variable_in_stack) and (not len(required_is_known_periods) > 0):
+            # A branch input may have dropped the prerequisite's values; it
+            # was still requested.
+            required_was_requested = (
+                variable.requires_computation_after in self._get_requested_variables()
+            )
+            if (
+                (not variable_in_stack)
+                and (not len(required_is_known_periods) > 0)
+                and not required_was_requested
+            ):
                 raise ValueError(
                     f"Variable {variable_name} requires {variable.requires_computation_after} to be requested first. That variable is known in: {required_is_known_periods}. The full stack is: {variables_in_stack}. {variable_in_stack, len(required_is_known_periods) > 0}"
                 )
@@ -867,7 +923,7 @@ class Simulation:
                 values = self.calculate_divide(variable_name, period)
 
         if alternate_period_handling:
-            if is_cache_available:
+            if is_cache_available and self._may_keep(input_state):
                 smc.set_cache_value(cache_path, values)
             return values
 
@@ -881,18 +937,31 @@ class Simulation:
             if np.all(~mask):
                 array = holder.default_array()
                 array = self._cast_formula_result(array, variable)
-                holder.put_in_cache(array, period, self.branch_name)
-                return array
+                return self._cache_result(holder, array, period, input_state)
 
         array = None
 
         # First, try to run a formula
         try:
             self._check_for_cycle(variable.name, period)
-            array = self._run_formula(variable, population, period)
+            token = _formula_simulation.set(self)
+            try:
+                array = self._run_formula(variable, population, period)
+            finally:
+                _formula_simulation.reset(token)
 
             # If no result, use the default value and cache it
             if array is None:
+                if variable.uprating is not None or (
+                    self.tax_benefit_system.auto_carry_over_input_variables
+                    and variable.calculate_output is None
+                ):
+                    # The value is uprated or carried over from another
+                    # period, or defaults for lack of one: an input set later
+                    # for another period of the variable can change it.
+                    self._get_store_history().record_derived(
+                        variable_name, next_sequence_number()
+                    )
                 # Check if the variable has a previously defined value
                 known_periods = holder.get_known_periods()
                 earlier_known_periods = [
@@ -949,6 +1018,13 @@ class Simulation:
                     # win over a later "2024-06" monthly value (bug H1).
                     last_known_period = max(known_periods, key=lambda p: p.start)
                     if last_known_period.start > period.start:
+                        stored_input = (
+                            self._input_set_meanwhile(holder, period, input_state[2])
+                            if input_state[1] != getattr(self, "_inputs_set", 0)
+                            else None
+                        )
+                        if stored_input is not None:
+                            return stored_input
                         return holder.default_array()
                     # Pass branch_name through so auto-carry-over respects the
                     # active branch instead of reaching for the "default"
@@ -969,10 +1045,12 @@ class Simulation:
                     array = EnumArray(array, variable.possible_values)
 
             array = self._cast_formula_result(array, variable)
-            holder.put_in_cache(array, period, self.branch_name)
+            array = self._cache_result(holder, array, period, input_state)
 
         except SpiralError:
             array = holder.default_array()
+            # Not stored, but what reads it is (see ``set_input``).
+            holder._record_store(period, next_sequence_number())
         except RecursionError as e:
             if isinstance(self.tracer, FullTracer):
                 self.tracer.print_computation_log()
@@ -987,12 +1065,78 @@ class Simulation:
                 f"RecursionError while calculating {variable_name} for period {period}. The full computation stack is:\n{stack_formatted}"
             )
 
-        if is_cache_available:
+        # Neither cache keeps a result an input change may have made obsolete
+        # (see ``_cache_result``).
+        unchanged = self._may_keep(input_state)
+        if is_cache_available and unchanged:
             smc.set_cache_value(cache_path, array)
 
-        if hasattr(self, "_fast_cache"):
+        if hasattr(self, "_fast_cache") and unchanged:
             self._fast_cache[(variable_name, period)] = array
 
+        return array
+
+    def _input_state(self) -> Tuple[int, int]:
+        """How many drops ran during calculations, and inputs were set, here."""
+        return getattr(self, "_input_epoch", 0), getattr(self, "_inputs_set", 0)
+
+    def _may_keep(self, input_state: Tuple[int, int, int]) -> bool:
+        """Whether a result calculated since ``input_state`` may be kept (see ``_cache_result``)."""
+        frames = _calculation_frames.get()
+        return input_state[:2] == self._input_state() and not (
+            frames and _frame_is_stale(*frames[-1])
+        )
+
+    def _calculation_start(self) -> Tuple[int, int, int]:
+        """:meth:`_input_state` when a calculation begins, and a sequence number then."""
+        return (*self._input_state(), next_sequence_number())
+
+    def _input_set_meanwhile(
+        self, holder: Holder, period: Period, started_at: int
+    ) -> Optional[ArrayLike]:
+        """The input this simulation reads for ``period``, if it was stored after ``started_at``.
+
+        That is an input set while the calculation that began at
+        ``started_at`` ran (by its own formula, say), under any branch name
+        the simulation reads.
+        """
+        stored_on = holder._branch_holding(period, self.branch_name)
+        if (
+            stored_on is not None
+            and holder._is_input(period, stored_on)
+            and (holder._stored_sequence_number(period, stored_on) or 0) > started_at
+        ):
+            return holder._get_array_from_storage(period, stored_on)
+        return None
+
+    def _cache_result(
+        self,
+        holder: Holder,
+        array: ArrayLike,
+        period: Period,
+        input_state: Tuple[int, int, int],
+    ) -> ArrayLike:
+        """Cache a calculated value, and return the value to use for it.
+
+        ``input_state`` is :meth:`_calculation_start` when the calculation began.
+        If an input for the same period was set meanwhile (by the formula
+        itself, say), that input is the value, as it would be had it been set
+        first. A calculation that was running when an input set on this
+        simulation dropped values may have read the replaced value, so its
+        result is returned but not kept (see ``_drop_computed``).
+        """
+        epoch, inputs_set, started_at = input_state
+        if inputs_set != getattr(self, "_inputs_set", 0):
+            stored_input = self._input_set_meanwhile(holder, period, started_at)
+            if stored_input is not None:
+                return stored_input
+        frames = _calculation_frames.get()
+        stale = bool(frames) and _frame_is_stale(*frames[-1])
+        if epoch == getattr(self, "_input_epoch", 0) and not stale:
+            holder.put_in_cache(array, period, self.branch_name)
+        else:
+            # Not kept, but whatever reads it is stored after it all the same.
+            holder._record_store(period, next_sequence_number())
         return array
 
     def purge_cache_of_invalid_values(self) -> None:
@@ -1044,13 +1188,35 @@ class Simulation:
                 )
             )
 
-        result = sum(
-            self.calculate(variable_name, sub_period)
-            for sub_period in period.get_subperiods(variable.definition_period)
-        )
-        holder = self.get_holder(variable.name)
-        holder.put_in_cache(result, period, self.branch_name)
-        return result
+        def total():
+            return sum(
+                self.calculate(variable_name, sub_period)
+                for sub_period in period.get_subperiods(variable.definition_period)
+            )
+
+        # As in ``calculate``: only an outermost sum runs again, and while it
+        # sums it is in flight, so its terms do not run again on their own
+        # (and a drop meanwhile keeps the records of what they read).
+        outermost = not getattr(self, "_calculations_in_flight", 0)
+        self._calculations_in_flight = getattr(self, "_calculations_in_flight", 0) + 1
+        try:
+            with _calculation_frame(self) as frame:
+                input_epoch = getattr(self, "_input_epoch", 0)
+                input_state = self._calculation_start()
+                result = total()
+                for _ in range(_RERUNS_AFTER_INPUT_CHANGE if outermost else 0):
+                    if input_epoch == getattr(self, "_input_epoch", 0):
+                        break
+                    # An input changed while summing: earlier terms may be
+                    # obsolete (see ``calculate``). Sum again.
+                    input_epoch = getattr(self, "_input_epoch", 0)
+                    frame.update(_new_frame(self))
+                    input_state = self._calculation_start()
+                    result = total()
+                holder = self.get_holder(variable.name)
+                return self._cache_result(holder, result, period, input_state)
+        finally:
+            self._calculations_in_flight -= 1
 
     def calculate_divide(
         self,
@@ -1079,11 +1245,12 @@ class Simulation:
             )
 
         if period.unit == periods.MONTH:
-            computation_period = period.this_year
-            result = self.calculate(variable_name, period=computation_period) / 12.0
-            holder = self.get_holder(variable.name)
-            holder.put_in_cache(result, period, self.branch_name)
-            return result
+            with _calculation_frame(self):
+                input_state = self._calculation_start()
+                computation_period = period.this_year
+                result = self.calculate(variable_name, period=computation_period) / 12.0
+                holder = self.get_holder(variable.name)
+                return self._cache_result(holder, result, period, input_state)
         elif period.unit == periods.YEAR:
             return self.calculate(variable_name, period)
 
@@ -1393,6 +1560,28 @@ class Simulation:
             if _fast_cache is not None:
                 _fast_cache.pop((variable, period), None)
 
+    def drop_computed_arrays(self) -> int:
+        """Delete every value this simulation holds except inputs.
+
+        Inputs are the values stored through ``set_input``: the dataset or
+        situation the simulation was built from, inputs set on it and, for a
+        branch, inputs set on the simulations it was created from before it
+        was created. Values a custom ``set_input`` handler calculates are not
+        inputs. Every other value is calculated again when next requested,
+        and the simulation stops reading macro-cache files.
+
+        Use this on a branch whose tax-benefit system or parameters differ
+        from its parent's, whose values the branch would otherwise inherit;
+        ``set_input`` on a branch drops what depends on the input by itself.
+        Branches already created from this simulation keep their values.
+
+        Returns:
+            int: The number of arrays deleted.
+        """
+        # Recalculate rather than read macro-cache files written before.
+        self.macro_cache_read = False
+        return self._drop_computed()
+
     def get_known_periods(self, variable: str) -> List[Period]:
         """
         Get a list variable's known period, i.e. the periods where a value has been initialized and
@@ -1426,6 +1615,49 @@ class Simulation:
         array([12, 14], dtype=int32)
 
         If a ``set_input`` property has been set for the variable, this method may accept inputs for periods not matching the ``definition_period`` of the variable. To read more about this, check the `documentation <https://openfisca.org/doc/coding-the-legislation/35_periods.html#automatically-process-variable-inputs-defined-for-periods-not-matching-the-definitionperiod>`_.
+
+        On a branch (see :meth:`get_branch`), the input also drops what the
+        branch holds that may have been calculated from the value it
+        replaces, so what the branch calculates next uses the input, as a
+        simulation given the input before calculating anything would. Every
+        value is stored after everything it was calculated from, and each
+        simulation records the first stores its values may have been
+        calculated from (see :mod:`policyengine_core.data_storage.store_history`):
+        its own, its parent's when it was created, and those of simulations
+        its formulas calculated in. The branch drops each value it holds,
+        other than an input, stored at or after the earliest recorded store of
+        ``variable_name`` for a period that shares a day with ``period``, or
+        the earliest recorded value of ``variable_name`` uprated or carried
+        over from another period (or given the default for want of one), or
+        the first value that may depend on anything (restored from a dump,
+        or calculated from a macro-cache read). If there is none of these,
+        nothing it holds depends on the value and nothing is dropped. That is the case when a formula creates the branch while
+        still calculating the variable it overrides, unless another branch
+        it created for the same comparison already returned a value
+        calculated from the variable; then only what came back from there,
+        and what was calculated after, is dropped.
+
+        Once an input is set on it, the branch stops reading macro-cache
+        files, which are keyed by branch name and period but not by inputs.
+        A calculation that was running when its input changed, in the branch
+        or in a simulation calling into it, is not kept; the outermost one in
+        the branch is run again from the new inputs until a run changes none
+        (at most ten times; after that its result is returned but not kept),
+        and an input stored for the very period it calculates after it began
+        is its result.
+
+        What this does not track: a branch given a different tax-benefit
+        system or parameters (call :meth:`drop_computed_arrays` on it);
+        formulas that write into an array they read instead of returning a
+        new one; formulas that test whether a value is stored
+        (``get_known_periods``, ``get_array``) or read another simulation's
+        storage directly, rather than calculating; a simulation other than
+        the formula's own branches calculated from a thread the formula
+        starts without copying its context; and branches a formula keeps
+        between calls, which hold what their parent held when they were
+        created. Inputs set on a simulation that is not a branch drop
+        nothing, as before, and branches already created from the branch
+        keep their values.
         """
         period = periods.period(period)
         if self.start_instant is None or self.start_instant > period.start:
@@ -1439,6 +1671,89 @@ class Simulation:
         _fast_cache = getattr(self, "_fast_cache", None)
         if _fast_cache is not None:
             _fast_cache.pop((variable_name, period), None)
+
+    def _get_store_history(self) -> StoreHistory:
+        history = getattr(self, "_store_history", None)
+        if history is None:
+            history = self._store_history = StoreHistory()
+        return history
+
+    def _get_requested_variables(self) -> set:
+        requested = getattr(self, "_requested_variables", None)
+        if requested is None:
+            requested = self._requested_variables = set()
+        return requested
+
+    def _share_store_history_with_caller(self) -> None:
+        """Merge this simulation's store history into that of a formula calling it."""
+        caller = _formula_simulation.get()
+        if caller is not None:
+            if caller is not self:
+                caller._get_store_history().merge(self._get_store_history())
+            return
+        # No formula is visible here: the call comes from code outside any
+        # formula, or from a thread a formula started without copying its
+        # context. In the second case a formula in one of this simulation's
+        # ancestors is waiting for the result, so give it to every ancestor
+        # with a calculation running (more records only make drops broader).
+        ancestor = getattr(self, "parent_branch", None)
+        while ancestor is not None:
+            if getattr(ancestor, "_calculations_in_flight", 0):
+                ancestor._get_store_history().merge(self._get_store_history())
+            ancestor = getattr(ancestor, "parent_branch", None)
+
+    def _drop_values_that_may_depend_on(
+        self, variable_name: str, period: Period
+    ) -> int:
+        """On a branch, drop what may depend on ``variable_name`` at ``period``.
+
+        Called before an input for ``variable_name`` at ``period`` is stored;
+        see :meth:`set_input`. Returns the number of arrays dropped.
+        """
+        if getattr(self, "parent_branch", None) is None:
+            return 0
+        # Macro-cache files are keyed by branch and period, not by inputs, so
+        # a file for this branch's name (written by this branch, or by another
+        # simulation's branch of the same name) may hold values calculated
+        # without this input, even before the branch has read any.
+        self.macro_cache_read = False
+        since = self._get_store_history().earliest_dependency(
+            variable_name, periods.period(period)
+        )
+        if self.get_holder(variable_name)._has_unnumbered_values():
+            # Written into storage directly, so neither numbered nor recorded:
+            # anything may have been calculated from it.
+            since = 0
+        if since is None:
+            return 0
+        return self._drop_computed(since)
+
+    def _drop_computed(self, since: Optional[int] = None) -> int:
+        """Drop every non-input value numbered ``since`` or later (all, without it)."""
+        dropped = 0
+        for population in self.populations.values():
+            for holder in population._holders.values():
+                dropped += holder._drop_computed(since)
+        # The fast cache can also hold values a holder does not keep.
+        self._fast_cache = {}
+        if getattr(self, "_calculations_in_flight", 0):
+            # A formula running here may still hold values calculated from
+            # what the records describe: keep the records, and keep none of
+            # the results running calculations return, here or in the
+            # simulations calling into this one (``_cache_result``); the
+            # outermost one here runs again (``calculate``).
+            # Calculations elsewhere that already read from this simulation
+            # see the change through their frames' ``reads``.
+            self._input_epoch = getattr(self, "_input_epoch", 0) + 1
+            return dropped
+        # Nothing the simulation still holds was calculated from what the
+        # records numbered ``since`` or later describe, except the inputs it
+        # keeps, which are recorded again.
+        self._get_store_history().prune(since)
+        for population in self.populations.values():
+            for holder in population._holders.values():
+                holder._record_inputs(since)
+        return dropped
 
     def get_variable_population(self, variable_name: str) -> Population:
         variable = self.tax_benefit_system.get_variable(
@@ -1523,6 +1838,12 @@ class Simulation:
             new.tax_benefit_system = self.tax_benefit_system
         new.debug = debug
         new.trace = trace
+        # The copy holds what this simulation holds, so it starts from what
+        # those values may have been calculated from, and diverges from there.
+        new._store_history = self._get_store_history().copy()
+        new._requested_variables = set(self._get_requested_variables())
+        # Calculations running in this simulation are not running in the copy.
+        new._calculations_in_flight = 0
 
         return new
 
@@ -1552,6 +1873,13 @@ class Simulation:
         As with the rest of a simulation, a branch is not safe to read from
         several threads at once: two first reads of the same array can each
         make a copy.
+
+        A new branch starts with the values this simulation holds; asked for
+        a name it already has, this returns that branch as it is. An input
+        set on the branch drops those that may have been calculated from the
+        value it replaces (see :meth:`set_input`). A branch whose
+        tax-benefit system or parameters are changed should call
+        :meth:`drop_computed_arrays` before calculating.
 
         Args:
             name (str, optional): Name of the branch. Defaults to "branch".
@@ -1601,9 +1929,7 @@ class Simulation:
             period = periods.period(self.default_calculation_period)
 
         alt_sim = self.clone()
-        for computed_variable in alt_sim.tax_benefit_system.variables:
-            if computed_variable not in self.input_variables:
-                alt_sim.delete_arrays(computed_variable)
+        alt_sim.drop_computed_arrays()
         alt_sim.set_input(wrt, period, self.calculate(wrt, period) + delta)
         original_value = self.calculate(variable, period)
         new_value = alt_sim.calculate(variable, period)
@@ -1975,8 +2301,11 @@ class Simulation:
 
         df = subset_df
 
-        # Update the dataset and rebuild the simulation
+        # Update the dataset and rebuild the simulation. Nothing stored before
+        # survives the rebuild, so start a new store history before the
+        # rebuilt inputs are recorded in it.
         self.dataset = Dataset.from_dataframe(df, self.dataset.time_period)
+        self._store_history = StoreHistory()
         self.build_from_dataset()
 
         # Purge ``_fast_cache`` entries populated by ``to_input_dataframe``

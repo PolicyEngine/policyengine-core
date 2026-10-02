@@ -316,13 +316,19 @@ BRANCH_NAMES = (
     "y_2019",
     "trailing_",
 )
+# A multi-unit or rolling-year period's string form contains ``:``, which a
+# Windows file name cannot, so disk storage cannot keep those periods there.
+skip_on_windows = pytest.mark.skipif(
+    os.name == "nt", reason="Windows file names cannot contain ':'."
+)
 PERIODS = (
     periods.period(2025),
     periods.period("2025-03"),
     periods.period("2025-03-05"),
-    periods.period("month:2025-01:3"),
-    periods.period("year:2025-03"),
-    periods.period("year:2024:2"),
+    *(
+        pytest.param(periods.period(period), id=period, marks=skip_on_windows)
+        for period in ("month:2025-01:3", "year:2025-03", "year:2024:2")
+    ),
 )
 
 

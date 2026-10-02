@@ -1,7 +1,7 @@
 """The YAML runner's reform-system cache against a reference LRU.
 
-For any sequence of requests and any cache size, the cache holds at most
-``cache_size`` reform systems, returns a cached object exactly when a plain
+For any sequence of requests, each with its own cache size, the cache holds
+at most that call's ``cache_size`` reform systems after the call, returns a cached object exactly when a plain
 LRU of that size would, always hands back a system built for the reforms and
 extensions requested, and keeps one reform-free system throughout.
 ``test_runner_memory.py`` pins the same behaviour with examples.
@@ -43,21 +43,23 @@ requests = st.tuples(
     st.lists(st.sampled_from(["a", "b", "c"]), max_size=2),
     st.lists(st.sampled_from(["x", "y"]), max_size=2, unique=True),
     st.sampled_from(["", "p:1", "p:2"]),
+    # Each call's bound; runs on one baseline can ask for different ones.
+    st.integers(min_value=0, max_value=3),
 )
 
 
-@hypothesis.given(
-    sequence=st.lists(requests, max_size=40),
-    cache_size=st.integers(min_value=0, max_value=3),
-)
+@hypothesis.given(sequence=st.lists(requests, max_size=40))
 @hypothesis.settings(max_examples=300, deadline=None)
-def test_cache_matches_reference_lru(sequence, cache_size):
+def test_cache_matches_reference_lru(sequence):
     baseline = StubSystem()
     reference = OrderedDict()
     last_returned = {}
     reform_free = None
 
-    for reforms, extensions, reform_key in sequence:
+    for reforms, extensions, reform_key, cache_size in sequence:
+        # The reference applies each call's bound first, oldest out first.
+        while len(reference) > cache_size:
+            reference.popitem(last=False)
         system = _get_tax_benefit_system(
             baseline,
             list(reforms),
@@ -80,7 +82,7 @@ def test_cache_matches_reference_lru(sequence, cache_size):
                 reform_free = system
             assert system is reform_free
         else:
-            key = (":".join(reforms), reform_key, frozenset(extensions))
+            key = (tuple(reforms), reform_key, frozenset(extensions))
             if key in reference:
                 reference.move_to_end(key)
                 assert system is last_returned[key]

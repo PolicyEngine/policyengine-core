@@ -200,6 +200,17 @@ class InMemoryStorage:
         }
         self._stop_sharing_dropped_keys()
 
+    def delete_exact(self, period: Period, branch_name: str = "default") -> None:
+        """Drop the array stored for exactly ``period``.
+
+        Unlike ``delete``, this leaves the periods ``period`` contains.
+        """
+        if self.is_eternal:
+            period = periods.period(periods.ETERNITY)
+        key = f"{branch_name}:{periods.period(period)}"
+        self._arrays.pop(key, None)
+        self._shared.discard(key)
+
     def get_known_periods(self) -> list:
         # Split on the first colon only: an anchored period's string form
         # itself contains colons (e.g. "default:year:2027-11").

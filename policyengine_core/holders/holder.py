@@ -106,6 +106,14 @@ class Holder:
         if self._disk_storage:
             self._disk_storage.delete(period, branch_name)
 
+    def delete_array(self, period: Period, branch_name: str = "default") -> None:
+        """
+        Remove the value stored for exactly ``period``, leaving the periods it contains (unlike ``delete_arrays``).
+        """
+        self._memory_storage.delete_exact(period, branch_name)
+        if self._disk_storage:
+            self._disk_storage.delete_exact(period, branch_name)
+
     def _get_array_from_storage(
         self, period: Period, branch_name: str = "default"
     ) -> ArrayLike:
@@ -389,6 +397,7 @@ class Holder:
             return
 
         self._set(period, value, branch_name)
+        self.simulation._note_cached_value(self.variable.name, period)
 
     def default_array(self) -> ArrayLike:
         """

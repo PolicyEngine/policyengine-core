@@ -102,6 +102,12 @@ class OnDiskStorage:
                 if not period_item == f"{branch_name}_{period}"
             }
 
+    def delete_exact(self, period: Period, branch_name: str = "default") -> None:
+        """Drop the file recorded for exactly ``period``."""
+        if self.is_eternal:
+            period = periods.period(periods.ETERNITY)
+        self._files.pop(f"{branch_name}_{periods.period(period)}", None)
+
     def get_known_periods(self) -> list:
         return list([periods.period(x.split("_")[1]) for x in self._files.keys()])
 

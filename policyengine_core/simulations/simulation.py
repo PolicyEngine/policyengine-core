@@ -1048,8 +1048,7 @@ class Simulation:
             self.calculate(variable_name, sub_period)
             for sub_period in period.get_subperiods(variable.definition_period)
         )
-        holder = self.get_holder(variable.name)
-        holder.put_in_cache(result, period, self.branch_name)
+        self._cache_option_result(variable, period, result)
         return result
 
     def calculate_divide(
@@ -1081,8 +1080,7 @@ class Simulation:
         if period.unit == periods.MONTH:
             computation_period = period.this_year
             result = self.calculate(variable_name, period=computation_period) / 12.0
-            holder = self.get_holder(variable.name)
-            holder.put_in_cache(result, period, self.branch_name)
+            self._cache_option_result(variable, period, result)
             return result
         elif period.unit == periods.YEAR:
             return self.calculate(variable_name, period)
@@ -1092,6 +1090,59 @@ class Simulation:
                 variable_name, period
             )
         )
+
+    def _cache_option_result(
+        self, variable: Variable, period: Period, result: ArrayLike
+    ) -> None:
+        """Cache an ADD or DIVIDE result at ``period`` if a plain read would return it.
+
+        A value cached at ``period`` is what every later ``calculate`` of the
+        variable at ``period`` returns. ``_calculate`` computes a FLOW
+        variable over a period of another unit with these same options (a
+        monthly variable over a year with ``calculate_add``, a yearly one over
+        a month with ``calculate_divide``), so their result is the plain value
+        there and is cached. Anywhere else it is not:
+
+        - A STOCK variable's plain value over a year is its last month's, and
+          over a month the year's, not the sum or the twelfth.
+        - Over several periods of the variable's own unit, a plain read
+          raises instead.
+        - A day variable's plain read over a month or a year does not sum.
+        - Over a single period of its own unit, the sum is the value
+          ``calculate`` has already stored.
+
+        Caching there would make a later plain read depend on whether the
+        option ran first. Nor is an option result cached when storing it would
+        change it (the twelfth of an integer or a count of true months is
+        stored as the variable's own type, so a later read would return the
+        truncated value where the first returned the exact one), or over an
+        input a plain read finds at ``period``. It does replace a value
+        calculated there before, which may predate a change to the inputs.
+        """
+        if variable.quantity_type == QuantityType.STOCK:
+            return
+        routed = (variable.definition_period == MONTH and period.unit == YEAR) or (
+            variable.definition_period == YEAR and period.unit == MONTH
+        )
+        if not routed or np.asarray(result).dtype != variable.dtype:
+            return
+        if self._reads_input_at(variable.name, period):
+            return
+        self.get_holder(variable.name).put_in_cache(result, period, self.branch_name)
+
+    def _reads_input_at(self, variable_name: str, period: Period) -> bool:
+        """Whether a plain read of the variable at ``period`` finds an input.
+
+        The read takes the value stored under the first of this branch, its
+        ancestors and ``default`` that has one; it is an input if that branch
+        stored it with ``set_input`` (or loaded it from the dataset).
+        """
+        holder = self.get_holder(variable_name)
+        input_keys = getattr(self, "_user_input_keys", None) or ()
+        for branch_name in self._get_visible_branch_names():
+            if holder._get_array_from_storage(period, branch_name) is not None:
+                return (variable_name, branch_name, period) in input_keys
+        return False
 
     def calculate_output(self, variable_name: str, period: Period = None) -> ArrayLike:
         """

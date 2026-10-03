@@ -1,0 +1,1 @@
+Stop `calculate_add` and `calculate_divide` from caching results a plain `calculate` of the same period would not return (STOCK variables, several periods of a variable's own unit, day variables, values whose type the cache would truncate) or over an input stored there, so a later read no longer depends on whether the option ran first.

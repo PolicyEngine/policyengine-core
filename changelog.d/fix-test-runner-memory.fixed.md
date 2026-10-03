@@ -1,1 +1,1 @@
-Stop the YAML test runner keeping every case's simulation and every reform system alive for the whole run: finished cases release their simulation, and the reform-system cache keeps the 2 most recently used (`--reform-cache-size`).
+Stop the YAML test runner keeping per-case state alive for the whole run: finished cases release their simulation (also when it failed to build) and any tracer, the reform-system cache keeps the 2 most recently used (`--reform-cache-size`), and a traced parameter tree no longer caches tracer-bound wrappers.

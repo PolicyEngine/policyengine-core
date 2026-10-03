@@ -10,6 +10,7 @@ import gc
 import weakref
 
 import pytest
+import yaml
 
 from policyengine_core.country_template import CountryTaxBenefitSystem
 from policyengine_core.reforms import Reform, set_parameter
@@ -19,7 +20,8 @@ from policyengine_core.tools.test_runner import (
     _get_tax_benefit_system,
     _tax_benefit_system_cache,
 )
-from tests.fixtures.yaml_runner_memory import run_with_probe, write_cases
+from policyengine_core.tools.test_runner import OpenFiscaPlugin
+from tests.fixtures.yaml_runner_memory import RUNNER_ARGV, run_with_probe, write_cases
 
 
 def _rate_reform(rate):
@@ -141,6 +143,79 @@ def test_live_systems_do_not_grow_with_the_number_of_cases(tmp_path):
     )
     # 4 vs 30 distinct reform systems requested; the live count must not move.
     assert long.live_systems == short.live_systems
+
+
+def test_traced_cases_release_their_tracers(tmp_path):
+    """Verbose (traced) cases at different dates keep no tracer: the cached
+    system's parameters used to cache one tracing wrapper, holding that case's
+    tracer and results, per date."""
+    cases = [
+        {
+            "name": f"case {i}",
+            "period": f"20{15 + i // 12}-{i % 12 + 1:02d}",
+            "input": {"salary": 1000},
+            "output": {"income_tax": 150},
+        }
+        for i in range(16)
+    ]
+    path = tmp_path / "traced.yaml"
+    path.write_text(yaml.safe_dump(cases))
+    system = CountryTaxBenefitSystem()
+    probe = run_with_probe(system, path, {"verbose": True})
+    assert probe.live_tracers == 0
+    assert probe.live_simulations == 0
+    reform_free = _tax_benefit_system_cache[system].reform_free
+    assert reform_free.parameters.trace is False
+    assert reform_free.parameters.tracer is None
+
+
+def test_cases_whose_simulation_fails_to_build_release_it(tmp_path):
+    cases = [
+        {
+            "name": f"bad input {i}",
+            "period": "2017-01",
+            "input": {"salary": "not a number"},
+            "output": {"income_tax": 0},
+        }
+        for i in range(8)
+    ]
+    path = tmp_path / "bad.yaml"
+    path.write_text(yaml.safe_dump(cases))
+    system = CountryTaxBenefitSystem()
+    probe = run_with_probe(system, path, outcome="failed")
+    assert probe.live_simulations == 0
+    assert (
+        getattr(_tax_benefit_system_cache[system].reform_free, "simulation", None)
+        is None
+    )
+
+
+def test_inline_parameter_values_key_by_type(tmp_path):
+    """A number and the same digits as a string are different inputs: the
+    string must not reuse the system built for the number."""
+    base = {"period": "2017-01", "input": {"salary": 1000}}
+    cases = [
+        {
+            **base,
+            "name": "number",
+            "input": {**base["input"], "taxes.income_tax_rate": 0.2},
+            "output": {"income_tax": 200},
+        },
+        {
+            **base,
+            "name": "string",
+            "input": {**base["input"], "taxes.income_tax_rate": "0.2"},
+            "output": {"income_tax": 200},
+        },
+    ]
+    path = tmp_path / "typed.yaml"
+    path.write_text(yaml.safe_dump(cases))
+    exit_code = pytest.main(
+        [*RUNNER_ARGV, "-q", "-p", "no:cacheprovider", str(path)],
+        plugins=[OpenFiscaPlugin(CountryTaxBenefitSystem(), {})],
+    )
+    # With a value-only key the string case passed on the number's system.
+    assert exit_code == 1
 
 
 @pytest.mark.parametrize("reform_every", [0, 3])

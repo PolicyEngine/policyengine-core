@@ -22,7 +22,7 @@ from policyengine_core.periods.helpers import period
 from policyengine_core.tracers import (
     FullTracer,
     SimpleTracer,
-    TracingParameterNodeAtInstant,
+    TracingParameterNode,
 )
 import random
 from policyengine_core.tools.hugging_face import *
@@ -1184,14 +1184,16 @@ class Simulation:
                             )
             return values
 
-        if self.trace and not isinstance(
-            self.tax_benefit_system.parameters, TracingParameterNodeAtInstant
-        ):
-            # Soft-recast
-            self.tax_benefit_system.parameters.branch_name = self.branch_name
-            self.tax_benefit_system.parameters.trace = True
-            self.tax_benefit_system.parameters.tracer = self.tracer
         parameters_at = self.tax_benefit_system.parameters
+        if self.trace:
+            # Trace through a view of the parameter tree that belongs to this
+            # call. Switching tracing on in the tree itself would leave the
+            # shared tax-benefit system traced for every simulation, branch
+            # and clone that uses it afterwards, with this simulation's tracer
+            # and branch name cached in the tree's nodes at each instant.
+            parameters_at = TracingParameterNode(
+                parameters_at, self.tracer, self.branch_name
+            )
 
         # A rules-engine formula must be a pure, deterministic function of its
         # inputs. Randomness is forbidden statically at variable registration

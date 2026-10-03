@@ -19,6 +19,7 @@ import numpy as np
 import pytest
 
 from policyengine_core import periods
+from policyengine_core.experimental import MemoryConfig
 from tests.fixtures.uprated_inputs import build_simulation, build_system
 
 
@@ -168,3 +169,50 @@ def test_storing_a_calculated_value_keeps_it_in_the_fast_cache(system):
 
     assert _fast_cached(simulation, "doubled_amount") == ["2012"]
     assert simulation.calculate("doubled_amount", "2012") is first
+
+
+def test_write_under_an_ancestor_branch_name_replaces_what_a_nested_branch_read():
+    # A nested branch reads its own key, then each ancestor's, then the
+    # default. With the variable kept out of storage (cache blacklist), the
+    # nested branch's fast cache is all that holds its calculated value, so
+    # a write under the parent branch's name must drop it.
+    system = build_system()
+    system.cache_blacklist = ["doubled_amount"]
+    simulation = build_simulation(system)
+    simulation.opt_out_cache = True
+    nested = simulation.get_branch("a").get_branch("b")
+    assert nested.calculate("doubled_amount", "2013").tolist() == [0, 0]
+    assert _fast_cached(nested, "doubled_amount") == ["2013"]
+
+    nested.get_holder("doubled_amount").set_input(
+        periods.period("2013"), [7.0, 8.0], "a"
+    )
+
+    assert nested.calculate("doubled_amount", "2013").tolist() == [7.0, 8.0]
+
+
+def test_a_write_to_disk_storage_replaces_a_calculated_value(system):
+    simulation = build_simulation(system)
+    with pytest.warns(Warning):
+        simulation.memory_config = MemoryConfig(max_memory_occupation=0)
+    holder = simulation.get_holder("doubled_amount")
+    holder._disk_storage = holder.create_disk_storage()
+    holder._on_disk_storable = True
+    assert simulation.calculate("doubled_amount", "2013").tolist() == [0, 0]
+    assert holder._memory_storage.get(periods.period("2013")) is None
+
+    holder.put_in_cache(np.array([7.0, 8.0], dtype=np.float32), periods.period("2013"))
+
+    assert holder._disk_storage.get(periods.period("2013")).tolist() == [7.0, 8.0]
+    assert simulation.calculate("doubled_amount", "2013").tolist() == [7.0, 8.0]
+
+
+def test_a_write_replaces_an_eternity_value_requested_without_a_period(system):
+    # ``calculate`` with no period caches the result under ``None``.
+    simulation = build_simulation(system)
+    assert simulation.calculate("eternal_code").tolist() == [0, 0]
+    assert ("eternal_code", None) in simulation._fast_cache
+
+    simulation.get_holder("eternal_code").set_input(periods.period("2015"), [8, 9])
+
+    assert simulation.calculate("eternal_code").tolist() == [8, 9]

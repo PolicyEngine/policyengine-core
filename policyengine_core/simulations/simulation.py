@@ -874,20 +874,21 @@ class Simulation:
         self._check_period_consistency(period, variable)
 
         if variable.defined_for is not None:
-            defined_for_values = self.calculate(
-                variable.defined_for, period, map_to=variable.entity.key
+            # Registration rejects a non-numeric defined_for variable (see
+            # ``TaxBenefitSystem._check_defined_for``). This catches one set,
+            # or a variable replaced, afterwards. It reads the variable's
+            # type, not the values: mapped to a group entity, an Enum's
+            # indices are summed into numbers, and str or date values fail
+            # inside the mapping.
+            defined_for_variable = self.tax_benefit_system.get_variable(
+                variable.defined_for
             )
-            if isinstance(defined_for_values, EnumArray) or (
-                getattr(defined_for_values, "dtype", np.dtype(float)).kind not in "biuf"
-            ):
-                # Registration rejects these (see
-                # ``TaxBenefitSystem._check_defined_for``); this catches a
-                # defined_for set or a variable replaced afterwards, with
-                # the same message instead of a TypeError from ``> 0``.
-                variable.check_defined_for_variable(
-                    self.tax_benefit_system.get_variable(variable.defined_for)
-                )
-            mask = defined_for_values > 0
+            if defined_for_variable is not None:
+                variable.check_defined_for_variable(defined_for_variable)
+            mask = (
+                self.calculate(variable.defined_for, period, map_to=variable.entity.key)
+                > 0
+            )
             if np.all(~mask):
                 array = holder.default_array()
                 array = self._cast_formula_result(array, variable)

@@ -322,6 +322,45 @@ def test_defined_for_changed_after_registration_fails_with_the_same_message(
     assert f"value_type is {type_name}" in message
 
 
+@pytest.mark.parametrize("type_name", NON_NUMERIC)
+def test_a_group_variable_defined_for_changed_after_registration_fails_too(
+    type_name,
+):
+    # Mapped to the household, an Enum's indices are summed into numbers and
+    # str or date values fail inside the mapping, so the check reads the
+    # variable's type, not the values.
+    system = _system()
+    system.add_variables(
+        _variable("condition", **NON_NUMERIC[type_name]),
+        type(
+            "household_amount",
+            (Variable,),
+            dict(
+                value_type=float,
+                entity=template_entities.Household,
+                definition_period=YEAR,
+                label="household_amount",
+            ),
+        ),
+    )
+    system.variables["household_amount"].defined_for = "condition"
+    values = {"Enum": "present", "str": "yes", "date": "2000-01-01"}[type_name]
+    simulation = SimulationBuilder().build_from_entities(
+        system,
+        {
+            "persons": {"a": {"condition": {"2015": values}}},
+            "households": {"h": {"parents": ["a"], "household_amount": {"2012": 20.0}}},
+        },
+    )
+
+    with pytest.raises(ValueError) as error:
+        simulation.calculate("household_amount", "2015")
+
+    message = str(error.value)
+    assert 'Variable "household_amount" is defined_for "condition"' in message
+    assert f"value_type is {type_name}" in message
+
+
 def test_a_group_variable_defined_for_a_person_enum_is_rejected():
     # Mapped to the group, the Enum's indices were summed over its members,
     # so this masked on a number with no meaning instead of raising.

@@ -103,6 +103,17 @@ def _uprating_index_value(parameter, instant) -> Optional[float]:
     return defined[-1].value
 
 
+def _end_order(period: Period) -> tuple:
+    """Sorts periods by when they end. A period that ends after the last
+    date ``datetime`` can represent (``day:9999-12-30:3``) has no ``stop``,
+    which raises ``OverflowError``; it sorts after every period that has
+    one."""
+    try:
+        return (0, period.stop)
+    except OverflowError:
+        return (1,)
+
+
 if TYPE_CHECKING:
     from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 
@@ -978,7 +989,7 @@ class Simulation:
                         key=lambda p: (
                             p.unit == variable.definition_period,
                             p.start,
-                            p.stop,
+                            _end_order(p),
                             periods.unit_weight(p.unit),
                             str(p),
                         ),

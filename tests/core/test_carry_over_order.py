@@ -132,6 +132,29 @@ def test_inputs_with_the_same_extent_carry_the_larger_unit(system, reverse):
     )
 
 
+@pytest.mark.parametrize(
+    "stored,asked",
+    [("day:9999-12-30:3", "9999-12-31"), ("day:2012-01-01:4000000", "2013-01-01")],
+)
+def test_an_input_ending_after_the_last_date_carries(system, stored, asked):
+    """A period that ends after 9999-12-31 has no ``stop`` (it raises
+    ``OverflowError``); its input carries all the same."""
+    inputs = {"day_input_without_helper": {stored: [10, 20]}}
+    np.testing.assert_array_equal(
+        alone(system, inputs, "day_input_without_helper", asked), [10, 20]
+    )
+
+
+@pytest.mark.parametrize("longer_first", [True, False], ids=["longer", "shorter"])
+def test_an_input_ending_after_the_last_date_ends_last(system, longer_first):
+    values = {"day:2012-01-01:4000000": [10, 20], "day:2012-01-01:2": [1, 2]}
+    order = list(values) if longer_first else list(values)[::-1]
+    inputs = {"day_input_without_helper": {key: values[key] for key in order}}
+    np.testing.assert_array_equal(
+        alone(system, inputs, "day_input_without_helper", "2013-01-01"), [10, 20]
+    )
+
+
 def test_later_input_does_not_carry_backwards(system):
     built = simulation(system, {"carried": {"2012": [7, 8], "2014": [9, 10]}})
     np.testing.assert_array_equal(built.calculate("carried", "2011"), [0, 0])

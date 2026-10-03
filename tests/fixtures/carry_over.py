@@ -89,6 +89,14 @@ class month_input_without_helper(Variable):
     label = "Monthly input with no set_input helper, stored at any period"
 
 
+class day_input_without_helper(Variable):
+    value_type = float
+    entity = entities.Person
+    definition_period = periods.DAY
+    set_input = None
+    label = "Daily input with no set_input helper, stored at any period"
+
+
 class uprated_input_without_helper(Variable):
     value_type = float
     entity = entities.Person
@@ -121,6 +129,7 @@ VARIABLES = (
     carried_monthly,
     year_input_without_helper,
     month_input_without_helper,
+    day_input_without_helper,
     uprated_input_without_helper,
     input_with_calculating_helper,
 )

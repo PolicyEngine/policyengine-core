@@ -395,6 +395,12 @@ def test_carry_over_in_a_branch_copies_only_the_array_it_reads(system):
     assert len(storage._shared) == shared - 1
 
 
+def _marks(storage):
+    """A storage's own record of which values are which: an in-memory
+    storage records its inputs, an on-disk one its derived values."""
+    return storage._derived if isinstance(storage, OnDiskStorage) else storage._inputs
+
+
 @pytest.mark.parametrize("on_disk", [False, True], ids=["memory", "disk"])
 def test_storages_keep_the_derived_mark_with_the_value(on_disk, tmp_path):
     storage = (
@@ -416,13 +422,13 @@ def test_storages_keep_the_derived_mark_with_the_value(on_disk, tmp_path):
     storage.put(value, year, derived=True)
     storage.delete(year)
     assert not storage.has(year) and not storage.is_derived(year)
-    assert not storage._derived
+    assert not _marks(storage)
     storage.put(value, year, derived=True)
     storage.put(value, year, "reform", derived=True)
     storage.delete(branch_name="reform")
     assert storage.is_derived(year) and not storage.has(year, "reform")
     storage.delete()
-    assert not storage._derived
+    assert not _marks(storage)
     storage.put(value, year)
     assert not storage.is_derived(year)
 
@@ -539,7 +545,7 @@ def test_marks_are_cleared_with_the_values_apply_reform_wipes(system):
     for year in range(2010, 2020):
         built.calculate("carried", str(year))
         built.apply_reform(_noop)
-    assert not holder._memory_storage._derived
+    assert not holder._memory_storage._inputs
     assert not holder._disk_storage._derived
     # A file written for a period whose value was derived, then read back
     # by rebuilding the index, is an input.
@@ -564,7 +570,7 @@ def test_marks_are_cleared_with_in_memory_values_apply_reform_wipes(system):
     for year in range(2010, 2020):
         built.calculate("carried", str(year))
         built.apply_reform(_noop)
-    assert not holder._memory_storage._derived
+    assert not holder._memory_storage._inputs
 
 
 def test_rebuilding_a_disk_index_reads_files_as_inputs(system):
@@ -607,12 +613,12 @@ def test_storages_pickled_without_marks_still_work(on_disk, tmp_path):
     )
     year = periods.period("2012")
     storage.put(np.array([10.0]), year)
+    # The state an older version pickled: its arrays or files, and no marks.
     state = dict(storage.__dict__)
-    # An in-memory storage holding only inputs has no marks of its own.
-    state.pop("_derived", None)
-    state.pop("_shared", None)
+    for name in ("_derived", "_inputs", "_shared"):
+        state.pop(name, None)
     old = type(storage).__new__(type(storage))
-    old.__dict__.update(state)
+    old.__setstate__(state)
     restored = pickle.loads(pickle.dumps(old))
     assert restored.has(year) and not restored.is_derived(year)
     restored.clone()

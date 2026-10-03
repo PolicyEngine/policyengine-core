@@ -1,15 +1,16 @@
 """A storage without a set of its own behaves like one that always had one.
 
 ``_EagerIndexStorage`` below is ``InMemoryStorage`` as it was when every
-storage owned a set of shared keys and a set of derived keys. Random
-sequences of operations, storing inputs and derived values, run on both, and
-after every step the two must hold the same arrays, the same shared keys and
-the same derived keys; at the end every read and every ``is_derived`` must
-agree. The storage under test must also keep its own invariants: it refers
-to the one shared-nothing (nothing-derived) object exactly when it shares
-nothing (holds no derived value), and no two storages hold the same set.
-``test_storage_shared_index.py`` and ``test_storage_derived_index.py`` pin
-the same behaviour with examples.
+storage owned a set of shared keys and a set of derived keys. The storage
+under test records its inputs instead, and has each set only while it is
+not empty. Random sequences of operations, storing inputs and derived
+values, run on both, and after every step the two must hold the same arrays,
+the same shared keys, and the same stored values marked derived; at the end
+every read and every ``is_derived`` must agree. The storage under test must
+also keep its own invariants: it refers to the one shared-nothing (no-inputs)
+object exactly when it shares nothing (holds no input), and no two storages
+hold the same mutable set. ``test_storage_shared_index.py`` and
+``test_storage_input_index.py`` pin the same behaviour with examples.
 """
 
 from __future__ import annotations
@@ -24,7 +25,7 @@ st = hypothesis.strategies
 from policyengine_core import periods
 from policyengine_core.data_storage import InMemoryStorage
 from policyengine_core.data_storage.in_memory_storage import (
-    _NOTHING_DERIVED,
+    _NO_INPUTS,
     _NOTHING_SHARED,
     _can_share,
     _read_only_view,
@@ -201,9 +202,10 @@ def _assert_same_state(tested, reference):
         for key, array in storage._arrays.items():
             assert _same_array(array, expected._arrays[key]), (index, key)
         assert storage._shared == expected._shared, index
-        # The marks that count: a storage emptied from outside keeps the marks
-        # of keys it no longer holds, which the reference copies into clones.
-        assert storage._derived & storage._arrays.keys() == (
+        # The stored values marked derived. A storage emptied from outside
+        # keeps the marks of keys it no longer holds, which the reference
+        # copies into clones; they never count.
+        assert storage._arrays.keys() - storage._inputs == (
             expected._derived & expected._arrays.keys()
         ), index
 
@@ -223,17 +225,19 @@ def _assert_index_invariants(storages, cleared):
         for key in shared & storage._arrays.keys():
             # A shared array cannot be written through.
             assert not storage._arrays[key].flags.writeable, (index, key)
-        derived = storage._derived
-        assert (derived is _NOTHING_DERIVED) == (not derived), index
-        assert ("_derived" in vars(storage)) == bool(derived), index
-        if derived is not _NOTHING_DERIVED:
-            own_sets.append(derived)
+        inputs = storage._inputs
+        assert (inputs is _NO_INPUTS) == (not inputs), index
+        assert ("_inputs" in vars(storage)) == bool(inputs), index
+        # Inputs are a set of the storage's own, or a frozenset it may share
+        # with storages cloned from it or it from them.
+        if isinstance(inputs, set):
+            own_sets.append(inputs)
         if index not in cleared:
-            assert derived <= storage._arrays.keys(), index
+            assert inputs <= storage._arrays.keys(), index
     # A set belongs to one storage, and to one of its two indexes.
     assert len({id(own) for own in own_sets}) == len(own_sets)
     assert not _NOTHING_SHARED
-    assert not _NOTHING_DERIVED
+    assert not _NO_INPUTS
 
 
 @hypothesis.settings(

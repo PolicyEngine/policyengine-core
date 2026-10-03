@@ -146,3 +146,31 @@ def test_a_twelfth_of_an_integer_flow_is_not_cached_truncated():
         probe, {}, ("calculate", "2012-01"), ("calculate", "2012-01")
     )
     assert fresh == after == prior == [pytest.approx(1012 / 12)]
+
+
+@pytest.mark.parametrize(
+    "definition_period, native, target, option, first, second",
+    [
+        (MONTH, "2012-01", "2012", "add", [12.0], [24.0]),
+        (YEAR, "2012", "2012-01", "divide", [1.0], [2.0]),
+    ],
+)
+def test_an_option_refreshes_the_aggregate_it_cached_before(
+    definition_period, native, target, option, first, second
+):
+    # The cached aggregate predates the new input; running the option again
+    # replaces it, as on master, so the plain read follows the input.
+    simulation = build(make_probe(definition_period, FLOW))
+    simulation.set_input(PROBE, native, [12])
+    assert run(simulation, option, target) == first
+    simulation.set_input(PROBE, native, [24])
+    assert run(simulation, option, target) == second
+    assert run(simulation, "calculate", target) == second
+
+
+def test_an_option_in_a_branch_does_not_replace_a_parent_input():
+    probe = make_probe(MONTH, FLOW, with_formula=True, set_input=None)
+    simulation = build(probe, {"2012": 7})
+    branch = simulation.get_branch("other")
+    assert run(branch, "add", "2012") == [sum(1200.0 + month for month in range(1, 13))]
+    assert run(branch, "calculate", "2012") == [7.0]

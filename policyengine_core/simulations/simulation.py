@@ -1007,8 +1007,42 @@ class Simulation:
             holder = self.get_holder(_name)
             holder.delete_arrays(_period)
             if _fast_cache is not None:
-                _fast_cache.pop((_name, _period), None)
+                self._evict_fast_cache(_name, _period)
         self.invalidated_caches = set()
+
+    def _evict_fast_cache(self, variable_name: str, period: Period = None) -> None:
+        """Drop the ``_fast_cache`` entries a storage write or delete at ``period`` makes stale.
+
+        Holder storage deletes (and ``set_input`` handlers write) every period
+        that ``period`` contains: deleting ``"2017"`` also deletes
+        ``"2017-01"`` to ``"2017-12"``, and an ETERNITY variable keeps one
+        value whatever period it is asked for. The fast cache is keyed by the
+        period ``calculate`` was asked for, so this drops each of the
+        variable's entries whose period ``period`` contains, and all of them
+        when ``period`` is ``None`` or the variable is defined for ETERNITY.
+        Popping only ``(variable_name, period)`` left ``calculate`` returning
+        values for contained periods that storage no longer held.
+        """
+        _fast_cache = getattr(self, "_fast_cache", None)
+        if not _fast_cache:
+            return
+        if period is not None:
+            period = periods.period(period)
+            variable = self.tax_benefit_system.get_variable(variable_name)
+            if getattr(variable, "definition_period", None) == periods.ETERNITY:
+                period = None
+        stale_keys = [
+            key
+            for key in _fast_cache
+            if key[0] == variable_name
+            and (
+                period is None
+                or not isinstance(key[1], Period)
+                or period.contains(key[1])
+            )
+        ]
+        for key in stale_keys:
+            del _fast_cache[key]
 
     def calculate_add(
         self,
@@ -1356,7 +1390,9 @@ class Simulation:
         names and the parent simulation's holder storage remain unchanged.
 
         :param variable: the variable whose cached values should be deleted
-        :param period: the period to delete, or all periods when omitted
+        :param period: the period to delete, with every period it contains
+            ("2018" also deletes "2018-05"; any period deletes an ETERNITY
+            variable's value), or all periods when omitted
 
         Example:
 
@@ -1381,17 +1417,9 @@ class Simulation:
         holder = self.get_holder(variable)
         for branch_name in self._get_visible_branch_names():
             holder.delete_arrays(period, branch_name)
-        _fast_cache = getattr(self, "_fast_cache", None)
-        if period is None:
-            if _fast_cache is not None:
-                self._fast_cache = {
-                    k: v for k, v in _fast_cache.items() if k[0] != variable
-                }
-        else:
-            if not isinstance(period, Period):
-                period = periods.period(period)
-            if _fast_cache is not None:
-                _fast_cache.pop((variable, period), None)
+        # Same periods as the holder deletes: deleting "2017" also drops a
+        # cached "2017-02".
+        self._evict_fast_cache(variable, period)
 
     def get_known_periods(self, variable: str) -> List[Period]:
         """
@@ -1436,9 +1464,9 @@ class Simulation:
         if (variable.end is not None) and (period.start.date > variable.end):
             return
         self.get_holder(variable_name).set_input(period, value, self.branch_name)
-        _fast_cache = getattr(self, "_fast_cache", None)
-        if _fast_cache is not None:
-            _fast_cache.pop((variable_name, period), None)
+        # A ``set_input`` handler may store every period ``period`` contains
+        # (an annual input to a monthly variable stores twelve months).
+        self._evict_fast_cache(variable_name, period)
 
     def get_variable_population(self, variable_name: str) -> Population:
         variable = self.tax_benefit_system.get_variable(

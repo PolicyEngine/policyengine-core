@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Dict, FrozenSet, Set, Union
 
 import numpy
 from numpy.typing import ArrayLike
@@ -32,21 +32,30 @@ def _read_only_view(array: numpy.ndarray) -> numpy.ndarray:
     return view
 
 
+# What ``InMemoryStorage._shared`` is while a storage shares nothing. Every
+# such storage refers to this one object instead of holding an empty set of
+# its own: a simulation has a storage for each variable, nearly all of them
+# share nothing, and an empty set is 216 bytes.
+_NOTHING_SHARED: FrozenSet[str] = frozenset()
+
+
 class InMemoryStorage:
     """
     Low-level class responsible for storing and retrieving calculated vectors in memory
     """
 
     _arrays: Dict[Period, ArrayLike]
+    # Keys of ``_arrays`` whose array still belongs to the storage this one
+    # was cloned from with ``share_arrays``. ``get`` replaces each with a copy
+    # the first time it is read. A storage has a ``_shared`` attribute of its
+    # own, a set, only while at least one key is shared; otherwise it reads
+    # this class attribute. A key left in the set after code outside this
+    # class empties ``_arrays`` costs one extra copy at most.
+    _shared: Union[Set[str], FrozenSet[str]] = _NOTHING_SHARED
     is_eternal: bool
 
     def __init__(self, is_eternal: bool):
         self._arrays = {}
-        # Keys of ``_arrays`` whose array still belongs to the storage this
-        # one was cloned from with ``share_arrays``. ``get`` replaces each
-        # with a copy the first time it is read. A key left here after code
-        # outside this class empties ``_arrays`` costs one extra copy at most.
-        self._shared = set()
         self.is_eternal = is_eternal
 
     def clone(self, share_arrays: bool = False) -> "InMemoryStorage":
@@ -75,12 +84,15 @@ class InMemoryStorage:
         """
         clone = InMemoryStorage(self.is_eternal)
         if share_arrays:
+            shared = set()
             for key, array in self._arrays.items():
                 if _can_share(array):
                     clone._arrays[key] = _read_only_view(array)
-                    clone._shared.add(key)
+                    shared.add(key)
                 else:
                     clone._arrays[key] = array.copy()
+            if shared:
+                clone._shared = shared
         else:
             clone._arrays = {key: array.copy() for key, array in self._arrays.items()}
         return clone
@@ -98,8 +110,39 @@ class InMemoryStorage:
             # caller may write into it, so it needs to be this storage's own.
             values = values.copy()
             self._arrays[key] = values
-            self._shared.discard(key)
+            self._stop_sharing(key)
         return values
+
+    # Each method below reads ``self._shared`` once and works on that set, and
+    # releases it with one ``dict.pop`` that never raises. A storage is still
+    # not safe to read from several threads at once (see ``clone``), but
+    # overlapping first reads do not raise here: neither can mutate the
+    # shared-nothing object or remove an attribute the other already removed.
+
+    def _stop_sharing(self, key: str) -> None:
+        """Record that ``key`` no longer refers to a shared array."""
+        shared = self._shared
+        if key in shared:
+            shared.discard(key)
+            self._release_if_empty(shared)
+
+    def _stop_sharing_dropped_keys(self) -> None:
+        """Forget the shared keys that ``_arrays`` no longer has."""
+        shared = self._shared
+        if shared:
+            shared.intersection_update(self._arrays)
+            self._release_if_empty(shared)
+
+    def _release_if_empty(self, shared: Set[str]) -> None:
+        """Go back to the class's shared-nothing object once nothing is shared.
+
+        The storage's own attribute is removed rather than reassigned, so that
+        a storage sharing nothing carries none, and a copy or pickle of it
+        reads the class attribute too. ``pop`` with a default is one step that
+        never raises, so it is safe when another thread has already removed it.
+        """
+        if not shared:
+            self.__dict__.pop("_shared", None)
 
     def put(
         self, value: ArrayLike, period: Period, branch_name: str = "default"
@@ -125,7 +168,7 @@ class InMemoryStorage:
             )
         key = f"{branch_name}:{period}"
         self._arrays[key] = value
-        self._shared.discard(key)
+        self._stop_sharing(key)
 
     def delete(self, period: Period = None, branch_name: str = "default") -> None:
         if period is None:
@@ -137,7 +180,7 @@ class InMemoryStorage:
                 for period_item, value in self._arrays.items()
                 if not period_item.startswith(branch_prefix)
             }
-            self._shared.intersection_update(self._arrays)
+            self._stop_sharing_dropped_keys()
             return
 
         if self.is_eternal:
@@ -155,7 +198,7 @@ class InMemoryStorage:
                 and period.contains(periods.period(period_item.split(":", 1)[1]))
             )
         }
-        self._shared.intersection_update(self._arrays)
+        self._stop_sharing_dropped_keys()
 
     def get_known_periods(self) -> list:
         # Split on the first colon only: an anchored period's string form

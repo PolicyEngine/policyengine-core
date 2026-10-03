@@ -1,1 +1,0 @@
-Let vectorial parameter nodes be copied, deep-copied and pickled, so a reform that calls `modify_parameters` keeps a cached fancy-indexing node as a node, and stop reading a child node by name (`node.owner`) from raising `TypeError`.

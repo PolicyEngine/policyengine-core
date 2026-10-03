@@ -1,0 +1,530 @@
+"""Properties of uprating: order independence and the reference rule.
+
+Over the domain generated here, what a simulation returns for an uprated
+variable, after earlier requests, equals byte for byte (dtype, shape and
+bytes, so ``-0.0`` differs from ``0.0``) what a fresh simulation given the
+same inputs returns for that period alone. It also equals the reference rule
+in ``tests/fixtures/uprating_order.py``. Checked with and without
+auto-carry-over. Regressions are in ``test_uprating_order.py``.
+
+Two more properties: the result does not depend on the order the inputs
+were set in, or on which of them are on disk, even when several start on the
+same day; and uprating by an index that never moves returns what
+auto-carry-over returns for the same inputs.
+
+The domain:
+
+* Inputs are stored in each variable's own unit, some for a period several
+  units long that starts with another input (``year:2012:2`` beside
+  ``2012``): a variable stores those as given. ``uprated_any_unit`` has no
+  ``set_input`` helper, so its inputs are years or months.
+* Earlier requests are plain calculations in either unit, ``ADD`` and
+  ``DIVIDE``.
+* The value may be read from the simulation, or from a branch or nested
+  branch forked after those requests. The branch may set its own input for
+  the target variable. The earlier requests then avoid the target period of
+  the target variable: a value the parent calculated before the fork stays
+  cached for the branch whatever its inputs are, which is not what this
+  module tests.
+* Targets are in the variable's definition unit.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+# The smoke job installs Core without the dev extra but collects every module.
+pytest.importorskip("hypothesis")
+
+# A simulation given inputs on disk warns that MemoryConfig is experimental.
+pytestmark = pytest.mark.filterwarnings(
+    "ignore::policyengine_core.warnings.memory_config_warning.MemoryConfigWarning"
+)
+
+from hypothesis import HealthCheck, example, given, settings  # noqa: E402
+from hypothesis import strategies as st  # noqa: E402
+
+import numpy as np  # noqa: E402
+
+from policyengine_core import periods  # noqa: E402
+from policyengine_core.experimental import MemoryConfig  # noqa: E402
+from policyengine_core.simulations import SimulationBuilder  # noqa: E402
+from tests.fixtures.uprating_order import (  # noqa: E402
+    COUNT,
+    assert_bitwise_equal,
+    build_system,
+    reference,
+    request,
+    simulation,
+)
+
+SYSTEMS = {True: build_system(True), False: build_system(False)}
+
+YEARS = [str(year) for year in range(2009, 2019)]
+INPUT_YEARS = [str(year) for year in range(2010, 2017)]
+MONTHS = [f"{year}-{month:02d}" for year in range(2011, 2016) for month in range(1, 13)]
+INPUT_MONTHS = [month for month in MONTHS if "2011-06" <= month <= "2013-12"]
+REQUEST_MONTHS = [month for month in MONTHS if "2011-11" <= month <= "2015-06"]
+# Several units long, each starting with a single-unit input period. As
+# strings, "year:2012:10" sorts before "year:2012:2" though it ends later,
+# and "month:2012-01:10" before "month:2012-01:3". (Twelve months from
+# January would not do: a period is stored under its string form, and
+# "month:2012-01:12" prints as "2012", so it reads back as the year.)
+MULTI_YEARS = ["year:2012:2", "year:2012:10", "year:2014:3"]
+MULTI_MONTHS = ["month:2012-01:3", "month:2012-01:10", "month:2013-06:2"]
+# Input periods that start on the same day, by the unit they are in.
+TIES = {
+    "year": [["2012", "year:2012:2", "year:2012:10"], ["2014", "year:2014:3"]],
+    "month": [
+        ["2012-01", "month:2012-01:3", "month:2012-01:10"],
+        ["2013-06", "month:2013-06:2"],
+    ],
+}
+
+YEAR_VARIABLES = [
+    "uprated",
+    "uprated_count",
+    "eligible",
+    "uprated_if_eligible",
+    "uprated_with_default",
+    "uprated_any_unit",
+]
+ALL_VARIABLES = YEAR_VARIABLES + ["uprated_monthly"]
+FLOATS = st.floats(min_value=-2000, max_value=2000, allow_nan=False, width=32)
+VALUES = {variable: FLOATS for variable in ALL_VARIABLES}
+VALUES["uprated_count"] = st.integers(min_value=-2000, max_value=2000)
+VALUES["eligible"] = st.booleans()
+INPUT_PERIODS = {variable: INPUT_YEARS + MULTI_YEARS for variable in YEAR_VARIABLES}
+INPUT_PERIODS["uprated_monthly"] = INPUT_MONTHS + MULTI_MONTHS
+INPUT_PERIODS["uprated_any_unit"] = (
+    INPUT_YEARS + MULTI_YEARS + INPUT_MONTHS + MULTI_MONTHS
+)
+# Other variables read ``eligible`` (``uprated_if_eligible`` is defined for
+# it), so a parent request for them caches it at their period: no branch
+# input for it.
+BRANCH_INPUT_VARIABLES = [name for name in ALL_VARIABLES if name != "eligible"]
+
+
+def _variable_inputs(variable, min_size=0):
+    return st.dictionaries(
+        st.sampled_from(INPUT_PERIODS[variable]),
+        st.lists(VALUES[variable], min_size=COUNT, max_size=COUNT),
+        min_size=min_size,
+        max_size=3,
+    )
+
+
+def _requests_on(variable):
+    """Requests for ``variable``: plain calculations in either unit (a yearly
+    flow asked for a month caches a twelfth there, a monthly flow asked for a
+    year caches the sum of its months), and the ADD and DIVIDE options."""
+    years = st.sampled_from(YEARS)
+    any_periods = st.sampled_from(YEARS + REQUEST_MONTHS)
+    if variable == "uprated_monthly":
+        return st.tuples(
+            st.sampled_from(["calculate", "add"]), st.just(variable), any_periods
+        )
+    return st.one_of(
+        st.tuples(st.just("calculate"), st.just(variable), any_periods),
+        st.tuples(st.just("add"), st.just(variable), years),
+        st.tuples(st.just("divide"), st.just(variable), any_periods),
+    )
+
+
+def _overlaps(first, second):
+    first, second = periods.period(first), periods.period(second)
+    return first.start <= second.stop and second.start <= first.stop
+
+
+target_strategy = st.one_of(
+    st.tuples(st.sampled_from(YEAR_VARIABLES), st.sampled_from(YEARS)),
+    st.tuples(st.just("uprated_monthly"), st.sampled_from(REQUEST_MONTHS)),
+)
+
+
+@st.composite
+def scenarios(draw):
+    """A target, the inputs, the requests made before the target, the branch
+    it is read from and that branch's own input, if any. The target variable
+    always has an input, and about half the requests are for it: those are
+    the requests that cache values it could be uprated from."""
+    variable, period = draw(target_strategy)
+    inputs = {
+        name: draw(_variable_inputs(name, min_size=int(name == variable)))
+        for name in ALL_VARIABLES
+    }
+    inputs = {name: values for name, values in inputs.items() if values}
+    any_request = st.one_of(*(_requests_on(name) for name in ALL_VARIABLES))
+    requests = draw(
+        st.lists(st.one_of(_requests_on(variable), any_request), max_size=8)
+    )
+    branch = draw(st.sampled_from([None, "reform", "nested"]))
+    branch_input = None
+    if branch is not None and variable in BRANCH_INPUT_VARIABLES:
+        branch_input = draw(
+            st.none()
+            | st.tuples(
+                st.sampled_from(INPUT_PERIODS[variable]),
+                st.lists(VALUES[variable], min_size=COUNT, max_size=COUNT),
+            )
+        )
+    if branch_input is not None:
+        requests = [
+            (kind, name, requested)
+            for kind, name, requested in requests
+            if not (name == variable and _overlaps(requested, period))
+        ]
+    return inputs, requests, variable, period, branch, branch_input
+
+
+def _read_from(built, branch, variable, branch_input):
+    if branch == "reform":
+        built = built.get_branch("reform")
+    elif branch == "nested":
+        built = built.get_branch("reform").get_branch("nested")
+    if branch_input is not None:
+        built.set_input(variable, branch_input[0], branch_input[1])
+    return built
+
+
+@settings(
+    max_examples=500,
+    deadline=None,
+    derandomize=True,
+    suppress_health_check=[HealthCheck.too_slow],
+)
+@given(scenario=scenarios(), auto_carry_over=st.booleans())
+# The regressions in test_uprating_order.py, as examples of the property.
+@example(
+    scenario=(
+        {"uprated_count": {"2012": [1001, 77]}},
+        [
+            ("calculate", "uprated_count", "2013"),
+            ("calculate", "uprated_count", "2014"),
+        ],
+        "uprated_count",
+        "2015",
+        None,
+        None,
+    ),
+    auto_carry_over=True,
+)
+@example(
+    scenario=(
+        {"uprated": {"2012": [1001.3, 77.7]}},
+        [("calculate", "uprated", "2013"), ("divide", "uprated", "2014")],
+        "uprated",
+        "2015",
+        "nested",
+        None,
+    ),
+    auto_carry_over=False,
+)
+@example(
+    scenario=(
+        {
+            "uprated_if_eligible": {"2012": [1000, 1000]},
+            "eligible": {"2012": [True, True], "2013": [False, True]},
+        },
+        [("calculate", "uprated_if_eligible", "2013")],
+        "uprated_if_eligible",
+        "2015",
+        "reform",
+        None,
+    ),
+    auto_carry_over=True,
+)
+@example(
+    scenario=(
+        {
+            "uprated_if_eligible": {"2012": [1000, 1000]},
+            "eligible": {"2012": [True, True], "2013": [False, False]},
+        },
+        [("add", "uprated_if_eligible", "2013")],
+        "uprated_if_eligible",
+        "2014",
+        None,
+        None,
+    ),
+    auto_carry_over=True,
+)
+@example(
+    scenario=(
+        {"uprated_with_default": {"2016": [1, 2]}},
+        [("calculate", "uprated_with_default", "2013")],
+        "uprated_with_default",
+        "2015",
+        None,
+        None,
+    ),
+    auto_carry_over=False,
+)
+@example(
+    scenario=(
+        {"uprated_any_unit": {"2012-03": [10, 20]}},
+        [
+            ("divide", "uprated_any_unit", "2012-03"),
+            ("calculate", "uprated_any_unit", "2013"),
+        ],
+        "uprated_any_unit",
+        "2015",
+        None,
+        None,
+    ),
+    auto_carry_over=True,
+)
+@example(
+    scenario=(
+        {"uprated_monthly": {"2011-06": [1001.3, 77.7]}},
+        [
+            ("calculate", "uprated_monthly", "2012-02"),
+            ("add", "uprated_monthly", "2013"),
+        ],
+        "uprated_monthly",
+        "2014-03",
+        None,
+        None,
+    ),
+    auto_carry_over=True,
+)
+# A branch input over a period the parent calculated before the fork.
+@example(
+    scenario=(
+        {"uprated": {"2012": [1, 2]}},
+        [("calculate", "uprated", "2013")],
+        "uprated",
+        "2015",
+        "reform",
+        ("2013", [300.0, 400.0]),
+    ),
+    auto_carry_over=True,
+)
+# Inputs that start on the same day: the one that ends last is uprated,
+# whichever was stored first.
+@example(
+    scenario=(
+        {"uprated": {"2012": [5.0, 6.0], "year:2012:2": [1.0, 2.0]}},
+        [],
+        "uprated",
+        "2015",
+        None,
+        None,
+    ),
+    auto_carry_over=False,
+)
+@example(
+    scenario=(
+        {"uprated_monthly": {"2012-01": [5.0, 6.0], "month:2012-01:3": [1.0, 2.0]}},
+        [("calculate", "uprated_monthly", "2012-02")],
+        "uprated_monthly",
+        "2013-03",
+        None,
+        None,
+    ),
+    auto_carry_over=True,
+)
+# A branch input that starts with the parent's input.
+@example(
+    scenario=(
+        {"uprated_count": {"year:2012:2": [1001, 77]}},
+        [],
+        "uprated_count",
+        "2015",
+        "nested",
+        ("2012", [5, 6]),
+    ),
+    auto_carry_over=True,
+)
+# Signed zero survives uprating from an input.
+@example(
+    scenario=(
+        {"uprated": {"2012": [-0.0, 0.0]}},
+        [("calculate", "uprated", "2013"), ("calculate", "uprated", "2014")],
+        "uprated",
+        "2015",
+        None,
+        None,
+    ),
+    auto_carry_over=False,
+)
+def test_uprating_depends_only_on_the_inputs(scenario, auto_carry_over):
+    inputs, requests, variable, period, branch, branch_input = scenario
+    system = SYSTEMS[auto_carry_over]
+
+    built = simulation(system, inputs)
+    for kind, requested_variable, requested_period in requests:
+        request(built, kind, requested_variable, requested_period)
+    result = _read_from(built, branch, variable, branch_input).calculate(
+        variable, period
+    )
+
+    fresh = _read_from(simulation(system, inputs), branch, variable, branch_input)
+    message = f"{variable} {period} after {requests}, branch {branch} {branch_input}"
+    assert_bitwise_equal(result, fresh.calculate(variable, period), message)
+
+    seen = {name: dict(values) for name, values in inputs.items()}
+    if branch_input is not None:
+        seen.setdefault(variable, {})[branch_input[0]] = branch_input[1]
+    assert_bitwise_equal(result, reference(system, seen, variable, period), message)
+
+
+def _set_inputs(system, sets, on_disk=frozenset()):
+    """A simulation given ``sets``, ``(variable, period, values)`` in the
+    order listed. The inputs at the ``(variable, period)`` pairs in
+    ``on_disk`` are stored on disk, the rest in memory."""
+    built = SimulationBuilder().build_default_simulation(system, count=COUNT)
+    if on_disk:
+        built.memory_config = MemoryConfig(max_memory_occupation=0)
+    for variable, period, values in sets:
+        holder = built.get_holder(variable)
+        if on_disk and holder._disk_storage is None:
+            holder._disk_storage = holder.create_disk_storage()
+        holder._on_disk_storable = (variable, period) in on_disk
+        built.set_input(variable, period, np.array(values))
+        holder._on_disk_storable = False
+    return built
+
+
+def _flatten(inputs):
+    return [
+        (variable, period, values)
+        for variable, by_period in inputs.items()
+        for period, values in by_period.items()
+    ]
+
+
+@st.composite
+def reordered_scenarios(draw):
+    """A scenario whose target variable has two or three inputs that start on
+    the same day, the order to set all the inputs in, and the inputs to put
+    on disk."""
+    inputs, requests, variable, period, branch, branch_input = draw(scenarios())
+    unit = "month" if variable == "uprated_monthly" else "year"
+    group = draw(st.sampled_from(TIES[unit]))
+    tied = draw(st.lists(st.sampled_from(group), min_size=2, max_size=3, unique=True))
+    values = st.lists(VALUES[variable], min_size=COUNT, max_size=COUNT)
+    inputs = {name: dict(by_period) for name, by_period in inputs.items()}
+    for tied_period in tied:
+        inputs[variable][tied_period] = draw(values)
+    sets = draw(st.permutations(_flatten(inputs)))
+    on_disk = draw(
+        st.sets(st.sampled_from([(variable, stored) for stored in inputs[variable]]))
+    )
+    return (inputs, requests, variable, period, branch, branch_input), sets, on_disk
+
+
+@settings(
+    max_examples=300,
+    deadline=None,
+    derandomize=True,
+    suppress_health_check=[HealthCheck.too_slow],
+)
+@given(scenario=reordered_scenarios(), auto_carry_over=st.booleans())
+def test_uprating_does_not_depend_on_the_order_inputs_were_set(
+    scenario, auto_carry_over
+):
+    (inputs, requests, variable, period, branch, branch_input), sets, on_disk = scenario
+    system = SYSTEMS[auto_carry_over]
+    results = []
+    for built in (
+        simulation(system, inputs),
+        _set_inputs(system, sets, frozenset(on_disk)),
+    ):
+        for kind, requested_variable, requested_period in requests:
+            request(built, kind, requested_variable, requested_period)
+        read = _read_from(built, branch, variable, branch_input)
+        results.append(read.calculate(variable, period))
+    message = f"{variable} {period}, set in order {sets}, on disk {on_disk}"
+    assert_bitwise_equal(results[1], results[0], message)
+
+    seen = {name: dict(values) for name, values in inputs.items()}
+    if branch_input is not None:
+        seen.setdefault(variable, {})[branch_input[0]] = branch_input[1]
+    assert_bitwise_equal(results[1], reference(system, seen, variable, period), message)
+
+
+FLAT_INPUT_PERIODS = INPUT_YEARS + MULTI_YEARS + INPUT_MONTHS + MULTI_MONTHS
+
+
+@st.composite
+def flat_scenarios(draw):
+    """Inputs for ``uprated_flat`` and ``carried_any_unit`` alike, set in
+    any order, earlier requests on either, and a target year."""
+    values = st.lists(FLOATS, min_size=COUNT, max_size=COUNT)
+    by_period = draw(
+        st.dictionaries(
+            st.sampled_from(FLAT_INPUT_PERIODS), values, min_size=1, max_size=4
+        )
+    )
+    group = draw(st.sampled_from(TIES["year"]))
+    tied = draw(
+        st.just([])
+        | st.lists(st.sampled_from(group), min_size=2, max_size=3, unique=True)
+    )
+    for tied_period in tied:
+        by_period[tied_period] = draw(values)
+    inputs = {"uprated_flat": by_period, "carried_any_unit": by_period}
+    sets = draw(st.permutations(_flatten(inputs)))
+    requests = draw(
+        st.lists(
+            st.one_of(_requests_on("uprated_flat"), _requests_on("carried_any_unit")),
+            max_size=6,
+        )
+    )
+    return inputs, sets, requests, draw(st.sampled_from(YEARS))
+
+
+@settings(
+    max_examples=300,
+    deadline=None,
+    derandomize=True,
+    suppress_health_check=[HealthCheck.too_slow],
+)
+@given(scenario=flat_scenarios())
+@example(
+    scenario=(
+        {
+            "uprated_flat": {"year:2012:2": [1.0, 2.0], "2012": [5.0, 6.0]},
+            "carried_any_unit": {"year:2012:2": [1.0, 2.0], "2012": [5.0, 6.0]},
+        },
+        [
+            ("uprated_flat", "2012", [5.0, 6.0]),
+            ("carried_any_unit", "2012", [5.0, 6.0]),
+            ("uprated_flat", "year:2012:2", [1.0, 2.0]),
+            ("carried_any_unit", "year:2012:2", [1.0, 2.0]),
+        ],
+        [],
+        "2015",
+    )
+)
+def test_flat_uprating_reads_the_input_auto_carry_over_reads(scenario):
+    """Two implementations of "the latest input": the uprating source and
+    the input auto-carry-over carries. They agree except in one case: the
+    period itself is not stored, an input in the variable's own unit starts
+    before it (so uprating starts from one), and another starts on its first
+    day (which auto-carry-over carries, and uprating, taking only inputs that
+    start before the period, does not)."""
+    inputs, sets, requests, period = scenario
+    system = SYSTEMS[True]
+    built = _set_inputs(system, sets)
+    for kind, requested_variable, requested_period in requests:
+        request(built, kind, requested_variable, requested_period)
+    uprated = built.calculate("uprated_flat", period)
+    carried = built.calculate("carried_any_unit", period)
+    target = periods.period(period)
+    stored = list(map(periods.period, inputs["uprated_flat"]))
+    own_unit = [each for each in stored if each.unit == target.unit]
+    diverge = (
+        target not in stored
+        and any(each.start < target.start for each in own_unit)
+        and any(each.start == target.start for each in own_unit)
+    )
+    message = f"{period}, set in order {sets}, after {requests}"
+    if not diverge:
+        assert_bitwise_equal(uprated, carried, message)
+    assert_bitwise_equal(
+        uprated, reference(system, inputs, "uprated_flat", period), message
+    )
+    assert_bitwise_equal(
+        carried, reference(system, inputs, "carried_any_unit", period), message
+    )

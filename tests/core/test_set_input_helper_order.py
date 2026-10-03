@@ -521,9 +521,11 @@ def test_a_restored_calculated_value_is_recalculated_after_a_reform():
 def test_a_sum_cached_over_an_input_stops_counting_as_an_input():
     simulation = build_simulation()
     simulation.set_input("flow_m", "month:2013-01:12", np.array([50.0, 60.0]))
-    # ``calculate_add`` caches the sum of the months over the input stored
-    # for the year.
-    simulation.calculate_add("flow_m", "2013")
+    # A calculated value stored over the input for the year, as master's
+    # ``calculate_add`` stores the sum of the months there.
+    simulation.get_holder("flow_m").put_in_cache(
+        np.zeros(2, dtype=np.float32), periods.period("2013")
+    )
 
     simulation.set_input("flow_m", "2013", YEARLY_INPUT)
 

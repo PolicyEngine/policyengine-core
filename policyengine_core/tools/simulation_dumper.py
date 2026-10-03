@@ -45,15 +45,7 @@ def restore_simulation(directory, tax_benefit_system, **kwargs):
 
     entities_dump_dir = os.path.join(directory, "__entities__")
     for population in simulation.populations.values():
-        if population.entity.is_person:
-            continue
-        person_count = _restore_entity(population, entities_dump_dir)
-
-    for population in simulation.populations.values():
-        if not population.entity.is_person:
-            continue
         _restore_entity(population, entities_dump_dir)
-        population.count = person_count
 
     variables_to_restore = (
         variable for variable in os.listdir(directory) if variable != "__entities__"
@@ -101,6 +93,9 @@ def _restore_entity(population, directory):
     path = os.path.join(directory, population.entity.key)
 
     population.ids = np.load(os.path.join(path, "id.npy"))
+    # The number of entities cannot be inferred from the members mapping, as
+    # a group entity may have no member at all: use the dumped ids instead.
+    population.count = len(population.ids)
 
     if population.entity.is_person:
         return
@@ -117,9 +112,6 @@ def _restore_entity(population, directory):
             [encoded_roles == role.key for role in flattened_roles],
             [role for role in flattened_roles],
         )
-    person_count = len(population.members_entity_id)
-    population.count = max(population.members_entity_id) + 1
-    return person_count
 
 
 def _restore_holder(simulation, variable, directory):

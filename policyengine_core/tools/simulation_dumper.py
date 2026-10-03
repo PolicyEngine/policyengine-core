@@ -2,12 +2,21 @@
 
 
 import os
+import warnings
 
 import numpy as np
 
 from policyengine_core.data_storage import OnDiskStorage
+from policyengine_core import periods
 from policyengine_core.periods import ETERNITY
 from policyengine_core.simulations import Simulation
+
+# Next to each variable's arrays: the periods, one per line, whose dumped
+# value was an input (stored through ``set_input``). ``restore_simulation``
+# registers exactly these as inputs, so ``apply_reform``, which keeps inputs
+# and drops calculated values, keeps the same values in the restored
+# simulation as in the dumped one.
+INPUT_PERIODS_FILE = "inputs.txt"
 
 
 def dump_simulation(simulation, directory):
@@ -26,24 +35,27 @@ def dump_simulation(simulation, directory):
     entities_dump_dir = os.path.join(directory, "__entities__")
     os.mkdir(entities_dump_dir)
 
+    input_keys = _input_storage_keys(simulation)
     for entity in simulation.populations.values():
         # Dump entity structure
         _dump_entity(entity, entities_dump_dir)
 
         # Dump variable values
         for holder in entity._holders.values():
-            _dump_holder(holder, directory)
+            _dump_holder(holder, directory, input_keys)
 
 
 def restore_simulation(directory, tax_benefit_system, **kwargs):
     """
     Restore simulation from directory
 
-    A dump does not say which of its values were inputs, so every value is
-    restored as an input (recorded in ``_user_input_keys``, as ``set_input``
-    records one). An input set later over a longer period then keeps the
-    restored values of its sub-periods, as it would have kept them in the
-    dumped simulation if they were inputs there.
+    Values the dumped simulation stored as inputs are restored as inputs
+    (recorded in ``_user_input_keys``, as ``set_input`` records them), and
+    every other value as a calculated one, so ``apply_reform`` keeps and drops
+    the same values it would have in the dumped simulation. A dump written
+    before inputs were recorded (no ``inputs.txt``) does not say which values
+    were inputs, so every value in it is restored as an input, with a
+    warning: ``apply_reform`` then keeps its calculated values as dumped.
     """
     simulation = Simulation(
         tax_benefit_system, tax_benefit_system.instantiate_entities()
@@ -64,17 +76,58 @@ def restore_simulation(directory, tax_benefit_system, **kwargs):
     variables_to_restore = (
         variable for variable in os.listdir(directory) if variable != "__entities__"
     )
-    for variable in variables_to_restore:
-        _restore_holder(simulation, variable, directory)
+    without_input_record = [
+        variable
+        for variable in variables_to_restore
+        if not _restore_holder(simulation, variable, directory)
+    ]
+    if without_input_record:
+        warnings.warn(
+            f"The simulation dump in {directory} does not record which values "
+            f"were inputs ({len(without_input_record)} variables have no "
+            f"{INPUT_PERIODS_FILE}; it was written by an earlier version of "
+            "policyengine-core). Every value in it is restored as an input, "
+            "so apply_reform keeps the calculated values as dumped instead of "
+            "recalculating them. Dump the simulation again to record its "
+            "inputs.",
+            stacklevel=2,
+        )
 
     return simulation
 
 
-def _dump_holder(holder, directory):
+def _dump_holder(holder, directory, input_keys=frozenset()):
     disk_storage = holder.create_disk_storage(directory, preserve=True)
+    input_periods = []
     for period in holder.get_known_periods():
         value = holder.get_array(period)
         disk_storage.put(value, period)
+        # The input record of exactly the value dumped: ``get_array`` above
+        # reads the default branch.
+        if (holder.variable.name, "default", str(period)) in input_keys:
+            input_periods.append(str(period))
+    path = os.path.join(disk_storage.storage_dir, INPUT_PERIODS_FILE)
+    with open(path, "w") as file:
+        file.write("".join(f"{period}\n" for period in dict.fromkeys(input_periods)))
+
+
+def _input_storage_keys(simulation):
+    """The storage keys ``_user_input_keys`` records as inputs.
+
+    Each record entry becomes ``(variable, branch, period)`` with the period
+    as storage writes it, as ``Simulation._invalidate_all_caches`` reads the
+    record back through the storage: an ETERNITY variable's one value is an
+    input whatever period its entry names.
+    """
+    input_keys = set()
+    for name, branch_name, period in getattr(simulation, "_user_input_keys", ()):
+        variable = simulation.tax_benefit_system.get_variable(name)
+        if variable is not None and variable.definition_period == ETERNITY:
+            period = ETERNITY
+        elif period is None:
+            continue
+        input_keys.add((name, branch_name, str(periods.period(period))))
+    return input_keys
 
 
 def _dump_entity(population, directory):
@@ -129,6 +182,7 @@ def _restore_entity(population, directory):
 
 
 def _restore_holder(simulation, variable, directory):
+    """Restore one variable's values; return whether its inputs were recorded."""
     storage_dir = os.path.join(directory, variable)
     is_variable_eternal = (
         simulation.tax_benefit_system.get_variable(variable).definition_period
@@ -141,9 +195,22 @@ def _restore_holder(simulation, variable, directory):
 
     holder = simulation.get_holder(variable)
 
+    input_periods_path = os.path.join(storage_dir, INPUT_PERIODS_FILE)
+    if os.path.exists(input_periods_path):
+        with open(input_periods_path) as file:
+            input_periods = set(file.read().split())
+    else:
+        # Dumped before inputs were recorded: nothing says which values were
+        # calculated, so keep every value as an input.
+        input_periods = None
+
     for period in disk_storage.get_known_periods():
         value = disk_storage.get(period)
-        _restore_input(simulation, holder, period, value)
+        if input_periods is None or str(period) in input_periods:
+            _restore_input(simulation, holder, period, value)
+        else:
+            holder.put_in_cache(value, period)
+    return input_periods is not None
 
 
 def _restore_input(simulation, holder, period, value):

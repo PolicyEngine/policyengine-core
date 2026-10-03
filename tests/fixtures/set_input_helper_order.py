@@ -29,6 +29,7 @@ from policyengine_core import periods
 from policyengine_core.country_template import CountryTaxBenefitSystem, entities
 from policyengine_core.enums import Enum
 from policyengine_core.experimental import MemoryConfig
+from policyengine_core.reforms import Reform
 from policyengine_core.holders import (
     set_input_dispatch_by_period,
     set_input_divide_by_period,
@@ -94,6 +95,22 @@ class formula_flow_m(Variable):
 
     def formula(person, period, parameters):
         return person.filled_array(10.0 + period.start.month)
+
+
+class FormulaReturns999(Reform):
+    """Replaces ``formula_flow_m``'s formula with one that returns 999."""
+
+    def apply(self):
+        class formula_flow_m(Variable):
+            value_type = float
+            entity = entities.Person
+            definition_period = periods.MONTH
+            label = "Monthly flow with a formula that returns 999"
+
+            def formula(person, period, parameters):
+                return person.filled_array(999.0)
+
+        self.update_variable(formula_flow_m)
 
 
 class flow_y(Variable):

@@ -52,6 +52,7 @@ from tests.fixtures.set_input_helper_order import (
     read,
     read_all,
     same_arrays,
+    storable_on_disk,
     sub_periods,
 )
 
@@ -119,7 +120,8 @@ def _run(first_inputs, requests_by_level, later_inputs, on_disk, depth):
             branch_name = BRANCH_NAMES[level - 1]
             simulation = simulation.get_branch(branch_name)
         for name, period in requests_by_level[level] if requests_by_level else []:
-            read(simulation, name, period)
+            if not on_disk or storable_on_disk(period):
+                read(simulation, name, period)
     outcomes = [
         apply_input(simulation, name, period, values)
         for name, period, values in later_inputs
@@ -162,8 +164,8 @@ def test_inputs_do_not_depend_on_what_was_calculated_before(
         name for name, period, _ in later_inputs if period in OWN_PERIODS[name]
     }
     other_periods_of = [name for name in NAMES if name not in given_own_period_input]
-    values = read_all(calculated, other_periods_of=other_periods_of)
-    fresh_values = read_all(fresh, other_periods_of=other_periods_of)
+    values = read_all(calculated, other_periods_of=other_periods_of, on_disk=on_disk)
+    fresh_values = read_all(fresh, other_periods_of=other_periods_of, on_disk=on_disk)
     assert values.keys() == fresh_values.keys()
     for key in values:
         assert same_arrays(values[key], fresh_values[key]), (

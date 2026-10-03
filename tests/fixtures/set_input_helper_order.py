@@ -308,9 +308,19 @@ def read(simulation, name: str, period: str) -> np.ndarray:
     return np.asarray(simulation.calculate(name, period))
 
 
-def read_all(simulation, names=NAMES, other_periods_of=NAMES) -> dict:
+def storable_on_disk(period: str) -> bool:
+    """Whether disk storage can hold a value calculated for ``period`` on any
+    platform: it names the file after the period, and Windows rejects ":" in
+    file names (policyengine-core#526)."""
+    return ":" not in period
+
+
+def read_all(
+    simulation, names=NAMES, other_periods_of=NAMES, on_disk: bool = False
+) -> dict:
     """Every read of ``names`` in a fixed order: each variable's own periods,
-    then, for those in ``other_periods_of``, the periods of another size."""
+    then, for those in ``other_periods_of``, the periods of another size
+    (with ``on_disk``, only those disk storage can hold)."""
     result = {}
     for name in names:
         for period in OWN_READS[name]:
@@ -318,7 +328,8 @@ def read_all(simulation, names=NAMES, other_periods_of=NAMES) -> dict:
     for name in names:
         if name in other_periods_of:
             for period in OTHER_READS[name]:
-                result[(name, period)] = read(simulation, name, period)
+                if not on_disk or storable_on_disk(period):
+                    result[(name, period)] = read(simulation, name, period)
     return result
 
 

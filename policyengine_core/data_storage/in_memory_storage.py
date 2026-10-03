@@ -113,11 +113,11 @@ class InMemoryStorage:
             self._stop_sharing(key)
         return values
 
-    # Each method below reads ``self._shared`` once and works on that set. Two
-    # threads making first reads at once (which the docstring of ``clone``
-    # allows, at the cost of an extra copy) can then each release the set
-    # without either one touching the shared-nothing object or an attribute
-    # the other has already removed.
+    # Each method below reads ``self._shared`` once and works on that set, and
+    # releases it with one ``dict.pop`` that never raises. A storage is still
+    # not safe to read from several threads at once (see ``clone``), but
+    # overlapping first reads do not raise here: neither can mutate the
+    # shared-nothing object or remove an attribute the other already removed.
 
     def _stop_sharing(self, key: str) -> None:
         """Record that ``key`` no longer refers to a shared array."""

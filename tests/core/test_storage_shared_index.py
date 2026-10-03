@@ -281,10 +281,11 @@ def test_branch_storages_have_a_set_only_for_the_arrays_they_share(
 
 # ----- Two threads making first reads at once ----- #
 #
-# ``InMemoryStorage.clone`` documents that two threads may make first reads of
-# one storage at once, at the cost of an extra copy. Releasing the set must not
-# turn that into an error. The first tests run one read inside another at the
-# point where a thread switch would do it, so they do not depend on timing.
+# ``InMemoryStorage.clone`` documents that a storage is not safe to read from
+# several threads at once; on 3.32.12 overlapping first reads never raised.
+# Releasing the set must not make them raise. The first tests run one read
+# inside another at the point where a thread switch would do it, so they do
+# not depend on timing.
 
 
 class _ReadInsideCheck(set):

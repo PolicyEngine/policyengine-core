@@ -1,0 +1,1 @@
+`restore_simulation` now restores as inputs the values the dumped simulation stored as inputs (`dump_simulation` lists their periods in an `inputs.txt` beside each variable's arrays), so `apply_reform` on a restored simulation no longer drops them; a dump written before this has no such list, so every value in it is restored as an input, with a warning.

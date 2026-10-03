@@ -36,6 +36,10 @@ class TracingParameterNodeAtInstant:
         self,
         key: str,
     ) -> Union[TracingParameterNodeAtInstant, Child]:
+        # ``parameter_node_at_instant`` is missing while copy or pickle
+        # rebuilds a wrapper, and looking it up would recurse here.
+        if key == "parameter_node_at_instant":
+            raise AttributeError(f"{type(self).__name__!s} has no attribute {key!r}")
         child = getattr(self.parameter_node_at_instant, key)
         return self.get_traced_child(child, key)
 

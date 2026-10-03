@@ -394,7 +394,7 @@ class Simulation:
         for population in self.populations.values():
             for holder in population._holders.values():
                 holder._memory_storage._arrays = {}
-                holder._memory_storage._derived = set()
+                holder._memory_storage._unmark_dropped_keys()
                 if holder._disk_storage is not None:
                     holder._disk_storage._files = {}
                     holder._disk_storage._derived = set()

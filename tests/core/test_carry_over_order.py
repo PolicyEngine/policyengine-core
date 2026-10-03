@@ -608,10 +608,11 @@ def test_storages_pickled_without_marks_still_work(on_disk, tmp_path):
     year = periods.period("2012")
     storage.put(np.array([10.0]), year)
     state = dict(storage.__dict__)
-    del state["_derived"]
+    # An in-memory storage holding only inputs has no marks of its own.
+    state.pop("_derived", None)
     state.pop("_shared", None)
     old = type(storage).__new__(type(storage))
-    old.__setstate__(state)
+    old.__dict__.update(state)
     restored = pickle.loads(pickle.dumps(old))
     assert restored.has(year) and not restored.is_derived(year)
     restored.clone()

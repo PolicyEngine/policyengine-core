@@ -1,3 +1,14 @@
+## [3.32.14] - 2026-10-03
+
+### Changed
+
+- The dev dependency on pytest-rerunfailures now requires 16.2 or later, whose reruns no longer leave a module-scoped fixture cached for later test modules.
+
+### Fixed
+
+- Tracing a simulation no longer switches tracing on in the parameter tree of its tax-benefit system, so other simulations, branches and clones of the system stay untraced, every traced simulation and branch records the parameters its formulas read under its own tracer and branch name, and traced parameter nodes can be copied, deep-copied, pickled, iterated and converted to arrays like untraced ones.
+
+
 ## [3.32.13] - 2026-10-03
 
 ### Fixed

@@ -103,6 +103,38 @@ def _uprating_index_value(parameter, instant) -> Optional[float]:
     return defined[-1].value
 
 
+_DAYS_BEFORE_MONTH = (0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334)
+
+
+def _end_order(period: Period) -> float:
+    """Sorts periods by when they end: the number of the day after the
+    period's last day, counting days as ``date.toordinal`` does.
+
+    ``period.stop`` gives the same order wherever it has a value, but it
+    raises for a period that ends after 9999-12-31 (``day:9999-12-30:3``),
+    the last date ``datetime`` can represent. This is integer arithmetic on
+    the same (proleptic Gregorian) calendar, so every period has a value and
+    one that ends later always sorts later.
+    """
+    unit, (year, month, day), size = period
+    if unit == ETERNITY:
+        return float("inf")
+    if unit == periods.DAY:
+        day += size
+    elif unit == MONTH:
+        year, month = divmod(year * 12 + month - 1 + size, 12)
+        month += 1
+    else:
+        year += size
+    # The first day of that month, then ``day - 1`` days on: a day past the
+    # month's end runs into the next month, as it does in ``period.stop``.
+    leap = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+    days_before_year = (
+        (year - 1) * 365 + (year - 1) // 4 - (year - 1) // 100 + (year - 1) // 400
+    )
+    return days_before_year + _DAYS_BEFORE_MONTH[month - 1] + (leap and month > 2) + day
+
+
 if TYPE_CHECKING:
     from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 
@@ -394,8 +426,10 @@ class Simulation:
         for population in self.populations.values():
             for holder in population._holders.values():
                 holder._memory_storage._arrays = {}
+                holder._memory_storage._unmark_dropped_keys()
                 if holder._disk_storage is not None:
                     holder._disk_storage._files = {}
+                    holder._disk_storage._derived = set()
         # Replay preserved user inputs so ``calculate`` still sees them.
         for user_input in preserved:
             holder = self.get_holder(user_input.variable_name)
@@ -881,7 +915,7 @@ class Simulation:
             if np.all(~mask):
                 array = holder.default_array()
                 array = self._cast_formula_result(array, variable)
-                holder.put_in_cache(array, period, self.branch_name)
+                holder.put_in_cache(array, period, self.branch_name, derived=True)
                 return array
 
         array = None
@@ -942,18 +976,63 @@ class Simulation:
                     and variable.calculate_output is None
                     and len(known_periods) > 0
                 ):
-                    # Variables with a calculate-output property specify
-                    # Sort by period.start (temporal order). Sorting Period
-                    # tuples lexicographically puts "year" before "month"
-                    # alphabetically, so a known "2023" annual value would
-                    # win over a later "2024-06" monthly value (bug H1).
-                    last_known_period = max(known_periods, key=lambda p: p.start)
-                    if last_known_period.start > period.start:
+                    # Carry over the latest input: of the stored periods that
+                    # start no later than ``period``, the one that starts last
+                    # (on a tie, the one that ends last, then the larger unit,
+                    # so the choice never depends on the order inputs were
+                    # stored), preferring periods at
+                    # the variable's own definition-period unit and using
+                    # another unit only when there is none, as for an input to
+                    # a variable with no ``set_input`` helper. Compare
+                    # period.start (temporal order): sorting Period tuples
+                    # lexicographically puts "year" before "month"
+                    # alphabetically, so a known "2023" annual value would win
+                    # over a later "2024-06" monthly value (bug H1).
+                    #
+                    # Only inputs carry. Every value this simulation
+                    # calculated is marked derived when cached (formula
+                    # results, carried, uprated and default values, a twelfth
+                    # cached by ``calculate_divide``, a sum cached by
+                    # ``calculate_add``), and carrying one would make the
+                    # result depend on what was calculated first: a later
+                    # period's carried value would hide an earlier input, and
+                    # a value already masked by ``defined_for``, or given by a
+                    # formula that has since ended, would carry forward.
+                    # A later input does not carry backwards.
+                    last_known_period = max(
+                        (
+                            input_period
+                            for input_period in holder.get_input_periods(
+                                self.branch_name
+                            )
+                            if input_period.start <= period.start
+                        ),
+                        key=lambda p: (
+                            p.unit == variable.definition_period,
+                            p.start,
+                            _end_order(p),
+                            periods.unit_weight(p.unit),
+                            str(p),
+                        ),
+                        default=None,
+                    )
+                    if last_known_period is not None:
+                        # Pass branch_name through so auto-carry-over respects
+                        # the active branch instead of reaching for the
+                        # "default" branch's cache (bug H2).
+                        array = holder.get_array(last_known_period, self.branch_name)
+                    elif any(
+                        known_period.start > period.start
+                        for known_period in known_periods
+                    ):
+                        # No input to carry, but a later period is stored: as
+                        # before, return the default without caching it. A
+                        # cached default would change what a formula testing
+                        # whether a value is stored sees, and the uprating path
+                        # above would uprate later periods from it.
                         return holder.default_array()
-                    # Pass branch_name through so auto-carry-over respects the
-                    # active branch instead of reaching for the "default"
-                    # branch's cache (bug H2).
-                    array = holder.get_array(last_known_period, self.branch_name)
+                    else:
+                        array = holder.default_array()
                 else:
                     array = holder.default_array()
 
@@ -969,7 +1048,8 @@ class Simulation:
                     array = EnumArray(array, variable.possible_values)
 
             array = self._cast_formula_result(array, variable)
-            holder.put_in_cache(array, period, self.branch_name)
+            # Calculated, not input: auto-carry-over never carries it.
+            holder.put_in_cache(array, period, self.branch_name, derived=True)
 
         except SpiralError:
             array = holder.default_array()
@@ -1044,12 +1124,16 @@ class Simulation:
                 )
             )
 
+        sub_periods = list(period.get_subperiods(variable.definition_period))
         result = sum(
-            self.calculate(variable_name, sub_period)
-            for sub_period in period.get_subperiods(variable.definition_period)
+            self.calculate(variable_name, sub_period) for sub_period in sub_periods
         )
-        holder = self.get_holder(variable.name)
-        holder.put_in_cache(result, period, self.branch_name)
+        # Cache only a sum over several sub-periods, as derived from them. A
+        # single sub-period's value is already stored, as an input or
+        # derived, by ``calculate``.
+        if len(sub_periods) > 1:
+            holder = self.get_holder(variable.name)
+            holder.put_in_cache(result, period, self.branch_name, derived=True)
         return result
 
     def calculate_divide(
@@ -1082,7 +1166,7 @@ class Simulation:
             computation_period = period.this_year
             result = self.calculate(variable_name, period=computation_period) / 12.0
             holder = self.get_holder(variable.name)
-            holder.put_in_cache(result, period, self.branch_name)
+            holder.put_in_cache(result, period, self.branch_name, derived=True)
             return result
         elif period.unit == periods.YEAR:
             return self.calculate(variable_name, period)

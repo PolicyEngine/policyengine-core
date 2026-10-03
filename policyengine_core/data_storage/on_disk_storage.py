@@ -22,9 +22,18 @@ class OnDiskStorage:
     ):
         self._files = {}
         self._enums = {}
+        # File keys stored with ``put(..., derived=True)``; see
+        # ``InMemoryStorage``.
+        self._derived = set()
         self.is_eternal = is_eternal
         self.preserve_storage_dir = preserve_storage_dir
         self.storage_dir = storage_dir
+
+    def __setstate__(self, state: dict) -> None:
+        # A storage pickled before derived marks existed has none: its values
+        # count as inputs.
+        state.setdefault("_derived", set())
+        self.__dict__.update(state)
 
     def clone(self) -> "OnDiskStorage":
         """Create a private metadata view over this storage directory.
@@ -43,6 +52,7 @@ class OnDiskStorage:
         )
         clone._files = self._files.copy()
         clone._enums = self._enums.copy()
+        clone._derived = set(self._derived)
         clone._storage_dir_owner = getattr(self, "_storage_dir_owner", self)
         return clone
 
@@ -63,8 +73,29 @@ class OnDiskStorage:
             return None
         return self._decode_file(values)
 
+    def has(self, period: Period, branch_name: str = "default") -> bool:
+        """Whether a value is stored for ``period`` under ``branch_name``.
+
+        Unlike ``get``, this reads no file.
+        """
+        if self.is_eternal:
+            period = periods.period(periods.ETERNITY)
+        return f"{branch_name}_{periods.period(period)}" in self._files
+
+    def is_derived(self, period: Period, branch_name: str = "default") -> bool:
+        """Whether the value stored for ``period`` under ``branch_name`` was
+        stored with ``derived=True``; ``False`` if none is stored."""
+        if self.is_eternal:
+            period = periods.period(periods.ETERNITY)
+        key = f"{branch_name}_{periods.period(period)}"
+        return key in self._derived and key in self._files
+
     def put(
-        self, value: ArrayLike, period: Period, branch_name: str = "default"
+        self,
+        value: ArrayLike,
+        period: Period,
+        branch_name: str = "default",
+        derived: bool = False,
     ) -> None:
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
@@ -77,6 +108,10 @@ class OnDiskStorage:
             value = value.view(numpy.ndarray)
         numpy.save(path, value)
         self._files[filename] = path
+        if derived:
+            self._derived.add(filename)
+        else:
+            self._derived.discard(filename)
 
     def delete(self, period: Period = None, branch_name: str = "default") -> None:
         if period is None:
@@ -89,6 +124,7 @@ class OnDiskStorage:
                 for period_item, value in self._files.items()
                 if not period_item.startswith(branch_prefix)
             }
+            self._derived.intersection_update(self._files)
             return
 
         if self.is_eternal:
@@ -101,6 +137,7 @@ class OnDiskStorage:
                 for period_item, value in self._files.items()
                 if not period_item == f"{branch_name}_{period}"
             }
+            self._derived.intersection_update(self._files)
 
     def get_known_periods(self) -> list:
         return list([periods.period(x.split("_")[1]) for x in self._files.keys()])
@@ -113,6 +150,8 @@ class OnDiskStorage:
 
     def restore(self) -> None:
         self._files = files = {}
+        # Files read back from a directory carry no derived marks.
+        self._derived = set()
         # Restore self._files from content of storage_dir.
         for filename in os.listdir(self.storage_dir):
             if not filename.endswith(".npy"):

@@ -6,9 +6,9 @@ on clones of the system. After every step:
 
 - the parameter tree of the system, and of every clone made of it, is as
   untraced as a fresh system's;
-- a traced simulation records exactly the parameter reads the same
-  calculation records when traced on a fresh system, and a branch records only
-  reads such a calculation makes, all under the branch's own name;
+- a traced simulation, or a branch of one, records exactly the parameter
+  reads the same calculation records when traced on a fresh system, a
+  branch's all under its own name;
 - every value equals the same calculation on a system nothing has traced.
 
 ``test_tracing_parameter_isolation.py`` has the example tests.
@@ -88,13 +88,13 @@ def test_traced_record_does_not_depend_on_history(steps):
             assert parameter_reads(simulation.tracer.trees) == expected_reads
         elif kind == "branch":
             simulation = build_simulation(system, trace=True)
-            # The parent reads parameters at the same instant first.
-            simulation.calculate("income_tax", month)
+            # The parent reads parameters at the same instant first. An input
+            # has no formula, so the branch reuses nothing that reads them.
+            simulation.calculate("salary", month)
             trees_before = len(simulation.tracer.trees)
             value = simulation.get_branch("policy").calculate(variable_name, period)
             reads = parameter_reads(simulation.tracer.trees[trees_before:])
-            assert {branch_name for _, branch_name in reads} <= {"policy"}
-            assert {name for name, _ in reads} <= {name for name, _ in expected_reads}
+            assert reads == [(name, "policy") for name, _ in expected_reads]
         else:
             clone = system.clone()
             systems.append(clone)

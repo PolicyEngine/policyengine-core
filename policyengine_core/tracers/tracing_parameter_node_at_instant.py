@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import typing
-from typing import Union
+from typing import Iterator, Union
 
 import numpy
 
@@ -21,20 +21,39 @@ if typing.TYPE_CHECKING:
     Child = Union[ParameterNode, ArrayLike]
 
 
+# Copying and pickling look these names up on an instance. Answered by the
+# wrapped object, they would copy or restore the wrapped object, not the
+# wrapper.
+_COPY_PROTOCOL = frozenset(
+    {
+        "__copy__",
+        "__deepcopy__",
+        "__getstate__",
+        "__setstate__",
+        "__reduce__",
+        "__reduce_ex__",
+        "__getnewargs__",
+        "__getnewargs_ex__",
+    }
+)
+
+
 def _wrapped(wrapper: object, attribute: str, key: str) -> object:
     """Return the object ``wrapper`` delegates the lookup of ``key`` to.
 
     ``__getattr__`` only runs when normal lookup fails. Two such lookups must
     not reach the wrapped object:
 
-    - special names, which ``copy``, ``deepcopy`` and ``pickle`` probe on an
-      instance (``__deepcopy__``, ``__setstate__``, ...). The wrapped
-      object's answer would act on the wrapped object, not on the wrapper;
-    - any name on an instance those protocols have created with ``__new__``
-      and not filled in yet. It has no ``attribute``, so reading it here
-      would call ``__getattr__`` again, without end.
+    - the copy and pickle protocol (``__deepcopy__``, ``__setstate__``, ...);
+    - any name on an instance ``copy`` or ``pickle`` has created with
+      ``__new__`` and not filled in yet. It has no ``attribute``, so reading
+      it here would call ``__getattr__`` again, without end.
+
+    Every other name is delegated, special names included: NumPy reads its
+    array protocol (``__array_interface__``, ...) from a vectorial node this
+    way.
     """
-    if key.startswith("__") and key.endswith("__"):
+    if key in _COPY_PROTOCOL:
         raise AttributeError(key)
     try:
         return wrapper.__dict__[attribute]
@@ -51,7 +70,8 @@ class TracingParameterNode:
 
     The wrapped node is never modified, so tracing one simulation does not
     trace the tax-benefit system it shares with other simulations, branches
-    and clones.
+    and clones. Like :class:`TracingParameterNodeAtInstant`, it is not an
+    instance of the class it wraps.
     """
 
     def __init__(
@@ -80,6 +100,9 @@ class TracingParameterNode:
     def __getattr__(self, key: str):
         return getattr(_wrapped(self, "parameter_node", key), key)
 
+    def __repr__(self) -> str:
+        return repr(self.parameter_node)
+
 
 class TracingParameterNodeAtInstant:
     def __init__(
@@ -105,6 +128,13 @@ class TracingParameterNodeAtInstant:
     ) -> Union[TracingParameterNodeAtInstant, Child]:
         child = self.parameter_node_at_instant[key]
         return self.get_traced_child(child, key)
+
+    def __iter__(self) -> Iterator:
+        # Without it, ``iter`` and ``in`` fall back to ``__getitem__(0)``.
+        return iter(self.parameter_node_at_instant)
+
+    def __repr__(self) -> str:
+        return repr(self.parameter_node_at_instant)
 
     def get_traced_child(
         self,

@@ -48,6 +48,9 @@ from policyengine_core.tracers import (
     TracingParameterNodeAtInstant,
 )
 from policyengine_core.variables import Variable
+from tests.core.parameters_fancy_indexing.test_fancy_indexing import (
+    parameters as fancy_indexing_parameters,
+)
 from tests.fixtures.tracing import (
     assert_untraced,
     build_simulation,
@@ -191,6 +194,30 @@ def test_traced_formula_can_read_parameters_by_attribute(isolated_tax_benefit_sy
     assert traced[0] == system.parameters(INSTANT).taxes.income_tax_rate
 
 
+def test_traced_formula_can_iterate_a_parameter_node(isolated_tax_benefit_system):
+    """Iteration and ``in`` fell back to ``__getitem__(0)`` on a traced node."""
+    system = isolated_tax_benefit_system
+
+    class taxes_node_shape(Variable):
+        value_type = float
+        entity = Person
+        definition_period = MONTH
+        label = "Children of the taxes node, plus 10 if it has the rate"
+
+        def formula(person, period, parameters):
+            taxes = parameters(period).taxes
+            has_rate = "income_tax_rate" in taxes
+            return person.filled_array(len(list(taxes)) + 10 * has_rate)
+
+    system.add_variable(taxes_node_shape)
+
+    traced = build_simulation(system, trace=True).calculate("taxes_node_shape", JANUARY)
+    untraced = build_simulation(system).calculate("taxes_node_shape", JANUARY)
+
+    np.testing.assert_array_equal(traced, untraced)
+    assert untraced[0] == len(list(system.parameters(INSTANT).taxes)) + 10
+
+
 # ----- Tracing never changes a value ----- #
 
 
@@ -233,6 +260,33 @@ def test_tracing_parameter_node_reads_through_to_the_node(isolated_tax_benefit_s
     assert at_instant.branch_name == "policy"
     assert type(view.get_at_instant(INSTANT)) is TracingParameterNodeAtInstant
     assert_untraced(parameters)
+
+
+def test_tracing_wrappers_show_the_node_they_wrap(isolated_tax_benefit_system):
+    parameters = isolated_tax_benefit_system.parameters
+    view = TracingParameterNode(parameters, FullTracer(), "default")
+
+    assert repr(view) == repr(parameters)
+    assert repr(view(INSTANT)) == repr(parameters(INSTANT))
+    assert list(view(INSTANT).taxes) == list(parameters(INSTANT).taxes)
+
+
+def test_traced_vectorial_node_converts_to_the_same_array():
+    """NumPy reads the array protocol through the wrapper, as untraced."""
+    rates = fancy_indexing_parameters("2015-01-01").rate
+    status = np.asarray(["owner", "tenant"])
+    untraced = rates.single[status]
+    traced = TracingParameterNodeAtInstant(rates, FullTracer(), "default").single[
+        status
+    ]
+    assert type(traced) is TracingParameterNodeAtInstant
+
+    expected = np.asarray(untraced)
+    converted = np.asarray(traced)
+
+    assert converted.dtype == expected.dtype
+    assert converted.shape == expected.shape
+    np.testing.assert_array_equal(converted, expected)
 
 
 def test_tracing_parameter_node_records_in_its_own_tracer_when_the_node_traces(

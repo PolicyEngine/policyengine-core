@@ -155,6 +155,34 @@ def test_an_input_ending_after_the_last_date_ends_last(system, longer_first):
     )
 
 
+@pytest.mark.parametrize("longer_first", [True, False], ids=["longer", "shorter"])
+def test_of_two_inputs_ending_after_the_last_date_the_later_carries(
+    system, longer_first
+):
+    """Both end after 9999-12-31. As strings, ``:10`` sorts before ``:9``."""
+    values = {"day:9999-12-30:10": [10, 10], "day:9999-12-30:9": [9, 9]}
+    order = list(values) if longer_first else list(values)[::-1]
+    inputs = {"day_input_without_helper": {key: values[key] for key in order}}
+    np.testing.assert_array_equal(
+        alone(system, inputs, "day_input_without_helper", "9999-12-31"), [10, 10]
+    )
+
+
+@pytest.mark.parametrize("months_first", [True, False], ids=["months", "days"])
+def test_inputs_in_two_units_ending_after_the_last_date_carry_the_later(
+    system, months_first
+):
+    """800 days from 1 February 9999 end after 24 months from the same day.
+    The larger unit and the string order both favour the months, so only
+    the end picks the days."""
+    values = {"day:9999-02-01:800": [8, 8], "month:9999-02:24": [24, 24]}
+    order = list(values)[::-1] if months_first else list(values)
+    inputs = {"year_input_without_helper": {key: values[key] for key in order}}
+    np.testing.assert_array_equal(
+        alone(system, inputs, "year_input_without_helper", "year:9999-02"), [8, 8]
+    )
+
+
 def test_later_input_does_not_carry_backwards(system):
     built = simulation(system, {"carried": {"2012": [7, 8], "2014": [9, 10]}})
     np.testing.assert_array_equal(built.calculate("carried", "2011"), [0, 0])

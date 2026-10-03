@@ -103,15 +103,36 @@ def _uprating_index_value(parameter, instant) -> Optional[float]:
     return defined[-1].value
 
 
-def _end_order(period: Period) -> tuple:
-    """Sorts periods by when they end. A period that ends after the last
-    date ``datetime`` can represent (``day:9999-12-30:3``) has no ``stop``,
-    which raises ``OverflowError``; it sorts after every period that has
-    one."""
-    try:
-        return (0, period.stop)
-    except OverflowError:
-        return (1,)
+_DAYS_BEFORE_MONTH = (0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334)
+
+
+def _end_order(period: Period) -> float:
+    """Sorts periods by when they end: the number of the day after the
+    period's last day, counting days as ``date.toordinal`` does.
+
+    ``period.stop`` gives the same order wherever it has a value, but it
+    raises for a period that ends after 9999-12-31 (``day:9999-12-30:3``),
+    the last date ``datetime`` can represent. This is integer arithmetic on
+    the same (proleptic Gregorian) calendar, so every period has a value and
+    one that ends later always sorts later.
+    """
+    unit, (year, month, day), size = period
+    if unit == ETERNITY:
+        return float("inf")
+    if unit == periods.DAY:
+        day += size
+    elif unit == MONTH:
+        year, month = divmod(year * 12 + month - 1 + size, 12)
+        month += 1
+    else:
+        year += size
+    # The first day of that month, then ``day - 1`` days on: a day past the
+    # month's end runs into the next month, as it does in ``period.stop``.
+    leap = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+    days_before_year = (
+        (year - 1) * 365 + (year - 1) // 4 - (year - 1) // 100 + (year - 1) // 400
+    )
+    return days_before_year + _DAYS_BEFORE_MONTH[month - 1] + (leap and month > 2) + day
 
 
 if TYPE_CHECKING:

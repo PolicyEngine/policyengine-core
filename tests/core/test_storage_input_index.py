@@ -213,11 +213,14 @@ def test_values_from_an_older_pickle_count_as_inputs():
     assert not restored.is_derived("2017-01")
     assert restored.is_derived("2017-02")
     assert "_derived" not in vars(restored)
+    # A state with no set of shared keys gets none.
+    assert "_shared" not in vars(restored)
 
     # An older storage with nothing stored needs no set.
     restored = InMemoryStorage.__new__(InMemoryStorage)
     restored.__setstate__(_older_state(InMemoryStorage(is_eternal=False)))
     assert restored._inputs is _NO_INPUTS
+    assert restored._shared is _NOTHING_SHARED
     restored.put(np.array([2.0]), "2017-03", derived=True)
     assert restored.is_derived("2017-03")
 

@@ -254,3 +254,76 @@ def test_carry_over_depends_only_on_the_inputs(scenario):
     np.testing.assert_array_equal(
         result, reference(SYSTEM, inputs, variable, period), err_msg=message
     )
+
+
+# ----- The order of period ends ----- #
+
+from datetime import date  # noqa: E402
+
+from policyengine_core.simulations.simulation import _end_order  # noqa: E402
+
+_starts = st.dates(min_value=date(1, 1, 1), max_value=date(9999, 12, 31))
+_units = st.sampled_from([periods.DAY, periods.MONTH, periods.YEAR])
+
+
+def _period(unit, start, size):
+    return periods.Period(
+        (unit, periods.Instant((start.year, start.month, start.day)), size)
+    )
+
+
+def _numpy_day_after(period):
+    """The day after the period's last day, on numpy's calendar, which runs
+    past year 9999: an implementation that shares nothing with
+    ``_end_order`` or ``Period.stop``."""
+    unit, (year, month, day), size = period
+    if unit == periods.DAY:
+        return np.datetime64(f"{year:04d}-{month:02d}-{day:02d}") + np.timedelta64(
+            size, "D"
+        )
+    months = size if unit == periods.MONTH else 12 * size
+    first = np.datetime64(f"{year:04d}-{month:02d}") + np.timedelta64(months, "M")
+    return first.astype("datetime64[D]") + np.timedelta64(day - 1, "D")
+
+
+@settings(max_examples=1000, deadline=None, derandomize=True)
+@given(unit=_units, start=_starts, size=st.integers(min_value=1, max_value=5_000_000))
+@example(unit=periods.DAY, start=date(9999, 12, 30), size=3)
+@example(unit=periods.MONTH, start=date(2012, 1, 31), size=1)
+@example(unit=periods.YEAR, start=date(2012, 2, 29), size=1)
+@example(unit=periods.MONTH, start=date(9999, 2, 1), size=24)
+def test_end_order_is_the_day_after_the_last_day(unit, start, size):
+    """Against two other implementations: ``Period.stop`` where it has a
+    value, and numpy's calendar everywhere."""
+    period = _period(unit, start, size)
+    day_one = np.datetime64("0001-01-01")
+    expected = int((_numpy_day_after(period) - day_one) / np.timedelta64(1, "D")) + 1
+    assert _end_order(period) == expected
+    try:
+        stop = date(*period.stop)
+    except (OverflowError, ValueError):
+        # Ends after 9999-12-31, the last date ``datetime`` has: ``stop``
+        # raises, or gives a year no ``date`` can hold.
+        assert expected > date.max.toordinal() + 1
+    else:
+        assert _end_order(period) == stop.toordinal() + 1
+
+
+@settings(max_examples=500, deadline=None, derandomize=True)
+@given(
+    unit=_units,
+    start=_starts,
+    size=st.integers(min_value=1, max_value=5_000_000),
+    more=st.integers(min_value=1, max_value=1000),
+)
+def test_a_longer_period_from_the_same_day_ends_later(unit, start, size, more):
+    assert _end_order(_period(unit, start, size + more)) > _end_order(
+        _period(unit, start, size)
+    )
+
+
+def test_eternity_ends_after_every_other_period():
+    eternity = periods.period(periods.ETERNITY)
+    assert _end_order(eternity) > _end_order(
+        _period(periods.YEAR, date(9999, 1, 1), 5_000_000)
+    )

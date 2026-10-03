@@ -370,6 +370,20 @@ def test_a_dropped_sum_leaves_calculates_fast_cache():
     assert_reads(simulation, "flow_m", {"year:2013:2": YEARLY_INPUT})
 
 
+def test_an_input_under_a_branch_the_simulation_does_not_read_keeps_its_fast_cache():
+    simulation = build_simulation()
+    assert_reads(simulation, "flow_m", {"2013-01": [0, 0]})
+    cached = simulation._fast_cache[("flow_m", periods.period("2013-01"))]
+
+    simulation.get_holder("flow_m").set_input(
+        periods.period("2013"), YEARLY_INPUT, "elsewhere"
+    )
+
+    # The simulation reads only ``default``, so what it returned is unchanged.
+    assert simulation._fast_cache[("flow_m", periods.period("2013-01"))] is cached
+    assert_reads(simulation, "flow_m", {"2013-01": [0, 0]})
+
+
 def test_a_helper_called_directly_stores_inputs():
     simulation = build_simulation()
     assert_reads(simulation, "flow_m", {"2013-01": [0, 0]})
@@ -515,37 +529,6 @@ def test_a_restored_calculated_value_is_recalculated_after_a_reform():
     assert_reads(restored, "formula_flow_m", {"2013-01": [999, 999]})
 
 
-# A calculated value replacing an input
-
-
-def test_a_sum_cached_over_an_input_stops_counting_as_an_input():
-    simulation = build_simulation()
-    simulation.set_input("flow_m", "month:2013-01:12", np.array([50.0, 60.0]))
-    # A calculated value stored over the input for the year, as master's
-    # ``calculate_add`` stores the sum of the months there.
-    simulation.get_holder("flow_m").put_in_cache(
-        np.zeros(2, dtype=np.float32), periods.period("2013")
-    )
-
-    simulation.set_input("flow_m", "2013", YEARLY_INPUT)
-
-    assert_reads(simulation, "flow_m", {"2013-01": MONTHLY_SHARE, "2013": YEARLY_INPUT})
-    simulation._invalidate_all_caches()
-    assert_reads(simulation, "flow_m", {"2013-01": MONTHLY_SHARE, "2013": YEARLY_INPUT})
-
-
-def test_a_calculated_value_replacing_an_input_is_not_kept_by_a_reform():
-    simulation = build_simulation()
-    simulation.set_input("formula_flow_m", "2013-01", np.array([5.0, 5.0]))
-    holder = simulation.get_holder("formula_flow_m")
-    holder.put_in_cache(np.array([7.0, 7.0]), periods.period("2013-01"))
-
-    simulation._invalidate_all_caches()
-
-    assert_reads(simulation, "formula_flow_m", {"2013-01": [11, 11]})
-
-
-# Values stored on disk
 # Values stored on disk
 
 

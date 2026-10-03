@@ -72,9 +72,28 @@ def _store_input(
     input_keys = getattr(simulation, "_user_input_keys", None)
     if input_keys is not None:
         input_keys.add((holder.variable.name, branch_name, period))
+    _evict_fast_cache(holder, [period], branch_name)
+
+
+def _evict_fast_cache(holder: Holder, changed_periods, branch_name: str) -> None:
+    """Drop ``calculate``'s fast-cache entries for the variable's
+    ``changed_periods``, if the simulation reads ``branch_name``.
+
+    The fast cache holds what this simulation's ``calculate`` returned; a
+    value stored under a branch it does not read changes none of that.
+    """
+    simulation = getattr(holder, "simulation", None)
     fast_cache = getattr(simulation, "_fast_cache", None)
-    if fast_cache:
-        fast_cache.pop((holder.variable.name, period), None)
+    if not fast_cache:
+        return
+    get_visible_branch_names = getattr(simulation, "_get_visible_branch_names", None)
+    if (
+        get_visible_branch_names is not None
+        and branch_name not in get_visible_branch_names()
+    ):
+        return
+    for changed_period in changed_periods:
+        fast_cache.pop((holder.variable.name, changed_period), None)
 
 
 def _branches_read_with(holder: Holder, branch_name: str) -> List[str]:
@@ -121,8 +140,8 @@ def _drop_calculated_overlapping(
             holder, stored_branch_name, period_string, branch_names, period
         ):
             del memory._arrays[key]
-            memory._shared.discard(key)
             dropped_periods.add(period_string)
+    memory._stop_sharing_dropped_keys()
     disk = holder._disk_storage
     if disk is not None:
         for key in list(disk._files):
@@ -132,10 +151,11 @@ def _drop_calculated_overlapping(
             ):
                 del disk._files[key]
                 dropped_periods.add(period_string)
-    fast_cache = getattr(getattr(holder, "simulation", None), "_fast_cache", None)
-    if fast_cache and dropped_periods:
-        for dropped_period in dropped_periods:
-            fast_cache.pop((holder.variable.name, periods.period(dropped_period)), None)
+    _evict_fast_cache(
+        holder,
+        [periods.period(dropped_period) for dropped_period in dropped_periods],
+        branch_name,
+    )
 
 
 def _is_calculated_overlapping(

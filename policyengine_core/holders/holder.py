@@ -374,31 +374,6 @@ class Holder:
             if not hasattr(simulation, "_user_input_keys"):
                 simulation._user_input_keys = set()
             simulation._user_input_keys.add((self.variable.name, branch_name, period))
-        else:
-            self._forget_replaced_input(period, branch_name)
-
-    def _forget_replaced_input(self, period: Period, branch_name: str) -> None:
-        """Drop the record of an input that a calculated value has replaced.
-
-        ``_user_input_keys`` says which stored values are inputs. When a value
-        stored outside ``set_input`` (by ``put_in_cache``) replaces one, the
-        stored value is no longer that input, so its entry goes:
-        ``apply_reform`` would otherwise keep the calculated value, and the
-        ``set_input`` helpers would treat it as already set. Storage keys
-        twelve months from the first of a month as that year, so both forms
-        of the entry are dropped.
-        """
-        input_keys = getattr(self.simulation, "_user_input_keys", None)
-        if not input_keys or period is None:
-            return
-        name = self.variable.name
-        period = periods.period(period)
-        input_keys.discard((name, branch_name, period))
-        unit, start, size = period
-        if unit == periods.YEAR and size == 1:
-            input_keys.discard((name, branch_name, Period((periods.MONTH, start, 12))))
-        elif unit == periods.MONTH and size == 12:
-            input_keys.discard((name, branch_name, Period((periods.YEAR, start, 1))))
 
     def put_in_cache(
         self, value: ArrayLike, period: Period, branch_name: str = "default"

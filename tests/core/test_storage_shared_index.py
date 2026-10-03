@@ -259,3 +259,116 @@ def test_branch_storages_have_a_set_only_for_the_arrays_they_share(
     assert all(
         storage._shared is _NOTHING_SHARED for storage in _storages(simulation).values()
     )
+
+
+# ----- Two threads making first reads at once ----- #
+#
+# ``InMemoryStorage.clone`` documents that two threads may make first reads of
+# one storage at once, at the cost of an extra copy. Releasing the set must not
+# turn that into an error. The first tests run one read inside another at the
+# point where a thread switch would do it, so they do not depend on timing.
+
+
+class _ReadInsideCheck(set):
+    """A set of shared keys that runs ``interleave`` inside a membership check."""
+
+    def __init__(self, keys, interleave, on_call):
+        super().__init__(keys)
+        self.interleave = interleave
+        self.on_call = on_call
+        self.calls = 0
+
+    def __contains__(self, key):
+        found = set.__contains__(self, key)
+        self.calls += 1
+        if self.calls == self.on_call:
+            self.interleave()
+        return found
+
+
+@pytest.mark.parametrize("on_call", [1, 2])
+def test_another_thread_releasing_the_set_mid_read_is_harmless(on_call):
+    storage = _storage_with("2017-01")
+    clone = storage.clone(share_arrays=True)
+    # The other thread reads the same last shared key to the end, during this
+    # read's membership check in ``get`` (call 1) or in ``_stop_sharing``
+    # (call 2).
+    clone._shared = _ReadInsideCheck(
+        clone._shared, lambda: clone.get("2017-01"), on_call
+    )
+
+    values = clone.get("2017-01")
+
+    assert np.array_equal(values, [0.0, 1.0])
+    assert values.flags.writeable
+    assert clone._shared is _NOTHING_SHARED
+    assert np.array_equal(storage.get("2017-01"), [0.0, 1.0])
+
+
+class _ReadAfterTruthTest(set):
+    """A set of shared keys that runs ``interleave`` after its first truth test."""
+
+    def __init__(self, keys, interleave):
+        super().__init__(keys)
+        self.interleave = interleave
+        self.tested = False
+
+    def __bool__(self):
+        found = set.__len__(self) > 0
+        if not self.tested:
+            self.tested = True
+            self.interleave()
+        return found
+
+
+def test_another_thread_releasing_the_set_mid_delete_is_harmless():
+    storage = _storage_with("2017-01", "2017-02")
+    clone = storage.clone(share_arrays=True)
+    clone.get("2017-01")
+    assert clone._shared == {"default:2017-02"}
+    # This thread deletes January, which it owns. Between its finding the set
+    # non-empty and its dropping deleted keys from it, the other thread reads
+    # February, the last shared key, and releases the set.
+    clone._shared = _ReadAfterTruthTest(clone._shared, lambda: clone.get("2017-02"))
+
+    clone.delete("2017-01")
+
+    assert clone._shared is _NOTHING_SHARED
+    assert clone.get("2017-01") is None
+    assert np.array_equal(clone.get("2017-02"), [1.0, 1.0])
+    assert np.array_equal(storage.get("2017-02"), [1.0, 1.0])
+
+
+def test_concurrent_first_reads_never_raise():
+    import sys
+    import threading
+
+    source = _storage_with("2017-01", "2017-02")
+    errors = []
+    interval = sys.getswitchinterval()
+    sys.setswitchinterval(1e-6)
+    try:
+        for _ in range(2_000):
+            clone = source.clone(share_arrays=True)
+            barrier = threading.Barrier(2)
+
+            def read(month, clone=clone, barrier=barrier):
+                barrier.wait()
+                try:
+                    clone.get(month)
+                except Exception as error:  # noqa: BLE001
+                    errors.append(error)
+
+            threads = [
+                threading.Thread(target=read, args=(month,))
+                for month in ("2017-01", "2017-02")
+            ]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+            assert clone._shared is _NOTHING_SHARED
+    finally:
+        sys.setswitchinterval(interval)
+
+    assert errors == []

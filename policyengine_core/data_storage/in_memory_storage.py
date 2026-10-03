@@ -113,27 +113,36 @@ class InMemoryStorage:
             self._stop_sharing(key)
         return values
 
+    # Each method below reads ``self._shared`` once and works on that set. Two
+    # threads making first reads at once (which the docstring of ``clone``
+    # allows, at the cost of an extra copy) can then each release the set
+    # without either one touching the shared-nothing object or an attribute
+    # the other has already removed.
+
     def _stop_sharing(self, key: str) -> None:
         """Record that ``key`` no longer refers to a shared array."""
-        if key in self._shared:
-            self._shared.discard(key)
-            self._release_empty_set()
+        shared = self._shared
+        if key in shared:
+            shared.discard(key)
+            self._release_if_empty(shared)
 
     def _stop_sharing_dropped_keys(self) -> None:
         """Forget the shared keys that ``_arrays`` no longer has."""
-        if self._shared:
-            self._shared.intersection_update(self._arrays)
-            self._release_empty_set()
+        shared = self._shared
+        if shared:
+            shared.intersection_update(self._arrays)
+            self._release_if_empty(shared)
 
-    def _release_empty_set(self) -> None:
+    def _release_if_empty(self, shared: Set[str]) -> None:
         """Go back to the class's shared-nothing object once nothing is shared.
 
-        The attribute is deleted rather than set, so that a storage sharing
-        nothing never carries one, and a copy or pickle of it reads the class
-        attribute too.
+        The storage's own attribute is removed rather than reassigned, so that
+        a storage sharing nothing carries none, and a copy or pickle of it
+        reads the class attribute too. ``pop`` with a default is one step that
+        never raises, so it is safe when another thread has already removed it.
         """
-        if not self._shared:
-            del self._shared
+        if not shared:
+            self.__dict__.pop("_shared", None)
 
     def put(
         self, value: ArrayLike, period: Period, branch_name: str = "default"

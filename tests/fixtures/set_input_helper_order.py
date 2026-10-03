@@ -38,6 +38,8 @@ from policyengine_core.variables import Variable
 
 COUNT = 2
 BRANCH_NAME = "what_if"
+#: A branch, and a branch of that branch.
+BRANCH_NAMES = [BRANCH_NAME, "nested"]
 
 
 class Status(Enum):

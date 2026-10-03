@@ -13,6 +13,8 @@ sequences.
 
 from __future__ import annotations
 
+import tempfile
+
 import numpy as np
 import pytest
 
@@ -22,6 +24,10 @@ from policyengine_core.holders import (
     set_input_divide_by_period,
 )
 from policyengine_core.simulations import SimulationBuilder
+from policyengine_core.tools.simulation_dumper import (
+    dump_simulation,
+    restore_simulation,
+)
 from tests.fixtures.set_input_helper_order import (
     BRANCH_NAME,
     MONTHS,
@@ -304,6 +310,18 @@ def test_an_input_stored_at_a_longer_period_is_kept():
     )
 
 
+def test_an_input_stored_for_twelve_months_from_another_month_is_kept():
+    simulation = build_simulation()
+    # Storage keys twelve months from March as the year starting in March.
+    simulation.set_input("flow_m", "month:2013-03:12", np.array([50.0, 60.0]))
+
+    simulation.set_input("flow_m", "year:2013:2", YEARLY_INPUT * 2)
+
+    holder = simulation.get_holder("flow_m")
+    np.testing.assert_array_equal(holder.get_array("year:2013-03"), [50, 60])
+    assert_reads(simulation, "flow_m", {"2013-05": MONTHLY_SHARE})
+
+
 # The record of inputs, and calculate's fast cache
 
 
@@ -437,6 +455,52 @@ def test_input_stored_under_default_replaces_what_the_branch_calculated():
     assert_reads(branch, "flow_m", {"2013-01": MONTHLY_SHARE, "2013": YEARLY_INPUT})
 
 
+def test_input_on_a_nested_branch_drops_the_sum_its_parent_branch_calculated():
+    simulation = build_simulation()
+    parent = simulation.get_branch(BRANCH_NAME)
+    # The parent branch stores the sum under its own name, which the nested
+    # branch reads before ``default``.
+    assert_reads(parent, "flow_m", {"2013": [0, 0]})
+    nested = parent.get_branch("nested")
+
+    nested.set_input("flow_m", "2013", YEARLY_INPUT)
+
+    assert_reads(nested, "flow_m", {"2013-01": MONTHLY_SHARE, "2013": YEARLY_INPUT})
+    assert_reads(parent, "flow_m", {"2013": [0, 0]})
+
+
+# Restored simulations
+
+
+@pytest.mark.parametrize(
+    "name, month, month_value, year_value, later, later_value",
+    [
+        ("flow_m", "2013-01", [300.0, 600.0], YEARLY_INPUT, "2013-02", None),
+        ("count_m", "2013-03", [3, 4], [7, 9], "2013-04", [3, 4]),
+    ],
+)
+def test_a_restored_month_keeps_its_value_under_a_yearly_input(
+    name, month, month_value, year_value, later, later_value
+):
+    simulation = build_simulation()
+    simulation.set_input(name, month, np.array(month_value))
+    with tempfile.TemporaryDirectory(prefix="core-set-input-helpers-") as directory:
+        dump_simulation(simulation, directory)
+        restored = restore_simulation(directory, simulation.tax_benefit_system)
+
+    # A dump does not say which values were inputs: all of them are restored
+    # as inputs, as an input set before the dump would have been kept.
+    restored.set_input(name, "2013", np.array(year_value))
+
+    if later_value is None:
+        rest = np.array(year_value, dtype=np.float32) - np.array(
+            month_value, dtype=np.float32
+        )
+        later_value = (rest / 11).astype(np.float32)
+    assert_reads(restored, name, {month: month_value, later: later_value})
+
+
+# Values stored on disk
 # Values stored on disk
 
 

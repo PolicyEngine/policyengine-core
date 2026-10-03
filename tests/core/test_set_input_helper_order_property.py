@@ -1,8 +1,9 @@
 """What a simulation calculated before its inputs were set does not change them.
 
-Each example sets some inputs, has one simulation calculate a random list of
-requests, then sets more inputs on that simulation and on one that
-calculated nothing, and compares the two. It also compares both with a model
+Each example sets some inputs, has one simulation calculate random lists of
+requests (on it, then on up to two branches created one inside the other),
+then sets more inputs on the last of these and on the same branch of a
+simulation that calculated nothing, and compares the two. It also compares both with a model
 that holds inputs only (``tests/fixtures/set_input_helper_order.py``).
 ``test_set_input_helper_order.py`` pins the same behaviour with examples.
 
@@ -33,7 +34,7 @@ hypothesis = pytest.importorskip("hypothesis")
 st = hypothesis.strategies
 
 from tests.fixtures.set_input_helper_order import (
-    BRANCH_NAME,
+    BRANCH_NAMES,
     COUNT,
     DIVIDED,
     FLOWS,
@@ -98,23 +99,27 @@ SETTINGS = dict(
 )
 
 
-def _run(first_inputs, requests_before_branch, requests, later_inputs, on_disk, branch):
+def _run(first_inputs, requests_by_level, later_inputs, on_disk, depth):
     """Run the example; return the simulation the later inputs were set on,
-    each later input's outcome, and the model's."""
+    each later input's outcome, and the model's.
+
+    ``depth`` branches are created one inside the other, and each list of
+    ``requests_by_level`` is calculated before the next branch is created
+    (the last one on the simulation the later inputs are set on).
+    """
     simulation = build_simulation(SYSTEM, on_disk=on_disk)
     reference = Reference()
     for name, period, values in first_inputs:
         assert apply_input(simulation, name, period, values) == reference.set_input(
             name, period, values
         )
-    for name, period in requests_before_branch:
-        read(simulation, name, period)
     branch_name = "default"
-    if branch:
-        simulation = simulation.get_branch(BRANCH_NAME)
-        branch_name = BRANCH_NAME
-    for name, period in requests:
-        read(simulation, name, period)
+    for level in range(depth + 1):
+        if level:
+            branch_name = BRANCH_NAMES[level - 1]
+            simulation = simulation.get_branch(branch_name)
+        for name, period in requests_by_level[level] if requests_by_level else []:
+            read(simulation, name, period)
     outcomes = [
         apply_input(simulation, name, period, values)
         for name, period, values in later_inputs
@@ -129,23 +134,22 @@ def _run(first_inputs, requests_before_branch, requests, later_inputs, on_disk, 
 @hypothesis.settings(max_examples=500, **SETTINGS)
 @hypothesis.given(
     first_inputs=st.lists(any_input, max_size=4),
-    requests_before_branch=st.lists(request, max_size=6),
-    requests=st.lists(request, max_size=8),
+    requests_by_level=st.lists(st.lists(request, max_size=6), min_size=3, max_size=3),
     later_inputs=st.lists(any_input, min_size=1, max_size=6),
     on_disk=st.booleans(),
-    branch=st.booleans(),
+    depth=st.integers(0, 2),
 )
 def test_inputs_do_not_depend_on_what_was_calculated_before(
-    first_inputs, requests_before_branch, requests, later_inputs, on_disk, branch
+    first_inputs, requests_by_level, later_inputs, on_disk, depth
 ):
     # Branches of a simulation that stores on disk share its files
     # (policyengine-core#558), so the two are not combined.
-    on_disk = on_disk and not branch
+    on_disk = on_disk and not depth
     calculated, outcomes, expected, reference, branch_name = _run(
-        first_inputs, requests_before_branch, requests, later_inputs, on_disk, branch
+        first_inputs, requests_by_level, later_inputs, on_disk, depth
     )
     fresh, fresh_outcomes, _, _, _ = _run(
-        first_inputs, [], [], later_inputs, on_disk, branch
+        first_inputs, [], later_inputs, on_disk, depth
     )
 
     # The same inputs are accepted or refused, and recorded.

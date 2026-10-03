@@ -38,6 +38,12 @@ def dump_simulation(simulation, directory):
 def restore_simulation(directory, tax_benefit_system, **kwargs):
     """
     Restore simulation from directory
+
+    A dump does not say which of its values were inputs, so every value is
+    restored as an input (recorded in ``_user_input_keys``, as ``set_input``
+    records one). An input set later over a longer period then keeps the
+    restored values of its sub-periods, as it would have kept them in the
+    dumped simulation if they were inputs there.
     """
     simulation = Simulation(
         tax_benefit_system, tax_benefit_system.instantiate_entities()
@@ -137,4 +143,19 @@ def _restore_holder(simulation, variable, directory):
 
     for period in disk_storage.get_known_periods():
         value = disk_storage.get(period)
-        holder.put_in_cache(value, period)
+        _restore_input(simulation, holder, period, value)
+
+
+def _restore_input(simulation, holder, period, value):
+    """Store ``value`` as an input, recorded as ``set_input`` records one.
+
+    ``Holder.set_input`` would also run the variable's ``set_input`` helper,
+    but a dump holds values already split into the variable's own periods.
+    """
+    if not hasattr(simulation, "_user_input_contexts"):
+        simulation._user_input_contexts = []
+    simulation._user_input_contexts.append(simulation.branch_name)
+    try:
+        holder._set(period, value, simulation.branch_name)
+    finally:
+        simulation._user_input_contexts.pop()

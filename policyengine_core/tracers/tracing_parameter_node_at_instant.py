@@ -23,9 +23,11 @@ if typing.TYPE_CHECKING:
 
 # Copying and pickling look these names up on an instance. Answered by the
 # wrapped object, they would copy or restore the wrapped object, not the
-# wrapper.
+# wrapper. ``__slots__`` describes the wrapper's own layout: pickle protocols
+# 0 and 1 refuse an instance that reports slots but no ``__getstate__``.
 _COPY_PROTOCOL = frozenset(
     {
+        "__slots__",
         "__copy__",
         "__deepcopy__",
         "__getstate__",
@@ -44,7 +46,8 @@ def _wrapped(wrapper: object, attribute: str, key: str) -> object:
     ``__getattr__`` only runs when normal lookup fails. Two such lookups must
     not reach the wrapped object:
 
-    - the copy and pickle protocol (``__deepcopy__``, ``__setstate__``, ...);
+    - the copy and pickle protocol (``__deepcopy__``, ``__setstate__``,
+      ``__slots__``, ...);
     - any name on an instance ``copy`` or ``pickle`` has created with
       ``__new__`` and not filled in yet. It has no ``attribute``, so reading
       it here would call ``__getattr__`` again, without end.

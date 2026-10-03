@@ -39,7 +39,7 @@ import pytest
 
 from policyengine_core.country_template import CountryTaxBenefitSystem
 from policyengine_core.country_template.entities import Person
-from policyengine_core.parameters import ParameterNodeAtInstant
+from policyengine_core.parameters import ParameterNode, ParameterNodeAtInstant
 from policyengine_core.periods import MONTH
 from policyengine_core.reforms import Reform
 from policyengine_core.tracers import (
@@ -305,14 +305,20 @@ def test_tracing_parameter_node_records_in_its_own_tracer_when_the_node_traces(
     assert type(at_instant.parameter_node_at_instant) is ParameterNodeAtInstant
 
 
-def _round_trip_by_pickle(value):
-    return pickle.loads(pickle.dumps(value))
+def _round_trip_by_pickle(protocol):
+    def round_trip(value):
+        return pickle.loads(pickle.dumps(value, protocol=protocol))
 
+    return round_trip
+
+
+PICKLE_PROTOCOLS = range(pickle.HIGHEST_PROTOCOL + 1)
 
 DUPLICATORS = pytest.mark.parametrize(
     "duplicate",
-    [copy.copy, copy.deepcopy, _round_trip_by_pickle],
-    ids=["copy", "deepcopy", "pickle"],
+    [copy.copy, copy.deepcopy]
+    + [_round_trip_by_pickle(protocol) for protocol in PICKLE_PROTOCOLS],
+    ids=["copy", "deepcopy"] + [f"pickle-{protocol}" for protocol in PICKLE_PROTOCOLS],
 )
 
 
@@ -369,6 +375,27 @@ def test_parameters_holding_traced_nodes_can_be_deep_copied(
     assert duplicated(INSTANT).taxes.income_tax_rate == (
         parameters(INSTANT).taxes.income_tax_rate
     )
+
+
+class _SlottedParameterNode(ParameterNode):
+    __slots__ = ("extra",)
+
+    def __getstate__(self):
+        return self.__dict__
+
+
+@pytest.mark.parametrize("protocol", PICKLE_PROTOCOLS)
+def test_wrappers_of_a_slotted_node_can_be_pickled(protocol):
+    """Protocols 0 and 1 read ``__slots__`` from the instance, not the class."""
+    node = _SlottedParameterNode(
+        data={"rate": {"values": {"2015-01-01": {"value": 1}}}}
+    )
+    view = TracingParameterNode(node, FullTracer(), "default")
+
+    for wrapper in (view, view("2015-01-01")):
+        restored = pickle.loads(pickle.dumps(wrapper, protocol=protocol))
+        assert type(restored) is type(wrapper)
+    assert pickle.loads(pickle.dumps(view, protocol=protocol))("2015-01-01").rate == 1
 
 
 @pytest.mark.parametrize(

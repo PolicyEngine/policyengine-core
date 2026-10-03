@@ -2,6 +2,7 @@
 plugin that measures what a run keeps alive."""
 
 import gc
+import sys
 import tracemalloc
 import weakref
 from pathlib import Path
@@ -11,6 +12,7 @@ import yaml
 
 from policyengine_core.simulations import Simulation
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
+from policyengine_core.tracers import FullTracer
 from policyengine_core.tools.test_runner import OpenFiscaPlugin
 
 RUNNER_ARGV = ["--capture", "no", "--maxfail", "0", "--tb", "short"]
@@ -62,10 +64,12 @@ class MemoryProbe:
         self.outcomes = []
         self.live_simulations = None
         self.live_systems = None
+        self.live_tracers = None
 
     def pytest_sessionstart(self, session):
         self.simulations_before = live(Simulation)
         self.systems_before = live(TaxBenefitSystem)
+        self.tracers_before = live(FullTracer)
         tracemalloc.start()
 
     def pytest_runtest_logreport(self, report):
@@ -79,17 +83,26 @@ class MemoryProbe:
 
     def pytest_sessionfinish(self, session, exitstatus):
         tracemalloc.stop()
+        # pytest keeps the last failure's traceback in ``sys.last_*``; that one
+        # root is pytest's, not the runner's.
+        for name in ("last_type", "last_value", "last_traceback", "last_exc"):
+            if hasattr(sys, name):
+                delattr(sys, name)
         self.live_simulations = len(live(Simulation) - self.simulations_before)
         self.live_systems = len(live(TaxBenefitSystem) - self.systems_before)
+        self.live_tracers = len(live(FullTracer) - self.tracers_before)
 
 
-def run_with_probe(tax_benefit_system, path: Path, options=None) -> MemoryProbe:
-    """Run ``path`` the way ``run_tests`` does, with a ``MemoryProbe``."""
+def run_with_probe(
+    tax_benefit_system, path: Path, options=None, outcome="passed"
+) -> MemoryProbe:
+    """Run ``path`` the way ``run_tests`` does, with a ``MemoryProbe``; every
+    case must end with ``outcome``."""
     probe = MemoryProbe()
     exit_code = pytest.main(
         [*RUNNER_ARGV, "-q", "-p", "no:cacheprovider", str(path)],
         plugins=[OpenFiscaPlugin(tax_benefit_system, options or {}), probe],
     )
-    assert exit_code == 0, f"YAML run failed with exit code {exit_code}"
-    assert probe.outcomes and set(probe.outcomes) == {"passed"}
+    assert exit_code == (0 if outcome == "passed" else 1), exit_code
+    assert probe.outcomes and set(probe.outcomes) == {outcome}
     return probe

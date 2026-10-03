@@ -202,6 +202,7 @@ class YamlItem(pytest.Item):
         self.test = test
         self.simulation = None
         self.tax_benefit_system = None
+        self._system_simulation = None
 
     def runtest(self):
         self.name = self.test.get("name", "")
@@ -264,8 +265,10 @@ class YamlItem(pytest.Item):
             self.baseline_tax_benefit_system,
             reforms + inline_reform,
             self.test.get("extensions", []),
+            # ``repr`` keeps 0.2 and "0.2" apart: one is a valid value, the
+            # other is rejected when the system is built.
             reform_key="=".join(
-                [f"{key}:{value}" for key, value in parametric_reform_items]
+                [f"{key}:{value!r}" for key, value in parametric_reform_items]
             ),
             cache_size=self.options.get("reform_cache_size"),
         )
@@ -274,6 +277,10 @@ class YamlItem(pytest.Item):
         performance_tables = self.options.get("performance_tables")
         visualize = self.options.get("visualize")
 
+        # ``Simulation.__init__`` registers itself on the system before the
+        # builder returns, so note what was there to restore it at teardown
+        # even if building fails.
+        self._system_simulation = getattr(self.tax_benefit_system, "simulation", None)
         try:
             builder.set_default_period(period)
             self.simulation = builder.build_from_dict(self.tax_benefit_system, input)
@@ -313,16 +320,22 @@ class YamlItem(pytest.Item):
         # finished case must not keep its simulation, or the system it ran on,
         # alive: over a run of thousands of cases that retained every
         # simulation and every reform system any case used.
-        system = self.tax_benefit_system
-        if (
-            self.simulation is not None
-            and getattr(system, "simulation", None) is self.simulation
-        ):
-            # ``Simulation.__init__`` registers itself on its system, and that
-            # system is cached across cases.
-            system.simulation = None
+        system, simulation = self.tax_benefit_system, self.simulation
+        if system is not None:
+            if getattr(system, "simulation", None) is not self._system_simulation:
+                # A simulation built for this case, including one whose build
+                # failed, registered itself on the cached system.
+                system.simulation = self._system_simulation
+            tracer = getattr(simulation, "tracer", None)
+            parameters = getattr(system, "parameters", None)
+            if tracer is not None and getattr(parameters, "tracer", None) is tracer:
+                # A traced case marks the cached system's parameters as traced.
+                parameters.trace = False
+                parameters.tracer = None
+                parameters.branch_name = None
         self.simulation = None
         self.tax_benefit_system = None
+        self._system_simulation = None
 
     def print_computation_log(self, tracer):
         print("Computation log:")  # noqa T001

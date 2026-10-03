@@ -1,6 +1,6 @@
 import os
 import warnings
-from typing import TYPE_CHECKING, Any, List, Tuple
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple
 
 import numpy
 import psutil
@@ -100,11 +100,91 @@ class Holder:
         If ``period`` is ``None``, remove all known values of the variable.
 
         If ``period`` is not ``None``, only remove all values for any period included in period (e.g. if period is "2017", values for "2017-01", "2017-07", etc. would be removed)
+
+        A deleted value set with ``set_input`` stops counting as an input, so
+        a value calculated later for the same period is not taken for one.
         """
+        simulation = getattr(self, "simulation", None)
+        user_input_keys = getattr(simulation, "_user_input_keys", None)
+        stored_before = self._stored_keys() if user_input_keys else None
 
         self._memory_storage.delete(period, branch_name)
         if self._disk_storage:
             self._disk_storage.delete(period, branch_name)
+
+        if user_input_keys:
+            self._forget_deleted_inputs(user_input_keys, stored_before)
+
+    def _stored_keys(self) -> Tuple[set, set]:
+        """The keys memory and disk storage hold values under."""
+        return (
+            set(self._memory_storage._arrays),
+            set(self._disk_storage._files) if self._disk_storage is not None else set(),
+        )
+
+    def _forget_deleted_inputs(
+        self, user_input_keys: set, stored_before: Tuple[set, set]
+    ) -> None:
+        """Drop the simulation's record of the inputs ``delete_arrays`` deleted.
+
+        ``_user_input_keys`` records each (variable, branch, period) stored
+        through ``set_input``, with the period as storage keys it (see
+        ``_set``). ``_invalidate_all_caches`` keeps the values it names and
+        ``to_input_dataframe`` exports them, so an entry left behind for a
+        deleted value would make a formula result stored later for that
+        period count as an input.
+
+        The keys the deletion removed are found by comparing the keys each
+        storage holds before and after, so the cost depends on what this
+        holder stores, not on the size of the record, and no stored file is
+        read. An entry for a removed key is dropped only if neither storage
+        still holds a value for it: disk storage deletes only the period it
+        is given, not the periods within it (policyengine-core#564), so a
+        value deleted from memory can survive on disk, and its entry stays.
+        """
+        name = self.variable.name
+        memory_before, disk_before = stored_before
+        arrays = self._memory_storage._arrays
+        files = self._disk_storage._files if self._disk_storage is not None else {}
+        # Memory keys are "{branch}:{period}"; branch names cannot contain ":".
+        removed = [key.split(":", 1) for key in memory_before if key not in arrays]
+        # Disk keys are "{branch}_{period}"; branch names can contain "_" but
+        # period strings cannot, so the period follows the last "_".
+        removed += [key.rsplit("_", 1) for key in disk_before if key not in files]
+        forgotten = []
+        for branch, period_string in removed:
+            try:
+                key = (name, branch, periods.period(period_string))
+            except ValueError:
+                # Not a key ``put`` wrote (say, a file ``restore`` found), so
+                # no entry names it.
+                continue
+            if key in user_input_keys and not self._stores(key[2], branch):
+                forgotten.append(key)
+        user_input_keys.difference_update(forgotten)
+
+    def _stores(self, period: Period, branch_name: str) -> bool:
+        """Whether either storage holds a value for exactly this branch and
+        period, checked from the storages' keys without reading the value."""
+        period = self._storage_period(period)
+        if f"{branch_name}:{period}" in self._memory_storage._arrays:
+            return True
+        return (
+            self._disk_storage is not None
+            and f"{branch_name}_{period}" in self._disk_storage._files
+        )
+
+    def _storage_period(self, period: Period) -> Period:
+        """The period storage keys a value for ``period`` under.
+
+        Storage keys a value by the period's string form, read back as a
+        period: eternity for an eternal variable, and for twelve months
+        starting on the first of a month, the year starting then
+        (``month:2025-01:12`` is stored as ``2025``).
+        """
+        if self._memory_storage.is_eternal:
+            return periods.period(periods.ETERNITY)
+        return periods.period(str(periods.period(period)))
 
     def _get_array_from_storage(
         self, period: Period, branch_name: str = "default"
@@ -347,10 +427,16 @@ class Holder:
         value: ArrayLike,
         branch_name: str = "default",
         validate_nan: bool = False,
+        is_input: Optional[bool] = None,
     ) -> None:
         simulation = getattr(self, "simulation", None)
         user_input_contexts = getattr(simulation, "_user_input_contexts", None)
-        if user_input_contexts and branch_name == "default":
+        # A value is an input when stored while ``set_input`` runs, unless the
+        # caller says otherwise: ``put_in_cache`` stores calculated values,
+        # including those a custom ``set_input`` handler calculates.
+        if is_input is None:
+            is_input = bool(user_input_contexts)
+        if is_input and user_input_contexts and branch_name == "default":
             branch_name = user_input_contexts[-1]
         value = self._to_array(value, validate_nan=validate_nan)
         if self.variable.definition_period != periods.ETERNITY:
@@ -370,10 +456,16 @@ class Holder:
             self._disk_storage.put(value, period, branch_name)
         else:
             self._memory_storage.put(value, period, branch_name)
-        if user_input_contexts:
+        if is_input and simulation is not None:
             if not hasattr(simulation, "_user_input_keys"):
                 simulation._user_input_keys = set()
-            simulation._user_input_keys.add((self.variable.name, branch_name, period))
+            # Record the period as storage keys the value (eternity for an
+            # eternal variable, whatever period it was set for; the year for
+            # twelve months starting on the first of a month), so each entry
+            # names one stored value.
+            simulation._user_input_keys.add(
+                (self.variable.name, branch_name, self._storage_period(period))
+            )
 
     def put_in_cache(
         self, value: ArrayLike, period: Period, branch_name: str = "default"
@@ -388,7 +480,7 @@ class Holder:
         ):
             return
 
-        self._set(period, value, branch_name)
+        self._set(period, value, branch_name, is_input=False)
 
     def default_array(self) -> ArrayLike:
         """

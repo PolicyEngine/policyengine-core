@@ -104,6 +104,24 @@ def test_sharing_clones_each_have_their_own_set():
     assert second._shared == {"default:2017-01", "default:2017-02"}
 
 
+def test_only_the_storage_itself_refers_to_its_set():
+    import gc
+
+    storage = _storage_with("2017-01", "2017-02")
+    clones = [storage.clone(share_arrays=True) for _ in range(3)]
+
+    for clone in clones:
+        referrers = [
+            referrer
+            for referrer in gc.get_referrers(clone._shared)
+            # Python 3.13+ may hold attributes inline in the object itself.
+            if referrer is not clone and referrer is not clone.__dict__
+        ]
+        # Nothing else, the source included, keeps the set alive after the
+        # clone releases it.
+        assert referrers == [], referrers
+
+
 def test_set_is_released_once_every_shared_array_has_been_read():
     clone = _storage_with("2017-01", "2017-02").clone(share_arrays=True)
 

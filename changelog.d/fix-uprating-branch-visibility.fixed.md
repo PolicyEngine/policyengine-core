@@ -1,0 +1,1 @@
+Uprating and auto-carry-over now use only periods the current branch can read (its own, its parent branches' and `default`), so a period stored only under an unrelated branch no longer raises `TypeError` or caches `NaN`; on-disk storage parses branch names that contain `_`, and `dump_simulation` saves the values the dumped branch reads.

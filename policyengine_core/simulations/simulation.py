@@ -114,6 +114,28 @@ def _end_order(period: Period) -> tuple:
         return (1,)
 
 
+def _latest_input_key(period: Period, definition_period: str) -> tuple:
+    """Sort key for the stored input that auto-carry-over or uprating reads.
+
+    The input at the variable's own definition-period unit beats one in
+    another unit; then the one that starts last wins; on a tie, the one that
+    ends last (``_end_order``), then the larger unit, then the period's
+    string form. Distinct periods never tie, so the input chosen depends only
+    on which periods are stored, never on the order they were stored in (or
+    on whether a value is in memory or on disk). Compare ``period.start``
+    (temporal order): sorting Period tuples lexicographically puts "year"
+    before "month" alphabetically, so a known "2023" annual value would win
+    over a later "2024-06" monthly value (bug H1).
+    """
+    return (
+        period.unit == definition_period,
+        period.start,
+        _end_order(period),
+        periods.unit_weight(period.unit),
+        str(period),
+    )
+
+
 if TYPE_CHECKING:
     from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 
@@ -936,9 +958,15 @@ class Simulation:
                     # Take the latest period from the filtered list itself.
                     # Indexing ``known_periods`` with a position in the
                     # filtered list picked the wrong period whenever a later
-                    # one was stored first.
+                    # one was stored first. Two inputs can start on the same
+                    # day: a yearly variable stores a ``year:2012:2`` input as
+                    # given, beside one for ``2012``. Break that tie as
+                    # auto-carry-over does (the one that ends last), so the
+                    # source never depends on which was stored first. The
+                    # factor below runs from the source's start either way.
                     latest_known_period = max(
-                        earlier_input_periods, key=lambda p: p.start
+                        earlier_input_periods,
+                        key=lambda p: _latest_input_key(p, variable.definition_period),
                     )
                     try:
                         uprating_parameter = get_parameter(
@@ -975,16 +1003,11 @@ class Simulation:
                 ):
                     # Carry over the latest input: of the stored periods that
                     # start no later than ``period``, the one that starts last
-                    # (on a tie, the one that ends last, then the larger unit,
-                    # so the choice never depends on the order inputs were
-                    # stored), preferring periods at
-                    # the variable's own definition-period unit and using
-                    # another unit only when there is none, as for an input to
-                    # a variable with no ``set_input`` helper. Compare
-                    # period.start (temporal order): sorting Period tuples
-                    # lexicographically puts "year" before "month"
-                    # alphabetically, so a known "2023" annual value would win
-                    # over a later "2024-06" monthly value (bug H1).
+                    # (on a tie, the one that ends last, then the larger unit;
+                    # see ``_latest_input_key``), preferring periods at the
+                    # variable's own definition-period unit and using another
+                    # unit only when there is none, as for an input to a
+                    # variable with no ``set_input`` helper.
                     #
                     # Only inputs carry. Every value this simulation
                     # calculated is marked derived when cached (formula
@@ -1004,13 +1027,7 @@ class Simulation:
                             )
                             if input_period.start <= period.start
                         ),
-                        key=lambda p: (
-                            p.unit == variable.definition_period,
-                            p.start,
-                            _end_order(p),
-                            periods.unit_weight(p.unit),
-                            str(p),
-                        ),
+                        key=lambda p: _latest_input_key(p, variable.definition_period),
                         default=None,
                     )
                     if last_known_period is not None:

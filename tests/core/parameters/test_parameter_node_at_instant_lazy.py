@@ -19,7 +19,7 @@ import pytest
 from policyengine_core.country_template import CountryTaxBenefitSystem
 from policyengine_core.errors import ParameterNotFoundError
 from policyengine_core.parameters import ParameterNode, ParameterNodeAtInstant
-from policyengine_core.parameters.parameter_node_at_instant import _RESOLVED
+from policyengine_core.parameters.parameter_node_at_instant import _STATE
 from policyengine_core.tracers import FullTracer
 from tests.fixtures.parameter_nodes_at_instant import (
     INSTANTS,
@@ -49,7 +49,7 @@ def test_country_template_matches_the_up_front_build(instant):
 
 
 def resolved(node_at_instant):
-    return list(node_at_instant.__dict__[_RESOLVED])
+    return list(node_at_instant.__dict__[_STATE].resolved)
 
 
 def test_nothing_is_resolved_until_it_is_read():
@@ -363,3 +363,150 @@ def test_a_node_lets_go_of_its_parameter_node_once_every_child_is_read():
     gc.collect()
     assert tree_ref() is None
     assert group.x == 1 and list(group) == ["x"]
+
+
+def plain_tree(**values):
+    return ParameterNode(
+        "", data={name: {"values": {"2010-01-01": v}} for name, v in values.items()}
+    )
+
+
+def test_the_reserved_state_name_is_rejected():
+    with pytest.raises(ValueError):
+        plain_tree(_ParameterNodeAtInstant__state=1).get_at_instant("2017-01-01")
+    at_instant = plain_tree(x=1).get_at_instant("2017-01-01")
+    with pytest.raises(ValueError):
+        at_instant.add_child("_ParameterNodeAtInstant__state", 2)
+
+
+@pytest.mark.parametrize(
+    "child_name",
+    [
+        "_ParameterNodeAtInstant__resolved",
+        "_ParameterNodeAtInstant__node",
+        "_ParameterNodeAtInstant__business",
+        "__custom__",
+        "__iter__",
+        "__dir__",
+    ],
+)
+def test_other_unusual_names_are_plain_children(child_name):
+    at_instant = plain_tree(**{child_name: 42, "ok": 7}).get_at_instant("2017-01-01")
+    assert getattr(at_instant, child_name) == 42
+    assert at_instant[child_name] == 42
+    assert at_instant.ok == 7 and at_instant["ok"] == 7
+    assert child_name in dir(at_instant)
+
+
+def test_many_added_children_do_not_break_the_first_read():
+    names = {f"p{i}": i for i in range(2000)}
+    at_instant = plain_tree(**names).get_at_instant("2017-01-01")
+    for i in range(2000):
+        at_instant.add_child(f"extra{i}", i)
+    assert at_instant.p0 == 0
+    assert len(at_instant._children) == 4000
+    assert list(at_instant._children)[:2] == ["p0", "p1"]
+
+
+def test_add_child_on_a_copy_changes_only_shared_items_as_before():
+    tree = ParameterNode(
+        "",
+        data={
+            "x": {"values": {"2010-01-01": 10}},
+            "late": {"values": {"2030-01-01": 5}},
+        },
+    )
+    held = tree.get_at_instant("2017-01-01")
+    with pytest.raises(ParameterNotFoundError):
+        held.late
+    duplicate = copy.copy(held)
+    duplicate.add_child("x", 99)
+    duplicate.add_child("late", 88)
+    duplicate.add_child("extra", 77)
+    # Items are one mapping shared by copies; attributes belong to each copy.
+    assert held["x"] == 99 and held.x == 10
+    assert held["late"] == 88
+    with pytest.raises(ParameterNotFoundError):
+        held.late
+    assert held["extra"] == 77
+    with pytest.raises(ParameterNotFoundError):
+        held.extra
+    assert duplicate.x == 99 and duplicate.late == 88 and duplicate.extra == 77
+    assert list(held._children) == ["x", "late", "extra"]
+
+
+def test_a_copy_installs_what_it_reads_as_attributes():
+    held = build_tree().get_at_instant("2017-03-01")
+    duplicate = copy.copy(held)
+    scale = held.scale
+    assert duplicate.scale is scale
+    assert duplicate.__dict__["scale"] is scale
+
+
+class _MethodCollision(ParameterNodeAtInstant):
+    def policy(self):
+        return "method"
+
+
+class _DoublingAddChild(ParameterNodeAtInstant):
+    def add_child(self, child_name, child_at_instant):
+        super().add_child(child_name, child_at_instant * 2)
+
+
+def test_subclasses_keep_their_collisions_and_add_child_hooks():
+    tree = plain_tree(policy=42, x=5)
+    collided = _MethodCollision("", tree, "2017-01-01")
+    assert collided.policy == 42 and collided["policy"] == 42
+    doubled = _DoublingAddChild("", tree, "2017-01-01")
+    assert doubled.x == 10 and doubled["x"] == 10
+    assert dict(doubled._children) == {"policy": 84, "x": 10}
+
+
+class ReenteringChild:
+    """A child whose first resolution reads the same child again."""
+
+    def __init__(self):
+        self.node_at_instant = None
+        self.calls = 0
+
+    def _get_at_instant(self, instant):
+        self.calls += 1
+        result = object()
+        if self.calls == 1:
+            self.inner = self.node_at_instant["again"]
+        return result
+
+
+def test_a_reentrant_read_keeps_the_first_recorded_child():
+    tree = plain_tree(other=1)
+    child = ReenteringChild()
+    tree.children = {"again": child, **tree.children}
+    at_instant = tree.get_at_instant("2017-01-01")
+    child.node_at_instant = at_instant
+    outer = at_instant["again"]
+    assert outer is child.inner
+    assert at_instant["again"] is outer and at_instant.again is outer
+
+
+def test_children_and_their_order_are_fixed_when_the_node_is_built():
+    tree = plain_tree(x=10, y=20, z=30)
+    held = tree.get_at_instant("2017-01-01")
+    assert held.x == 10
+    del tree.children["x"]
+    tree.children["w"] = ParameterNode("", data={"v": {"values": {"2010-01-01": 1}}})
+    assert list(held) == ["x", "y", "z"]
+    assert held.x == 10
+    assert "w" not in held._children
+
+
+def test_a_node_pickled_when_every_child_was_built_up_front_loads():
+    """State as the up-front build pickled it: everything in ``_children``."""
+    restored = ParameterNodeAtInstant.__new__(ParameterNodeAtInstant)
+    restored.__setstate__(
+        {"_name": "", "_instant_str": "2017-01-01", "_children": {"x": 10}, "x": 10}
+    )
+    assert restored.x == 10 and restored["x"] == 10 and list(restored) == ["x"]
+    restored.add_child("y", 2)
+    assert restored["y"] == 2 and list(restored) == ["x", "y"]
+    with pytest.raises(KeyError):
+        restored["nope"]

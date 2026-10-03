@@ -1,0 +1,1 @@
+Auto-carry-over now carries only inputs, taking the latest one stored for a period that starts no later than the requested period, so a carried value no longer depends on which periods were calculated first or on a later input.

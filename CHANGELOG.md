@@ -1,3 +1,10 @@
+## [3.32.13] - 2026-10-03
+
+### Fixed
+
+- Stop giving every holder's in-memory storage an empty set of shared keys: a storage now has one only while it shares an array with the storage it was cloned from, which removes about 1.3 MB per simulation for a country with 6,000 variables (the 3.32.12 increase that pushed policyengine-us YAML test batches past their CI runners' memory).
+
+
 ## [3.32.12] - 2026-10-02
 
 ### Changed

@@ -35,8 +35,10 @@ pytest.importorskip("hypothesis")
 
 from hypothesis import HealthCheck, example, given, settings  # noqa: E402
 from hypothesis import strategies as st  # noqa: E402
+import numpy as np  # noqa: E402
 
 from policyengine_core import periods  # noqa: E402
+from policyengine_core.experimental import MemoryConfig  # noqa: E402
 from tests.fixtures.uprating_order import (  # noqa: E402
     COUNT,
     assert_bitwise_equal,
@@ -311,14 +313,16 @@ def test_uprating_depends_only_on_the_inputs(scenario, auto_carry_over):
 # returns, byte for byte, what a fresh simulation given the same inputs in the
 # same order returns, for every month of the year and for a later or earlier
 # month, from the simulation, a branch or a nested branch. Every month of the
-# year then holds an input.
+# year then holds an input. And the input changes nothing a clone of the
+# simulation, taken just before it, has stored: a clone keeps the branch
+# name, and on disk it shares the files stored before cloning.
 #
-# The domain: earlier inputs are months, set on the simulation first; the
-# yearly input and the requests before it are on the simulation or branch
-# read from, and those requests are inside the input's year (plain
-# calculations of its months, or ADD over it). A value calculated outside the
-# year before the input stays cached whatever the input is, which is not what
-# this module tests.
+# The domain: the variable is stored in memory or on disk. Earlier inputs are
+# months, set on the simulation first; the yearly input and the requests
+# before it are on the simulation or branch read from, and those requests are
+# inside the input's year (plain calculations of its months, or ADD over it).
+# A value calculated outside the year before the input stays cached whatever
+# the input is, which is not what this module tests.
 
 HELPER_VARIABLES = ["uprated_monthly_stock", "uprated_monthly"]
 HELPER_YEARS = ["2011", "2012", "2013"]
@@ -351,18 +355,40 @@ def helper_scenarios(draw):
     return variable, earlier_inputs, year, yearly, requests, branch, target
 
 
-def _helper_simulation(system, variable, earlier_inputs, branch):
-    built = simulation(system, {variable: earlier_inputs} if earlier_inputs else {})
+def _helper_simulation(system, variable, earlier_inputs, branch, on_disk):
+    built = simulation(system, {})
+    if on_disk:
+        built.memory_config = MemoryConfig(max_memory_occupation=0)
+        holder = built.get_holder(variable)
+        holder._disk_storage = holder.create_disk_storage()
+        holder._on_disk_storable = True
+    for period, values in earlier_inputs.items():
+        built.set_input(variable, period, np.array(values))
     return _read_from(built, branch, variable, None)
 
 
+def _stored_months(built, variable, months):
+    holder = built.get_holder(variable)
+    stored = {}
+    for month in months:
+        value = holder.get_array(periods.period(month), built.branch_name)
+        stored[month] = None if value is None else value.copy()
+    return stored
+
+
+@pytest.mark.filterwarnings("ignore:Memory configuration is a feature")
 @settings(
     max_examples=300,
     deadline=None,
     derandomize=True,
     suppress_health_check=[HealthCheck.too_slow],
 )
-@given(scenario=helper_scenarios(), auto_carry_over=st.booleans())
+@given(
+    scenario=helper_scenarios(),
+    auto_carry_over=st.booleans(),
+    on_disk=st.booleans(),
+    with_clone=st.booleans(),
+)
 # December calculated, then the year's input (review finding P1).
 @example(
     scenario=(
@@ -375,6 +401,24 @@ def _helper_simulation(system, variable, earlier_inputs, branch):
         "2013-01",
     ),
     auto_carry_over=True,
+    on_disk=False,
+    with_clone=False,
+)
+# The same on disk, with a clone: the input replaced the clone's December too
+# (review finding on 168a710a).
+@example(
+    scenario=(
+        "uprated_monthly_stock",
+        {},
+        "2012",
+        [7.0, 9.0],
+        [("calculate", "2012-12")],
+        None,
+        "2013-01",
+    ),
+    auto_carry_over=True,
+    on_disk=True,
+    with_clone=True,
 )
 # A month calculated mid-year: divide took it out of the year's total.
 @example(
@@ -388,6 +432,8 @@ def _helper_simulation(system, variable, earlier_inputs, branch):
         "2012-07",
     ),
     auto_carry_over=False,
+    on_disk=True,
+    with_clone=True,
 )
 # ADD over the year, and an input already set in it.
 @example(
@@ -401,22 +447,41 @@ def _helper_simulation(system, variable, earlier_inputs, branch):
         "2013-02",
     ),
     auto_carry_over=True,
+    on_disk=False,
+    with_clone=True,
 )
-def test_helper_input_replaces_values_calculated_in_its_year(scenario, auto_carry_over):
+def test_helper_input_replaces_values_calculated_in_its_year(
+    scenario, auto_carry_over, on_disk, with_clone
+):
     variable, earlier_inputs, year, yearly, requests, branch, target = scenario
     system = SYSTEMS[auto_carry_over]
+    months = [f"{year}-{month:02d}" for month in range(1, 13)]
 
-    built = _helper_simulation(system, variable, earlier_inputs, branch)
+    built = _helper_simulation(system, variable, earlier_inputs, branch, on_disk)
     for kind, requested in requests:
         request(built, kind, variable, requested)
+    if with_clone:
+        clone = built.clone()
+        stored_by_clone = _stored_months(clone, variable, months)
     built.set_input(variable, year, yearly)
 
-    fresh = _helper_simulation(system, variable, earlier_inputs, branch)
+    fresh = _helper_simulation(system, variable, earlier_inputs, branch, on_disk)
     fresh.set_input(variable, year, yearly)
 
-    message = f"{variable} after {requests}, then {year} = {yearly}, branch {branch}"
+    message = (
+        f"{variable} after {requests}, then {year} = {yearly}, branch {branch}, "
+        f"on disk {on_disk}"
+    )
+    if with_clone:
+        for month, value in _stored_months(clone, variable, months).items():
+            if stored_by_clone[month] is None:
+                assert value is None, f"{message}: clone's {month}"
+            else:
+                assert_bitwise_equal(
+                    value, stored_by_clone[month], f"{message}: clone's {month}"
+                )
     holder = built.get_holder(variable)
-    for month in [f"{year}-{month:02d}" for month in range(1, 13)]:
+    for month in months:
         assert not holder.is_derived(periods.period(month), built.branch_name), month
         assert_bitwise_equal(
             built.calculate(variable, month),

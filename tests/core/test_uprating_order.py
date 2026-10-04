@@ -41,6 +41,7 @@ import pytest
 
 from policyengine_core import periods
 from policyengine_core.country_template import entities
+from policyengine_core.experimental import MemoryConfig
 from policyengine_core.reforms import Reform
 from policyengine_core.variables import Variable
 from tests.fixtures.uprating_order import (
@@ -389,3 +390,45 @@ def test_helper_input_keeps_an_input_already_set_in_its_year(
             np.testing.assert_allclose(
                 built.calculate(variable, month), values, rtol=1e-6
             )
+
+
+class _no_change(Reform):
+    def apply(self):
+        pass
+
+
+@pytest.mark.filterwarnings("ignore:Memory configuration is a feature")
+@pytest.mark.parametrize("on_disk", [False, True], ids=["memory", "disk"])
+@pytest.mark.parametrize("variable", list(HELPER_INPUTS), ids=["dispatch", "divide"])
+def test_an_input_set_on_a_clone_is_not_replayed_by_its_source(
+    system, variable, on_disk
+):
+    """``apply_reform`` keeps a simulation's inputs and drops what it
+    calculated. A clone recorded its inputs in its source's record, so once
+    a helper input on the clone replaced a month the source had calculated,
+    the source's reform kept its calculated month as an input, and uprated
+    from it."""
+    inputs = {variable: {"2011-06": [5.0, 6.0]}}
+    source = simulation(system, {})
+    if on_disk:
+        source.memory_config = MemoryConfig(max_memory_occupation=0)
+        holder = source.get_holder(variable)
+        holder._disk_storage = holder.create_disk_storage()
+        holder._on_disk_storable = True
+    source.set_input(variable, "2011-06", np.array(inputs[variable]["2011-06"]))
+    source.calculate(variable, "2012-12")
+    clone = source.clone()
+    yearly, monthly = HELPER_INPUTS[variable]
+    clone.set_input(variable, "2012", np.array(yearly))
+
+    source.apply_reform(_no_change)
+    clone.apply_reform(_no_change)
+
+    december = periods.period("2012-12")
+    assert (variable, "default", december) not in source._user_input_keys
+    assert source.get_holder(variable).get_array(december) is None
+    assert_bitwise_equal(
+        source.calculate(variable, "2013-01"),
+        alone(system, inputs, variable, "2013-01"),
+    )
+    np.testing.assert_array_equal(clone.calculate(variable, "2012-12"), monthly)

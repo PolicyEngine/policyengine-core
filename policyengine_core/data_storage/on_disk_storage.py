@@ -32,10 +32,11 @@ class OnDiskStorage:
         # File keys stored with ``put(..., derived=True)``; see
         # ``InMemoryStorage``.
         self._derived = set()
-        # Paths of the files this storage wrote and has not shared with a
-        # clone since: the only shared-directory files ``put`` writes over
-        # (see ``_path_to_write``).
-        self._own_files = set()
+        # For each key, the file this storage last wrote for it, while it has
+        # not shared that file since: the only files of its family ``put``
+        # writes over (see ``_path_to_write``). Kept when the key is deleted,
+        # so that writing it again reuses the file.
+        self._own_paths = {}
         # Paths of every file this storage, the storage it was cloned from or
         # any other clone of either wrote or stored when cloned: one set,
         # shared by all of them.
@@ -47,7 +48,7 @@ class OnDiskStorage:
     def __getstate__(self) -> dict:
         # Whatever this state is read into reads the same files, so from now
         # on this storage writes over none of them, as after ``clone``.
-        self._own_files = set()
+        self._own_paths = {}
         return self.__dict__.copy()
 
     def __setstate__(self, state: dict) -> None:
@@ -55,7 +56,7 @@ class OnDiskStorage:
         # count as inputs.
         state.setdefault("_derived", set())
         # Nor did it record the files it wrote: it writes over none it stores.
-        state.setdefault("_own_files", set())
+        state.setdefault("_own_paths", {})
         if "_family_files" not in state:
             state["_family_files"] = set(state.get("_files", {}).values())
         self.__dict__.update(state)
@@ -83,7 +84,7 @@ class OnDiskStorage:
         # family did not write (read back by ``restore``, say).
         self._family_files.update(self._files.values())
         clone._family_files = self._family_files
-        self._own_files = set()
+        self._own_paths = {}
         return clone
 
     def _decode_file(self, file: str) -> ArrayLike:
@@ -138,7 +139,7 @@ class OnDiskStorage:
             value = value.view(numpy.ndarray)
         numpy.save(path, value)
         self._files[filename] = path
-        self._own_files.add(path)
+        self._own_paths[filename] = path
         self._family_files.add(path)
         if derived:
             self._derived.add(filename)
@@ -157,11 +158,11 @@ class OnDiskStorage:
         ``REPLACEMENTS_DIR``. A file only storages outside this family wrote
         is written over, as before.
         """
-        current = self._files.get(filename)
-        if current is not None and current in self._own_files:
-            return current
+        own = self._own_paths.get(filename)
+        if own is not None:
+            return own
         path = os.path.join(self.storage_dir, filename) + ".npy"
-        if path in self._own_files or path not in self._family_files:
+        if path not in self._family_files:
             return path
         directory = os.path.join(self.storage_dir, REPLACEMENTS_DIR)
         os.makedirs(directory, exist_ok=True)
@@ -210,7 +211,6 @@ class OnDiskStorage:
         self._files = files = {}
         # Files read back from a directory carry no derived marks.
         self._derived = set()
-        self._own_files = set()
         # Restore self._files from content of storage_dir.
         for filename in os.listdir(self.storage_dir):
             if not filename.endswith(".npy"):

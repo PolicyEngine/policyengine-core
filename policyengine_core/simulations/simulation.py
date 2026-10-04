@@ -1622,6 +1622,11 @@ class Simulation:
             ):
                 new_dict[key] = value
         new._fast_cache = {}
+        # Each simulation records its own inputs. A shared record let an
+        # input set on one replay, in the other's ``apply_reform``, whatever
+        # the other had calculated for that period, as an input.
+        if hasattr(self, "_user_input_keys"):
+            new._user_input_keys = set(self._user_input_keys)
 
         # Only pass ``share_arrays`` when sharing, so a population or holder
         # ``clone`` override with the earlier signature still deep-copies.

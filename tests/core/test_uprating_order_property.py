@@ -39,6 +39,7 @@ import numpy as np  # noqa: E402
 
 from policyengine_core import periods  # noqa: E402
 from policyengine_core.experimental import MemoryConfig  # noqa: E402
+from policyengine_core.reforms import Reform  # noqa: E402
 from tests.fixtures.uprating_order import (  # noqa: E402
     COUNT,
     assert_bitwise_equal,
@@ -315,7 +316,8 @@ def test_uprating_depends_only_on_the_inputs(scenario, auto_carry_over):
 # month, from the simulation, a branch or a nested branch. Every month of the
 # year then holds an input. And the input changes nothing a clone of the
 # simulation, taken just before it, has stored: a clone keeps the branch
-# name, and on disk it shares the files stored before cloning.
+# name, and on disk it shares the files stored before cloning. Nor does it
+# make the clone's ``apply_reform`` keep any value the clone calculated.
 #
 # The domain: the variable is stored in memory or on disk. Earlier inputs are
 # months, set on the simulation first; the yearly input and the requests
@@ -365,6 +367,11 @@ def _helper_simulation(system, variable, earlier_inputs, branch, on_disk):
     for period, values in earlier_inputs.items():
         built.set_input(variable, period, np.array(values))
     return _read_from(built, branch, variable, None)
+
+
+class _no_change(Reform):
+    def apply(self):
+        pass
 
 
 def _stored_months(built, variable, months):
@@ -463,6 +470,8 @@ def test_helper_input_replaces_values_calculated_in_its_year(
     if with_clone:
         clone = built.clone()
         stored_by_clone = _stored_months(clone, variable, months)
+        clone_holder = clone.get_holder(variable)
+        inputs_of_clone = set(clone_holder.get_input_periods(clone.branch_name))
     built.set_input(variable, year, yearly)
 
     fresh = _helper_simulation(system, variable, earlier_inputs, branch, on_disk)
@@ -480,6 +489,10 @@ def test_helper_input_replaces_values_calculated_in_its_year(
                 assert_bitwise_equal(
                     value, stored_by_clone[month], f"{message}: clone's {month}"
                 )
+        clone.apply_reform(_no_change)
+        assert (
+            set(clone_holder.get_input_periods(clone.branch_name)) == inputs_of_clone
+        ), f"{message}: the clone's inputs after a reform"
     holder = built.get_holder(variable)
     for month in months:
         assert not holder.is_derived(periods.period(month), built.branch_name), month

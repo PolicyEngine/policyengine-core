@@ -180,7 +180,7 @@ def test_storages_not_cloned_from_one_another_write_over_each_others_files(
 
 def test_restore_reads_only_the_files_named_for_their_keys(storage):
     storage.put(np.array([1.0]), "2012")
-    storage.put(np.array([2.0]), "month:2012-03:3")
+    storage.put(np.array([2.0]), "2012-03")
     clone = storage.clone()
     clone.put(np.array([3.0]), "2012")
     assert len(_npy_files(storage)) == 3
@@ -190,7 +190,7 @@ def test_restore_reads_only_the_files_named_for_their_keys(storage):
 
     assert sorted(map(str, restored.get_known_periods())) == [
         "2012",
-        "month:2012-03:3",
+        "2012-03",
     ]
     np.testing.assert_array_equal(restored.get("2012"), [1])
 
@@ -226,7 +226,7 @@ def test_a_storage_unpickled_from_before_writes_over_none_of_its_files(storage):
     share them with another, so it writes a new file for each."""
     storage.put(np.array([1.0]), "2012")
     state = pickle.loads(pickle.dumps(storage.__dict__))
-    del state["_own_files"], state["_family_files"]
+    del state["_own_paths"], state["_family_files"]
     old = OnDiskStorage.__new__(OnDiskStorage)
     old.__setstate__(state)
 
@@ -234,3 +234,26 @@ def test_a_storage_unpickled_from_before_writes_over_none_of_its_files(storage):
 
     np.testing.assert_array_equal(storage.get("2012"), [1])
     np.testing.assert_array_equal(old.get("2012"), [2])
+
+
+def test_a_storage_restored_then_written_still_writes_its_own_file(storage):
+    """``restore`` shares nothing, so a storage that was never cloned keeps
+    writing over the files it wrote, which another storage reads."""
+    storage.put(np.array([5.0]), "2013")
+    storage.restore()
+    storage.put(np.array([6.0]), "2013")
+    reader = OnDiskStorage(storage.storage_dir, preserve_storage_dir=True)
+    reader.restore()
+    np.testing.assert_array_equal(reader.get("2013"), [6])
+    assert len(_npy_files(storage)) == 1
+
+
+def test_deleting_and_writing_a_key_again_reuses_its_file(storage):
+    storage.put(np.array([0.0]), "2012", derived=True)
+    clone = storage.clone()
+    for value in range(1, 21):
+        storage.delete("2012")
+        storage.put(np.array([float(value)]), "2012", derived=True)
+    np.testing.assert_array_equal(storage.get("2012"), [20])
+    np.testing.assert_array_equal(clone.get("2012"), [0])
+    assert len(_npy_files(storage)) == 2

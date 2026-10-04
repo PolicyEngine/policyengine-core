@@ -20,6 +20,10 @@ The domain:
   cached for the branch whatever its inputs are, which is not what this
   module tests.
 * Targets are in the variable's definition unit.
+
+A second property, ``test_helper_input_replaces_values_calculated_in_its_year``,
+covers yearly inputs given through a ``set_input`` helper after calculations
+in that year; its domain is stated above it.
 """
 
 from __future__ import annotations
@@ -297,3 +301,130 @@ def test_uprating_depends_only_on_the_inputs(scenario, auto_carry_over):
     if branch_input is not None:
         seen.setdefault(variable, {})[branch_input[0]] = branch_input[1]
     assert_bitwise_equal(result, reference(system, seen, variable, period), message)
+
+
+# Inputs given through a ``set_input`` helper after calculations.
+#
+# A yearly input for a monthly variable is stored in each month of the year by
+# its helper: copied for a stock, divided for a flow. The property: whatever
+# was calculated in that year before the input was set, the simulation then
+# returns, byte for byte, what a fresh simulation given the same inputs in the
+# same order returns, for every month of the year and for a later or earlier
+# month, from the simulation, a branch or a nested branch. Every month of the
+# year then holds an input.
+#
+# The domain: earlier inputs are months, set on the simulation first; the
+# yearly input and the requests before it are on the simulation or branch
+# read from, and those requests are inside the input's year (plain
+# calculations of its months, or ADD over it). A value calculated outside the
+# year before the input stays cached whatever the input is, which is not what
+# this module tests.
+
+HELPER_VARIABLES = ["uprated_monthly_stock", "uprated_monthly"]
+HELPER_YEARS = ["2011", "2012", "2013"]
+
+
+@st.composite
+def helper_scenarios(draw):
+    variable = draw(st.sampled_from(HELPER_VARIABLES))
+    earlier_inputs = draw(
+        st.dictionaries(
+            st.sampled_from(INPUT_MONTHS),
+            st.lists(FLOATS, min_size=COUNT, max_size=COUNT),
+            max_size=3,
+        )
+    )
+    year = draw(st.sampled_from(HELPER_YEARS))
+    yearly = draw(st.lists(FLOATS, min_size=COUNT, max_size=COUNT))
+    months_of_year = [f"{year}-{month:02d}" for month in range(1, 13)]
+    requests = draw(
+        st.lists(
+            st.one_of(
+                st.tuples(st.just("calculate"), st.sampled_from(months_of_year)),
+                st.tuples(st.just("add"), st.just(year)),
+            ),
+            max_size=5,
+        )
+    )
+    branch = draw(st.sampled_from([None, "reform", "nested"]))
+    target = draw(st.sampled_from(REQUEST_MONTHS))
+    return variable, earlier_inputs, year, yearly, requests, branch, target
+
+
+def _helper_simulation(system, variable, earlier_inputs, branch):
+    built = simulation(system, {variable: earlier_inputs} if earlier_inputs else {})
+    return _read_from(built, branch, variable, None)
+
+
+@settings(
+    max_examples=300,
+    deadline=None,
+    derandomize=True,
+    suppress_health_check=[HealthCheck.too_slow],
+)
+@given(scenario=helper_scenarios(), auto_carry_over=st.booleans())
+# December calculated, then the year's input (review finding P1).
+@example(
+    scenario=(
+        "uprated_monthly_stock",
+        {},
+        "2012",
+        [7.0, 9.0],
+        [("calculate", "2012-12")],
+        None,
+        "2013-01",
+    ),
+    auto_carry_over=True,
+)
+# A month calculated mid-year: divide took it out of the year's total.
+@example(
+    scenario=(
+        "uprated_monthly",
+        {"2011-06": [5.0, 6.0]},
+        "2012",
+        [84.0, 108.0],
+        [("calculate", "2012-06")],
+        "nested",
+        "2012-07",
+    ),
+    auto_carry_over=False,
+)
+# ADD over the year, and an input already set in it.
+@example(
+    scenario=(
+        "uprated_monthly_stock",
+        {"2012-03": [1.0, 2.0]},
+        "2012",
+        [7.0, 9.0],
+        [("add", "2012")],
+        "reform",
+        "2013-02",
+    ),
+    auto_carry_over=True,
+)
+def test_helper_input_replaces_values_calculated_in_its_year(scenario, auto_carry_over):
+    variable, earlier_inputs, year, yearly, requests, branch, target = scenario
+    system = SYSTEMS[auto_carry_over]
+
+    built = _helper_simulation(system, variable, earlier_inputs, branch)
+    for kind, requested in requests:
+        request(built, kind, variable, requested)
+    built.set_input(variable, year, yearly)
+
+    fresh = _helper_simulation(system, variable, earlier_inputs, branch)
+    fresh.set_input(variable, year, yearly)
+
+    message = f"{variable} after {requests}, then {year} = {yearly}, branch {branch}"
+    holder = built.get_holder(variable)
+    for month in [f"{year}-{month:02d}" for month in range(1, 13)]:
+        assert not holder.is_derived(periods.period(month), built.branch_name), month
+        assert_bitwise_equal(
+            built.calculate(variable, month),
+            fresh.calculate(variable, month),
+            f"{message}: {month}",
+        )
+    assert_bitwise_equal(
+        built.calculate(variable, target),
+        fresh.calculate(variable, target),
+        f"{message}: {target}",
+    )

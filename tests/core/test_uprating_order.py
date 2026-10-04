@@ -26,6 +26,12 @@ periods stored only under branches this one cannot read. The rule is in
 and the order-independence property in ``test_uprating_order_property.py``.
 Each regression here compares with a fresh simulation that calculates only
 the period in question, byte for byte.
+
+A yearly input for a monthly variable is stored month by month by its
+``set_input`` helper. The helpers took a month the simulation had calculated
+for an input and kept it, so the uprating rule above skipped it. They now
+replace it, and ``Simulation.set_input`` drops what ``calculate`` returned
+for those months (the regressions at the end of this module).
 """
 
 from __future__ import annotations
@@ -38,6 +44,7 @@ from policyengine_core.country_template import entities
 from policyengine_core.reforms import Reform
 from policyengine_core.variables import Variable
 from tests.fixtures.uprating_order import (
+    MONTHLY_INDEX,
     UPRATING,
     alone,
     assert_bitwise_equal,
@@ -283,3 +290,102 @@ def test_uprated_value_is_cached_as_derived(system):
     holder = built.get_holder("uprated")
     assert holder.is_derived(periods.period("2013"))
     assert not holder.is_derived(periods.period("2012"))
+
+
+# A yearly input for a monthly variable goes through its ``set_input`` helper,
+# which stores it in each month of the year: copied to each month for a stock
+# (``set_input_dispatch_by_period``), divided between them for a flow
+# (``set_input_divide_by_period``). A month the simulation calculated before
+# the input was set is not an input, so the helper replaces it as it fills a
+# month nothing is stored for. Before the fix, the helpers treated it as one:
+# dispatch kept it and copied it into the later months as an input, and divide
+# took it out of the year's total. The month also read back as calculated, and
+# a later month was uprated from an earlier input month, or from the copies.
+
+HELPER_INPUTS = {
+    "uprated_monthly_stock": ([7.0, 9.0], [7.0, 9.0]),
+    "uprated_monthly": ([84.0, 108.0], [7.0, 9.0]),
+}
+CALCULATED_FIRST = [["2012-12"], ["2012-06"], ["2012-06", "2012-12"], ["2012-01"]]
+
+
+def _on(built, branch):
+    if branch in ("reform", "nested"):
+        built = built.get_branch("reform")
+    if branch == "nested":
+        built = built.get_branch("nested")
+    return built
+
+
+@pytest.mark.parametrize("branch", [None, "reform", "nested"])
+@pytest.mark.parametrize("calculated", CALCULATED_FIRST, ids="+".join)
+@pytest.mark.parametrize("variable", list(HELPER_INPUTS), ids=["dispatch", "divide"])
+def test_helper_input_replaces_months_calculated_before_it(
+    system, variable, calculated, branch
+):
+    yearly, monthly = HELPER_INPUTS[variable]
+    built = _on(simulation(system, {}), branch)
+    for month in calculated:
+        built.calculate(variable, month)
+    built.set_input(variable, "2012", np.array(yearly))
+
+    fresh = _on(simulation(system, {}), branch)
+    fresh.set_input(variable, "2012", np.array(yearly))
+    holder = built.get_holder(variable)
+    for month in ("2012-01", "2012-06", "2012-12"):
+        result = built.calculate(variable, month)
+        np.testing.assert_array_equal(result, monthly)
+        assert_bitwise_equal(result, fresh.calculate(variable, month), month)
+        assert not holder.is_derived(periods.period(month), built.branch_name)
+    for month in ("2013-01", "2014-03"):
+        assert_bitwise_equal(
+            built.calculate(variable, month), fresh.calculate(variable, month), month
+        )
+
+
+@pytest.mark.parametrize("variable", list(HELPER_INPUTS), ids=["dispatch", "divide"])
+def test_helper_input_is_uprated_from_its_last_month(system, variable):
+    """The month after the year is uprated from December's input, not from an
+    earlier month the helper filled while December held a calculated value."""
+    if variable == "uprated_monthly_stock":
+        ratio = MONTHLY_INDEX["2013-01-01"] / MONTHLY_INDEX["2012-12-01"]
+    else:
+        ratio = index(2013) / index(2012)
+    yearly, monthly = HELPER_INPUTS[variable]
+    built = simulation(system, {})
+    built.calculate(variable, "2012-12")
+    built.set_input(variable, "2012", np.array(yearly))
+    np.testing.assert_allclose(
+        built.calculate(variable, "2013-01"), np.array(monthly) * ratio, rtol=1e-6
+    )
+
+
+@pytest.mark.parametrize(
+    "variable, expected",
+    [
+        # Dispatch copies an input it meets into the months after it.
+        ("uprated_monthly_stock", {"2012-02": [7, 9], "2012-06": [1, 2]}),
+        # Divide shares what the inputs it meets leave of the total.
+        (
+            "uprated_monthly",
+            {"2012-02": [83 / 11, 106 / 11], "2012-06": [83 / 11, 106 / 11]},
+        ),
+    ],
+    ids=["dispatch", "divide"],
+)
+def test_helper_input_keeps_an_input_already_set_in_its_year(
+    system, variable, expected
+):
+    """Guard against over-correction: an input for a month of the year is
+    still kept, whether or not other months were calculated."""
+    yearly, _ = HELPER_INPUTS[variable]
+    for calculated in ([], ["2012-06"], ["2012-03", "2012-06"]):
+        built = simulation(system, {variable: {"2012-03": [1.0, 2.0]}})
+        for month in calculated:
+            built.calculate(variable, month)
+        built.set_input(variable, "2012", np.array(yearly))
+        np.testing.assert_array_equal(built.calculate(variable, "2012-03"), [1, 2])
+        for month, values in expected.items():
+            np.testing.assert_allclose(
+                built.calculate(variable, month), values, rtol=1e-6
+            )

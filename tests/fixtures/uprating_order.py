@@ -23,12 +23,13 @@ from policyengine_core import periods
 from policyengine_core.country_template import CountryTaxBenefitSystem, entities
 from policyengine_core.parameters import ParameterNode, get_parameter
 from policyengine_core.simulations.simulation import _uprating_index_value
-from policyengine_core.variables import Variable
+from policyengine_core.variables import QuantityType, Variable
 from tests.fixtures.carry_over import COUNT, alone, request, simulation
 
 __all__ = [
     "COUNT",
     "INDEX",
+    "MONTHLY_INDEX",
     "UPRATING",
     "alone",
     "assert_bitwise_equal",
@@ -43,6 +44,13 @@ __all__ = [
 # intermediate year shows.
 INDEX = {f"{year}-01-01": 100 * 1.037 ** (year - 2010) for year in range(2010, 2021)}
 UPRATING = "uprating_order.index"
+# 0.3% a month, so that which month of a year a value is uprated from shows.
+MONTHLY_INDEX = {
+    f"{year}-{month:02d}-01": 100 * 1.003 ** ((year - 2010) * 12 + month - 1)
+    for year in range(2010, 2021)
+    for month in range(1, 13)
+}
+MONTHLY_UPRATING = "uprating_order.monthly_index"
 
 
 class uprated(Variable):
@@ -100,7 +108,16 @@ class uprated_monthly(Variable):
     entity = entities.Person
     definition_period = periods.MONTH
     uprating = UPRATING
-    label = "Uprated monthly input"
+    label = "Uprated monthly input (a flow: set_input_divide_by_period)"
+
+
+class uprated_monthly_stock(Variable):
+    value_type = float
+    entity = entities.Person
+    definition_period = periods.MONTH
+    quantity_type = QuantityType.STOCK
+    uprating = MONTHLY_UPRATING
+    label = "Uprated monthly input (a stock: set_input_dispatch_by_period)"
 
 
 VARIABLES = (
@@ -111,6 +128,7 @@ VARIABLES = (
     uprated_with_default,
     uprated_any_unit,
     uprated_monthly,
+    uprated_monthly_stock,
 )
 
 
@@ -119,7 +137,13 @@ def build_system(auto_carry_over: bool = True) -> CountryTaxBenefitSystem:
     system.auto_carry_over_input_variables = auto_carry_over
     system.parameters.add_child(
         "uprating_order",
-        ParameterNode("uprating_order", data={"index": {"values": INDEX}}),
+        ParameterNode(
+            "uprating_order",
+            data={
+                "index": {"values": INDEX},
+                "monthly_index": {"values": MONTHLY_INDEX},
+            },
+        ),
     )
     system.add_variables(*VARIABLES)
     return system

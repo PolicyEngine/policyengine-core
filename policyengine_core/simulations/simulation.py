@@ -1544,6 +1544,21 @@ class Simulation:
         _fast_cache = getattr(self, "_fast_cache", None)
         if _fast_cache is not None:
             _fast_cache.pop((variable_name, period), None)
+            if variable.set_input and period.unit != variable.definition_period:
+                # The helper wrote the input's sub-periods, replacing any
+                # value calculated there, so what ``calculate`` returned for
+                # them is stale too. (``_end_order``, not ``stop``: ``stop``
+                # raises for a period that ends after 9999-12-31.)
+                stale = [
+                    key
+                    for key in _fast_cache
+                    if key[0] == variable_name
+                    and isinstance(key[1], Period)
+                    and period.start <= key[1].start
+                    and _end_order(key[1]) <= _end_order(period)
+                ]
+                for key in stale:
+                    del _fast_cache[key]
 
     def get_variable_population(self, variable_name: str) -> Population:
         variable = self.tax_benefit_system.get_variable(

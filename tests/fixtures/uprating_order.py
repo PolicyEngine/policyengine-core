@@ -26,6 +26,8 @@ PolicyEngine/policyengine-core#583).
 
 from __future__ import annotations
 
+import sys
+
 import numpy as np
 
 from policyengine_core import periods
@@ -44,6 +46,7 @@ __all__ = [
     "alone",
     "assert_bitwise_equal",
     "build_system",
+    "can_store_on_disk",
     "index",
     "reference",
     "request",
@@ -63,6 +66,18 @@ MONTHLY_INDEX = {
 MONTHLY_UPRATING = "uprating_order.monthly_index"
 # An index that never moves: uprating by it multiplies by exactly 1.
 FLAT = "uprating_order.flat"
+
+# ``OnDiskStorage`` names a value's file after its period, and Windows does
+# not allow ":" in a file name. So on Windows a period several units long
+# (``year:2012:2``) cannot be stored on disk: ``numpy.save`` raises
+# ``OSError``. The tests keep those periods in memory there (see
+# PolicyEngine/policyengine-core#526).
+DISK_STORES_ANY_PERIOD = sys.platform != "win32"
+
+
+def can_store_on_disk(period) -> bool:
+    """Whether ``OnDiskStorage`` can store a value for ``period`` here."""
+    return DISK_STORES_ANY_PERIOD or ":" not in str(periods.period(period))
 
 
 class uprated(Variable):

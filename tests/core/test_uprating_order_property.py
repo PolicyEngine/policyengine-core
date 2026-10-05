@@ -27,6 +27,9 @@ The domain:
   cached for the branch whatever its inputs are, which is not what this
   module tests.
 * Targets are in the variable's definition unit.
+* Inputs on disk are any of the target variable's, except on Windows, where
+  ``OnDiskStorage`` cannot store a period several units long
+  (PolicyEngine/policyengine-core#526): those stay in memory there.
 
 One more property, ``test_helper_input_replaces_values_calculated_in_its_year``,
 covers yearly inputs given through a ``set_input`` helper after calculations
@@ -57,6 +60,7 @@ from tests.fixtures.uprating_order import (  # noqa: E402
     COUNT,
     assert_bitwise_equal,
     build_system,
+    can_store_on_disk,
     reference,
     request,
     simulation,
@@ -414,6 +418,8 @@ def reordered_scenarios(draw):
     on_disk = draw(
         st.sets(st.sampled_from([(variable, stored) for stored in inputs[variable]]))
     )
+    # On Windows, a period several units long stays in memory.
+    on_disk = {pair for pair in on_disk if can_store_on_disk(pair[1])}
     return (inputs, requests, variable, period, branch, branch_input), sets, on_disk
 
 

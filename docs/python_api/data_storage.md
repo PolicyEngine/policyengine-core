@@ -23,6 +23,9 @@ The `policyengine_core.data_storage` module contains the classes that are used t
 ## TemporaryStorageDirectory
 
 ```{eval-rst}
+.. automodule:: policyengine_core.data_storage.storage_directory
+    :no-members:
+
 .. autoclass:: policyengine_core.data_storage.storage_directory.TemporaryStorageDirectory
     :members:
     :undoc-members:

@@ -935,13 +935,31 @@ class Simulation:
                     if known_period.unit == variable.definition_period
                     and known_period.start < period.start
                 ]
-                if variable.uprating is not None and len(earlier_known_periods) > 0:
+                # Uprate only from an input this branch reads (see
+                # ``Holder.get_input_periods``). Every value this simulation
+                # calculated is marked derived when cached, and uprating from
+                # one would make the result depend on which periods were
+                # calculated first: an integer truncated, or a float32
+                # rounded, at an intermediate period would compound, and a
+                # value masked by ``defined_for``, a default, or a value
+                # carried from another unit, cached there, would replace the
+                # input. A period stored only under a branch this one cannot
+                # read would read back as ``None``.
+                earlier_input_periods = []
+                if variable.uprating is not None:
+                    input_periods = set(holder.get_input_periods(self.branch_name))
+                    earlier_input_periods = [
+                        known_period
+                        for known_period in earlier_known_periods
+                        if known_period in input_periods
+                    ]
+                if earlier_input_periods:
                     # Take the latest period from the filtered list itself.
                     # Indexing ``known_periods`` with a position in the
                     # filtered list picked the wrong period whenever a later
                     # one was stored first.
                     latest_known_period = max(
-                        earlier_known_periods, key=lambda p: p.start
+                        earlier_input_periods, key=lambda p: p.start
                     )
                     try:
                         uprating_parameter = get_parameter(
@@ -1028,8 +1046,9 @@ class Simulation:
                         # No input to carry, but a later period is stored: as
                         # before, return the default without caching it. A
                         # cached default would change what a formula testing
-                        # whether a value is stored sees, and the uprating path
-                        # above would uprate later periods from it.
+                        # whether a value is stored sees. (The uprating path
+                        # above skips derived periods, so it would not uprate
+                        # from one.)
                         return holder.default_array()
                     else:
                         array = holder.default_array()
@@ -1525,6 +1544,21 @@ class Simulation:
         _fast_cache = getattr(self, "_fast_cache", None)
         if _fast_cache is not None:
             _fast_cache.pop((variable_name, period), None)
+            if variable.set_input and period.unit != variable.definition_period:
+                # The helper wrote the input's sub-periods, replacing any
+                # value calculated there, so what ``calculate`` returned for
+                # them is stale too. (``_end_order``, not ``stop``: ``stop``
+                # raises for a period that ends after 9999-12-31.)
+                stale = [
+                    key
+                    for key in _fast_cache
+                    if key[0] == variable_name
+                    and isinstance(key[1], Period)
+                    and period.start <= key[1].start
+                    and _end_order(key[1]) <= _end_order(period)
+                ]
+                for key in stale:
+                    del _fast_cache[key]
 
     def get_variable_population(self, variable_name: str) -> Population:
         variable = self.tax_benefit_system.get_variable(
@@ -1588,6 +1622,11 @@ class Simulation:
             ):
                 new_dict[key] = value
         new._fast_cache = {}
+        # Each simulation records its own inputs. A shared record let an
+        # input set on one replay, in the other's ``apply_reform``, whatever
+        # the other had calculated for that period, as an input.
+        if hasattr(self, "_user_input_keys"):
+            new._user_input_keys = set(self._user_input_keys)
 
         # Only pass ``share_arrays`` when sharing, so a population or holder
         # ``clone`` override with the earlier signature still deep-copies.

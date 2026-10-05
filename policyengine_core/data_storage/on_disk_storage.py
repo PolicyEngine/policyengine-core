@@ -1,5 +1,6 @@
 import os
 import shutil
+import tempfile
 
 import numpy
 from numpy.typing import ArrayLike
@@ -7,6 +8,12 @@ from numpy.typing import ArrayLike
 from policyengine_core import periods
 from policyengine_core.enums import EnumArray
 from policyengine_core.periods import Period
+
+# Subdirectory of a storage directory for the files ``put`` writes when a
+# key's usual file is shared with a clone (see ``OnDiskStorage._path_to_write``).
+# ``restore`` reads only the files directly in the directory, so it never
+# reads these.
+REPLACEMENTS_DIR = "replaced"
 
 
 class OnDiskStorage:
@@ -25,14 +32,33 @@ class OnDiskStorage:
         # File keys stored with ``put(..., derived=True)``; see
         # ``InMemoryStorage``.
         self._derived = set()
+        # For each key, the file this storage last wrote for it, while it has
+        # not shared that file since: the only files of its family ``put``
+        # writes over (see ``_path_to_write``). Kept when the key is deleted,
+        # so that writing it again reuses the file.
+        self._own_paths = {}
+        # Paths of every file this storage, the storage it was cloned from or
+        # any other clone of either wrote or stored when cloned: one set,
+        # shared by all of them.
+        self._family_files = set()
         self.is_eternal = is_eternal
         self.preserve_storage_dir = preserve_storage_dir
         self.storage_dir = storage_dir
+
+    def __getstate__(self) -> dict:
+        # Whatever this state is read into reads the same files, so from now
+        # on this storage writes over none of them, as after ``clone``.
+        self._own_paths = {}
+        return self.__dict__.copy()
 
     def __setstate__(self, state: dict) -> None:
         # A storage pickled before derived marks existed has none: its values
         # count as inputs.
         state.setdefault("_derived", set())
+        # Nor did it record the files it wrote: it writes over none it stores.
+        state.setdefault("_own_paths", {})
+        if "_family_files" not in state:
+            state["_family_files"] = set(state.get("_files", {}).values())
         self.__dict__.update(state)
 
     def clone(self) -> "OnDiskStorage":
@@ -40,10 +66,10 @@ class OnDiskStorage:
 
         The file and enum mappings are copied so deleting or rewiring entries
         through the clone does not mutate the source storage. The underlying
-        ``.npy`` files remain shared: writing the same ``{branch}_{period}``
-        key from two views targets the same path and can overwrite the file.
-        Clones retain the original cleanup owner so the shared directory stays
-        alive, but never own cleanup themselves.
+        ``.npy`` files are shared, so neither storage writes over them: a later
+        ``put`` of one of their keys, through either storage, writes a new
+        file (see ``_path_to_write``). Clones retain the original cleanup owner
+        so the shared directory stays alive, but never own cleanup themselves.
         """
         clone = OnDiskStorage(
             self.storage_dir,
@@ -54,6 +80,11 @@ class OnDiskStorage:
         clone._enums = self._enums.copy()
         clone._derived = set(self._derived)
         clone._storage_dir_owner = getattr(self, "_storage_dir_owner", self)
+        # Both storages now read every file stored so far, including any this
+        # family did not write (read back by ``restore``, say).
+        self._family_files.update(self._files.values())
+        clone._family_files = self._family_files
+        self._own_paths = {}
         return clone
 
     def _decode_file(self, file: str) -> ArrayLike:
@@ -102,16 +133,44 @@ class OnDiskStorage:
         period = periods.period(period)
 
         filename = f"{branch_name}_{period}"
-        path = os.path.join(self.storage_dir, filename) + ".npy"
+        path = self._path_to_write(filename)
         if isinstance(value, EnumArray):
             self._enums[path] = value.possible_values
             value = value.view(numpy.ndarray)
         numpy.save(path, value)
         self._files[filename] = path
+        self._own_paths[filename] = path
+        self._family_files.add(path)
         if derived:
             self._derived.add(filename)
         else:
             self._derived.discard(filename)
+
+    def _path_to_write(self, filename: str) -> str:
+        """The path ``put`` writes the value for key ``filename`` to.
+
+        Storages cloned from one another share a directory and the files
+        stored before cloning, and each can store the same key afterwards,
+        which names the same path. Writing over a file another of them reads
+        would change that storage's value. So ``put`` writes over one of
+        their files only if this storage wrote it and has not shared it since;
+        otherwise the value goes to a new file of its own, in
+        ``REPLACEMENTS_DIR``. A file only storages outside this family wrote
+        is written over, as before.
+        """
+        own = self._own_paths.get(filename)
+        if own is not None:
+            return own
+        path = os.path.join(self.storage_dir, filename) + ".npy"
+        if path not in self._family_files:
+            return path
+        directory = os.path.join(self.storage_dir, REPLACEMENTS_DIR)
+        os.makedirs(directory, exist_ok=True)
+        descriptor, path = tempfile.mkstemp(
+            prefix=f"{filename}.", suffix=".npy", dir=directory
+        )
+        os.close(descriptor)
+        return path
 
     def delete(self, period: Period = None, branch_name: str = "default") -> None:
         if period is None:

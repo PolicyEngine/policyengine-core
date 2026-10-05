@@ -1,1 +1,1 @@
-Simulations and storages cloned from one another no longer write over each other's values in on-disk storage: a value stored for a key whose file a clone also reads goes to a new file of its own.
+Simulations and storages cloned from one another no longer write over each other's values in on-disk storage: a value stored for a key whose file a clone also reads goes to a new file of its own. Each cloned simulation also keeps its own record of user inputs, so `apply_reform` on one no longer keeps, as an input, a value it calculated for a period the other was given as input.

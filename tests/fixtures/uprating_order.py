@@ -71,13 +71,13 @@ FLAT = "uprating_order.flat"
 
 
 def _disk_stores_any_period() -> bool:
-    """Whether ``OnDiskStorage`` can store a value here for a period whose
-    string form has a colon, such as ``year:2012:2``.
+    """Whether ``OnDiskStorage`` can store a value here for ``year:2012:2``.
 
-    It names a value's file after its period, and Windows does not allow ":"
-    in a file name, so there ``numpy.save`` raises ``OSError``
-    (PolicyEngine/policyengine-core#526). Where it cannot, the tests keep
-    those periods in memory; once storage can, they are on disk again."""
+    It names a value's file after its period, and on Windows ``numpy.save``
+    raises ``OSError`` for ``default_year:2012:2.npy``, whose name has two
+    colons (PolicyEngine/policyengine-core#526). Where it cannot, the tests
+    keep every period whose string form has a colon in memory; once storage
+    can, they are on disk again."""
     with tempfile.TemporaryDirectory() as directory:
         storage = OnDiskStorage(directory, preserve_storage_dir=True)
         try:
@@ -91,7 +91,9 @@ DISK_STORES_ANY_PERIOD = _disk_stores_any_period()
 
 
 def can_store_on_disk(period) -> bool:
-    """Whether ``OnDiskStorage`` can store a value for ``period`` here."""
+    """Whether the tests may store a value for ``period`` on disk here: any
+    period where ``year:2012:2`` can be stored, otherwise only one whose string
+    form has no colon."""
     return DISK_STORES_ANY_PERIOD or ":" not in str(periods.period(period))
 
 

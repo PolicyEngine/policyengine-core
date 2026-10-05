@@ -28,9 +28,9 @@ The domain:
   module tests.
 * Targets are in the variable's definition unit.
 * Inputs on disk are any of the target variable's, except where
-  ``OnDiskStorage`` cannot store a period whose string form has a colon,
-  such as ``year:2012:2`` (on Windows; PolicyEngine/policyengine-core#526):
-  those stay in memory there.
+  ``OnDiskStorage`` cannot store ``year:2012:2`` (on Windows;
+  PolicyEngine/policyengine-core#526): there, periods whose string form has
+  a colon stay in memory.
 
 One more property, ``test_helper_input_replaces_values_calculated_in_its_year``,
 covers yearly inputs given through a ``set_input`` helper after calculations
@@ -420,8 +420,8 @@ def reordered_scenarios(draw):
     on_disk = draw(
         st.sets(st.sampled_from([(variable, stored) for stored in inputs[variable]]))
     )
-    # Where storage cannot store a period with a colon in its string form
-    # (on Windows), such periods stay in memory.
+    # Where storage cannot store year:2012:2 (on Windows), periods with a
+    # colon in their string form stay in memory.
     on_disk = {pair for pair in on_disk if can_store_on_disk(pair[1])}
     return (inputs, requests, variable, period, branch, branch_input), sets, on_disk
 

@@ -1,3 +1,11 @@
+## [3.32.17] - 2026-10-05
+
+### Fixed
+
+- Simulations and storages cloned from one another no longer write over each other's values in on-disk storage: a value stored for a key whose file a clone also reads goes to a new file of its own. Each cloned simulation also keeps its own record of user inputs, so `apply_reform` on one no longer keeps, as an input, a value it calculated for a period the other was given as input.
+- Uprating now starts from the latest earlier input in the variable's own unit and skips periods the simulation calculated, and a yearly input given through a `set_input` helper now replaces months already calculated instead of keeping them, so calculating intermediate periods first no longer compounds rounding or truncation, or carries an eligibility mask, a default or a calculated month into later uprated values.
+
+
 ## [3.32.16] - 2026-10-03
 
 ### Fixed

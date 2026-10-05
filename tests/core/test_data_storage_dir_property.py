@@ -3,22 +3,35 @@
 Over any sequence of these operations on simulations that store every value
 on disk, starting from one simulation:
 
-* ``set``: a simulation stores a value (``set_input``);
+* ``set``: a simulation stores a value (``set_input``), or a disk storage on
+  its own does (``put``);
+* ``set_every``: every simulation stores a different value of every
+  variable for one year, and every disk storage on its own one for that
+  year, so any two that share files both store a key neither may have had;
 * ``clone`` and ``branch``: ``Simulation.clone`` and ``get_branch``;
-* ``copy``: a disk storage of a simulation is pickled or deep-copied;
-* ``collect``: one simulation or copied storage is dropped and the garbage
-  collector run, in any order, so sources go before their clones, branches
-  and copies, or after;
+* ``copy``: a disk storage of a simulation, or one on its own, is pickled or
+  copied (``copy.deepcopy`` or ``copy.copy``), giving a disk storage on its
+  own;
+* ``make``: a disk storage on its own is made in a new subfolder of a
+  simulation's folder, preserving it or not (``preserve_storage_dir``);
+* ``preserve``: a disk storage a simulation or ``make`` made is set to
+  preserve its folder;
+* ``collect``: one simulation or disk storage on its own is dropped and the
+  garbage collector run, in any order, so sources go before their clones,
+  branches and copies, or after;
 
 with the first simulation's folder made by the simulation or chosen by the
 caller (``_data_storage_dir``):
 
-1. Nothing removes a file anything still reads: after every collection, each
-   simulation left reads every value it stored or inherited when cloned or
-   branched, and each copied storage every value its source had.
-2. No folder is left: once everything is collected, no ``openfisca_*`` folder
-   is left in the temporary folder or in the caller's.
-3. A folder the caller chose is never removed (everything made in it is).
+1. Nothing removes or writes over a file anything still reads: after every
+   collection, each simulation left reads every value it stored or inherited
+   when cloned or branched, and each disk storage on its own every value it
+   was copied with or stored.
+2. Only what is preserved is left: once everything is collected, the only
+   folders left in the temporary folder or in the caller's are the subfolders
+   of disk storages that preserve theirs and the folders leading to them, and
+   each still holds the files its storage last read, unchanged.
+3. A folder the caller chose is never removed.
 
 Regressions are in ``test_data_storage_dir.py``.
 """
@@ -40,15 +53,21 @@ from hypothesis import HealthCheck, given, settings  # noqa: E402
 from hypothesis import strategies as st  # noqa: E402
 import numpy as np  # noqa: E402
 
+from policyengine_core.data_storage import OnDiskStorage  # noqa: E402
 from tests.fixtures.data_storage_dir import (  # noqa: E402
     VARIABLES,
     YEARS,
     disk_simulation,
     read,
-    storage_folders,
     temporary_folders,
     values,
 )
+
+COPIERS = {
+    "pickle": lambda storage: pickle.loads(pickle.dumps(storage)),
+    "deepcopy": copy.deepcopy,
+    "copy": copy.copy,
+}
 
 _index = st.integers(min_value=0, max_value=63)
 OPERATIONS = st.lists(
@@ -60,18 +79,33 @@ OPERATIONS = st.lists(
             st.sampled_from(YEARS),
             st.integers(min_value=0, max_value=1000),
         ),
+        st.tuples(
+            st.just("set_every"),
+            st.sampled_from(YEARS),
+            st.integers(min_value=0, max_value=1000),
+        ),
         st.tuples(st.just("clone"), _index),
         st.tuples(st.just("branch"), _index),
         st.tuples(
             st.just("copy"),
             _index,
             st.sampled_from(VARIABLES),
-            st.sampled_from(["pickle", "deepcopy"]),
+            st.sampled_from(sorted(COPIERS)),
         ),
+        st.tuples(st.just("make"), _index, st.booleans()),
+        st.tuples(st.just("preserve"), _index, st.sampled_from(VARIABLES)),
         st.tuples(st.just("collect"), _index),
     ),
     max_size=24,
 )
+
+
+def _contents(storage) -> dict:
+    """What ``storage`` reads: ``{storage key: values}``."""
+    return {
+        key: np.asarray(storage.get(*reversed(key.rsplit("_", 1))))
+        for key in storage._files
+    }
 
 
 @dataclass
@@ -80,6 +114,10 @@ class _Simulation:
 
     simulation: object
     expected: dict = field(default_factory=dict)
+    # The variables whose disk storage this simulation made (rather than
+    # copied from its source), and those of them set to preserve their folder.
+    made: set = field(default_factory=set)
+    preserved: set = field(default_factory=set)
 
     def check(self):
         for (variable, year), expected in self.expected.items():
@@ -87,13 +125,33 @@ class _Simulation:
                 np.asarray(read(self.simulation, variable, year)), expected
             )
 
+    variables = VARIABLES
+
+    def set(self, variable, year, stored):
+        if variable not in self.simulation.persons._holders:
+            self.made.add(variable)
+        self.simulation.set_input(variable, year, stored)
+        self.expected[(variable, year)] = stored
+
+    def disk_storage(self, variable):
+        holder = self.simulation.persons._holders.get(variable)
+        return None if holder is None else holder._disk_storage
+
+    def preserved_storages(self):
+        return [self.disk_storage(variable) for variable in self.preserved]
+
 
 @dataclass
-class _Copy:
-    """A copied disk storage, and what it must read: ``{storage key: values}``."""
+class _Storage:
+    """A disk storage on its own, and what it must read: ``{storage key:
+    values}``."""
 
     storage: object
     expected: dict
+    # Whether ``make`` made it (rather than copying it), and whether it is set
+    # to preserve its folder.
+    made: bool = False
+    preserved: bool = False
 
     def check(self):
         for key, expected in self.expected.items():
@@ -102,68 +160,132 @@ class _Copy:
                 np.asarray(self.storage.get(period, branch_name)), expected
             )
 
+    # What it stores has no variable: values like this one's.
+    variables = VARIABLES[:1]
 
-def _copy(simulation, variable, how):
-    """A copy of ``simulation``'s disk storage of ``variable``, if it has one."""
-    holder = simulation.persons._holders.get(variable)
-    if holder is None or holder._disk_storage is None:
-        return None
-    storage = holder._disk_storage
-    expected = {
-        key: np.asarray(storage.get(*reversed(key.rsplit("_", 1))))
-        for key in storage._files
-    }
-    copier = copy.deepcopy if how == "deepcopy" else _pickled
-    return _Copy(copier(storage), expected)
+    def set(self, variable, year, stored):
+        self.storage.put(stored, year)
+        self.expected[f"default_{year}"] = stored
 
+    def disk_storage(self, variable):
+        return self.storage
 
-def _pickled(storage):
-    return pickle.loads(pickle.dumps(storage))
+    def preserved_storages(self):
+        return [self.storage] if self.preserved else []
 
 
-def _apply(live, operation, branches):
-    """Apply one operation to ``live``. Returns the number of branches made."""
-    kind, index = operation[0], operation[1] % len(live)
-    if kind == "collect":
-        del live[index]
-        gc.collect()
-        for item in live:
-            item.check()
-        return branches
-    target = live[index]
-    if not isinstance(target, _Simulation):
-        return branches
-    simulation = target.simulation
-    if kind == "set":
-        _, _, variable, year, seed = operation
-        stored = values(variable, seed)
-        simulation.set_input(variable, year, stored)
-        target.expected[(variable, year)] = stored
-    elif kind == "clone":
-        live.append(_Simulation(simulation.clone(), dict(target.expected)))
-    elif kind == "branch":
-        branches += 1
-        branch = simulation.get_branch(f"branch_{branches}")
-        live.append(_Simulation(branch, dict(target.expected)))
-    else:
-        copied = _copy(simulation, *operation[2:])
-        if copied is not None:
-            live.append(copied)
-    return branches
+class _Run:
+    """Operations applied to what they made, which only ``live`` holds, so
+    that dropping an item from it is all that keeps the item from being
+    collected."""
+
+    def __init__(self, chosen_folder):
+        self.live = [_Simulation(disk_simulation(chosen_folder))]
+        self.made = 0
+        # The files each preserved storage last read: ``{storage directory:
+        # {path: values}}``.
+        self.preserved = {}
+
+    def apply(self, operation):
+        if operation[0] == "set_every":
+            _, year, seed = operation
+            for offset, item in enumerate(self.live):
+                for variable in item.variables:
+                    item.set(variable, year, values(variable, seed + offset))
+            self._record_preserved()
+            return
+        kind, index = operation[0], operation[1] % len(self.live)
+        if kind == "collect":
+            del self.live[index]
+            gc.collect()
+            for item in self.live:
+                item.check()
+            return
+        target = self.live[index]
+        if kind == "set":
+            _, _, variable, year, seed = operation
+            target.set(variable, year, values(variable, seed))
+        elif kind == "copy":
+            _, _, variable, how = operation
+            storage = target.disk_storage(variable)
+            if storage is not None:
+                self.live.append(_Storage(COPIERS[how](storage), _contents(storage)))
+        elif not isinstance(target, _Simulation):
+            if kind == "preserve" and target.made:
+                target.storage.preserve_storage_dir = True
+                target.preserved = True
+        elif kind == "clone":
+            self.live.append(
+                _Simulation(target.simulation.clone(), dict(target.expected))
+            )
+        elif kind == "branch":
+            self.made += 1
+            branch = target.simulation.get_branch(f"branch_{self.made}")
+            self.live.append(_Simulation(branch, dict(target.expected)))
+        elif kind == "make":
+            _, _, preserve = operation
+            self.made += 1
+            storage_dir = os.path.join(
+                target.simulation.data_storage_dir, f"made_{self.made}"
+            )
+            os.mkdir(storage_dir)
+            storage = OnDiskStorage(storage_dir, preserve_storage_dir=preserve)
+            stored = values(VARIABLES[0], self.made)
+            storage.put(stored, YEARS[0])
+            self.live.append(
+                _Storage(
+                    storage,
+                    {f"default_{YEARS[0]}": stored},
+                    made=True,
+                    preserved=preserve,
+                )
+            )
+        elif kind == "preserve":
+            _, _, variable = operation
+            if variable in target.made:
+                target.disk_storage(variable).preserve_storage_dir = True
+                target.preserved.add(variable)
+        self._record_preserved()
+
+    def _record_preserved(self):
+        for item in self.live:
+            for storage in item.preserved_storages():
+                self.preserved[storage.storage_dir] = {
+                    path: np.load(path) for path in storage._files.values()
+                }
 
 
-def _run(operations, chosen_folder):
-    """Apply ``operations``, then check what is left reads its values."""
-    # Only ``live`` holds what the operations make, so that dropping an item
-    # from it is all that keeps the item from being collected.
-    live = [_Simulation(disk_simulation(chosen_folder))]
-    branches = 0
+def _run(operations, chosen_folder) -> dict:
+    """Apply ``operations``, check what is left reads its values, and return
+    the files preserved storages last read."""
+    run = _Run(chosen_folder)
     for operation in operations:
-        if not live:
+        if not run.live:
             break
-        branches = _apply(live, operation, branches)
-    for item in live:
+        run.apply(operation)
+    for item in run.live:
         item.check()
+    return run.preserved
+
+
+def _check_left(root, chosen, preserved):
+    """Only the preserved folders, and the folders leading to them, are left
+    in ``root``, holding the files their storages last read."""
+    kept = {os.path.realpath(storage_dir) for storage_dir in preserved}
+    leading = {os.path.realpath(root)}
+    if chosen is not None:
+        leading.add(os.path.realpath(chosen))
+    for folder, _, files in os.walk(root):
+        real = os.path.realpath(folder)
+        if any(real == path or real.startswith(path + os.sep) for path in kept):
+            continue
+        assert real in leading or any(
+            path.startswith(real + os.sep) for path in kept
+        ), f"{folder} is left"
+        assert files == [], f"{files} are left in {folder}"
+    for files in preserved.values():
+        for path, expected in files.items():
+            np.testing.assert_array_equal(np.load(path), expected)
 
 
 @settings(
@@ -173,7 +295,7 @@ def _run(operations, chosen_folder):
     suppress_health_check=[HealthCheck.too_slow],
 )
 @given(operations=OPERATIONS, caller_chooses_the_folder=st.booleans())
-def test_storage_folders_last_exactly_as_long_as_their_readers(
+def test_storage_folders_keep_what_is_read_and_leave_only_what_is_preserved(
     operations, caller_chooses_the_folder
 ):
     with temporary_folders() as root:
@@ -182,10 +304,9 @@ def test_storage_folders_last_exactly_as_long_as_their_readers(
             chosen = os.path.join(root, "chosen")
             os.mkdir(chosen)
 
-        _run(operations, chosen)
+        preserved = _run(operations, chosen)
         gc.collect()
 
-        assert storage_folders(root) == []
         if chosen is not None:
             assert os.path.isdir(chosen)
-            assert os.listdir(chosen) == []
+        _check_left(root, chosen, preserved)

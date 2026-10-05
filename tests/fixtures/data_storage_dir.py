@@ -79,9 +79,11 @@ def disk_simulation(data_storage_dir: str = None):
 
 
 def values(variable: str, seed: int) -> np.ndarray:
-    """Values of ``variable`` for ``PEOPLE`` people, different for each seed."""
+    """Values of ``variable`` for ``PEOPLE`` people, different for each seed
+    (each of ``len(Level) ** PEOPLE`` seeds in a row, for ``disk_level``)."""
     if variable == "disk_level":
-        return ((np.arange(PEOPLE) + seed) % len(Level)).astype(np.int16)
+        digits = seed // len(Level) ** np.arange(PEOPLE)
+        return (digits % len(Level)).astype(np.int16)
     return (np.arange(PEOPLE) + seed).astype(np.float32)
 
 

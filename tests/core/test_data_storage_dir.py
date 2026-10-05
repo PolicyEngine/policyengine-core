@@ -12,26 +12,32 @@ removed or replaced files something still read:
   whichever was collected first removed the other's.
 * A pickled or deep-copied disk storage removed its subfolder when
   collected, while the storage it was copied from still read it, in this
-  process or in the one that pickled it.
+  process or in the one that pickled it. And a copied storage and its source
+  wrote the same file for a key both stored after copying.
 * A process forked from the simulation's did the same when it collected its
-  copy of the simulation.
+  copy of the simulation; and it made disk storages for new variables in the
+  same subfolders as the process it was forked from, so each wrote over the
+  other's files and removed them.
 * The last disk storage collected removed the folder containing it once
   empty, even a folder the caller chose (``_data_storage_dir``).
 
 Now a ``TemporaryStorageDirectory`` owns the folder a simulation makes, and
-the simulation and every disk storage in the folder keep it alive; it is
-removed when the last is collected or at interpreter exit, by the process
-that made it. A clone makes its own folder for what it stores. The
-properties over any sequence of these operations are in
-``test_data_storage_dir_property.py``.
+the simulation and every disk storage anywhere in the folder keep it alive;
+it is removed when the last is collected or at interpreter exit, by the
+process that made it, leaving only the subfolders of disk storages that
+preserve theirs (``preserve_storage_dir``). A clone, or a forked process,
+makes its own folder for what it stores. The properties over any sequence of
+these operations are in ``test_data_storage_dir_property.py``.
 """
 
 from __future__ import annotations
 
 import copy
 import gc
+import json
 import os
 import pickle
+import shutil
 import subprocess
 import sys
 import textwrap
@@ -47,6 +53,7 @@ from policyengine_core.data_storage.storage_directory import (
 from policyengine_core.enums import EnumArray
 from tests.fixtures.data_storage_dir import (
     PEOPLE,
+    STORE_ON_DISK,
     VARIABLES,
     Level,
     disk_simulation,
@@ -266,6 +273,28 @@ def test_a_copied_disk_storage_collected_first_leaves_the_simulation_values(copi
     _assert_reads(simulation, stored)
 
 
+@pytest.mark.parametrize("depth", [1, 2], ids=["subfolder", "nested"])
+def test_a_disk_storage_made_in_the_folder_reads_its_values_after_the_simulation_is_collected(
+    depth,
+):
+    simulation = disk_simulation()
+    _fill(simulation)
+    folder = simulation.data_storage_dir
+    storage_dir = os.path.join(folder, *["mine"] * depth)
+    os.makedirs(storage_dir)
+    storage = OnDiskStorage(storage_dir)
+    stored = values("disk_amount", 3)
+    storage.put(stored, "2015")
+
+    del simulation
+    gc.collect()
+
+    np.testing.assert_array_equal(storage.get("2015"), stored)
+    del storage
+    gc.collect()
+    assert not os.path.exists(folder)
+
+
 def test_a_disk_storage_unpickled_in_another_process_leaves_the_folder(tmp_path):
     simulation = disk_simulation()
     stored = _fill(simulation)
@@ -326,6 +355,247 @@ def test_a_forked_process_collecting_the_simulation_leaves_the_folder(tmp_path):
         "0 True",
         str(values("disk_amount", 1).tolist()),
     ]
+
+
+_FORK = """
+    import gc, json, os, sys, traceback
+    from tests.fixtures.data_storage_dir import disk_simulation, read, values
+
+    def reads(simulation):
+        return {{
+            "folder": simulation.data_storage_dir,
+            "disk_level 2015": read(simulation, "disk_level", "2015").tolist(),
+            "disk_amount 2015": read(simulation, "disk_amount", "2015").tolist(),
+            "disk_amount 2016": read(simulation, "disk_amount", "2016").tolist(),
+        }}
+
+    simulation = disk_simulation({chosen!r})
+    folder = simulation.data_storage_dir
+    simulation.set_input("disk_amount", "2015", values("disk_amount", 1))
+    parent_r, parent_w = os.pipe()
+    child_r, child_w = os.pipe()
+    pid = os.fork()
+    if pid == 0:
+        status = 1
+        try:
+            clone = simulation.clone()
+            # A variable with no holder yet, and a new period of one with one.
+            simulation.set_input("disk_level", "2015", values("disk_level", 2))
+            simulation.set_input("disk_amount", "2016", values("disk_amount", 3))
+            clone.set_input("disk_level", "2016", values("disk_level", 7))
+            os.write(child_w, b"x")
+            os.read(parent_r, 1)
+            result = reads(simulation)
+            result["clone folder"] = clone.data_storage_dir
+            result["clone disk_level 2016"] = read(clone, "disk_level", "2016").tolist()
+            del simulation, clone
+            gc.collect()
+            os.write(child_w, json.dumps(result).encode())
+            status = 0
+        except BaseException:
+            traceback.print_exc()
+            sys.stderr.flush()
+        finally:
+            os._exit(status)
+    os.close(child_w)
+    os.read(child_r, 1)
+    # The same, once the child has, and a value stored before the fork.
+    simulation.set_input("disk_level", "2015", values("disk_level", 4))
+    simulation.set_input("disk_amount", "2016", values("disk_amount", 5))
+    simulation.set_input("disk_amount", "2015", values("disk_amount", 6))
+    os.write(parent_w, b"x")
+    sent = b""
+    while chunk := os.read(child_r, 65536):
+        sent += chunk
+    _, status = os.waitpid(pid, 0)
+    print(json.dumps({{
+        "status": os.waitstatus_to_exitcode(status),
+        "child": json.loads(sent or "null"),
+        "parent": reads(simulation),
+        "parent folder": folder,
+    }}))
+"""
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="needs os.fork")
+@pytest.mark.parametrize(
+    "caller_chooses_the_folder", [False, True], ids=["made", "chosen"]
+)
+def test_a_forked_process_and_its_parent_keep_their_own_values(
+    tmp_path, caller_chooses_the_folder
+):
+    chosen = None
+    if caller_chooses_the_folder:
+        chosen = tmp_path / "chosen"
+        chosen.mkdir()
+    printed = _run(
+        _FORK.format(chosen=None if chosen is None else str(chosen)),
+        tmp_path,
+        NUMEXPR_MAX_THREADS="1",
+    )
+    result = json.loads(printed.splitlines()[-1])
+    child, parent = result["child"], result["parent"]
+
+    assert result["status"] == 0
+    assert child["disk_level 2015"] == values("disk_level", 2).tolist()
+    assert child["disk_amount 2016"] == values("disk_amount", 3).tolist()
+    assert child["clone disk_level 2016"] == values("disk_level", 7).tolist()
+    # What the parent stored again after the fork stays out of the child.
+    assert child["disk_amount 2015"] == values("disk_amount", 1).tolist()
+    assert parent["disk_level 2015"] == values("disk_level", 4).tolist()
+    assert parent["disk_amount 2016"] == values("disk_amount", 5).tolist()
+    assert parent["disk_amount 2015"] == values("disk_amount", 6).tolist()
+    # The child, and a clone it made, stored their new variables in folders
+    # of their own, inside the one the child inherited, and removed them when
+    # they were collected.
+    inherited = Path(result["parent folder"])
+    assert parent["folder"] == str(inherited)
+    for made in (child["folder"], child["clone folder"]):
+        assert Path(made).parent.resolve() == inherited.resolve()
+        assert not os.path.exists(made)
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="needs os.fork")
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "Documented limit: nothing in a forked process keeps alive the "
+        "folder of the process it was forked from (see "
+        "policyengine_core.data_storage.storage_directory)."
+    ),
+)
+def test_a_forked_process_reads_values_the_parent_has_collected(tmp_path):
+    printed = _run(
+        """
+        import gc, os
+        from tests.fixtures.data_storage_dir import disk_simulation, read, values
+
+        simulation = disk_simulation()
+        simulation.set_input("disk_amount", "2015", values("disk_amount", 1))
+        go_r, go_w = os.pipe()
+        pid = os.fork()
+        if pid == 0:
+            status = 1
+            try:
+                os.read(go_r, 1)
+                read(simulation, "disk_amount", "2015")
+                status = 0
+            finally:
+                os._exit(status)
+        del simulation
+        gc.collect()
+        os.write(go_w, b"x")
+        _, status = os.waitpid(pid, 0)
+        print(os.waitstatus_to_exitcode(status))
+        """,
+        tmp_path,
+        NUMEXPR_MAX_THREADS="1",
+    )
+
+    assert printed.split()[-1] == "0"
+
+
+# ----- Disk storages that preserve their folder ----- #
+
+
+def _restored(storage_dir):
+    """A new storage reading back the values stored in ``storage_dir``."""
+    restored = OnDiskStorage(storage_dir, preserve_storage_dir=True)
+    restored.restore()
+    return restored
+
+
+def _made_to_preserve_by_its_holder(simulation):
+    # A holder that stores nothing on disk itself.
+    simulation.memory_config = None
+    holder = simulation.persons.get_holder("disk_amount")
+    simulation.memory_config = STORE_ON_DISK
+    return holder.create_disk_storage(preserve=True)
+
+
+def _set_to_preserve(simulation):
+    storage = simulation.persons.get_holder("disk_amount")._disk_storage
+    storage.preserve_storage_dir = True
+    return storage
+
+
+def _made_to_preserve_in_the_folder(simulation):
+    storage_dir = os.path.join(simulation.data_storage_dir, "mine", "disk_amount")
+    os.makedirs(storage_dir)
+    return OnDiskStorage(storage_dir, preserve_storage_dir=True)
+
+
+@pytest.mark.parametrize(
+    "preserving",
+    [
+        _made_to_preserve_by_its_holder,
+        _set_to_preserve,
+        _made_to_preserve_in_the_folder,
+    ],
+    ids=["create_disk_storage", "set", "made"],
+)
+def test_a_disk_storage_preserving_its_folder_keeps_it(preserving):
+    simulation = disk_simulation()
+    # Stored in a subfolder that goes with the folder.
+    simulation.set_input("disk_level", "2015", values("disk_level", 0))
+    folder = simulation.data_storage_dir
+    storage = preserving(simulation)
+    stored = values("disk_amount", 1)
+    storage.put(stored, "2015")
+    storage_dir = storage.storage_dir
+    relative = Path(storage_dir).relative_to(folder).as_posix()
+    try:
+        del simulation, storage
+        gc.collect()
+
+        # Only the preserved folder is left, whole, with the folders leading
+        # to it, and reads back as it was.
+        assert _files(folder) == [f"{relative}/default_2015.npy"]
+        np.testing.assert_array_equal(_restored(storage_dir).get("2015"), stored)
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+def test_a_disk_storage_preserving_its_folder_keeps_it_at_exit(tmp_path):
+    printed = _run(
+        """
+        from tests.fixtures.data_storage_dir import SYSTEM, disk_simulation, values
+
+        simulation = disk_simulation()
+        SYSTEM.simulation = simulation
+        simulation.set_input("disk_level", "2015", values("disk_level", 0))
+        simulation.set_input("disk_amount", "2015", values("disk_amount", 1))
+        simulation.persons._holders["disk_amount"]._disk_storage.preserve_storage_dir = True
+        print(simulation.data_storage_dir)
+        """,
+        tmp_path,
+    )
+    folder = printed.split()[-1]
+
+    assert _files(folder) == ["disk_amount/default_2015.npy"]
+    np.testing.assert_array_equal(
+        _restored(os.path.join(folder, "disk_amount")).get("2015"),
+        values("disk_amount", 1),
+    )
+
+
+def test_a_disk_storage_made_to_read_a_folder_another_removes_keeps_it_and_preserves_nothing():
+    """It keeps the storage that removes the folder alive, and the folder
+    goes once both are collected."""
+    simulation = disk_simulation()
+    simulation.set_input("disk_amount", "2015", values("disk_amount", 1))
+    folder = simulation.data_storage_dir
+    owner_dir = simulation.persons._holders["disk_amount"]._disk_storage.storage_dir
+    reader = OnDiskStorage(owner_dir, preserve_storage_dir=True)
+    reader.restore()
+
+    del simulation
+    gc.collect()
+
+    np.testing.assert_array_equal(reader.get("2015"), values("disk_amount", 1))
+    del reader
+    gc.collect()
+    assert not os.path.exists(folder)
 
 
 # ----- A folder the caller chose ----- #

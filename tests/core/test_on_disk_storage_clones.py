@@ -207,9 +207,14 @@ def test_a_restored_storage_and_its_clone_keep_their_own_values(storage):
     np.testing.assert_array_equal(clone.get("2012"), [2])
 
 
-@pytest.mark.parametrize(
-    "copier", [copy.deepcopy, lambda s: pickle.loads(pickle.dumps(s))]
+COPIERS = pytest.mark.parametrize(
+    "copier",
+    [copy.copy, copy.deepcopy, lambda s: pickle.loads(pickle.dumps(s))],
+    ids=["copy", "deepcopy", "pickle"],
 )
+
+
+@COPIERS
 def test_a_copied_storage_and_its_source_keep_their_own_values(storage, copier):
     storage.put(np.array([1.0]), "2012")
     copied = copier(storage)
@@ -219,6 +224,28 @@ def test_a_copied_storage_and_its_source_keep_their_own_values(storage, copier):
     storage.put(np.array([3.0]), "2012")
     np.testing.assert_array_equal(copied.get("2012"), [2])
     np.testing.assert_array_equal(storage.get("2012"), [3])
+
+
+@COPIERS
+@pytest.mark.parametrize("copy_first", [True, False], ids=["copy", "source"])
+def test_a_copied_storage_and_its_source_keep_their_own_values_for_a_new_key(
+    storage, copier, copy_first
+):
+    """A key neither stored when copied names the same file for both; each
+    keeps its own value, whichever stores it first."""
+    storage.put(np.array([1.0]), "2012")
+    copied = copier(storage)
+    writes = [(copied, 2.0), (storage, 3.0)]
+    if not copy_first:
+        writes.reverse()
+
+    for writer, value in writes:
+        writer.put(np.array([value]), "2013")
+
+    np.testing.assert_array_equal(copied.get("2013"), [2])
+    np.testing.assert_array_equal(storage.get("2013"), [3])
+    np.testing.assert_array_equal(copied.get("2012"), [1])
+    np.testing.assert_array_equal(storage.get("2012"), [1])
 
 
 def test_a_storage_unpickled_from_before_writes_over_none_of_its_files(storage):

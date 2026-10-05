@@ -1,4 +1,5 @@
 import hashlib
+import os
 from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
@@ -211,6 +212,9 @@ class Simulation:
     # The folder that one is made in; ``None`` for the default temporary
     # folder (see ``clone``).
     _storage_dir_parent: str = None
+    # The process ``_data_storage_dir`` is for: the one that made the
+    # simulation or the folder, or first stored a value on disk in it.
+    _storage_dir_pid: int = None
 
     def __init__(
         self,
@@ -260,6 +264,7 @@ class Simulation:
         self.max_spiral_loops: int = 10
         self.memory_config: MemoryConfig = None
         self._data_storage_dir: str = None
+        self._storage_dir_pid = os.getpid()
 
         self.branches: Dict[str, Simulation] = {}
         self.has_axes = False
@@ -663,15 +668,37 @@ class Simulation:
 
         Set ``_data_storage_dir`` to choose the folder: nothing removes it.
         Otherwise this is a new temporary folder, removed once this
-        simulation and every disk storage in the folder, the ones its clones
-        and branches copied included, are garbage-collected, or at
-        interpreter exit (see ``TemporaryStorageDirectory``).
+        simulation and every disk storage in the folder (those its clones and
+        branches copied included) are garbage-collected, or at interpreter
+        exit, except the subfolders of disk storages that preserve theirs.
+        In a process forked from the one the folder is for, this is a new
+        folder for that process, made inside that one. See the
+        ``storage_directory`` module for what this guarantees.
         """
+        pid = os.getpid()
+        if self._data_storage_dir is not None and self._storage_dir_pid not in (
+            None,
+            pid,
+        ):
+            # Forked from the process the folder is for. Disk storages each
+            # process made for a variable in one folder would write the same
+            # files, and each would remove the other's when collected, so
+            # this process stores new values in a folder of its own. It goes
+            # inside the folder it inherited, so if the other process made
+            # that one, it removes this one with it, however this process
+            # ends. The disk storages this process has copies of still read
+            # the other's files (see ``OnDiskStorage._path_to_write``).
+            inherited = self._data_storage_dir
+            self._data_storage_dir = None
+            self._storage_directory = None
+            if os.path.isdir(inherited):
+                self._storage_dir_parent = inherited
         if self._data_storage_dir is None:
             self._storage_directory = TemporaryStorageDirectory(
                 self._storage_dir_parent
             )
             self._data_storage_dir = self._storage_directory.path
+        self._storage_dir_pid = pid
         return self._data_storage_dir
 
     def _made_data_storage_dir(self) -> bool:
@@ -1651,8 +1678,13 @@ class Simulation:
         # from this simulation's holders do read this simulation's files:
         # they keep its folder until they are collected (see
         # ``OnDiskStorage.clone``). A clone of a simulation given a folder
-        # makes its own inside that one.
-        if self._data_storage_dir is not None and not self._made_data_storage_dir():
+        # makes its own inside that one, and so does one made in a process
+        # forked from the one this simulation's folder is for (see
+        # ``data_storage_dir``).
+        if self._data_storage_dir is not None and (
+            not self._made_data_storage_dir()
+            or self._storage_dir_pid not in (None, os.getpid())
+        ):
             new._storage_dir_parent = self._data_storage_dir
         new._data_storage_dir = None
         new._storage_directory = None

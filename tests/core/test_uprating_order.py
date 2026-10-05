@@ -369,7 +369,7 @@ def test_monthly_inputs_starting_together_uprate_the_one_ending_last(
             id="longer",
             marks=pytest.mark.skipif(
                 not can_store_on_disk("year:2012:2"),
-                reason="OnDiskStorage cannot store year:2012:2 on Windows (#526)",
+                reason="OnDiskStorage cannot store year:2012:2 here (Windows; #526)",
             ),
         ),
         pytest.param(False, id="shorter"),

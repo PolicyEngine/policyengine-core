@@ -26,12 +26,13 @@ PolicyEngine/policyengine-core#583).
 
 from __future__ import annotations
 
-import sys
+import tempfile
 
 import numpy as np
 
 from policyengine_core import periods
 from policyengine_core.country_template import CountryTaxBenefitSystem, entities
+from policyengine_core.data_storage import OnDiskStorage
 from policyengine_core.parameters import ParameterNode, get_parameter
 from policyengine_core.simulations.simulation import _uprating_index_value
 from policyengine_core.variables import QuantityType, Variable
@@ -39,6 +40,7 @@ from tests.fixtures.carry_over import COUNT, alone, request, simulation
 
 __all__ = [
     "COUNT",
+    "DISK_STORES_ANY_PERIOD",
     "FLAT",
     "INDEX",
     "MONTHLY_INDEX",
@@ -67,12 +69,25 @@ MONTHLY_UPRATING = "uprating_order.monthly_index"
 # An index that never moves: uprating by it multiplies by exactly 1.
 FLAT = "uprating_order.flat"
 
-# ``OnDiskStorage`` names a value's file after its period, and Windows does
-# not allow ":" in a file name. So on Windows a period several units long
-# (``year:2012:2``) cannot be stored on disk: ``numpy.save`` raises
-# ``OSError``. The tests keep those periods in memory there (see
-# PolicyEngine/policyengine-core#526).
-DISK_STORES_ANY_PERIOD = sys.platform != "win32"
+
+def _disk_stores_any_period() -> bool:
+    """Whether ``OnDiskStorage`` can store a value here for a period whose
+    string form has a colon, such as ``year:2012:2``.
+
+    It names a value's file after its period, and Windows does not allow ":"
+    in a file name, so there ``numpy.save`` raises ``OSError``
+    (PolicyEngine/policyengine-core#526). Where it cannot, the tests keep
+    those periods in memory; once storage can, they are on disk again."""
+    with tempfile.TemporaryDirectory() as directory:
+        storage = OnDiskStorage(directory, preserve_storage_dir=True)
+        try:
+            storage.put(np.zeros(1), periods.period("year:2012:2"))
+        except OSError:
+            return False
+    return True
+
+
+DISK_STORES_ANY_PERIOD = _disk_stores_any_period()
 
 
 def can_store_on_disk(period) -> bool:

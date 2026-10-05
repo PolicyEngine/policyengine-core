@@ -27,9 +27,10 @@ The domain:
   cached for the branch whatever its inputs are, which is not what this
   module tests.
 * Targets are in the variable's definition unit.
-* Inputs on disk are any of the target variable's, except on Windows, where
-  ``OnDiskStorage`` cannot store a period several units long
-  (PolicyEngine/policyengine-core#526): those stay in memory there.
+* Inputs on disk are any of the target variable's, except where
+  ``OnDiskStorage`` cannot store a period whose string form has a colon,
+  such as ``year:2012:2`` (on Windows; PolicyEngine/policyengine-core#526):
+  those stay in memory there.
 
 One more property, ``test_helper_input_replaces_values_calculated_in_its_year``,
 covers yearly inputs given through a ``set_input`` helper after calculations
@@ -58,6 +59,7 @@ from policyengine_core.reforms import Reform  # noqa: E402
 from policyengine_core.simulations import SimulationBuilder  # noqa: E402
 from tests.fixtures.uprating_order import (  # noqa: E402
     COUNT,
+    DISK_STORES_ANY_PERIOD,
     assert_bitwise_equal,
     build_system,
     can_store_on_disk,
@@ -418,7 +420,8 @@ def reordered_scenarios(draw):
     on_disk = draw(
         st.sets(st.sampled_from([(variable, stored) for stored in inputs[variable]]))
     )
-    # On Windows, a period several units long stays in memory.
+    # Where storage cannot store a period with a colon in its string form
+    # (on Windows), such periods stay in memory.
     on_disk = {pair for pair in on_disk if can_store_on_disk(pair[1])}
     return (inputs, requests, variable, period, branch, branch_input), sets, on_disk
 
@@ -430,6 +433,31 @@ def reordered_scenarios(draw):
     suppress_health_check=[HealthCheck.too_slow],
 )
 @given(scenario=reordered_scenarios(), auto_carry_over=st.booleans())
+# The input that ends last is on disk and the other in memory, which
+# ``get_known_periods`` lists first. Where storage cannot store
+# ``year:2012:2``, setting it raises ``OSError``.
+@example(
+    scenario=(
+        (
+            {"uprated_any_unit": {"2012": [5.0, 6.0], "year:2012:2": [1.0, 2.0]}},
+            [],
+            "uprated_any_unit",
+            "2015",
+            None,
+            None,
+        ),
+        [
+            ("uprated_any_unit", "2012", [5.0, 6.0]),
+            ("uprated_any_unit", "year:2012:2", [1.0, 2.0]),
+        ],
+        {("uprated_any_unit", "year:2012:2")},
+    ),
+    auto_carry_over=True,
+).xfail(
+    not DISK_STORES_ANY_PERIOD,
+    reason="OnDiskStorage cannot store year:2012:2 here (Windows; #526)",
+    raises=OSError,
+)
 def test_uprating_does_not_depend_on_the_order_inputs_were_set(
     scenario, auto_carry_over
 ):

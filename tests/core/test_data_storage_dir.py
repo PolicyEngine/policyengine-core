@@ -10,10 +10,11 @@ removed or replaced files something still read:
 * A clone (or branch) made its new disk storages in its source's folder: for
   a variable both stored after cloning, the two wrote the same files, and
   whichever was collected first removed the other's.
-* A pickled or deep-copied disk storage removed the folder when collected,
-  while the storage it was copied from still read it, in this process or the
-  one that pickled it.
-* A process forked from the simulation's removed it when collected there.
+* A pickled or deep-copied disk storage removed its subfolder when
+  collected, while the storage it was copied from still read it, in this
+  process or in the one that pickled it.
+* A process forked from the simulation's did the same when it collected its
+  copy of the simulation.
 * The last disk storage collected removed the folder containing it once
   empty, even a folder the caller chose (``_data_storage_dir``).
 
@@ -74,10 +75,11 @@ def _assert_reads(simulation, stored, period="2015"):
 
 
 def _files(folder):
+    """Every file in ``folder``, as a path relative to it with ``/``."""
     return sorted(
-        os.path.relpath(os.path.join(directory, name), folder)
-        for directory, _, names in os.walk(folder)
-        for name in names
+        path.relative_to(folder).as_posix()
+        for path in Path(folder).rglob("*")
+        if path.is_file()
     )
 
 
@@ -168,7 +170,10 @@ def test_a_clone_of_a_branch_outliving_both_reads_every_value_on_disk():
     branch_stored = {"disk_amount": values("disk_amount", 7)}
     branch.set_input("disk_amount", "2016", branch_stored["disk_amount"])
     clone = branch.clone()
-    folders = [source.data_storage_dir, branch.data_storage_dir]
+    folder = source.data_storage_dir
+    # The branch stored its value through the disk storage it copied, in the
+    # source's folder: it made none of its own.
+    assert branch._data_storage_dir is None
 
     del source, branch
     gc.collect()
@@ -177,7 +182,7 @@ def test_a_clone_of_a_branch_outliving_both_reads_every_value_on_disk():
     _assert_reads(clone, branch_stored, period="2016")
     del clone
     gc.collect()
-    assert not any(os.path.exists(folder) for folder in folders)
+    assert not os.path.exists(folder)
 
 
 def test_a_clone_and_its_source_each_store_a_new_variable_in_their_own_folder():
@@ -336,7 +341,7 @@ def test_a_folder_the_caller_chose_is_never_removed(tmp_path):
 
     assert simulation.data_storage_dir == str(chosen)
     # The clone stores in a folder of its own, made in the chosen one.
-    assert Path(clone.data_storage_dir).parent == chosen
+    assert Path(clone.data_storage_dir).parent.resolve() == chosen.resolve()
     _assert_reads(clone, stored)
 
     del simulation, clone
@@ -389,3 +394,4 @@ def test_a_folder_object_unpickled_after_removal_never_removes_the_path(tmp_path
 
     assert not pickle.loads(pickled).removes_directory
     assert os.path.isdir(path)
+    os.rmdir(path)

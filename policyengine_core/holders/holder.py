@@ -87,11 +87,18 @@ class Holder:
         storage_dir = os.path.join(directory, self.variable.name)
         if not os.path.isdir(storage_dir):
             os.mkdir(storage_dir)
-        return OnDiskStorage(
+        storage = OnDiskStorage(
             storage_dir,
             is_eternal=(self.variable.definition_period == periods.ETERNITY),
             preserve_storage_dir=preserve,
         )
+        # In the temporary folder the simulation made, the storage (and every
+        # clone or copy of it) keeps the folder until it is collected, so the
+        # folder outlives the simulation while a clone still reads it.
+        made = getattr(self.simulation, "_storage_directory", None)
+        if made is not None and made.path == directory:
+            storage._parent_directory = made
+        return storage
 
     def delete_arrays(
         self, period: Period = None, branch_name: str = "default"

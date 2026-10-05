@@ -1,5 +1,4 @@
 import hashlib
-import tempfile
 from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
@@ -12,6 +11,9 @@ from pathlib import Path
 
 from policyengine_core import commons, periods
 from policyengine_core.data.dataset import Dataset
+from policyengine_core.data_storage.storage_directory import (
+    TemporaryStorageDirectory,
+)
 from policyengine_core.entities.entity import Entity
 from policyengine_core.enums import Enum, EnumArray
 from policyengine_core.errors import CycleError, SpiralError
@@ -201,6 +203,14 @@ class Simulation:
 
     start_instant: str = None
     """The earliest data input instant of the simulation."""
+
+    _data_storage_dir: str = None
+    # The temporary folder this simulation made for the values it stores on
+    # disk, if it made one (see ``data_storage_dir``).
+    _storage_directory: TemporaryStorageDirectory = None
+    # The folder that one is made in; ``None`` for the default temporary
+    # folder (see ``clone``).
+    _storage_dir_parent: str = None
 
     def __init__(
         self,
@@ -648,17 +658,28 @@ class Simulation:
     @property
     def data_storage_dir(self) -> str:
         """
-        Temporary folder used to store intermediate calculation data in case the memory is saturated
+        Folder in which this simulation stores values on disk when memory is
+        short (see ``MemoryConfig``).
+
+        Set ``_data_storage_dir`` to choose the folder: nothing removes it.
+        Otherwise this is a new temporary folder, removed once this
+        simulation and every disk storage in the folder, the ones its clones
+        and branches copied included, are garbage-collected, or at
+        interpreter exit (see ``TemporaryStorageDirectory``).
         """
         if self._data_storage_dir is None:
-            self._data_storage_dir = tempfile.mkdtemp(prefix="openfisca_")
-            message = [
-                (
-                    "Intermediate results will be stored on disk in {} in case of memory overflow."
-                ).format(self._data_storage_dir),
-                "You should remove this directory once you're done with your simulation.",
-            ]
+            self._storage_directory = TemporaryStorageDirectory(
+                self._storage_dir_parent
+            )
+            self._data_storage_dir = self._storage_directory.path
         return self._data_storage_dir
+
+    def _made_data_storage_dir(self) -> bool:
+        """Whether this simulation made the folder it stores values on disk in."""
+        return (
+            self._storage_directory is not None
+            and self._storage_directory.path == self._data_storage_dir
+        )
 
     # ----- Calculation methods ----- #
 
@@ -1622,6 +1643,19 @@ class Simulation:
             ):
                 new_dict[key] = value
         new._fast_cache = {}
+        # The clone stores what it puts on disk in a folder of its own, made
+        # when first needed, never in this simulation's. Disk storages the
+        # two each made for a variable in one folder would write the same
+        # files (the clone keeps the branch name), and each would remove the
+        # other's files when collected. The disk storages the clone copies
+        # from this simulation's holders do read this simulation's files:
+        # they keep its folder until they are collected (see
+        # ``OnDiskStorage.clone``). A clone of a simulation given a folder
+        # makes its own inside that one.
+        if self._data_storage_dir is not None and not self._made_data_storage_dir():
+            new._storage_dir_parent = self._data_storage_dir
+        new._data_storage_dir = None
+        new._storage_directory = None
         # Each simulation records its own inputs. A shared record let an
         # input set on one replay, in the other's ``apply_reform``, whatever
         # the other had calculated for that period, as an input.

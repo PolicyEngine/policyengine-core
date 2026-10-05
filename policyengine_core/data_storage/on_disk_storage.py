@@ -1,6 +1,7 @@
 import os
 import shutil
 import tempfile
+import weakref
 
 import numpy
 from numpy.typing import ArrayLike
@@ -15,11 +16,27 @@ from policyengine_core.periods import Period
 # reads these.
 REPLACEMENTS_DIR = "replaced"
 
+# The storage that removes each storage directory when collected (one created
+# without ``preserve_storage_dir``), by path, among those alive in this
+# process: what a copy of a storage keeps alive (see ``__setstate__``).
+_DIRECTORY_OWNERS: "weakref.WeakValueDictionary[str, OnDiskStorage]" = (
+    weakref.WeakValueDictionary()
+)
+
 
 class OnDiskStorage:
     """
     Low-level class responsible for storing and retrieving calculated vectors on disk
     """
+
+    # Defaults for ``__del__``, which also runs on an instance whose
+    # ``__init__`` did not: such an instance removes nothing.
+    preserve_storage_dir = True
+    _creator_pid = None
+    # The simulation's temporary directory this storage's directory is in, if
+    # any, kept alive while this storage (or a clone or copy of it) reads
+    # files in it (see ``Holder.create_disk_storage``).
+    _parent_directory = None
 
     def __init__(
         self,
@@ -44,6 +61,9 @@ class OnDiskStorage:
         self.is_eternal = is_eternal
         self.preserve_storage_dir = preserve_storage_dir
         self.storage_dir = storage_dir
+        self._creator_pid = os.getpid()
+        if not preserve_storage_dir:
+            _DIRECTORY_OWNERS[storage_dir] = self
 
     def __getstate__(self) -> dict:
         # Whatever this state is read into reads the same files, so from now
@@ -59,6 +79,15 @@ class OnDiskStorage:
         state.setdefault("_own_paths", {})
         if "_family_files" not in state:
             state["_family_files"] = set(state.get("_files", {}).values())
+        # A copy reads the files of the storage it was copied from, so it
+        # never removes their directory, which that storage, its clones or
+        # another copy may still read; it keeps alive instead the storage in
+        # this process that removes it, as a clone does. Elsewhere (another
+        # process) nothing here removes the directory.
+        state["preserve_storage_dir"] = True
+        owner = _DIRECTORY_OWNERS.get(state.get("storage_dir"))
+        if owner is not None:
+            state["_storage_dir_owner"] = owner
         self.__dict__.update(state)
 
     def clone(self) -> "OnDiskStorage":
@@ -80,6 +109,7 @@ class OnDiskStorage:
         clone._enums = self._enums.copy()
         clone._derived = set(self._derived)
         clone._storage_dir_owner = getattr(self, "_storage_dir_owner", self)
+        clone._parent_directory = self._parent_directory
         # Both storages now read every file stored so far, including any this
         # family did not write (read back by ``restore``, say).
         self._family_files.update(self._files.values())
@@ -219,11 +249,15 @@ class OnDiskStorage:
             filename_core = filename.rsplit(".", 1)[0]
             files[filename_core] = path
 
-    def __del__(self) -> None:
-        if self.preserve_storage_dir:
+    def __del__(self, _rmtree=shutil.rmtree, _getpid=os.getpid) -> None:
+        # (The defaults keep the two functions reachable while the
+        # interpreter shuts down.) Only in the process that created this
+        # storage: a process forked from it has a copy, and the directory is
+        # still the creator's.
+        if self.preserve_storage_dir or self._creator_pid != _getpid():
             return
-        shutil.rmtree(self.storage_dir)  # Remove the holder temporary files
-        # If the simulation temporary directory is empty, remove it
-        parent_dir = os.path.abspath(os.path.join(self.storage_dir, os.pardir))
-        if not os.listdir(parent_dir):
-            shutil.rmtree(parent_dir)
+        # Remove this storage's directory, with the files of its clones (each
+        # keeps this storage alive). Not the directory containing it: that is
+        # a simulation's, removed with the simulation (see
+        # ``TemporaryStorageDirectory``), or one the caller chose.
+        _rmtree(self.storage_dir, ignore_errors=True)

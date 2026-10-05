@@ -571,12 +571,14 @@ def test_a_disk_storage_preserving_its_folder_keeps_it_at_exit(tmp_path):
         tmp_path,
     )
     folder = printed.split()[-1]
-
-    assert _files(folder) == ["disk_amount/default_2015.npy"]
-    np.testing.assert_array_equal(
-        _restored(os.path.join(folder, "disk_amount")).get("2015"),
-        values("disk_amount", 1),
-    )
+    try:
+        assert _files(folder) == ["disk_amount/default_2015.npy"]
+        np.testing.assert_array_equal(
+            _restored(os.path.join(folder, "disk_amount")).get("2015"),
+            values("disk_amount", 1),
+        )
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
 
 
 def test_a_disk_storage_made_to_read_a_folder_another_removes_keeps_it_and_preserves_nothing():

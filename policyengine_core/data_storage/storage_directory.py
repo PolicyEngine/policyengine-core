@@ -4,9 +4,11 @@ A simulation with a ``MemoryConfig`` stores values on disk, each variable's
 in a subfolder (an ``OnDiskStorage``) of the simulation's folder,
 ``Simulation.data_storage_dir``. Unless the caller chose that folder, the
 simulation makes it, as a ``TemporaryStorageDirectory``. That object removes
-the folder when it is garbage-collected, or at interpreter exit, and only in
-the process that made it. What can read files in the folder keeps the object
-alive. What each way of sharing the files guarantees:
+the folder, with everything in it but the subfolders of preserved storages
+(below), when it is garbage-collected, or at interpreter exit, and only in
+the process that made it. What reads files in the folder, or stores values
+in a folder inside it, keeps the object alive. What each way of sharing the
+files guarantees:
 
 * **Within the process that made the folder.** The simulation keeps the
   folder, and so does every disk storage anywhere under it, whether a holder
@@ -14,42 +16,60 @@ alive. What each way of sharing the files guarantees:
   ``get_branch`` and ``derivative`` copy the holders: each copied disk
   storage is an ``OnDiskStorage.clone`` that reads the source's files and
   keeps alive the folder and the storage that removes their subfolder. A
-  pickled or copied disk storage does the same. So nothing removes a file
-  any of these reads while it is alive, whatever is collected first, unless
-  two disk storages were each made to remove the same subfolder. Nor does a
-  storage write over such a file: storages cloned or copied from one another
-  write a new file instead (see ``OnDiskStorage._path_to_write``), although
-  storages each made for one subfolder still write the same file for a key,
-  as before. The disk storages a clone makes itself go in a folder of its
-  own.
+  pickled or copied disk storage does the same. The disk storages a clone
+  makes itself go in a folder of its own.
+
+  Folders nest: a simulation given the folder, or a folder in it, as its
+  own (``_data_storage_dir``) keeps the folder alive from then on, and so
+  does a clone of that simulation, which makes its own folder there. A
+  folder made inside another live one keeps that one alive, and has it
+  leave the subfolders it preserves, however deep the nesting.
+
+  So nothing removes a file any of these reads while it is alive, whatever
+  is collected first, with one exception, as before: a disk storage removes
+  everything in its subfolder when collected, including files there that
+  another storage reads without keeping it alive. Those are the files of a
+  second storage made to remove the same subfolder, and anything made
+  inside the subfolder. Nor does a storage write over a file another reads:
+  storages cloned or copied from one another write a new file instead (see
+  ``OnDiskStorage._path_to_write``), for the files any of them read back
+  before (``OnDiskStorage.restore``) too. Storages each made for one
+  subfolder still write the same file for a key, as before, and ``restore``
+  reads whatever files are in the subfolder when it runs.
 * **Explicitly preserved storages.** A disk storage made with
   ``preserve_storage_dir=True`` (``Holder.create_disk_storage(preserve=True)``,
   say), or whose ``preserve_storage_dir`` is later set to ``True``, keeps its
-  subfolder: removing the folder leaves that subfolder, every file in it and
-  the folders leading to it, for the caller to remove. Two exceptions, both
-  readers of another storage's subfolder: a clone or copy, whose flag is
-  ``True`` only because it never removes its source's subfolder; and a
-  storage made with the flag for a subfolder that a live storage made
-  without it removes. Each keeps that storage alive while it reads the
-  files, which that storage still removes once collected, as before.
+  subfolder: removing the folder, or a folder containing it that a
+  simulation made, leaves that subfolder, every file in it and the folders
+  leading to it, for the caller to remove. Exceptions: a subfolder inside
+  another disk storage's goes when that storage removes its own, as above;
+  and two kinds of storage read another storage's subfolder rather than
+  keep one. Those are a clone or copy, whose flag is ``True`` only because
+  it never removes its source's subfolder, and a storage made with the flag
+  for a subfolder that a live storage made without it removes. Each keeps
+  that storage alive while it reads the files, which that storage still
+  removes once collected, as before.
 * **Another process.** A process forked from the one that made the folder
   has copies of all these objects; so does a process a disk storage is
-  unpickled in. Only the process that made a folder removes it, and only the
-  process that made a disk storage removes that storage's subfolder. A disk
-  storage copied into another process, by forking or unpickling, or cloned
-  from one there, writes only new files of its own, and after forking, the
-  process that made the folder writes over no file it wrote before. So
-  neither process removes or writes over a file the other reads through
-  these storages. A forked process stores what new holders put on disk in a
-  folder of its own, made inside the folder it inherited. Nothing in another
-  process keeps the folder alive, though: once the process that made it
-  collects the simulation and its storages, or exits, the folder is gone,
-  with any folder a forked process made inside it, even if a forked or
-  unpickling process still reads them. Explicit preservation is likewise
-  kept only by the process that made the folder.
+  unpickled in. Each process removes only the folders and disk storage
+  subfolders it made, but removing a folder removes everything in it, the
+  folder a forked process made inside it included. Disk storages copied
+  into another process, by forking or unpickling, or cloned from one there,
+  write only new files of their own, and after forking, the process that
+  made the folder writes over no file it wrote or read back before. So
+  neither process writes over a file the other reads. A forked process
+  stores what new holders put on disk in a folder of its own, made inside
+  the folder it inherited. But nothing in another process keeps the folder
+  alive: once the process that made it collects the simulation and its
+  storages, or exits, the folder is gone, with everything in it, the forked
+  process's own folder included, even while a forked or unpickling process
+  still reads them. Explicit preservation is likewise kept only by the
+  process that made the folder.
 * **A folder the caller chose** (``_data_storage_dir``). Nothing removes it,
-  only the subfolders disk storages made in it, as before. A clone or forked
-  process makes its own folder inside it.
+  only the subfolders disk storages made in it, as before, unless it is in a
+  folder a simulation made: that one removes it with everything else in it,
+  once nothing keeps that one alive (above). A clone or forked process makes
+  its own folder inside it.
 * **A process that ends without running the exit handlers that remove its
   folders** (killed, or ended with ``os._exit``, as a process
   ``multiprocessing`` forks is) leaves the folders it made that were still
@@ -140,9 +160,12 @@ class TemporaryStorageDirectory:
     created it. The simulation that created it keeps a reference to this
     object, and so does every disk storage made in it in this process (see
     ``OnDiskStorage``), which the storages cloned or copied from those keep
-    alive in turn. Subfolders of disk storages that preserve theirs are left,
-    with the folders leading to them. What this guarantees for each way of
-    sharing the files is in the docstring of this module.
+    alive in turn. So do a simulation given this directory or a folder in it
+    (``Simulation._data_storage_dir``), and a directory of this class made
+    in it. Subfolders of disk storages that preserve theirs are left, with
+    the folders leading to them, here or in a directory made in this one.
+    What this guarantees for each way of sharing the files is in the
+    docstring of this module.
 
     Copying this object gives the same object. Unpickling it in the process
     that created it, while the directory exists, also gives the same object;

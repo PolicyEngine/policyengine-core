@@ -690,14 +690,18 @@ class Simulation:
         Folder in which this simulation stores values on disk when memory is
         short (see ``MemoryConfig``).
 
-        Set ``_data_storage_dir`` to choose the folder: nothing removes it.
-        Otherwise this is a new temporary folder, removed once this
-        simulation and every disk storage in the folder (those its clones and
-        branches copied included) are garbage-collected, or at interpreter
-        exit, except the subfolders of disk storages that preserve theirs.
-        In a process forked from the one the folder is for, this is a new
-        folder for that process, made inside that one. See the
-        ``storage_directory`` module for what this guarantees.
+        Set ``_data_storage_dir`` to choose the folder: nothing removes it,
+        unless it is in a temporary folder a simulation made, which this
+        simulation then keeps alive, and which removes it with everything else
+        in it once nothing keeps it. Otherwise this is a new temporary folder,
+        removed once this simulation, every disk storage in the folder (those
+        its clones and branches copied included), every simulation given a
+        folder in it and every temporary folder made in it are
+        garbage-collected in this process, or at interpreter exit, except the
+        subfolders of disk storages that preserve theirs. In a process forked
+        from the one the folder is for, this is a new folder for that process,
+        made inside that one. See the ``storage_directory`` module for what
+        this guarantees.
         """
         pid = os.getpid()
         if self._data_storage_dir is not None and self._storage_dir_pid not in (

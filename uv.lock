@@ -1503,7 +1503,7 @@ requires-dist = [
     { name = "furo", marker = "extra == 'dev'" },
     { name = "h5py", specifier = ">=3,<4" },
     { name = "huggingface-hub", specifier = ">=0.25.1" },
-    { name = "hypothesis", marker = "extra == 'dev'", specifier = ">=6,<7" },
+    { name = "hypothesis", marker = "extra == 'dev'", specifier = ">=6.62,<7" },
     { name = "ipython", specifier = ">=8,<9" },
     { name = "jupyter-book", marker = "extra == 'dev'", specifier = "<1" },
     { name = "markupsafe", marker = "extra == 'dev'", specifier = "==2.0.1" },

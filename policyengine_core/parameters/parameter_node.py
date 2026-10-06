@@ -10,6 +10,7 @@ from policyengine_core.tracers import TracingParameterNodeAtInstant
 
 from .at_instant_like import AtInstantLike
 from .parameter import Parameter
+from .parameter_at_instant_cache import ParameterAtInstantCache
 from .parameter_node_at_instant import ParameterNodeAtInstant
 from .config import COMMON_KEYS, FILE_EXTENSIONS
 from .helpers import (
@@ -84,7 +85,7 @@ class ParameterNode(AtInstantLike):
         self.trace: bool = False
         self.tracer = None
         self.branch_name = None
-        self._at_instant_cache: typing.Dict[Instant, ParameterNodeAtInstant] = {}
+        self._at_instant_cache = ParameterAtInstantCache()
         self.parent = None
 
         if directory_path:
@@ -213,18 +214,48 @@ class ParameterNode(AtInstantLike):
 
         return clone
 
+    @property
+    def _at_instant_cache(self) -> ParameterAtInstantCache:
+        return self._at_instant_cache_store
+
+    @_at_instant_cache.setter
+    def _at_instant_cache(self, value) -> None:
+        if isinstance(value, ParameterAtInstantCache):
+            self._at_instant_cache_store = value
+            return
+        if not isinstance(value, typing.Mapping):
+            raise TypeError("_at_instant_cache must be a mapping")
+        cache = ParameterAtInstantCache()
+        for instant_key, dated_node in value.items():
+            if isinstance(dated_node, TracingParameterNodeAtInstant):
+                dated_node = dated_node.parameter_node_at_instant
+            cache.put(str(instant_key), dated_node)
+        self._at_instant_cache_store = cache
+
+    def get_plain_at_instant(self, instant: Instant) -> ParameterNodeAtInstant:
+        """Return the ordinary dated view retained by this node."""
+
+        return self._at_instant_cache.get_or_create(
+            instant,
+            lambda: ParameterNodeAtInstant(self.name, self, instant),
+        )
+
     def _get_at_instant(self, instant: Instant) -> ParameterNodeAtInstant:
-        if instant in self._at_instant_cache:
-            return self._at_instant_cache[instant]
-        node_at_instant = ParameterNodeAtInstant(self.name, self, instant)
+        node_at_instant = self.get_plain_at_instant(instant)
         if self.trace:
-            at_instant = TracingParameterNodeAtInstant(
+            return TracingParameterNodeAtInstant(
                 node_at_instant, self.tracer, self.branch_name
             )
-        else:
-            at_instant = node_at_instant
-        self._at_instant_cache[instant] = at_instant
-        return at_instant
+        return node_at_instant
+
+    def clear_at_instant_caches(self, *, recursive: bool = True) -> None:
+        """Clear this node's dated views and optionally child-node views."""
+
+        self._at_instant_cache.clear()
+        if recursive:
+            for child in self.children.values():
+                if isinstance(child, ParameterNode):
+                    child.clear_at_instant_caches(recursive=True)
 
     def attach_to_parent(self, parent: "ParameterNode"):
         self.parent = parent

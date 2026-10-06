@@ -21,6 +21,7 @@ from .operations import (
 )
 from .parameter import Parameter
 from .parameter_at_instant import ParameterAtInstant
+from .parameter_at_instant_cache import ParameterAtInstantCache
 from .parameter_node import ParameterNode
 from .parameter_node_at_instant import ParameterNodeAtInstant
 from .parameter_scale import ParameterScale

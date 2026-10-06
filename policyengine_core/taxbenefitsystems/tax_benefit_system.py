@@ -35,6 +35,7 @@ from policyengine_core.parameters import (
     ParameterNode,
     ParameterNodeAtInstant,
     Parameter,
+    ParameterAtInstantCache,
 )
 from policyengine_core.parameters.operations.homogenize_parameters import (
     homogenize_parameter_structures,
@@ -50,6 +51,7 @@ from policyengine_core.parameters.operations.uprate_parameters import (
 )
 from policyengine_core.periods import Instant, Period
 from policyengine_core.populations import GroupPopulation, Population
+from policyengine_core.tracers import TracingParameterNodeAtInstant
 from policyengine_core.variables import Variable
 
 log = logging.getLogger(__name__)
@@ -145,6 +147,39 @@ class TaxBenefitSystem:
             self.add_abolition_parameters()
 
         self.add_modelled_policy_metadata()
+
+    @property
+    def _parameters_at_instant_cache(self) -> ParameterAtInstantCache:
+        return self._parameters_at_instant_cache_store
+
+    @_parameters_at_instant_cache.setter
+    def _parameters_at_instant_cache(self, value) -> None:
+        if isinstance(value, ParameterAtInstantCache):
+            self._parameters_at_instant_cache_store = value
+            return
+        if not isinstance(value, typing.Mapping):
+            raise TypeError("_parameters_at_instant_cache must be a mapping")
+        cache = ParameterAtInstantCache()
+        for instant_key, dated_node in value.items():
+            if isinstance(dated_node, TracingParameterNodeAtInstant):
+                dated_node = dated_node.parameter_node_at_instant
+            cache.put(instant_key, dated_node)
+        self._parameters_at_instant_cache_store = cache
+
+    def clear_parameter_caches(self) -> None:
+        """Clear all dated parameter views owned by this policy system."""
+
+        self._parameters_at_instant_cache.clear()
+        if self.parameters is not None:
+            self.parameters.clear_at_instant_caches(recursive=True)
+
+    def share_parameters_from(self, other: "TaxBenefitSystem") -> None:
+        """Deliberately share a parameter tree and its tracer-neutral cache."""
+
+        if not isinstance(other, TaxBenefitSystem):
+            raise TypeError("other must be a TaxBenefitSystem")
+        self.parameters = other.parameters
+        self._parameters_at_instant_cache = other._parameters_at_instant_cache
 
     def apply_reform_set(self, reform):
         if isinstance(reform, tuple):
@@ -559,11 +594,12 @@ class TaxBenefitSystem:
                 )
             )
 
-        parameters_at_instant = self._parameters_at_instant_cache.get(instant)
-        if parameters_at_instant is None and self.parameters is not None:
-            parameters_at_instant = self.parameters.get_at_instant(str(instant))
-            self._parameters_at_instant_cache[instant] = parameters_at_instant
-        return parameters_at_instant
+        if self.parameters is None:
+            return None
+        return self._parameters_at_instant_cache.get_or_create(
+            instant,
+            lambda: self.parameters.get_plain_at_instant(str(instant)),
+        )
 
     def get_package_metadata(self) -> dict:
         """
@@ -651,6 +687,7 @@ class TaxBenefitSystem:
             if key not in (
                 "parameters",
                 "_parameters_at_instant_cache",
+                "_parameters_at_instant_cache_store",
                 "variables",
                 "entities",
                 "person_entity",
@@ -659,7 +696,7 @@ class TaxBenefitSystem:
                 new_dict[key] = value
 
         new_dict["parameters"] = self.parameters.clone()
-        new_dict["_parameters_at_instant_cache"] = {}
+        new._parameters_at_instant_cache = {}
         new_dict["variables"] = {
             variable_name: variable.clone()
             for variable_name, variable in self.variables.items()

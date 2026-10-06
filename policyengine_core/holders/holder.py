@@ -360,8 +360,9 @@ class Holder:
             # this input replaces (see ``Simulation.set_input``), unless it
             # replaces the same input. Either way the branch stops reading
             # macro-cache files, which are keyed by branch name and period,
-            # not by inputs: a file for its name may come from another
-            # simulation's branch.
+            # not by inputs: a file for its name (written by this branch, or
+            # by another simulation's branch of the same name) may hold values
+            # calculated without this input, even before the branch read any.
             if getattr(simulation, "parent_branch", None) is None:
                 simulation._drop_values_that_may_depend_on(self.variable.name, period)
             else:

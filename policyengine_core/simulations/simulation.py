@@ -1948,11 +1948,7 @@ class Simulation:
         """
         if getattr(self, "parent_branch", None) is None:
             return 0
-        # Macro-cache files are keyed by branch and period, not by inputs, so
-        # a file for this branch's name (written by this branch, or by another
-        # simulation's branch of the same name) may hold values calculated
-        # without this input, even before the branch has read any.
-        self.macro_cache_read = False
+        # (``Holder.set_input`` has already stopped macro-cache reads here.)
         since = self._get_store_history().earliest_dependency(
             variable_name, periods.period(period)
         )

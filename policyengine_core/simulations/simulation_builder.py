@@ -28,6 +28,50 @@ if TYPE_CHECKING:
     )
 
 from policyengine_core.variables import Variable
+
+
+def group_positions(
+    group_ids: ArrayLike, persons_group_ids: ArrayLike, entity_key: str = "group"
+) -> np.ndarray:
+    """Return the position in ``group_ids`` of each person's group.
+
+    ``members_entity_id`` indexes the arrays of a group population, which
+    follow the order ``group_ids`` were declared in. A person belongs to the
+    group whose declared ID equals theirs, wherever that group sits in the
+    declared order and whether or not other groups have members.
+
+    Raises:
+        ValueError: if the declared IDs repeat, or a person belongs to an ID
+            that was not declared.
+    """
+    group_ids = np.asarray(group_ids)
+    persons_group_ids = np.asarray(persons_group_ids)
+    sorter = np.argsort(group_ids, kind="stable")
+    sorted_ids = group_ids[sorter]
+    repeated = sorted_ids[1:][sorted_ids[1:] == sorted_ids[:-1]]
+    if len(repeated) > 0:
+        raise ValueError(
+            f"{entity_key} IDs must be unique, but these repeat: "
+            f"{np.unique(repeated)[:5].tolist()}."
+        )
+    try:
+        positions = np.searchsorted(sorted_ids, persons_group_ids)
+    except TypeError as error:
+        raise ValueError(
+            f"Person {entity_key} IDs ({persons_group_ids.dtype}) cannot be "
+            f"compared with the declared {entity_key} IDs ({group_ids.dtype})."
+        ) from error
+    declared = positions < len(sorted_ids)
+    declared[declared] = sorted_ids[positions[declared]] == persons_group_ids[declared]
+    if not declared.all():
+        undeclared = np.unique(persons_group_ids[~declared])
+        raise ValueError(
+            f"{int((~declared).sum())} person(s) belong to {entity_key} IDs "
+            f"that were not declared: {undeclared[:5].tolist()}."
+        )
+    return sorter[positions]
+
+
 from datetime import datetime
 
 
@@ -281,13 +325,11 @@ class SimulationBuilder:
         persons_group_assignment: ArrayLike,
         roles: typing.Iterable[str],
     ) -> None:
-        # Maps group's identifiers to a 0-based integer range, for indexing into members_roles (see PR#876)
-        group_sorted_indices = np.unique(persons_group_assignment, return_inverse=True)[
-            1
-        ]
-        group_population.members_entity_id = np.argsort(group_population.ids)[
-            group_sorted_indices
-        ]
+        group_population.members_entity_id = group_positions(
+            group_population.ids,
+            persons_group_assignment,
+            group_population.entity.key,
+        )
 
         flattened_roles = group_population.entity.flattened_roles
         roles_array = np.array(roles)

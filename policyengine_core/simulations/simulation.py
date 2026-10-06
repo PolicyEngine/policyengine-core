@@ -574,30 +574,27 @@ class Simulation:
 
         for group_entity in self.tax_benefit_system.group_entities:
             entity_id_field = f"{group_entity.key}_id"
+            person_membership_id_field = f"{person_entity.key}_{group_entity.key}_id"
             if self.dataset.data_format != Dataset.FLAT_FILE:
                 assert entity_id_field in data, (
                     f"Missing {entity_id_field} column in the dataset. Each group entity must have an ID array defined for ETERNITY."
                 )
                 entity_ids = get_eternity_array(entity_id_field)
-            elif entity_id_field not in data:
-                entity_id_field_values = get_eternity_array(
-                    f"person_{group_entity.key}_id"
-                )
-                if entity_id_field_values is not None:
-                    entity_ids = np.arange(len(np.unique(entity_id_field_values)))
-                else:
-                    entity_ids = np.arange(len(data[list(data.keys())[0]]))
-
-            builder.declare_entity(group_entity.key, entity_ids)
-
-            person_membership_id_field = f"{person_entity.key}_{group_entity.key}_id"
-            if self.dataset.data_format != Dataset.FLAT_FILE:
                 assert person_membership_id_field in data, (
                     f"Missing {person_membership_id_field} column in the dataset. Each group entity must have a person membership array defined for ETERNITY."
                 )
-            elif person_membership_id_field not in data:
-                data[person_membership_id_field] = np.arange(len(data))
-            person_membership_ids = get_eternity_array(person_membership_id_field)
+                person_membership_ids = get_eternity_array(person_membership_id_field)
+            else:
+                # A flat file has one row per person, so it declares each
+                # group only through its members' IDs. Number the distinct
+                # IDs 0, 1, ... and give each person their group's number.
+                membership_values = get_eternity_array(person_membership_id_field)
+                distinct_ids, person_membership_ids = np.unique(
+                    membership_values, return_inverse=True
+                )
+                entity_ids = np.arange(len(distinct_ids))
+
+            builder.declare_entity(group_entity.key, entity_ids)
 
             person_role_field = f"{person_entity.key}_{group_entity.key}_role"
             if person_role_field in data:

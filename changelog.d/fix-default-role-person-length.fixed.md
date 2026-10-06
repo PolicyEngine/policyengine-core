@@ -1,0 +1,1 @@
+A dataset without role columns now gives every person, not every group, the default role, so role queries such as `nb_persons(role=...)` and `sum(..., role=...)` work on it; a `default_role` that names no role of a group entity gives that entity's first role instead of no role, and `join_with_persons` now rejects a role array whose length differs from the persons'.

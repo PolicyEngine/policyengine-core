@@ -162,7 +162,31 @@ def _latest_input_key(period: Period, definition_period: str) -> tuple:
     )
 
 
+def _default_role_key(entity: "GroupEntity", default_role: str) -> str:
+    """The role key a dataset with no role column gives each member of ``entity``.
+
+    ``default_role`` may name a role that members hold directly, or a role
+    with subroles, whose first subrole they get. ``Simulation.default_role``
+    is one key for every group entity, so it can name no role of ``entity``
+    (``"member"`` in a household of parents and children); then members get
+    the entity's first role, as people given no role in a situation do. A key
+    that names no role would otherwise leave members holding no role at all,
+    so every role query would find nobody.
+    """
+    roles = entity.flattened_roles
+    if not roles:
+        return default_role
+    for role in roles:
+        if role.key == default_role:
+            return role.key
+    for role in entity.roles:
+        if role.key == default_role and role.subroles:
+            return role.subroles[0].key
+    return roles[0].key
+
+
 if TYPE_CHECKING:
+    from policyengine_core.entities import GroupEntity
     from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 
 from policyengine_core.experimental import MemoryConfig
@@ -605,7 +629,12 @@ class Simulation:
             elif "role" in data:
                 person_roles = get_eternity_array("role")
             elif self.default_role is not None:
-                person_roles = np.full(len(entity_ids), self.default_role)
+                # One role per person, like the membership IDs: ``entity_ids``
+                # holds one entry per group, not per person.
+                person_roles = np.full(
+                    len(person_membership_ids),
+                    _default_role_key(group_entity, self.default_role),
+                )
             else:
                 raise ValueError(
                     f"Missing {person_role_field} column in the dataset. Each group entity must have a person role array defined for ETERNITY."

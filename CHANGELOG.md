@@ -1,3 +1,10 @@
+## [3.32.19] - 2026-10-06
+
+### Fixed
+
+- A simulation's temporary on-disk storage folder (`openfisca_*`) is now removed, instead of being left behind, once the simulation and everything in the same process that reads files in it or stores values in a folder inside it have been garbage-collected, or at interpreter exit, except the subfolders of disk storages that preserve theirs (`preserve_storage_dir`). Clones, and processes forked from the one that made the folder, make the disk storages they need themselves in folders of their own, and disk storages cloned, copied, pickled or forked from one another write a new file rather than over a file another of them reads, including files one of them read back with `restore` before they were cloned, copied or forked (a later `restore` reads whatever files are there). A disk storage no longer removes the folder containing its own, such as a folder the caller chose as `_data_storage_dir`. Between processes the folder still belongs to the process that made it: removing it there removes everything in it, including a folder a forked process made inside it, even while that process reads it.
+
+
 ## [3.32.18] - 2026-10-06
 
 ### Fixed

@@ -1,5 +1,5 @@
 import hashlib
-import tempfile
+import os
 from contextlib import nullcontext
 from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
@@ -15,6 +15,10 @@ from policyengine_core.data.dataset import Dataset
 from policyengine_core.data_storage.store_history import (
     StoreHistory,
     next_sequence_number,
+)
+from policyengine_core.data_storage.storage_directory import (
+    TemporaryStorageDirectory,
+    directory_containing,
 )
 from policyengine_core.entities.entity import Entity
 from policyengine_core.enums import Enum, EnumArray
@@ -374,6 +378,40 @@ class Simulation:
     start_instant: str = None
     """The earliest data input instant of the simulation."""
 
+    # The temporary folder this simulation made for the values it stores on
+    # disk, if it made one (see ``data_storage_dir``).
+    _storage_directory: TemporaryStorageDirectory = None
+    # The folder that one is made in; ``None`` for the default temporary
+    # folder (see ``clone``).
+    _storage_dir_parent: str = None
+    # The process ``_data_storage_dir`` is for: the one that made the
+    # simulation or the folder, or first stored a value on disk in it.
+    _storage_dir_pid: int = None
+    # The live temporary folder a simulation made that is or contains this
+    # simulation's folder, or, until this one makes its folder, the folder
+    # it will make it in: kept alive while this simulation is, since
+    # removing it would remove this simulation's folder (see
+    # ``_data_storage_dir``).
+    _storage_dir_keeper: TemporaryStorageDirectory = None
+
+    @property
+    def _data_storage_dir(self) -> Optional[str]:
+        """The folder this simulation stores values on disk in, once it has
+        one. Set it to choose the folder (see ``data_storage_dir``)."""
+        # Kept in the instance's ``__dict__`` under the same name, which
+        # this property takes precedence over.
+        return self.__dict__.get("_data_storage_dir")
+
+    @_data_storage_dir.setter
+    def _data_storage_dir(self, path: Optional[str]) -> None:
+        self.__dict__["_data_storage_dir"] = path
+        # A folder in a temporary folder a simulation made (another
+        # simulation's, given to this one, say) goes when that one is
+        # removed, so this simulation keeps that one alive.
+        self._storage_dir_keeper = (
+            None if path is None else directory_containing(os.fspath(path))
+        )
+
     def __init__(
         self,
         tax_benefit_system: "TaxBenefitSystem" = None,
@@ -425,6 +463,7 @@ class Simulation:
         self.max_spiral_loops: int = 10
         self.memory_config: MemoryConfig = None
         self._data_storage_dir: str = None
+        self._storage_dir_pid = os.getpid()
 
         self.branches: Dict[str, Simulation] = {}
         self.has_axes = False
@@ -770,17 +809,54 @@ class Simulation:
     @property
     def data_storage_dir(self) -> str:
         """
-        Temporary folder used to store intermediate calculation data in case the memory is saturated
+        Folder in which this simulation stores values on disk when memory is
+        short (see ``MemoryConfig``).
+
+        Set ``_data_storage_dir`` to choose the folder: nothing removes it,
+        unless it is in a temporary folder a simulation made, which this
+        simulation then keeps alive, and which removes it with everything else
+        in it once nothing keeps it. Otherwise this is a new temporary folder,
+        removed once this simulation, every disk storage in the folder (those
+        its clones and branches copied included), every simulation given a
+        folder in it and every temporary folder made in it are
+        garbage-collected in this process, or at interpreter exit, except the
+        subfolders of disk storages that preserve theirs. In a process forked
+        from the one the folder is for, this is a new folder for that process,
+        made inside that one. See the ``storage_directory`` module for what
+        this guarantees.
         """
+        pid = os.getpid()
+        if self._data_storage_dir is not None and self._storage_dir_pid not in (
+            None,
+            pid,
+        ):
+            # Forked from the process the folder is for. Disk storages each
+            # process made for a variable in one folder would write the same
+            # files, and each would remove the other's when collected, so
+            # this process stores new values in a folder of its own. It goes
+            # inside the folder it inherited, so if the other process made
+            # that one, it removes this one with it, however this process
+            # ends. The disk storages this process has copies of still read
+            # the other's files (see ``OnDiskStorage._path_to_write``).
+            inherited = self._data_storage_dir
+            self._data_storage_dir = None
+            self._storage_directory = None
+            if os.path.isdir(inherited):
+                self._storage_dir_parent = inherited
         if self._data_storage_dir is None:
-            self._data_storage_dir = tempfile.mkdtemp(prefix="openfisca_")
-            message = [
-                (
-                    "Intermediate results will be stored on disk in {} in case of memory overflow."
-                ).format(self._data_storage_dir),
-                "You should remove this directory once you're done with your simulation.",
-            ]
+            self._storage_directory = TemporaryStorageDirectory(
+                self._storage_dir_parent
+            )
+            self._data_storage_dir = self._storage_directory.path
+        self._storage_dir_pid = pid
         return self._data_storage_dir
+
+    def _made_data_storage_dir(self) -> bool:
+        """Whether this simulation made the folder it stores values on disk in."""
+        return (
+            self._storage_directory is not None
+            and self._storage_directory.path == self._data_storage_dir
+        )
 
     # ----- Calculation methods ----- #
 
@@ -2048,6 +2124,27 @@ class Simulation:
             ):
                 new_dict[key] = value
         new._fast_cache = {}
+        # The clone stores what it puts on disk in a folder of its own, made
+        # when first needed, never in this simulation's. Disk storages the
+        # two each made for a variable in one folder would write the same
+        # files (the clone keeps the branch name), and each would remove the
+        # other's files when collected. The disk storages the clone copies
+        # from this simulation's holders do read this simulation's files:
+        # they keep its folder until they are collected (see
+        # ``OnDiskStorage.clone``). A clone of a simulation given a folder
+        # makes its own inside that one, and so does one made in a process
+        # forked from the one this simulation's folder is for (see
+        # ``data_storage_dir``). Until it makes its own, it keeps the
+        # temporary folder it will make it in, if a simulation made that one.
+        if self._data_storage_dir is not None and (
+            not self._made_data_storage_dir()
+            or self._storage_dir_pid not in (None, os.getpid())
+        ):
+            new._storage_dir_parent = self._data_storage_dir
+        new._data_storage_dir = None
+        new._storage_directory = None
+        if new._storage_dir_parent is not None:
+            new._storage_dir_keeper = directory_containing(new._storage_dir_parent)
         # Each simulation records its own inputs. A shared record let an
         # input set on one replay, in the other's ``apply_reform``, whatever
         # the other had calculated for that period, as an input.

@@ -23,6 +23,10 @@ from policyengine_core.errors import (
 from policyengine_core.scripts import build_tax_benefit_system
 from policyengine_core.reforms import Reform, set_parameter
 from policyengine_core.populations import ADD, DIVIDE
+from policyengine_core.tools.policy_system_cache import (
+    PolicySystemCache,
+    PolicySystemCacheKey,
+)
 
 log = logging.getLogger(__name__)
 
@@ -61,15 +65,6 @@ TEST_KEYWORDS = {
 
 yaml, Loader = import_yaml()
 
-# Key the cache on the baseline object itself (via ``WeakKeyDictionary``) so
-# that when a baseline is garbage-collected its cache entries disappear with
-# it. Previously the cache was keyed on ``id(baseline)``, which Python
-# reuses after GC — a collected baseline could produce the same id as a
-# completely unrelated new baseline and hit a stale cache entry (bug H9).
-import weakref
-
-_tax_benefit_system_cache: "weakref.WeakKeyDictionary" = weakref.WeakKeyDictionary()
-
 
 def run_tests(tax_benefit_system, paths, options=None):
     """
@@ -97,6 +92,9 @@ def run_tests(tax_benefit_system, paths, options=None):
 
     """
 
+    if options is None:
+        options = {}
+
     # Add PyTest config arguments here. We use the tb (traceback) option of "no"
     # to avoid printing tons of traceback lines. Remove it to use the openfisca default.
 
@@ -108,19 +106,18 @@ def run_tests(tax_benefit_system, paths, options=None):
     if isinstance(paths, str):
         paths = [paths]
 
-    if options is None:
-        options = {}
-
-    return pytest.main(
-        [*argv, *paths],
-        plugins=[OpenFiscaPlugin(tax_benefit_system, options)],
-    )
+    plugin = OpenFiscaPlugin(tax_benefit_system, options)
+    try:
+        return pytest.main([*argv, *paths], plugins=[plugin])
+    finally:
+        plugin.close()
 
 
 class YamlFile(pytest.File):
-    def __init__(self, *, tax_benefit_system, options, **kwargs):
+    def __init__(self, *, tax_benefit_system, policy_system_cache, options, **kwargs):
         super(YamlFile, self).__init__(**kwargs)
         self.tax_benefit_system = tax_benefit_system
+        self.policy_system_cache = policy_system_cache
         self.options = options
 
     def collect(self):
@@ -149,6 +146,7 @@ class YamlFile(pytest.File):
                     self,
                     name="",
                     baseline_tax_benefit_system=self.tax_benefit_system,
+                    policy_system_cache=self.policy_system_cache,
                     test=test,
                     options=self.options,
                 )
@@ -176,9 +174,18 @@ class YamlItem(pytest.Item):
     Terminal nodes of the test collection tree.
     """
 
-    def __init__(self, *, baseline_tax_benefit_system, test, options, **kwargs):
+    def __init__(
+        self,
+        *,
+        baseline_tax_benefit_system,
+        policy_system_cache,
+        test,
+        options,
+        **kwargs,
+    ):
         super(YamlItem, self).__init__(**kwargs)
         self.baseline_tax_benefit_system = baseline_tax_benefit_system
+        self.policy_system_cache = policy_system_cache
         self.options = options
         self.test = test
         self.simulation = None
@@ -208,7 +215,7 @@ class YamlItem(pytest.Item):
         period = self.test.get("period")
         input = {}
         inline_reforms = []
-        parametric_reform_items = []
+        parameter_overrides = {}
         for key, value in unsafe_input.items():
             if "." in key:
                 inline_reforms += [
@@ -219,7 +226,7 @@ class YamlItem(pytest.Item):
                         period=f"year:2000:40",
                     )
                 ]
-                parametric_reform_items.append((key, value))
+                parameter_overrides[key] = value
             else:
                 input[key] = value
 
@@ -245,9 +252,8 @@ class YamlItem(pytest.Item):
             self.baseline_tax_benefit_system,
             reforms + inline_reform,
             self.test.get("extensions", []),
-            reform_key="=".join(
-                [f"{key}:{value}" for key, value in parametric_reform_items]
-            ),
+            parameter_overrides=parameter_overrides,
+            policy_system_cache=self.policy_system_cache,
         )
         verbose = self.options.get("verbose")
         performance_graph = self.options.get("performance_graph")
@@ -404,6 +410,13 @@ class OpenFiscaPlugin(object):
     def __init__(self, tax_benefit_system, options):
         self.tax_benefit_system = tax_benefit_system
         self.options = options
+        self.policy_system_cache = PolicySystemCache(
+            max_derived_entries=options.get("policy_system_cache_size", 2),
+            enabled=not options.get("no_policy_system_cache", False),
+        )
+
+    def close(self):
+        self.policy_system_cache.close()
 
     def pytest_collect_file(self, parent, file_path):
         """
@@ -415,6 +428,7 @@ class OpenFiscaPlugin(object):
                 parent,
                 path=file_path,
                 tax_benefit_system=self.tax_benefit_system,
+                policy_system_cache=self.policy_system_cache,
                 options=self.options,
             )
 
@@ -423,48 +437,41 @@ def _get_tax_benefit_system(
     baseline,
     reforms,
     extensions,
-    reform_key=None,
+    parameter_overrides=None,
+    policy_system_cache=None,
 ):
     if not isinstance(reforms, list):
         reforms = [reforms]
     if not isinstance(extensions, list):
         extensions = [extensions]
 
-    # Inner key is (reforms in order, reform_key, extensions as a frozenset).
-    # The outer cache is keyed on the baseline *object* so its entries are
-    # tied to the baseline's lifetime (see bug H9 above).
-    inner_key = (
-        ":".join([reform if isinstance(reform, str) else "" for reform in reforms]),
-        reform_key,
-        frozenset(extensions),
+    cache_key = PolicySystemCacheKey.from_inputs(
+        reforms=reforms,
+        extensions=extensions,
+        parameter_overrides=parameter_overrides,
     )
-    baseline_entry = _tax_benefit_system_cache.get(baseline)
-    if baseline_entry is not None:
-        cached = baseline_entry.get(inner_key)
-        if cached is not None:
-            return cached
 
-    current_tax_benefit_system = baseline.clone()
+    def build():
+        current_tax_benefit_system = baseline.clone()
 
-    for reform_path in reforms:
-        if isinstance(reform_path, str):
-            current_tax_benefit_system = current_tax_benefit_system.apply_reform(
-                reform_path
-            )
-        else:
-            current_tax_benefit_system = reform_path(current_tax_benefit_system)
-        current_tax_benefit_system._parameters_at_instant_cache = {}
+        for reform_path in reforms:
+            if isinstance(reform_path, str):
+                current_tax_benefit_system = current_tax_benefit_system.apply_reform(
+                    reform_path
+                )
+            else:
+                current_tax_benefit_system = reform_path(current_tax_benefit_system)
+            current_tax_benefit_system._parameters_at_instant_cache = {}
 
-    for extension in extensions:
-        current_tax_benefit_system = current_tax_benefit_system.clone()
-        current_tax_benefit_system.load_extension(extension)
+        for extension in extensions:
+            current_tax_benefit_system = current_tax_benefit_system.clone()
+            current_tax_benefit_system.load_extension(extension)
 
-    if baseline_entry is None:
-        baseline_entry = {}
-        _tax_benefit_system_cache[baseline] = baseline_entry
-    baseline_entry[inner_key] = current_tax_benefit_system
+        return current_tax_benefit_system
 
-    return current_tax_benefit_system
+    if policy_system_cache is None:
+        return build()
+    return policy_system_cache.get_or_create(cache_key, build)
 
 
 def assert_near(

@@ -91,6 +91,18 @@ def get_parser():
             default=None,
             help="variables to ignore. If specified, do not test the given variables.",
         )
+        parser.add_argument(
+            "--policy-system-cache-size",
+            type=int,
+            default=2,
+            help="maximum number of derived policy systems retained per worker",
+        )
+        parser.add_argument(
+            "--no-policy-system-cache",
+            action="store_true",
+            default=False,
+            help="construct a fresh policy system for every YAML case",
+        )
 
         return parser
 

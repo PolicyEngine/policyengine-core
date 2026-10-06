@@ -14,6 +14,7 @@ from policyengine_core.tools.test_runner import (
     YamlItem,
     _get_tax_benefit_system,
 )
+from policyengine_core.tools.policy_system_cache import PolicySystemCache
 from policyengine_core.variables import Variable
 
 
@@ -79,6 +80,7 @@ class TestItem(YamlItem):
             name="",
             parent=TestFile.from_parent(None),
             baseline_tax_benefit_system=TaxBenefitSystem(),
+            policy_system_cache=PolicySystemCache(),
             test=test,
             options={},
         )
@@ -109,25 +111,40 @@ def test_variable_not_found():
 
 def test_tax_benefit_systems_with_reform_cache():
     baseline = TaxBenefitSystem()
+    cache = PolicySystemCache()
 
-    ab_tax_benefit_system = _get_tax_benefit_system(baseline, "ab", [])
-    ba_tax_benefit_system = _get_tax_benefit_system(baseline, "ba", [])
+    ab_tax_benefit_system = _get_tax_benefit_system(
+        baseline, "ab", [], policy_system_cache=cache
+    )
+    ba_tax_benefit_system = _get_tax_benefit_system(
+        baseline, "ba", [], policy_system_cache=cache
+    )
     assert ab_tax_benefit_system != ba_tax_benefit_system
 
 
 def test_reforms_formats():
     baseline = TaxBenefitSystem()
+    cache = PolicySystemCache()
 
-    lonely_reform_tbs = _get_tax_benefit_system(baseline, "lonely_reform", [])
-    list_lonely_reform_tbs = _get_tax_benefit_system(baseline, ["lonely_reform"], [])
+    lonely_reform_tbs = _get_tax_benefit_system(
+        baseline, "lonely_reform", [], policy_system_cache=cache
+    )
+    list_lonely_reform_tbs = _get_tax_benefit_system(
+        baseline, ["lonely_reform"], [], policy_system_cache=cache
+    )
     assert lonely_reform_tbs == list_lonely_reform_tbs
 
 
 def test_reforms_order():
     baseline = TaxBenefitSystem()
+    cache = PolicySystemCache()
 
-    abba_tax_benefit_system = _get_tax_benefit_system(baseline, ["ab", "ba"], [])
-    baab_tax_benefit_system = _get_tax_benefit_system(baseline, ["ba", "ab"], [])
+    abba_tax_benefit_system = _get_tax_benefit_system(
+        baseline, ["ab", "ba"], [], policy_system_cache=cache
+    )
+    baab_tax_benefit_system = _get_tax_benefit_system(
+        baseline, ["ba", "ab"], [], policy_system_cache=cache
+    )
     assert (
         abba_tax_benefit_system != baab_tax_benefit_system
     )  # keep reforms order in cache
@@ -135,30 +152,43 @@ def test_reforms_order():
 
 def test_tax_benefit_systems_with_extensions_cache():
     baseline = TaxBenefitSystem()
+    cache = PolicySystemCache()
 
-    xy_tax_benefit_system = _get_tax_benefit_system(baseline, [], "xy")
-    yx_tax_benefit_system = _get_tax_benefit_system(baseline, [], "yx")
+    xy_tax_benefit_system = _get_tax_benefit_system(
+        baseline, [], "xy", policy_system_cache=cache
+    )
+    yx_tax_benefit_system = _get_tax_benefit_system(
+        baseline, [], "yx", policy_system_cache=cache
+    )
     assert xy_tax_benefit_system != yx_tax_benefit_system
 
 
 def test_extensions_formats():
     baseline = TaxBenefitSystem()
+    cache = PolicySystemCache()
 
-    lonely_extension_tbs = _get_tax_benefit_system(baseline, [], "lonely_extension")
+    lonely_extension_tbs = _get_tax_benefit_system(
+        baseline, [], "lonely_extension", policy_system_cache=cache
+    )
     list_lonely_extension_tbs = _get_tax_benefit_system(
-        baseline, [], ["lonely_extension"]
+        baseline, [], ["lonely_extension"], policy_system_cache=cache
     )
     assert lonely_extension_tbs == list_lonely_extension_tbs
 
 
 def test_extensions_order():
     baseline = TaxBenefitSystem()
+    cache = PolicySystemCache()
 
-    xy_tax_benefit_system = _get_tax_benefit_system(baseline, [], ["x", "y"])
-    yx_tax_benefit_system = _get_tax_benefit_system(baseline, [], ["y", "x"])
+    xy_tax_benefit_system = _get_tax_benefit_system(
+        baseline, [], ["x", "y"], policy_system_cache=cache
+    )
+    yx_tax_benefit_system = _get_tax_benefit_system(
+        baseline, [], ["y", "x"], policy_system_cache=cache
+    )
     assert (
-        xy_tax_benefit_system == yx_tax_benefit_system
-    )  # extensions order is ignored in cache
+        xy_tax_benefit_system != yx_tax_benefit_system
+    )  # extension order is part of the policy identity
 
 
 def test_performance_graph_option_output():
@@ -304,6 +334,7 @@ def test_yaml_runner_allows_yaml_merge_anchors(tmp_path):
     yaml_file.path = yaml_path
     yaml_file.options = {}
     yaml_file.tax_benefit_system = TaxBenefitSystem()
+    yaml_file.policy_system_cache = PolicySystemCache()
 
     collected = list(yaml_file.collect())
 

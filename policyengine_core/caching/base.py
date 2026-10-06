@@ -268,13 +268,26 @@ class BoundedCache(ABC, Generic[K, V]):
     def _evict_one(self) -> bool:
         """Remove the next entry selected by the concrete eviction policy."""
 
+    def _bounded_entry_count(self) -> int:
+        """Return entries governed by ``max_entries``.
+
+        A concrete cache may exclude a distinguished entry, such as a
+        baseline policy system, while its ordinary metrics still report every
+        retained entry.
+        """
+
+        cache = self
+        if not isinstance(cache, BaseCache):
+            raise TypeError("BoundedCache requires BaseCache")
+        return cache._entry_count()
+
     def _after_write(self, key: K, replaced: bool) -> None:
         cache = self
         if not isinstance(cache, BaseCache):
             raise TypeError("BoundedCache requires BaseCache")
         if self.max_entries < 0:
             raise ValueError("max_entries must not be negative")
-        while cache._entry_count() > self.max_entries:
+        while self._bounded_entry_count() > self.max_entries:
             if not self._evict_one():
                 raise CacheError("bounded cache could not evict an entry")
             cache._cache_evictions += 1

@@ -79,9 +79,18 @@ def test_average_to_marginal_levies_the_average_rate(brackets):
     # threshold, and the top rate on the whole base from the last one up.
     tax_base = numpy.array(thresholds, dtype=float)
     above = 2.0 * thresholds[-1] + 1
+    # ``MarginalRateTaxScale.calc`` shifts each threshold t by t x eps (it
+    # scales them by 1 + eps), which moves the tax by about that much times
+    # the bracket's rate. Close thresholds near a million can make that rate
+    # large, so bound the rounding by the inputs rather than a fixed 1e-6.
+    eps = numpy.finfo(numpy.float64).eps
+    marginal_rates = numpy.abs(numpy.diff(tax_base * numpy.array(rates))) / (
+        numpy.diff(tax_base)
+    )
+    rounding = 8 * eps * ((marginal_rates * tax_base[1:]).sum() + above)
     numpy.testing.assert_allclose(
         marginal.calc(numpy.append(tax_base, above)),
         numpy.append(tax_base * numpy.array(rates), above * rates[-1]),
         rtol=1e-9,
-        atol=1e-6,
+        atol=1e-6 + rounding,
     )

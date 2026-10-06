@@ -540,6 +540,8 @@ _RESTORED_FORK = """
     folder = {folder!r}
     np.save(os.path.join(folder, "default_2015.npy"), np.array([1.0, 2.0]))
     storage = OnDiskStorage(folder, preserve_storage_dir=True)
+    # A clone made before ``restore`` shares what the source reads back.
+    early = storage.clone() if {writer!r} == "cloned_first" else None
     storage.restore()
     go_r, go_w = os.pipe()
     report_r, report_w = os.pipe()
@@ -558,8 +560,9 @@ _RESTORED_FORK = """
     if {deleted!r}:
         # Dropped since the fork: the child still reads it.
         storage.delete("2015")
-    # The source writes, or a clone made after the fork does.
-    writer = storage.clone() if {cloned!r} else storage
+    # The source writes, or a clone made after the fork, or one made before
+    # ``restore``.
+    writer = {{"source": storage, "cloned_first": early}}.get({writer!r}) or storage.clone()
     writer.put(np.array([8.0, 9.0]), "2015")
     os.write(go_w, b"x")
     child = os.read(report_r, 256).decode()
@@ -571,18 +574,19 @@ _RESTORED_FORK = """
 
 
 @pytest.mark.skipif(not hasattr(os, "fork"), reason="needs os.fork")
-@pytest.mark.parametrize("cloned", [False, True], ids=["source", "cloned"])
+@pytest.mark.parametrize("writer", ["source", "cloned", "cloned_first"])
 @pytest.mark.parametrize("deleted", [False, True], ids=["kept", "deleted"])
 def test_a_restored_storage_writes_over_no_file_a_forked_process_reads(
-    tmp_path, deleted, cloned
+    tmp_path, deleted, writer
 ):
-    """After forking, a storage, or a clone made from it after the fork,
-    writes a new file for a key it read back (``restore``) rather than over
-    the file the child reads, even after dropping that key."""
+    """After forking, a storage, a clone made from it after the fork, or a
+    clone made before it read the files back (``restore``) writes a new file
+    for such a key rather than over the file the child reads, even after the
+    source dropped that key."""
     folder = tmp_path / "restored"
     folder.mkdir()
     printed = _run(
-        _RESTORED_FORK.format(folder=str(folder), deleted=deleted, cloned=cloned),
+        _RESTORED_FORK.format(folder=str(folder), deleted=deleted, writer=writer),
         tmp_path,
         NUMEXPR_MAX_THREADS="1",
     )

@@ -97,10 +97,11 @@ class OnDiskStorage:
         # any other clone of either wrote or stored when cloned: one set,
         # shared by all of them.
         self._family_files = set()
-        # Paths ``restore`` read back. They join the family once something
-        # else may read them (see ``restore``): those this storage reads,
-        # when it is cloned or copied; all of them, once this process forks
-        # (see ``_path_to_write``).
+        # Paths ``restore`` read back, by this storage or any clone in its
+        # family: one set, shared like ``_family_files``. They join the
+        # family once something else may read them (see ``restore``): those
+        # this storage reads, when it is cloned or copied; all of them, once
+        # this process forks (see ``_catch_up_after_fork``).
         self._restored_paths = set()
         self.is_eternal = is_eternal
         self.storage_dir = storage_dir
@@ -145,8 +146,9 @@ class OnDiskStorage:
         return self._detached or self._creator_pid != os.getpid()
 
     def _catch_up_after_fork(self) -> None:
-        """If this process forked since this storage last wrote, the forked
-        process may read any file this storage wrote or read back before:
+        """If this process forked since this storage last wrote, was cloned
+        or was copied, the forked process may read any file this storage, or
+        any clone in its family, wrote or read back before:
         those it wrote are in the family, and those it read back join it (all
         it ever read back, not only those it reads now, since the forked
         process may still read one this storage has since dropped). Called
@@ -218,6 +220,9 @@ class OnDiskStorage:
         clone._files = self._files.copy()
         clone._enums = self._enums.copy()
         clone._derived = set(self._derived)
+        # One set of read-back paths for the family, so a clone made before
+        # ``restore`` still writes over none of them after a fork.
+        clone._restored_paths = self._restored_paths
         clone._storage_dir_owner = getattr(self, "_storage_dir_owner", self)
         # Both storages now read every file stored so far, including any this
         # family did not write (read back by ``restore``, say).

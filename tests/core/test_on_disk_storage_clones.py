@@ -14,8 +14,10 @@ through one storage changed what the other read:
 
 ``put`` now writes over one of the family's files only if the storage wrote
 it and has not shared it since; otherwise it writes a new file of its own,
-in a subdirectory ``restore`` does not read. Storages that were not cloned
-from one another write over each other's files, as before.
+in a subdirectory ``restore`` does not read. Files a storage read back with
+``restore`` are shared the same way once it is cloned or copied. Storages
+that were not cloned or copied from one another write over each other's
+files, as before.
 """
 
 from __future__ import annotations
@@ -207,9 +209,14 @@ def test_a_restored_storage_and_its_clone_keep_their_own_values(storage):
     np.testing.assert_array_equal(clone.get("2012"), [2])
 
 
-@pytest.mark.parametrize(
-    "copier", [copy.deepcopy, lambda s: pickle.loads(pickle.dumps(s))]
+COPIERS = pytest.mark.parametrize(
+    "copier",
+    [copy.copy, copy.deepcopy, lambda s: pickle.loads(pickle.dumps(s))],
+    ids=["copy", "deepcopy", "pickle"],
 )
+
+
+@COPIERS
 def test_a_copied_storage_and_its_source_keep_their_own_values(storage, copier):
     storage.put(np.array([1.0]), "2012")
     copied = copier(storage)
@@ -219,6 +226,43 @@ def test_a_copied_storage_and_its_source_keep_their_own_values(storage, copier):
     storage.put(np.array([3.0]), "2012")
     np.testing.assert_array_equal(copied.get("2012"), [2])
     np.testing.assert_array_equal(storage.get("2012"), [3])
+
+
+@COPIERS
+@pytest.mark.parametrize("copy_first", [True, False], ids=["copy", "source"])
+def test_a_copied_storage_and_its_source_keep_their_own_values_for_a_new_key(
+    storage, copier, copy_first
+):
+    """A key neither stored when copied names the same file for both; each
+    keeps its own value, whichever stores it first."""
+    storage.put(np.array([1.0]), "2012")
+    copied = copier(storage)
+    writes = [(copied, 2.0), (storage, 3.0)]
+    if not copy_first:
+        writes.reverse()
+
+    for writer, value in writes:
+        writer.put(np.array([value]), "2013")
+
+    np.testing.assert_array_equal(copied.get("2013"), [2])
+    np.testing.assert_array_equal(storage.get("2013"), [3])
+    np.testing.assert_array_equal(copied.get("2012"), [1])
+    np.testing.assert_array_equal(storage.get("2012"), [1])
+
+
+@COPIERS
+def test_a_restored_storage_and_its_copy_keep_their_own_values(tmp_path, copier):
+    """A file the storage read back (``restore``) rather than wrote is
+    shared with its copy all the same."""
+    np.save(tmp_path / "default_2012.npy", np.array([1.0, 2.0]))
+    restored = OnDiskStorage(str(tmp_path))
+    restored.restore()
+    copied = copier(restored)
+
+    restored.put(np.array([8.0, 9.0]), "2012")
+
+    np.testing.assert_array_equal(copied.get("2012"), [1, 2])
+    np.testing.assert_array_equal(restored.get("2012"), [8, 9])
 
 
 def test_a_storage_unpickled_from_before_writes_over_none_of_its_files(storage):

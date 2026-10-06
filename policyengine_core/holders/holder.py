@@ -87,6 +87,10 @@ class Holder:
         storage_dir = os.path.join(directory, self.variable.name)
         if not os.path.isdir(storage_dir):
             os.mkdir(storage_dir)
+        # In the temporary folder the simulation made, the storage (and every
+        # clone or copy of it) keeps the folder until it is collected, so the
+        # folder outlives the simulation while a clone still reads it (see
+        # ``OnDiskStorage``).
         return OnDiskStorage(
             storage_dir,
             is_eternal=(self.variable.definition_period == periods.ETERNITY),

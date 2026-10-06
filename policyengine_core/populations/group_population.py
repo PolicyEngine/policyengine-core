@@ -67,7 +67,11 @@ class GroupPopulation(Population):
     def members_position(self) -> ArrayLike:
         if self._members_position is None and self.members_entity_id is not None:
             # We could use self.count and self.members.count , but with the current initilization, we are not sure count will be set before members_position is called
-            nb_entities = numpy.max(self.members_entity_id, initial=-1) + 1
+            nb_entities = (
+                numpy.max(self.members_entity_id) + 1
+                if len(self.members_entity_id)
+                else 0
+            )
             nb_persons = len(self.members_entity_id)
             self._members_position = numpy.empty_like(self.members_entity_id)
             counter_by_entity = numpy.zeros(nb_entities)
@@ -192,7 +196,9 @@ class GroupPopulation(Population):
         # We loop over the positions in the entity
         # Looping over the entities is tempting, but potentielly slow if there are a lot of entities
         # With no persons there is no position, and every entity keeps the neutral element.
-        biggest_entity_size = numpy.max(position_in_entity, initial=-1) + 1
+        biggest_entity_size = (
+            numpy.max(position_in_entity) + 1 if len(position_in_entity) else 0
+        )
 
         for p in range(biggest_entity_size):
             values = self.value_nth_person(p, filtered_array, default=neutral_element)

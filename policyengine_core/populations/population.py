@@ -233,7 +233,7 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
         )
 
         positions = entity.members_position
-        biggest_entity_size = numpy.max(positions, initial=-1) + 1
+        biggest_entity_size = numpy.max(positions) + 1 if len(positions) else 0
         filtered_criteria = numpy.where(condition, criteria, numpy.inf)
         ids = entity.members_entity_id
 

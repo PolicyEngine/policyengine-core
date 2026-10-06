@@ -35,7 +35,9 @@ files guarantees:
   ``OnDiskStorage._path_to_write``), for the files any of them read back
   before (``OnDiskStorage.restore``) too. Storages each made for one
   subfolder still write the same file for a key, as before, and ``restore``
-  reads whatever files are in the subfolder when it runs.
+  reads whatever files are in the subfolder when it runs. A ``restore`` run
+  after a storage was cloned, with no fork since, is not covered either:
+  another storage in its family may still write over a file it read back.
 * **Explicitly preserved storages.** A disk storage made with
   ``preserve_storage_dir=True`` (``Holder.create_disk_storage(preserve=True)``,
   say), or whose ``preserve_storage_dir`` is later set to ``True``, keeps its

@@ -367,7 +367,9 @@ class OnDiskStorage:
         it is cloned or copied, or this process forks: from then on it writes
         a new file instead, since the clone, copy or forked process reads
         them. A storage made separately for the directory, the one that wrote
-        them say, still writes over them, as before.
+        them say, still writes over them, as before. So may another storage
+        in this one's family, when ``restore`` runs after it was cloned and
+        this process has not forked since.
         """
         self._files = files = {}
         # Files read back from a directory carry no derived marks.

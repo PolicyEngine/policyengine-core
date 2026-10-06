@@ -49,7 +49,13 @@ requests = st.tuples(
 
 
 @hypothesis.given(sequence=st.lists(requests, max_size=40))
-@hypothesis.settings(max_examples=300, deadline=None)
+# ``too_slow`` times input generation by the wall clock, so it fails on a busy
+# host, not on anything this property checks.
+@hypothesis.settings(
+    max_examples=300,
+    deadline=None,
+    suppress_health_check=[hypothesis.HealthCheck.too_slow],
+)
 def test_cache_matches_reference_lru(sequence):
     baseline = StubSystem()
     reference = OrderedDict()

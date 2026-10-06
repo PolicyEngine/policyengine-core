@@ -1,0 +1,1 @@
+`set_input` for one of a variable's own periods (one month, or one year) now drops the sums and twelfths the simulation calculated for that variable over overlapping periods, so a later `calculate` adds up or divides the new input instead of returning the old result (#579).

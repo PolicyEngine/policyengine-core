@@ -280,7 +280,14 @@ class Holder:
                 and period.unit != self.variable.definition_period
             ):
                 return self.variable.set_input(self, period, array)
-            return self._set(period, array, branch_name, validate_nan=True)
+            self._set(period, array, branch_name, validate_nan=True)
+            if self.variable.definition_period != periods.ETERNITY:
+                # Imported here because the helpers module imports this one.
+                from policyengine_core.holders.helpers import (
+                    _drop_calculated_over_own_period,
+                )
+
+                _drop_calculated_over_own_period(self, period, branch_name)
         finally:
             if simulation is not None:
                 simulation._user_input_contexts.pop()

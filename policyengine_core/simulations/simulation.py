@@ -599,6 +599,13 @@ class Simulation:
                     person_membership_id_field,
                 )
                 membership_values = get_eternity_array(membership_field)
+                if pd.isna(membership_values).any():
+                    # np.unique would merge every missing membership into one
+                    # group.
+                    raise ValueError(
+                        f"{int(pd.isna(membership_values).sum())} person(s) "
+                        f"have no {membership_field} in the dataset."
+                    )
                 distinct_ids, person_membership_ids = np.unique(
                     membership_values, return_inverse=True
                 )
@@ -663,8 +670,12 @@ class Simulation:
                 entity = variable_meta.entity
                 population = self.get_population(entity.plural)
 
-                # All data should be person level
-                if len(data[variable]) != len(population.ids):
+                # A flat file has one row per person, so a group variable's
+                # column holds each member's copy: take the first member's.
+                # (Treating a column as already per group whenever its length
+                # matched the group count put values in row order, not group
+                # order, when every group had one person.)
+                if not population.entity.is_person:
                     population: GroupPopulation
                     entity_level_data = population.value_from_first_person(
                         data[variable]

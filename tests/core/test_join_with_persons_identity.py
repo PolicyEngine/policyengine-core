@@ -213,3 +213,87 @@ def test_flat_file_default_roles_cover_every_person():
     assert population.sum(
         np.array([1.0, 2.0]), role=population.entity.MEMBER
     ).tolist() == [3.0]
+
+
+@pytest.mark.parametrize(
+    "id_columns",
+    [
+        {
+            "person_id__2024": [0, 1, 2],
+            "household_id__2024": [9, 7, 8],
+            "person_household_id__2024": [9, 7, 8],
+        },
+        {"person_id": [0, 1, 2], "household_id": [9, 7, 8]},
+    ],
+)
+def test_flat_file_group_values_follow_membership_not_row_order(
+    tax_benefit_system, id_columns
+):
+    # One person per household, IDs not in row order. A household column
+    # as long as the household count was taken as already per household,
+    # in row order, while households are numbered in ID order: each person
+    # read another person's rent.
+    dataframe = pd.DataFrame({**id_columns, "rent__2024-01": [900.0, 700.0, 800.0]})
+    simulation = Simulation(
+        tax_benefit_system=tax_benefit_system,
+        dataset=Dataset.from_dataframe(dataframe, "2024"),
+    )
+
+    assert simulation.calculate("rent", "2024-01", map_to="person").tolist() == [
+        900.0,
+        700.0,
+        800.0,
+    ]
+    assert simulation.calculate("household_id", "2024", map_to="person").tolist() == [
+        9,
+        7,
+        8,
+    ]
+
+
+def test_flat_file_rejects_missing_memberships(tax_benefit_system):
+    # np.unique counts every NaN as one value, which made one household of
+    # everyone with no membership.
+    dataframe = pd.DataFrame(
+        {"person_id": [0, 1, 2], "person_household_id": [1.0, np.nan, np.nan]}
+    )
+    with pytest.raises(ValueError, match="2 person\\(s\\) have no"):
+        Simulation(
+            tax_benefit_system=tax_benefit_system,
+            dataset=Dataset.from_dataframe(dataframe, "2024"),
+        )
+
+
+def test_dataset_default_roles_cover_every_person(tmp_path):
+    # Every dataset format with no role column got one default role per
+    # group: three persons in two households had two roles, and a
+    # role-filtered sum raised IndexError.
+    person = build_entity("person", "persons", "", is_person=True)
+    household = build_entity(
+        "household", "households", "", roles=[{"key": "member", "plural": "members"}]
+    )
+
+    class NoRoleColumn(Dataset):
+        name = "no_role_column"
+        label = "No role column"
+        file_path = tmp_path / "no_role_column.h5"
+        data_format = Dataset.ARRAYS
+        time_period = "2024"
+
+    NoRoleColumn().save_dataset(
+        {
+            "person_id": np.array([1, 2, 3]),
+            "household_id": np.array([10, 20]),
+            "person_household_id": np.array([10, 20, 20]),
+        }
+    )
+    simulation = Simulation(
+        tax_benefit_system=TaxBenefitSystem([person, household]),
+        dataset=NoRoleColumn(),
+    )
+
+    population = simulation.populations["household"]
+    assert len(population.members_role) == 3
+    assert population.sum(
+        np.array([1.0, 2.0, 2.0]), role=population.entity.MEMBER
+    ).tolist() == [1.0, 4.0]

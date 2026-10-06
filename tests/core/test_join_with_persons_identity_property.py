@@ -10,8 +10,9 @@ the occupied groups, ``join_with_persons`` must give a population where:
 * projecting group values gives each person their own group's value.
 
 Numeric IDs also match by value when the declared and person IDs have
-different dtypes (int32, int64, uint64, float64), including values near
-2**53 and 2**62 where a common float64 would merge neighbours.
+different dtypes (int32, int64, uint64, float64), including negative values
+and values near 2**31, 2**53, 2**62 and beyond the int64 limit, where a
+common float64 would merge neighbours.
 
 Examples, including the audit witness, are in
 ``test_join_with_persons_identity.py``.
@@ -104,9 +105,15 @@ DTYPE_PAIRS = [
     (np.int32, np.int64),
     (np.int64, np.uint64),
     (np.uint64, np.int64),
+    (np.uint64, np.uint64),
     (np.int64, np.float64),
     (np.float64, np.int64),
+    (np.uint64, np.float64),
+    (np.float64, np.uint64),
 ]
+#: Where runs of 32 consecutive IDs start: around 0, the int32 limit, the
+#: last integers float64 holds exactly, and beyond the int64 limit.
+BASES = [-(2**53) - 16, -16, 0, 2**31 - 16, 2**53 - 16, 2**62, 2**63 + 8]
 
 
 def _exact_in(dtype, value):
@@ -120,12 +127,24 @@ def _exact_in(dtype, value):
 @settings(max_examples=300, deadline=None)
 @given(
     dtypes=st.sampled_from(DTYPE_PAIRS),
-    base=st.sampled_from([0, 2**31 - 16, 2**53 - 16, 2**62]),
     offsets=st.lists(st.integers(0, 31), min_size=1, max_size=8, unique=True),
     data=st.data(),
 )
-def test_numeric_ids_match_by_value_across_dtypes(dtypes, base, offsets, data):
+def test_numeric_ids_match_by_value_across_dtypes(dtypes, offsets, data):
     group_dtype, person_dtype = dtypes
+    base = data.draw(
+        st.sampled_from(
+            [
+                base
+                for base in BASES
+                if all(
+                    _exact_in(dtype, base) and _exact_in(dtype, base + 31)
+                    for dtype in dtypes
+                    if np.dtype(dtype).kind != "f"
+                )
+            ]
+        )
+    )
     group_values = [base + offset for offset in offsets]
     persons_values = data.draw(st.lists(st.sampled_from(group_values), max_size=12))
     hypothesis.assume(

@@ -92,7 +92,7 @@ def _group_positions_by_lookup(
             else:
                 position_of[group_id] = position
         if repeated:
-            _raise_repeated_group_ids(entity_key, repeated)
+            _raise_repeated_group_ids(entity_key, list(dict.fromkeys(repeated)))
         positions = np.fromiter(
             (position_of.get(group_id, -1) for group_id in persons_group_ids.tolist()),
             dtype=np.intp,

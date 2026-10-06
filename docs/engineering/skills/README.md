@@ -9,6 +9,8 @@ first, then keep adapters thin.
 
 Current skills:
 
+- `cache_architecture.md`: cache ownership, generic behavioral contracts,
+  isolation, invalidation, lifecycle, and test requirements.
 - `documentation_review.md`: model-neutral review checklist for public API,
   architecture, documentation, and generated artifact changes.
 - `github-prs.md`: canonical PR workflow, required changelog fragments, PR head

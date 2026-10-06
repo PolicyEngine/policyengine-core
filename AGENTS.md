@@ -14,6 +14,9 @@ When adding, moving, or reviewing tests, read
 When reviewing changes to public APIs, architecture, documentation, or generated
 artifacts, read `docs/engineering/skills/documentation_review.md`.
 
+When changing cache ownership, keys, values, invalidation, branching, tracing,
+or lifecycle behavior, read `docs/engineering/skills/cache_architecture.md`.
+
 ## GitHub PRs
 
 Read `docs/engineering/skills/github-prs.md` before opening, replacing, or

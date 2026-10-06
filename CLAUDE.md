@@ -20,5 +20,8 @@ fragment before creating the PR.
 When adding, moving, or reviewing tests, read
 `docs/engineering/skills/testing.md` before editing.
 
+When changing cache ownership, keys, values, invalidation, branching, tracing,
+or lifecycle behavior, read `docs/engineering/skills/cache_architecture.md`.
+
 When reviewing changes to public APIs, architecture, documentation, or generated
 artifacts, read `docs/engineering/skills/documentation_review.md`.

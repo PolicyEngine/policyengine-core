@@ -8,7 +8,9 @@ on disk, starting from one simulation:
 * ``set_every``: every simulation stores a different value of every
   variable for one year, and every disk storage on its own one for that
   year, so any two that share files both store a key neither may have had;
-* ``clone`` and ``branch``: ``Simulation.clone`` and ``get_branch``;
+* ``clone`` and ``branch``: ``Simulation.clone`` (through the fixture's
+  ``clone``, so the clone does not keep its source alive) and
+  ``get_branch``;
 * ``copy``: a disk storage of a simulation, or one on its own, is pickled or
   copied (``copy.deepcopy`` or ``copy.copy``), giving a disk storage on its
   own;
@@ -22,8 +24,8 @@ on disk, starting from one simulation:
 * ``preserve``: a disk storage a simulation or ``make`` made is set to
   preserve its folder;
 * ``collect``: one simulation or disk storage on its own is dropped and the
-  garbage collector run, in any order, so sources go before their clones,
-  branches and copies, or after;
+  garbage collector run, in any order, so sources go before their clones
+  and copies, or after (a branch keeps its source alive);
 
 with the first simulation's folder made by the simulation or chosen by the
 caller (``_data_storage_dir``):
@@ -64,6 +66,7 @@ from policyengine_core.data_storage import OnDiskStorage  # noqa: E402
 from tests.fixtures.data_storage_dir import (  # noqa: E402
     VARIABLES,
     YEARS,
+    clone,
     disk_simulation,
     read,
     temporary_folders,
@@ -226,7 +229,7 @@ class _Run:
                 target.preserved = True
         elif kind == "clone":
             self.live.append(
-                _Simulation(target.simulation.clone(), dict(target.expected))
+                _Simulation(clone(target.simulation), dict(target.expected))
             )
         elif kind == "branch":
             self.made += 1
@@ -260,7 +263,7 @@ class _Run:
                 self.given.append(folder)
                 nested = disk_simulation(folder)
             else:
-                nested = disk_simulation(folder).clone()
+                nested = clone(disk_simulation(folder))
             self.live.append(_Simulation(nested))
         elif kind == "preserve":
             _, _, variable = operation

@@ -26,8 +26,8 @@ the simulation and every disk storage anywhere in the folder keep it alive;
 it is removed when the last is collected or at interpreter exit, by the
 process that made it, leaving only the subfolders of disk storages that
 preserve theirs (``preserve_storage_dir``). A clone, or a forked process,
-makes its own folder for what it stores. The properties over any sequence of
-these operations are in ``test_data_storage_dir_property.py``.
+makes its own folder for the disk storages it makes. The properties over
+any sequence of these operations are in ``test_data_storage_dir_property.py``.
 """
 
 from __future__ import annotations
@@ -56,6 +56,7 @@ from tests.fixtures.data_storage_dir import (
     STORE_ON_DISK,
     VARIABLES,
     Level,
+    clone,
     disk_simulation,
     read,
     storage_folders,
@@ -158,14 +159,14 @@ def test_a_clone_outliving_its_source_reads_every_value_on_disk():
     source = disk_simulation()
     stored = _fill(source)
     folder = source.data_storage_dir
-    clone = source.clone()
+    cloned = clone(source)
 
     del source
     gc.collect()
 
     assert os.path.isdir(folder)
-    _assert_reads(clone, stored)
-    del clone
+    _assert_reads(cloned, stored)
+    del cloned
     gc.collect()
     assert not os.path.exists(folder)
 
@@ -176,7 +177,7 @@ def test_a_clone_of_a_branch_outliving_both_reads_every_value_on_disk():
     branch = source.get_branch("measurement")
     branch_stored = {"disk_amount": values("disk_amount", 7)}
     branch.set_input("disk_amount", "2016", branch_stored["disk_amount"])
-    clone = branch.clone()
+    cloned = clone(branch)
     folder = source.data_storage_dir
     # The branch stored its value through the disk storage it copied, in the
     # source's folder: it made none of its own.
@@ -185,9 +186,9 @@ def test_a_clone_of_a_branch_outliving_both_reads_every_value_on_disk():
     del source, branch
     gc.collect()
 
-    _assert_reads(clone, stored)
-    _assert_reads(clone, branch_stored, period="2016")
-    del clone
+    _assert_reads(cloned, stored)
+    _assert_reads(cloned, branch_stored, period="2016")
+    del cloned
     gc.collect()
     assert not os.path.exists(folder)
 
@@ -710,17 +711,22 @@ def test_a_clone_of_a_simulation_given_another_simulations_folder_reads_its_valu
     given = disk_simulation(folder)
     # Cloned before it made any holder, so the clone makes a folder of its
     # own in the given one, owned by the clone.
-    clone = given.clone()
+    nested = clone(given)
     stored = {"disk_amount": values("disk_amount", 5)}
-    clone.set_input("disk_amount", "2015", stored["disk_amount"])
-    assert Path(clone.data_storage_dir).parent.resolve() == Path(folder).resolve()
+    nested.set_input("disk_amount", "2015", stored["disk_amount"])
+    assert Path(nested.data_storage_dir).parent.resolve() == Path(folder).resolve()
+    # A copy of its disk storage, which outlives the clone too.
+    copied = copy.deepcopy(nested.persons._holders["disk_amount"]._disk_storage)
     del given
 
     del first
     gc.collect()
 
-    _assert_reads(clone, stored)
-    del clone
+    _assert_reads(nested, stored)
+    del nested
+    gc.collect()
+    np.testing.assert_array_equal(copied.get("2015"), stored["disk_amount"])
+    del copied
     gc.collect()
     assert not os.path.exists(folder)
 
@@ -732,16 +738,16 @@ def test_a_disk_storage_preserving_its_folder_in_a_folder_made_in_another_simula
     order,
 ):
     first, folder = _first_folder(True)
-    clone = disk_simulation(folder).clone()
+    nested = clone(disk_simulation(folder))
     stored = values("disk_amount", 6)
-    clone.set_input("disk_amount", "2015", stored)
-    storage = clone.persons._holders["disk_amount"]._disk_storage
+    nested.set_input("disk_amount", "2015", stored)
+    storage = nested.persons._holders["disk_amount"]._disk_storage
     storage.preserve_storage_dir = True
     storage_dir = storage.storage_dir
     relative = Path(storage_dir).relative_to(folder).as_posix()
     del storage
-    simulations = {"first": first, "clone": clone}
-    del first, clone
+    simulations = {"first": first, "clone": nested}
+    del first, nested
     try:
         for name in order:
             del simulations[name]
@@ -762,7 +768,7 @@ def test_a_simulation_given_another_simulations_folder_stores_in_it_after_that_o
 ):
     first, folder = _first_folder(first_stored)
     given = disk_simulation(folder)
-    storer = given if storing == "given" else given.clone()
+    storer = given if storing == "given" else clone(given)
     del given
 
     del first

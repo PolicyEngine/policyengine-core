@@ -55,16 +55,16 @@ files guarantees:
   subfolders it made, but removing a folder removes everything in it, the
   folder a forked process made inside it included. Disk storages copied
   into another process, by forking or unpickling, or cloned from one there,
-  write only new files of their own, and after forking, the process that
-  made the folder writes over no file it wrote or read back before. So
-  neither process writes over a file the other reads. A forked process
-  stores what new holders put on disk in a folder of its own, made inside
-  the folder it inherited. But nothing in another process keeps the folder
-  alive: once the process that made it collects the simulation and its
-  storages, or exits, the folder is gone, with everything in it, the forked
-  process's own folder included, even while a forked or unpickling process
-  still reads them. Explicit preservation is likewise kept only by the
-  process that made the folder.
+  write only new files of their own, and after forking, the disk storages
+  of the process that made the folder write over no file they wrote or read
+  back before. So neither process writes over a file the other reads
+  through these storages. A forked process stores what new holders put on
+  disk in a folder of its own, made inside the folder it inherited. But
+  nothing in another process keeps the folder alive: once the process that
+  made it collects the simulation and its storages, or exits, the folder is
+  gone, with everything in it, the forked process's own folder included,
+  even while a forked or unpickling process still reads them. Explicit
+  preservation is likewise kept only by the process that made the folder.
 * **A folder the caller chose** (``_data_storage_dir``). Nothing removes it,
   only the subfolders disk storages made in it, as before, unless it is in a
   folder a simulation made: that one removes it with everything else in it,

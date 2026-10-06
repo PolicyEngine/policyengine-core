@@ -233,17 +233,22 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
         )
 
         positions = entity.members_position
-        biggest_entity_size = numpy.max(positions) + 1
+        biggest_entity_size = numpy.max(positions, initial=-1) + 1
         filtered_criteria = numpy.where(condition, criteria, numpy.inf)
         ids = entity.members_entity_id
 
         # Matrix: the value in line i and column j is the value of criteria for the jth person of the ith entity
-        matrix = numpy.asarray(
-            [
-                entity.value_nth_person(k, filtered_criteria, default=numpy.inf)
-                for k in range(biggest_entity_size)
-            ]
-        ).transpose()
+        # (``reshape`` keeps it two-dimensional when there are no persons)
+        matrix = (
+            numpy.asarray(
+                [
+                    entity.value_nth_person(k, filtered_criteria, default=numpy.inf)
+                    for k in range(biggest_entity_size)
+                ]
+            )
+            .reshape(biggest_entity_size, entity.count)
+            .transpose()
+        )
 
         # We double-argsort all lines of the matrix.
         # Double-argsorting gets the rank of each value once sorted

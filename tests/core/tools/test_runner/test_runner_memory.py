@@ -21,7 +21,15 @@ from policyengine_core.tools.test_runner import (
     _tax_benefit_system_cache,
 )
 from policyengine_core.tools.test_runner import OpenFiscaPlugin
-from tests.fixtures.yaml_runner_memory import RUNNER_ARGV, run_with_probe, write_cases
+from tests.fixtures.yaml_runner_memory import (
+    RUNNER_ARGV,
+    mark_parameter_trees_traced,
+    record_results,
+    run_with_probe,
+    system_reading_its_parameters,
+    write_cases,
+    write_cases_at_distinct_dates,
+)
 
 
 def _rate_reform(rate):
@@ -165,6 +173,51 @@ def test_traced_cases_release_their_tracers(tmp_path):
     assert probe.live_tracers == 0
     assert probe.live_simulations == 0
     reform_free = _tax_benefit_system_cache[system].reform_free
+    assert reform_free.parameters.trace is False
+    assert reform_free.parameters.tracer is None
+
+
+def _run_cases_reading_the_systems_parameters(tmp_path, monkeypatch):
+    """Run 16 verbose cases at distinct dates whose formula reads
+    ``TaxBenefitSystem.get_parameters_at_instant``; return the probe, the
+    weak references to every result their tracers recorded, and the system
+    they ran on."""
+    results = record_results(monkeypatch)
+    system = system_reading_its_parameters()
+    path = write_cases_at_distinct_dates(tmp_path / "traced.yaml", 16)
+    probe = run_with_probe(system, path, {"verbose": True})
+    assert len(probe.outcomes) == 16
+    assert results
+    return probe, results, _tax_benefit_system_cache[system].reform_free
+
+
+def test_traced_cases_reading_the_systems_parameters_release_their_tracers(
+    tmp_path, monkeypatch
+):
+    """The system caches the parameter tree at each instant it is asked for.
+    While core's simulations marked the tree traced, that cache kept a
+    tracing wrapper, with its case's tracer and results, for every date (16
+    tracers and 32 result arrays after 16 dates)."""
+    probe, results, reform_free = _run_cases_reading_the_systems_parameters(
+        tmp_path, monkeypatch
+    )
+    assert probe.live_tracers == 0
+    assert [ref for ref in results if ref() is not None] == []
+    assert probe.live_simulations == 0
+    assert len(reform_free._parameters_at_instant_cache) == 16
+
+
+def test_cases_on_a_tree_marked_traced_release_their_tracers(tmp_path, monkeypatch):
+    """The same cases, with each simulation marking its system's parameter
+    tree traced, as code outside core can: the system's cache must still
+    keep only plain nodes, and teardown unmarks the tree."""
+    mark_parameter_trees_traced(monkeypatch)
+    probe, results, reform_free = _run_cases_reading_the_systems_parameters(
+        tmp_path, monkeypatch
+    )
+    assert probe.live_tracers == 0
+    assert [ref for ref in results if ref() is not None] == []
+    assert probe.live_simulations == 0
     assert reform_free.parameters.trace is False
     assert reform_free.parameters.tracer is None
 

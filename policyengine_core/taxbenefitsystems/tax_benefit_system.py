@@ -50,6 +50,7 @@ from policyengine_core.parameters.operations.uprate_parameters import (
 )
 from policyengine_core.periods import Instant, Period
 from policyengine_core.populations import GroupPopulation, Population
+from policyengine_core.tracers import TracingParameterNodeAtInstant
 from policyengine_core.variables import Variable
 
 log = logging.getLogger(__name__)
@@ -559,10 +560,23 @@ class TaxBenefitSystem:
                 )
             )
 
+        parameters = self.parameters
         parameters_at_instant = self._parameters_at_instant_cache.get(instant)
-        if parameters_at_instant is None and self.parameters is not None:
-            parameters_at_instant = self.parameters.get_at_instant(str(instant))
+        if parameters_at_instant is None and parameters is not None:
+            parameters_at_instant = parameters.get_at_instant(str(instant))
+            if isinstance(parameters_at_instant, TracingParameterNodeAtInstant):
+                parameters_at_instant = parameters_at_instant.parameter_node_at_instant
             self._parameters_at_instant_cache[instant] = parameters_at_instant
+        if parameters_at_instant is not None and getattr(parameters, "trace", False):
+            # Wrapped on each read and never cached, as the tree's own reads
+            # are (``ParameterNode._get_at_instant``): a cached wrapper kept
+            # the tracer of whichever simulation first read this instant
+            # alive for the life of the system, and recorded later reads into
+            # it, while a node cached before tracing was turned on went
+            # untraced.
+            return TracingParameterNodeAtInstant(
+                parameters_at_instant, parameters.tracer, parameters.branch_name
+            )
         return parameters_at_instant
 
     def get_package_metadata(self) -> dict:

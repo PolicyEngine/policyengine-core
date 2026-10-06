@@ -50,9 +50,16 @@ process. Its memory is bounded by design, and tests must keep it that way:
   of the baseline system. The runner caches the `--reform-cache-size` most
   recently used of them (default 2) plus the reform-free system. Do not add a
   cache to the runner that grows with the number of cases or combinations.
+- Each system still caches its parameter tree at every distinct instant its
+  cases read (`ParameterNode.get_at_instant`,
+  `TaxBenefitSystem.get_parameters_at_instant`), so memory grows with the
+  number of distinct dates a suite reads, not with the number of cases.
+  Neither cache may hold a tracer: a read of a traced tree is wrapped for that
+  read only.
 - `tests/core/tools/test_runner/test_runner_memory.py` holds the regression
   tests: a few hundred cases in one process must not grow traced memory or
-  the number of live simulations and systems.
+  the number of live simulations and systems, and traced cases at distinct
+  dates must leave no tracer or recorded result alive.
 
 Run one large suite at a time. A country package's whole YAML tree in one
 process still holds the baseline system, the reform-free copy and the cached

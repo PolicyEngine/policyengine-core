@@ -57,8 +57,8 @@ class StoreHistory:
     - the sequence number of the first time such a value of the variable was
       derived from its values for other periods: uprated or carried over (or
       given the default because no period it could be uprated or carried over
-      from holds a value). Such a value depends on which other periods hold
-      values, so an input set for any period can change it.
+      from holds an input). Such a value depends on which other periods hold
+      inputs, so an input set for any period can change it.
 
     It also records the first sequence number from which held values may
     have been calculated from anything (:meth:`record_unknown_sources`):

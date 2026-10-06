@@ -1800,12 +1800,15 @@ class Simulation:
 
         Once an input is set on it, the branch stops reading macro-cache
         files, which are keyed by branch name and period but not by inputs.
-        A calculation that was running when its input changed, in the branch
-        or in a simulation calling into it, is not kept; the outermost one in
-        the branch is run again from the new inputs until a run changes none
-        (at most ten times; after that its result is returned but not kept),
-        and an input stored for the very period it calculates after it began
-        is its result.
+        Each drop counts as an input change of the branch. A calculation
+        that may have read a value from before the change, running in the
+        branch or in any simulation that got a value from it, is not kept;
+        the outermost such calculation in each simulation runs again until it
+        reads nothing changed since (at most ten times; after that its result
+        is returned but not kept), and an input stored for the very period it
+        calculates after it began is its result. Setting an input to the
+        value the branch already reads for that period, as an input, drops
+        nothing.
 
         What this does not track: a branch given a different tax-benefit
         system or parameters (call :meth:`drop_computed_arrays` on it);
@@ -1817,8 +1820,10 @@ class Simulation:
         starts without copying its context; and branches a formula keeps
         between calls, which hold what their parent held when they were
         created. Inputs set on a simulation that is not a branch drop
-        nothing, as before, and branches already created from the branch
-        keep their values.
+        nothing, as before; branches already created from the branch keep
+        their values; and a value another simulation calculated from the
+        branch and kept stays when the branch's input changes after that
+        calculation ended.
         """
         period = periods.period(period)
         if self.start_instant is None or self.start_instant > period.start:

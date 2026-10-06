@@ -143,7 +143,8 @@ class Holder:
         Then nothing calculated from that input changes. An input a
         ``set_input`` helper spreads over other periods never counts, nor
         does a value equal only after conversion to the variable's type (a
-        float rounded to float32, say).
+        float rounded to float32, say), nor ``-0.0`` for ``0.0`` (``1 / x``
+        tells them apart).
         """
         if self.variable.set_input and period.unit != self.variable.definition_period:
             return False
@@ -151,11 +152,11 @@ class Holder:
         if stored_on is None or not self._is_input(period, stored_on):
             return False
         try:
+            stored = self._get_array_from_storage(period, stored_on)
+            given = numpy.asarray(array)
             return bool(
-                numpy.array_equal(
-                    self._get_array_from_storage(period, stored_on),
-                    numpy.asarray(array),
-                )
+                numpy.array_equal(stored, given)
+                and numpy.array_equal(numpy.signbit(stored), numpy.signbit(given))
             )
         except Exception:  # values that cannot be compared are not equal
             return False
@@ -357,14 +358,21 @@ class Holder:
         if simulation is not None:
             # On a branch, drop what may have been calculated from the value
             # this input replaces (see ``Simulation.set_input``), unless it
-            # replaces the same input.
-            if getattr(
-                simulation, "parent_branch", None
-            ) is None or not self._input_unchanged(period, array, branch_name):
+            # replaces the same input. Either way the branch stops reading
+            # macro-cache files, which are keyed by branch name and period,
+            # not by inputs: a file for its name may come from another
+            # simulation's branch.
+            if getattr(simulation, "parent_branch", None) is None:
                 simulation._drop_values_that_may_depend_on(self.variable.name, period)
+            else:
+                simulation.macro_cache_read = False
+                if not self._input_unchanged(period, array, branch_name):
+                    simulation._drop_values_that_may_depend_on(
+                        self.variable.name, period
+                    )
             # A calculation running meanwhile looks for inputs set for its own
             # period (``Simulation._cache_result``).
-            simulation._inputs_set = getattr(simulation, "_inputs_set", 0) + 1
+            simulation._inputs_set += 1
             if not hasattr(simulation, "_user_input_keys"):
                 simulation._user_input_keys = set()
             if not hasattr(simulation, "_user_input_contexts"):
@@ -381,7 +389,7 @@ class Holder:
                 finally:
                     if (
                         simulation is not None
-                        and getattr(simulation, "_calculations_started", 0) != started
+                        and simulation._calculations_started != started
                     ):
                         # The handler calculated, maybe between its stores,
                         # from inputs it had not yet replaced (also if it
@@ -542,10 +550,13 @@ class Holder:
         simulation = getattr(self, "simulation", None)
         if simulation is None:
             return
-        if self.variable.definition_period == periods.ETERNITY:
+        variable = self.variable
+        if variable.definition_period == periods.ETERNITY:
             period = periods.period(periods.ETERNITY)
+        elif not isinstance(period, Period):
+            period = periods.period(period)
         simulation._get_store_history().record_store(
-            self.variable.name, periods.period(period), sequence_number
+            variable.name, period, sequence_number
         )
 
     def default_array(self) -> ArrayLike:

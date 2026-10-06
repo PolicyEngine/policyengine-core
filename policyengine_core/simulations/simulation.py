@@ -1,6 +1,6 @@
 import hashlib
 import tempfile
-from contextlib import contextmanager
+from contextlib import nullcontext
 from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 
@@ -190,51 +190,112 @@ _formula_simulation: ContextVar[Optional["Simulation"]] = ContextVar(
 # returned but not kept.
 _RERUNS_AFTER_INPUT_CHANGE = 10
 
-# The calculations running in this context, innermost last, as (simulation,
-# frame) pairs. A frame notes ``start``, its simulation's ``_input_epoch`` when
-# it (last) began, and ``reads``: for each other simulation it got a value
-# from, directly or through the calculations it called, that simulation's
-# ``_input_epoch`` when the calculation that produced the value began. If any
-# of those has changed since (a drop there), the value may come from a
-# replaced one, and so may what the frame calculates from it, which is then
-# not kept (``_frame_is_stale``). Each simulation also lists the frames open
-# in it, in any context (``_open_frames``), so that a value read in a thread
-# with no frame reaches the frames waiting for it (``_hand_to_caller``).
+# The calculations running in this context, innermost last (``_Frame``).
 _calculation_frames: ContextVar[tuple] = ContextVar("_calculation_frames", default=())
 
 
-def _new_frame(simulation: "Simulation") -> dict:
-    return {"start": getattr(simulation, "_input_epoch", 0), "reads": {}}
+class _Frame:
+    """A calculation running in ``simulation``.
+
+    ``start`` is the simulation's ``_input_epoch`` when the calculation (last)
+    began, and ``reads`` holds, for each other simulation it got a value
+    from, directly or through the calculations it called, that simulation's
+    ``_input_epoch`` when the calculation that produced the value began. If
+    any of those has changed since (a drop there), the value may come from a
+    replaced one, and so may what the frame calculates from it, which is then
+    not kept (:meth:`is_stale`).
+
+    Used as a context manager: entering pushes the frame on
+    ``_calculation_frames`` and lists it in the simulation's
+    ``_open_frames``, so that a value read in a thread with no frame reaches
+    the frames waiting for it (``_hand_to_waiting_ancestors``). Leaving,
+    whatever way the calculation ends (a value, an early default, an error),
+    tells the caller what it read (``_hand_to_caller``). A class with slots,
+    not a generator or a dict: one runs for every calculation.
+    """
+
+    __slots__ = ("simulation", "start", "reads", "outer", "token", "registry")
+
+    def __init__(self, simulation: "Simulation"):
+        self.simulation = simulation
+
+    def restart(self) -> None:
+        """Begin again, as when the calculation runs again."""
+        self.start = self.simulation._input_epoch
+        self.reads = {}
+
+    def is_stale(self) -> bool:
+        """Whether what the frame calculates may come from a value since replaced."""
+        if self.simulation._input_epoch != self.start:
+            return True
+        reads = self.reads
+        # A snapshot: a thread handing a read to this frame may add one meanwhile.
+        return bool(reads) and any(
+            other._input_epoch != epoch for other, epoch in tuple(reads.items())
+        )
+
+    def __enter__(self) -> "_Frame":
+        simulation = self.simulation
+        self.start = simulation._input_epoch
+        self.reads = {}
+        self.outer = outer = _calculation_frames.get()
+        self.token = _calculation_frames.set(outer + (self,))
+        registry = simulation._open_frames
+        if registry is None:
+            # ``setdefault``: two threads starting here at once share one set.
+            registry = simulation.__dict__.setdefault("_open_frames", set())
+        registry.add(self)
+        self.registry = registry
+        return self
+
+    def __exit__(self, *exc_info) -> bool:
+        self.registry.discard(self)
+        _calculation_frames.reset(self.token)
+        _hand_to_caller(self.outer, self)
+        return False
 
 
-def _frame_is_stale(simulation: "Simulation", frame: dict) -> bool:
-    """Whether what the frame calculates may come from a value since replaced."""
-    # A snapshot: a thread handing a read to this frame may add one meanwhile.
-    return getattr(simulation, "_input_epoch", 0) != frame["start"] or any(
-        getattr(other, "_input_epoch", 0) != epoch
-        for other, epoch in tuple(frame["reads"].items())
-    )
+def _frame_for(simulation: "Simulation", outermost: bool) -> Optional[_Frame]:
+    """A new frame for a calculation in ``simulation``, or ``None`` to share
+    the frame it runs in.
+
+    A calculation nested in another in the same simulation shares that one's
+    frame: the shared frame began no later and notes at least the same reads,
+    each at the first epoch noted, so it is stale whenever the nested
+    calculation's own would be, and the nested one keeps a result only when
+    it would have anyway. The outermost calculation in a simulation has its
+    own, to run again from (``Simulation.calculate``).
+    """
+    if outermost:
+        return _Frame(simulation)
+    frames = _calculation_frames.get()
+    if not frames or frames[-1].simulation is not simulation:
+        return _Frame(simulation)
+    return None
 
 
-def _hand_to_caller(frames: tuple, simulation: "Simulation", frame: dict) -> None:
-    """Pass what a calculation in ``simulation`` read on to the calling frame.
+def _hand_to_caller(outer: tuple, frame: _Frame) -> None:
+    """Pass what a calculation read on to the frame that called it.
 
     The calculation's own simulation counts at its ``start``: if an input
     there changed while it ran, its caller's result is stale too. With no
-    calling frame in this context, the reads go to the frames open in the
-    simulation's ancestors (``_hand_to_waiting_ancestors``).
+    calling frame in this context (``outer`` empty), the reads go to the
+    frames open in the simulation's ancestors (``_hand_to_waiting_ancestors``).
     """
-    reads = tuple(frame["reads"].items())
-    if not frames:
-        _hand_to_waiting_ancestors(simulation, frame["start"], reads)
+    reads = frame.reads
+    reads = tuple(reads.items()) if reads else ()
+    simulation = frame.simulation
+    if not outer:
+        _hand_to_waiting_ancestors(simulation, frame.start, reads)
         return
-    caller_simulation, caller = frames[-1]
-    caller_reads = caller["reads"]
+    caller = outer[-1]
+    caller_simulation = caller.simulation
+    caller_reads = caller.reads
     for other, epoch in reads:
         if other is not caller_simulation and other not in caller_reads:
             caller_reads[other] = epoch
     if simulation is not caller_simulation and simulation not in caller_reads:
-        caller_reads[simulation] = frame["start"]
+        caller_reads[simulation] = frame.start
 
 
 def _hand_to_waiting_ancestors(
@@ -252,33 +313,13 @@ def _hand_to_waiting_ancestors(
     """
     ancestor = getattr(simulation, "parent_branch", None)
     while ancestor is not None:
-        for open_frame in tuple(getattr(ancestor, "_open_frames", {}).values()):
-            open_reads = open_frame["reads"]
+        for open_frame in tuple(getattr(ancestor, "_open_frames", None) or ()):
+            open_reads = open_frame.reads
             for other, epoch in reads:
                 if other is not ancestor:
                     open_reads.setdefault(other, epoch)
             open_reads.setdefault(simulation, start)
         ancestor = getattr(ancestor, "parent_branch", None)
-
-
-@contextmanager
-def _calculation_frame(simulation: "Simulation"):
-    """Run a calculation in a new frame of ``_calculation_frames``.
-
-    Whatever way it ends (a value, an early default, an error), its caller
-    learns what it read and whether that may since have been replaced.
-    """
-    frames = _calculation_frames.get()
-    frame = _new_frame(simulation)
-    token = _calculation_frames.set(frames + ((simulation, frame),))
-    open_frames = simulation.__dict__.setdefault("_open_frames", {})
-    open_frames[id(frame)] = frame
-    try:
-        yield frame
-    finally:
-        open_frames.pop(id(frame), None)
-        _calculation_frames.reset(token)
-        _hand_to_caller(frames, simulation, frame)
 
 
 class Simulation:
@@ -288,6 +329,17 @@ class Simulation:
 
     default_tax_benefit_system: Type["TaxBenefitSystem"] = None
     """The default tax-benefit system class to use if none is provided."""
+
+    # Counters read on every calculation (see ``set_input``). Class defaults,
+    # so a subclass that skips ``__init__`` reads them too; incrementing one
+    # gives the simulation its own.
+    _input_epoch: int = 0  # drops on this simulation
+    _inputs_set: int = 0  # inputs stored through ``Holder.set_input``
+    _calculations_in_flight: int = 0  # ``calculate``/``calculate_add`` running
+    _calculations_started: int = 0  # ``_calculate`` calls begun
+    _requested_variables: Optional[set] = None
+    _store_history: Optional[StoreHistory] = None  # see ``_get_store_history``
+    _open_frames: Optional[set] = None  # the ``_Frame``s open here, any thread
 
     default_tax_benefit_system_instance: "TaxBenefitSystem" = None
     """The default tax-benefit system instance to use if none is provided. This requires that the tax-benefit system is initialised when importing a country package. This will slow down the import, but may speed up individual simulations."""
@@ -767,11 +819,10 @@ class Simulation:
                 if _cached is not None:
                     self._share_store_history_with_caller()
                     frames = _calculation_frames.get()
-                    epoch = getattr(self, "_input_epoch", 0)
                     if not frames:
-                        _hand_to_waiting_ancestors(self, epoch, ())
-                    elif frames[-1][0] is not self:
-                        frames[-1][1]["reads"].setdefault(self, epoch)
+                        _hand_to_waiting_ancestors(self, self._input_epoch, ())
+                    elif frames[-1].simulation is not self:
+                        frames[-1].reads.setdefault(self, self._input_epoch)
                     return _cached
 
         self.tracer.record_calculation_start(variable_name, period, self.branch_name)
@@ -786,25 +837,29 @@ class Simulation:
         # from (see ``_drop_computed``).
         # Only the outermost calculation in this simulation runs again after
         # an input change here: running it again runs the inner ones too.
-        outermost = not getattr(self, "_calculations_in_flight", 0)
-        self._calculations_in_flight = getattr(self, "_calculations_in_flight", 0) + 1
-        frame_context = _calculation_frame(self)
-        frame = frame_context.__enter__()
+        outermost = not self._calculations_in_flight
+        self._calculations_in_flight += 1
+        frame = _frame_for(self, outermost)
+        if frame is not None:
+            frame.__enter__()
         try:
             result = self._calculate(variable_name, period)
             for _ in range(_RERUNS_AFTER_INPUT_CHANGE if outermost else 0):
-                if not _frame_is_stale(self, frame):
+                if not frame.is_stale():
                     break
                 # An input set while it ran (by a formula, say), here or in a
                 # simulation it read from, dropped values, so the result was
                 # not kept (``_cache_result``). Calculate it again from the new
                 # inputs, until a run changes none, and keep that result, as a
                 # simulation given those inputs first would.
-                frame.update(_new_frame(self))
+                frame.restart()
                 result = self._calculate(variable_name, period)
             # Satisfies ``requires_computation_after`` from now on, even if a
             # branch input later drops the values.
-            self._get_requested_variables().add(variable_name)
+            requested = self._requested_variables
+            if requested is None:
+                requested = self._get_requested_variables()
+            requested.add(variable_name)
             if isinstance(result, EnumArray) and decode_enums:
                 result = result.decode_to_str()
             self.tracer.record_calculation_result(result)
@@ -821,7 +876,8 @@ class Simulation:
                 self._share_store_history_with_caller()
             finally:
                 self._calculations_in_flight -= 1
-                frame_context.__exit__(None, None, None)
+                if frame is not None:
+                    frame.__exit__(None, None, None)
                 self.tracer.record_calculation_end()
                 self.purge_cache_of_invalid_values()
 
@@ -937,7 +993,7 @@ class Simulation:
             raise ValueError(f"Variable {variable_name} does not exist.")
         input_state = self._calculation_start()
         # Lets a custom ``set_input`` handler tell whether it calculated.
-        self._calculations_started = getattr(self, "_calculations_started", 0) + 1
+        self._calculations_started = self._calculations_started + 1
         population = self.get_variable_population(variable_name)
         holder = population.get_holder(variable_name)
         variable = self.tax_benefit_system.get_variable(
@@ -1231,20 +1287,17 @@ class Simulation:
 
         return array
 
-    def _input_state(self) -> Tuple[int, int]:
-        """How many drops ran during calculations, and inputs were set, here."""
-        return getattr(self, "_input_epoch", 0), getattr(self, "_inputs_set", 0)
-
     def _may_keep(self, input_state: Tuple[int, int, int]) -> bool:
         """Whether a result calculated since ``input_state`` may be kept (see ``_cache_result``)."""
+        if input_state[0] != self._input_epoch or input_state[1] != self._inputs_set:
+            return False
         frames = _calculation_frames.get()
-        return input_state[:2] == self._input_state() and not (
-            frames and _frame_is_stale(*frames[-1])
-        )
+        return not (frames and frames[-1].is_stale())
 
     def _calculation_start(self) -> Tuple[int, int, int]:
-        """:meth:`_input_state` when a calculation begins, and a sequence number then."""
-        return (*self._input_state(), next_sequence_number())
+        """When a calculation begins: how many drops ran here (``_input_epoch``)
+        and inputs were set here (``_inputs_set``), and a sequence number."""
+        return self._input_epoch, self._inputs_set, next_sequence_number()
 
     def _input_set_meanwhile(
         self, holder: Holder, period: Period, started_at: int
@@ -1281,13 +1334,13 @@ class Simulation:
         result is returned but not kept (see ``_drop_computed``).
         """
         epoch, inputs_set, started_at = input_state
-        if inputs_set != getattr(self, "_inputs_set", 0):
+        if inputs_set != self._inputs_set:
             stored_input = self._input_set_meanwhile(holder, period, started_at)
             if stored_input is not None:
                 return stored_input
         frames = _calculation_frames.get()
-        stale = bool(frames) and _frame_is_stale(*frames[-1])
-        if epoch == getattr(self, "_input_epoch", 0) and not stale:
+        stale = bool(frames) and frames[-1].is_stale()
+        if epoch == self._input_epoch and not stale:
             holder.put_in_cache(array, period, self.branch_name, derived=True)
         else:
             # Not kept, but whatever reads it is stored after it all the same.
@@ -1353,18 +1406,19 @@ class Simulation:
         # As in ``calculate``: only an outermost sum runs again, and while it
         # sums it is in flight, so its terms do not run again on their own
         # (and a drop meanwhile keeps the records of what they read).
-        outermost = not getattr(self, "_calculations_in_flight", 0)
-        self._calculations_in_flight = getattr(self, "_calculations_in_flight", 0) + 1
+        outermost = not self._calculations_in_flight
+        self._calculations_in_flight += 1
+        frame = _frame_for(self, outermost)
         try:
-            with _calculation_frame(self) as frame:
+            with frame if frame is not None else nullcontext():
                 input_state = self._calculation_start()
                 result = total()
                 for _ in range(_RERUNS_AFTER_INPUT_CHANGE if outermost else 0):
-                    if not _frame_is_stale(self, frame):
+                    if not frame.is_stale():
                         break
                     # An input changed while summing: earlier terms may be
                     # obsolete (see ``calculate``). Sum again.
-                    frame.update(_new_frame(self))
+                    frame.restart()
                     input_state = self._calculation_start()
                     result = total()
                 # Cache only a sum over several sub-periods, as derived from
@@ -1404,7 +1458,8 @@ class Simulation:
             )
 
         if period.unit == periods.MONTH:
-            with _calculation_frame(self):
+            frame = _frame_for(self, outermost=False)
+            with frame if frame is not None else nullcontext():
                 input_state = self._calculation_start()
                 computation_period = period.this_year
                 result = self.calculate(variable_name, period=computation_period) / 12.0
@@ -1854,13 +1909,13 @@ class Simulation:
                     del _fast_cache[key]
 
     def _get_store_history(self) -> StoreHistory:
-        history = getattr(self, "_store_history", None)
+        history = self._store_history
         if history is None:
             history = self._store_history = StoreHistory()
         return history
 
     def _get_requested_variables(self) -> set:
-        requested = getattr(self, "_requested_variables", None)
+        requested = self._requested_variables
         if requested is None:
             requested = self._requested_variables = set()
         return requested
@@ -1879,7 +1934,7 @@ class Simulation:
         # with a calculation running (more records only make drops broader).
         ancestor = getattr(self, "parent_branch", None)
         while ancestor is not None:
-            if getattr(ancestor, "_calculations_in_flight", 0):
+            if ancestor._calculations_in_flight:
                 ancestor._get_store_history().merge(self._get_store_history())
             ancestor = getattr(ancestor, "parent_branch", None)
 
@@ -1919,10 +1974,10 @@ class Simulation:
         self._fast_cache = {}
         # A calculation that got a value from here before the drop, running
         # here or in another simulation, may hold it or what it calculated
-        # from it: none of them keeps its result (``_frame_is_stale``), and
+        # from it: none of them keeps its result (``_Frame.is_stale``), and
         # the outermost one in each simulation runs again (``calculate``).
-        self._input_epoch = getattr(self, "_input_epoch", 0) + 1
-        if getattr(self, "_calculations_in_flight", 0):
+        self._input_epoch = self._input_epoch + 1
+        if self._calculations_in_flight:
             # A formula running here may still hold values calculated from
             # what the records describe: keep the records.
             return dropped
@@ -2029,7 +2084,7 @@ class Simulation:
         new._requested_variables = set(self._get_requested_variables())
         # Calculations running in this simulation are not running in the copy.
         new._calculations_in_flight = 0
-        new._open_frames = {}
+        new._open_frames = set()
 
         return new
 

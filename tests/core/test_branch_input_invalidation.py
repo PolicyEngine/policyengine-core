@@ -2449,3 +2449,65 @@ def test_input_a_helper_spreads_over_months_still_drops():
     branch.set_input("p_m", "2013", yearly)
 
     assert getattr(branch, "_input_epoch", 0) > epoch
+
+
+def test_unchanged_branch_input_still_stops_macro_reads(monkeypatch):
+    """The file for the branch's name may come from another simulation's branch."""
+
+    class OtherBranchesFile:
+        def __init__(self, tax_benefit_system):
+            pass
+
+        def set_cache_path(self, *args):
+            pass
+
+        def get_cache_path(self):
+            return type("Path", (), {"exists": lambda self: True})()
+
+        def get_cache_value(self, path):
+            return np.array([10.0])  # another simulation's "override", source 5
+
+        def set_cache_value(self, path, value):
+            pass
+
+    monkeypatch.setattr(simulation_module, "SimulationMacroCache", OtherBranchesFile)
+    system = _one_person_system(
+        _yearly_variable("source"),
+        _yearly_variable("result", lambda person, period: person("source", period) * 2),
+        _yearly_variable("total", lambda person, period: person("result", period) * 2),
+    )
+    simulation = SimulationBuilder().build_default_simulation(system)
+    simulation.set_input("source", "2020", np.array([1.0]))
+    system.data_modified = False
+    simulation.macro_cache_read = True
+    simulation.dataset = type(
+        "Dataset", (), {"file_path": simulation_module.Path("cache"), "name": "d"}
+    )()
+    monkeypatch.setattr(
+        type(simulation),
+        "check_macro_cache",
+        lambda self, variable, period: variable == "result",
+    )
+
+    branch = simulation.get_branch("override")
+    branch.set_input("source", "2020", np.array([1.0]))  # the input it already reads
+
+    assert branch.calculate("total", "2020").tolist() == [4.0]
+
+
+def test_negative_zero_is_not_the_input_zero():
+    """Equal as numbers, but a formula dividing by it tells them apart."""
+    system = _one_person_system(
+        _yearly_variable("source"),
+        _yearly_variable(
+            "reciprocal",
+            lambda person, period: np.sign(1 / person("source", period)),
+        ),
+    )
+    simulation = SimulationBuilder().build_default_simulation(system)
+    simulation.set_input("source", "2020", np.array([0.0]))
+    branch = simulation.get_branch("branch")
+    with np.errstate(divide="ignore"):
+        assert branch.calculate("reciprocal", "2020").tolist() == [1.0]
+        branch.set_input("source", "2020", np.array([-0.0]))
+        assert branch.calculate("reciprocal", "2020").tolist() == [-1.0]

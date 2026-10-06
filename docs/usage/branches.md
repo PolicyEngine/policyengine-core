@@ -59,35 +59,36 @@ formula is still running in the branch: such a formula may hold, in its own
 variables, a value it read before the drop, so the records stay. Each drop
 counts as an input change of the branch. A calculation running in the branch
 then (one whose formula sets an input, say) may have read the replaced value,
-so its result is kept neither in storage nor in the macro cache. Neither is
-any result calculated from a value the branch gave before the change, in any
+so its result is kept neither in storage nor in the macro cache. Neither is any
+result calculated from a value the branch gave before the change, in any
 simulation: each calculation notes, for every other simulation it got a value
 from (directly or through the calculations it called), that simulation's count
 of input changes when the value's calculation began, and keeps its own result
-only if none has changed since. So a parent formula calculating in a branch
-whose formula calls back into the parent and then changes the branch's input
-does not keep what it got, nor does a formula that read a branch and then
-calculated there something that changed the branch's input, or set an input on
-it directly. A value calculated in a thread started without the formula's
-context counts too: with no calculation above it in that thread, every
-calculation running in the simulation's ancestors notes it (`asyncio.to_thread`
-and `contextvars.copy_context` keep the context, so the formula notes it
-directly). A calculation whose call into another simulation settled before
-returning keeps its result, and unrelated simulations keep caching. The
-outermost calculation running in each simulation that does not keep its
-result (a `calculate`, or a direct `calculate_add`, whose terms run within it)
-then runs again, inner calculations included, until a run reads nothing that
-has changed since, and keeps that result, as a simulation given the new inputs
-first would. After ten reruns it stops: a formula that keeps changing inputs
-returns its last result without keeping it. The budget is per simulation, so
-calculations nested across several such simulations can rerun more. An input
-set again with the value the branch already reads for that very period (not
-through a `set_input` helper that spreads it over other periods) changes
-nothing, so it drops nothing and is no input change. An input stored for the
-very period being
-calculated after the calculation began (by its own formula, say; under the
-branch's name or any it reads, such as `default` through `Holder.set_input`)
-is the result, as it would be had it been set first.
+only if none has changed since. (A calculation nested in another in the same
+simulation shares that one's record, which can only make it keep less.) So a
+parent formula calculating in a branch whose formula calls back into the parent
+and then changes the branch's input does not keep what it got, nor does a
+formula that read a branch and then calculated there something that changed the
+branch's input, or set an input on it directly. A value calculated in a thread
+started without the formula's context counts too: with no calculation above it
+in that thread, every calculation running in the simulation's ancestors notes
+it (`asyncio.to_thread` and `contextvars.copy_context` keep the context, so the
+formula notes it directly). A calculation whose call into another simulation
+settled before returning keeps its result, and unrelated simulations keep
+caching. The outermost calculation running in each simulation that does not
+keep its result (a `calculate`, or a direct `calculate_add`, whose terms run
+within it) then runs again, inner calculations included, until a run reads
+nothing that has changed since, and keeps that result, as a simulation given
+the new inputs first would. After ten reruns it stops: a formula that keeps
+changing inputs returns its last result without keeping it. The budget is per
+simulation, so calculations nested across several such simulations can rerun
+more. An input set again with the value the branch already reads for that very
+period, as an input (not through a `set_input` helper that spreads it over
+other periods, and not `-0.0` for `0.0`), changes nothing, so it drops nothing
+and is no input change. An input stored for the very period being calculated
+after the calculation began (by its own formula, say; under the branch's name
+or any it reads, such as `default` through `Holder.set_input`) is the result,
+as it would be had it been set first.
 
 A custom `set_input` handler that calculates values between its own stores
 calculates them from inputs it has not yet replaced, so if it calculated
@@ -188,10 +189,11 @@ name contains `_` cannot be dumped yet: `OnDiskStorage.get_known_periods`
 splits its keys on every `_` (as on master).
 
 Two related behaviours: a branch stops reading macro-cache files once an input
-is set on it, since they are keyed by branch name and period but not by inputs
-(a file for its name may have been written by this branch before the input, or
-by another simulation's branch of the same name), and a branch that read one
-drops, on any input, everything calculated from the first read on; and
+is set on it, even one it already reads, since they are keyed by branch name and
+period but not by inputs (a file for its name may have been written by this
+branch before the input, or by another simulation's branch of the same name),
+and a branch that read one drops, on any input that changes what it reads,
+everything calculated from the first read on; and
 `requires_computation_after` is satisfied by a prerequisite requested before a
 drop removed its values.
 

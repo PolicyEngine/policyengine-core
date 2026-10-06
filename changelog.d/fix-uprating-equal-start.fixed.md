@@ -1,1 +1,0 @@
-When two earlier inputs in a variable's own unit start on the same day (such as `2012` and `year:2012:2` for a yearly variable), uprating now starts from the one that ends last, the input auto-carry-over would carry, so the uprated value no longer depends on which input was stored first or on whether it is in memory or on disk.

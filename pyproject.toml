@@ -1,6 +1,6 @@
 [project]
 name = "policyengine-core"
-version = "3.32.12"
+version = "3.32.19"
 description = "Core microsimulation engine enabling country-specific policy models."
 readme = "README.md"
 authors = [
@@ -43,12 +43,12 @@ dev = [
     "ruff>=0.9.0",
     "coverage",
     "furo",
-    "hypothesis>=6,<7",
+    "hypothesis>=6.62,<7",
     "jupyter-book<1",
     "markupsafe==2.0.1",
     "mypy==0.991",
     "pytest-cov",
-    "pytest-rerunfailures>=10,<15",
+    "pytest-rerunfailures>=16.2,<17",
     "sphinx==5.0.0",
     "sphinx-argparse==0.4.0",
     "sphinx-math-dollar==1.2.1",

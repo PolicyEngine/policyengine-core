@@ -112,7 +112,8 @@ def run_tests(tax_benefit_system, paths, options=None):
     keeps the ``reform_cache_size`` most recently used of them and the
     reform-free system every other case shares, and each case releases its
     simulation when it finishes, so memory does not grow with the number of
-    cases or of distinct combinations.
+    cases or of distinct combinations. Each system still caches its
+    parameters at every distinct instant the cases read.
 
     """
 
@@ -329,7 +330,12 @@ class YamlItem(pytest.Item):
             tracer = getattr(simulation, "tracer", None)
             parameters = getattr(system, "parameters", None)
             if tracer is not None and getattr(parameters, "tracer", None) is tracer:
-                # A traced case marks the cached system's parameters as traced.
+                # Core's simulations trace through a per-call view and leave
+                # the tree unmarked, but code outside core can mark the cached
+                # system's tree with this case's tracer (policyengine-us's
+                # ``isolate_parameter_tracing`` does). Left marked, the tree
+                # would keep this case's tracer alive, and later untraced
+                # cases would record their parameter reads in it.
                 parameters.trace = False
                 parameters.tracer = None
                 parameters.branch_name = None

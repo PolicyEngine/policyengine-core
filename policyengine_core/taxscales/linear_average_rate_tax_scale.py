@@ -59,7 +59,7 @@ class LinearAverageRateTaxScale(RateTaxScaleLike):
             unit=self.unit,
         )
 
-        if not self.rates:
+        if len(self.rates) == 0:
             return marginal_tax_scale
 
         previous_i = 0

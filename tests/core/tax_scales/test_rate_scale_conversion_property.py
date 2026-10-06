@@ -7,8 +7,8 @@ For any marginal rate scale whose first threshold is 0, with 1 to 6 brackets:
 * the average scale's last bracket starts at infinity with the top rate.
 
 For any linear-average rate scale whose first threshold is 0, ``to_marginal``
-gives a marginal scale that levies the same tax at every threshold below the
-last one (and everywhere, for one bracket).
+gives a marginal scale that levies threshold x rate at every threshold (the
+average rate there), and the top rate on the whole base above the last one.
 Examples are in ``test_marginal_rate_tax_scale.py`` and
 ``test_linear_average_rate_tax_scale.py``.
 """
@@ -66,7 +66,7 @@ def test_marginal_to_average_round_trips(brackets):
 
 @settings(max_examples=300, deadline=None)
 @given(_brackets())
-def test_average_to_marginal_keeps_tax_at_thresholds(brackets):
+def test_average_to_marginal_levies_the_average_rate(brackets):
     thresholds, rates = brackets
     average = taxscales.LinearAverageRateTaxScale()
     for threshold, rate in zip(thresholds, rates):
@@ -74,9 +74,14 @@ def test_average_to_marginal_keeps_tax_at_thresholds(brackets):
 
     marginal = average.to_marginal()
 
-    # ``LinearAverageRateTaxScale.calc`` levies nothing from its last
-    # threshold up when it has several brackets, so compare below that.
-    tax_base = numpy.array(thresholds[:-1] if len(thresholds) > 1 else [0, 1, 1e6])
+    # A linear-average scale's rate at each threshold is the average rate
+    # there, so the marginal scale levies threshold x rate at every
+    # threshold, and the top rate on the whole base from the last one up.
+    tax_base = numpy.array(thresholds, dtype=float)
+    above = 2.0 * thresholds[-1] + 1
     numpy.testing.assert_allclose(
-        marginal.calc(tax_base), average.calc(tax_base), rtol=1e-9, atol=1e-6
+        marginal.calc(numpy.append(tax_base, above)),
+        numpy.append(tax_base * numpy.array(rates), above * rates[-1]),
+        rtol=1e-9,
+        atol=1e-6,
     )

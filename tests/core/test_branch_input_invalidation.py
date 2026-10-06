@@ -2511,3 +2511,89 @@ def test_negative_zero_is_not_the_input_zero():
         assert branch.calculate("reciprocal", "2020").tolist() == [1.0]
         branch.set_input("source", "2020", np.array([-0.0]))
         assert branch.calculate("reciprocal", "2020").tolist() == [-1.0]
+
+
+def test_input_given_to_a_helper_drops_even_if_equal_to_a_stored_year():
+    """The helper spreads it over months, which a yearly key does not show."""
+    from policyengine_core.country_template import entities
+    from policyengine_core.holders import set_input_divide_by_period
+    from policyengine_core.variables import Variable
+
+    class m(Variable):
+        value_type = float
+        entity = entities.Person
+        definition_period = periods.MONTH
+        label = "m"
+        set_input = set_input_divide_by_period
+
+    class r(Variable):
+        value_type = float
+        entity = entities.Person
+        definition_period = periods.MONTH
+        label = "r"
+
+        def formula(person, period):
+            return person("m", period) * 2
+
+    def build():
+        system = _one_person_system(m, r)
+        system.auto_carry_over_input_variables = True
+        return SimulationBuilder().build_default_simulation(system)
+
+    root = build()
+    # An input stored for the year itself, not through the helper.
+    root.get_holder("m").put_in_cache(np.array([12.0]), periods.period("2020"))
+    branch = root.get_branch("branch")
+    assert branch.calculate("r", "2020-03").tolist() == [24.0]  # carried from 2020
+
+    branch.set_input("m", "2020", np.array([12.0]))  # divided: 1 a month
+
+    fresh = build()
+    fresh.set_input("m", "2020", np.array([12.0]))
+    assert branch.calculate("r", "2020-03").tolist() == [2.0]
+    assert fresh.calculate("r", "2020-03").tolist() == [2.0]
+
+
+@pytest.mark.parametrize("input_first", [False, True])
+def test_callback_that_changes_its_input_taints_the_simulation_it_returns_to(
+    input_first,
+):
+    """A branch formula calls a worker whose formula calls back into the branch."""
+
+    def changes_and_doubles(person, period):
+        previous = person("source", period)
+        if np.any(previous != 3):
+            person.simulation.set_input("source", period, np.full(person.count, 3.0))
+        return previous * 2
+
+    simulations = {}
+    worker = (
+        SimulationBuilder()
+        .build_default_simulation(
+            _one_person_system(
+                _yearly_variable(
+                    "calls_back",
+                    lambda person, period: simulations["branch"].calculate(
+                        "changes_and_doubles", period
+                    ),
+                )
+            )
+        )
+        .get_branch("worker")
+    )
+    root = SimulationBuilder().build_default_simulation(
+        _one_person_system(
+            _yearly_variable("source"),
+            _yearly_variable("changes_and_doubles", changes_and_doubles),
+            _yearly_variable(
+                "result", lambda person, period: worker.calculate("calls_back", period)
+            ),
+        )
+    )
+    root.set_input("source", "2020", np.array([1.0]))
+    branch = simulations["branch"] = root.get_branch("branch")
+    if input_first:
+        branch.set_input("source", "2020", np.array([3.0]))
+
+    assert branch.calculate("result", "2020").tolist() == [6.0]
+    assert worker.calculate("calls_back", "2020").tolist() == [6.0]

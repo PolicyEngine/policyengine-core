@@ -341,7 +341,18 @@ class VectorialParameterNodeAtInstant:
                 dtypes_match = all(val.dtype == values[0].dtype for val in values)
                 v0_len = len(values[0])
 
-                if v0_len <= 1:
+                if v0_len == 0:
+                    # An earlier selection left no rows. Broadcast the key
+                    # over them as the leaf path does: no rows, or an error
+                    # for a key of two or more.
+                    numpy.broadcast_shapes(numpy.shape(idx), (0,))
+                    if dtypes_match:
+                        result = values[0][:0]
+                    else:
+                        result = numpy.zeros(
+                            0, dtype=_unify_structured_dtypes(values)[0]
+                        )
+                elif v0_len == 1:
                     # 1-element structured arrays: simple concat + index
                     if not dtypes_match:
                         unified_dtype, all_fields, values_cast = (
@@ -428,8 +439,10 @@ class VectorialParameterNodeAtInstant:
                 else:
                     result = numpy.full(n, numpy.nan)
 
-            # Check for unexpected keys
-            if helpers.contains_nan(result):
+            # Check for unexpected keys. A key that names no child points at
+            # the NaN sentinel, but the result can hide it: a one-element key
+            # broadcast over zero rows selects nothing.
+            if helpers.contains_nan(result) or (idx == SENTINEL).any():
                 unexpected_keys = set(
                     numpy.asarray(key, dtype=str)
                     if not numpy.issubdtype(numpy.asarray(key).dtype, numpy.str_)

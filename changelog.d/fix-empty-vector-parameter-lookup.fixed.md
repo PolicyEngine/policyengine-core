@@ -1,1 +1,1 @@
-Looking up parameters with empty key arrays now returns an empty array at every level of a chained lookup, instead of raising `IndexError` once a level holds numeric values.
+Looking up parameters with empty key arrays now returns an empty array at every level of a chained lookup, instead of raising `IndexError` once a level holds numeric values; after such a selection a one-element key gives no rows if it names a child and raises `ParameterNotFoundError` if it does not.

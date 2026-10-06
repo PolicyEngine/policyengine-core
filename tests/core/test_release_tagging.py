@@ -1,3 +1,4 @@
+import re
 import shutil
 import subprocess
 import sys
@@ -178,5 +179,9 @@ def test_publish_workflow_publishes_only_after_tests_pass():
     assert jobs["Publish"]["if"] == jobs["Test"]["if"]
     # A status function such as always() would let Publish run after a
     # failed Test; without one, Publish runs only when Test succeeds.
-    for function in ("always()", "failure()", "cancelled()", "success()"):
-        assert function not in jobs["Publish"]["if"]
+    # (Expression function names are matched case-insensitively.)
+    assert not re.search(
+        r"\b(always|failure|cancelled|success)\s*\(",
+        jobs["Publish"]["if"],
+        re.IGNORECASE,
+    )

@@ -11,6 +11,17 @@ jobs:
         uses: astral-sh/setup-uv@v8.1.0
       - name: Check formatting
         run: uvx ruff format --check .
+  lint-workflows:
+    name: Lint workflows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Run actionlint
+        # rhysd/actionlint 1.7.12. The image bundles shellcheck and pyflakes,
+        # which actionlint runs on `run:` scripts.
+        uses: docker://rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
+        with:
+          args: -color
   check-changelog:
     name: Check changelog fragment
     runs-on: ubuntu-latest

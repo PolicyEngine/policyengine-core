@@ -1,5 +1,6 @@
 import hashlib
 import os
+import types
 from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
@@ -1695,6 +1696,14 @@ class Simulation:
         takes part in that the same way. A subclass ``clone`` that first
         clones the same simulation directly gets the sharing in that direct
         clone instead, and its branch is a full copy.
+
+        The copy's method aliases (``calc``, ``df``, and any other bound
+        method of this simulation kept on the instance) are bound to the
+        copy. With ``clone_tax_benefit_system``, the copy of the system names
+        the copy as its simulation and the copy's populations use its
+        entities, so nothing in the copy refers back to this simulation
+        through them. Without it, the copy shares this simulation's system,
+        which still names this simulation.
         """
         request = _branch_clone.get()
         share_arrays = (
@@ -1714,6 +1723,13 @@ class Simulation:
                 "_fast_cache",
             ):
                 new_dict[key] = value
+        # Aliases of this simulation's methods (``calc`` and ``df``, and any a
+        # subclass adds) are bound methods of this simulation, which the copy
+        # above carried over as they were: the clone's ``calc`` calculated on
+        # this simulation, and kept it alive. Bind each to the clone.
+        for key, value in new_dict.items():
+            if isinstance(value, types.MethodType) and value.__self__ is self:
+                new_dict[key] = types.MethodType(value.__func__, new)
         new._fast_cache = {}
         # The clone stores what it puts on disk in a folder of its own, made
         # when first needed, never in this simulation's. Disk storages the
@@ -1757,7 +1773,21 @@ class Simulation:
                 new, entity.key, population
             )  # create shortcut simulation.household (for instance)
         if clone_tax_benefit_system:
-            new.tax_benefit_system = self.tax_benefit_system.clone()
+            system = self.tax_benefit_system.clone()
+            new.tax_benefit_system = system
+            # The copy of the system is the clone's alone. It names the clone
+            # as its simulation, as a new simulation's system does, and the
+            # clone's populations use its entities, so they look variables up
+            # in it. They had kept this simulation's system: a variable a
+            # reform added to the clone's was not found, and the clone kept
+            # this simulation alive through it.
+            system.simulation = new
+            entities = {
+                entity.key: entity
+                for entity in [system.person_entity, *system.group_entities]
+            }
+            for population in new.populations.values():
+                population.entity = entities[population.entity.key]
         else:
             new.tax_benefit_system = self.tax_benefit_system
         new.debug = debug

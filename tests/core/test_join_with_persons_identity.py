@@ -18,8 +18,10 @@ import pandas as pd
 import pytest
 
 from policyengine_core.data import Dataset
+from policyengine_core.entities import build_entity
 from policyengine_core.simulations import Simulation, SimulationBuilder
 from policyengine_core.simulations.simulation_builder import group_positions
+from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 
 
 def _join(tax_benefit_system, group_ids, persons_group_ids):
@@ -146,3 +148,68 @@ def test_flat_file_with_household_id_column_counts_its_households(
     household = simulation.populations["household"]
     assert household.count == 2
     assert household.members_entity_id.tolist() == [0, 0, 1]
+
+
+@pytest.mark.parametrize(
+    "group_ids, persons_group_ids, expected",
+    [
+        # Converting both to float64 rounds 2**53 + 3 up to 2**53 + 4, so the
+        # person matched the first household.
+        (
+            np.array([2**53 + 3, 2**53 + 4], dtype=np.int64),
+            np.array([2**53 + 4], dtype=np.float64),
+            [1],
+        ),
+        # int64 and uint64 meet as float64, where 2**53 + 1 becomes 2**53.
+        (
+            np.array([2**53, 2**53 + 1], dtype=np.int64),
+            np.array([2**53, 2**53 + 1], dtype=np.uint64),
+            [0, 1],
+        ),
+        (np.array([5, 7], dtype=np.int32), np.array([7, 5, 7]), [1, 0, 1]),
+    ],
+)
+def test_ids_of_different_dtypes_match_by_value(group_ids, persons_group_ids, expected):
+    assert group_positions(group_ids, persons_group_ids).tolist() == expected
+
+
+def test_flat_file_with_only_a_household_id_column_reads_it_as_membership(
+    tax_benefit_system,
+):
+    # With no ``person_household_id`` column, each row's ``household_id`` is
+    # its person's household.
+    dataframe = pd.DataFrame({"person_id": [0, 1, 2], "household_id": [7, 7, 9]})
+    simulation = Simulation(
+        tax_benefit_system=tax_benefit_system,
+        dataset=Dataset.from_dataframe(dataframe, "2024"),
+    )
+
+    household = simulation.populations["household"]
+    assert household.count == 2
+    assert household.members_entity_id.tolist() == [0, 0, 1]
+
+
+def test_flat_file_default_roles_cover_every_person():
+    # Two persons in one household need two default roles: counting one
+    # per household gave role-filtered sums a one-entry filter.
+    person = build_entity("person", "persons", "", is_person=True)
+    household = build_entity(
+        "household", "households", "", roles=[{"key": "member", "plural": "members"}]
+    )
+    dataframe = pd.DataFrame(
+        {
+            "person_id": [10, 11],
+            "household_id": [500, 500],
+            "person_household_id": [500, 500],
+        }
+    )
+    simulation = Simulation(
+        tax_benefit_system=TaxBenefitSystem([person, household]),
+        dataset=Dataset.from_dataframe(dataframe, "2024"),
+    )
+
+    population = simulation.populations["household"]
+    assert len(population.members_role) == 2
+    assert population.sum(
+        np.array([1.0, 2.0]), role=population.entity.MEMBER
+    ).tolist() == [3.0]

@@ -9,6 +9,10 @@ the occupied groups, ``join_with_persons`` must give a population where:
   dict oracle;
 * projecting group values gives each person their own group's value.
 
+Numeric IDs also match by value when the declared and person IDs have
+different dtypes (int32, int64, uint64, float64), including values near
+2**53 and 2**62 where a common float64 would merge neighbours.
+
 Examples, including the audit witness, are in
 ``test_join_with_persons_identity.py``.
 """
@@ -23,9 +27,13 @@ import pytest
 # The smoke job installs Core without the dev extra but collects every module.
 pytest.importorskip("hypothesis")
 
+import hypothesis  # noqa: E402
 from hypothesis import given, settings  # noqa: E402
 from hypothesis import strategies as st  # noqa: E402
 
+from policyengine_core.simulations.simulation_builder import (  # noqa: E402
+    group_positions,
+)
 from tests.core.test_join_with_persons_identity import _join  # noqa: E402
 
 
@@ -89,3 +97,45 @@ def test_join_matches_dict_oracle(tax_benefit_system, case):
     assert household.project(np.array(group_values)).tolist() == [
         value_of[group_id] for group_id in persons_group_ids
     ]
+
+
+DTYPE_PAIRS = [
+    (np.int64, np.int64),
+    (np.int32, np.int64),
+    (np.int64, np.uint64),
+    (np.uint64, np.int64),
+    (np.int64, np.float64),
+    (np.float64, np.int64),
+]
+
+
+def _exact_in(dtype, value):
+    """Whether ``value`` survives a round trip through ``dtype``."""
+    try:
+        return int(np.array([value], dtype=dtype)[0]) == value
+    except (OverflowError, ValueError):
+        return False
+
+
+@settings(max_examples=300, deadline=None)
+@given(
+    dtypes=st.sampled_from(DTYPE_PAIRS),
+    base=st.sampled_from([0, 2**31 - 16, 2**53 - 16, 2**62]),
+    offsets=st.lists(st.integers(0, 31), min_size=1, max_size=8, unique=True),
+    data=st.data(),
+)
+def test_numeric_ids_match_by_value_across_dtypes(dtypes, base, offsets, data):
+    group_dtype, person_dtype = dtypes
+    group_values = [base + offset for offset in offsets]
+    persons_values = data.draw(st.lists(st.sampled_from(group_values), max_size=12))
+    hypothesis.assume(
+        all(_exact_in(group_dtype, value) for value in group_values)
+        and all(_exact_in(person_dtype, value) for value in persons_values)
+    )
+
+    positions = group_positions(
+        np.array(group_values, dtype=group_dtype),
+        np.array(persons_values, dtype=person_dtype),
+    )
+
+    assert [group_values[i] for i in positions] == persons_values

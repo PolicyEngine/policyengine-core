@@ -586,9 +586,19 @@ class Simulation:
                 person_membership_ids = get_eternity_array(person_membership_id_field)
             else:
                 # A flat file has one row per person, so it declares each
-                # group only through its members' IDs. Number the distinct
-                # IDs 0, 1, ... and give each person their group's number.
-                membership_values = get_eternity_array(person_membership_id_field)
+                # group only through its members' rows: their membership
+                # column or, failing that, the group's ID column repeated on
+                # each member's row. Number the distinct IDs 0, 1, ... and
+                # give each person their group's number.
+                membership_field = next(
+                    (
+                        field
+                        for field in (person_membership_id_field, entity_id_field)
+                        if any(column.split("__")[0] == field for column in data)
+                    ),
+                    person_membership_id_field,
+                )
+                membership_values = get_eternity_array(membership_field)
                 distinct_ids, person_membership_ids = np.unique(
                     membership_values, return_inverse=True
                 )
@@ -602,7 +612,8 @@ class Simulation:
             elif "role" in data:
                 person_roles = get_eternity_array("role")
             elif self.default_role is not None:
-                person_roles = np.full(len(entity_ids), self.default_role)
+                # One role per person, like the membership IDs.
+                person_roles = np.full(len(person_membership_ids), self.default_role)
             else:
                 raise ValueError(
                     f"Missing {person_role_field} column in the dataset. Each group entity must have a person role array defined for ETERNITY."

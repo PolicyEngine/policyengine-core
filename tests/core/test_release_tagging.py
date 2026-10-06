@@ -1,4 +1,3 @@
-import re
 import shutil
 import subprocess
 import sys
@@ -176,12 +175,14 @@ def assert_publish_tags_only_after_pypi_succeeds(publish: dict) -> None:
 
     # The tag script pushes a tag, so Publish itself needs write access.
     # Permissions granted to any other job do not apply to it.
-    assert publish.get("permissions", {}).get("contents") == "write", (
-        "Publish lacks contents: write"
-    )
-    # The script looks for an existing tag locally, and the checkout fetches
-    # tags only with fetch-depth 0.
-    assert checkout.get("with", {}).get("fetch-depth") == 0, (
+    permissions = publish.get("permissions", {})
+    assert permissions == "write-all" or (
+        isinstance(permissions, dict) and permissions.get("contents") == "write"
+    ), "Publish lacks contents: write"
+    # The script looks for an existing tag locally, and a checkout with
+    # fetch-depth 0 fetches every tag. Action inputs are strings, so 0 and "0"
+    # are the same input.
+    assert str(checkout.get("with", {}).get("fetch-depth")) == "0", (
         "checkout is not fetch-depth 0"
     )
     # Steps run in order and a failure skips the rest, so the tag step runs
@@ -192,12 +193,13 @@ def assert_publish_tags_only_after_pypi_succeeds(publish: dict) -> None:
     assert pypi_step.get("continue-on-error", False) is False, (
         "PyPI step continues on error"
     )
-    # A failed tag push must fail the job, not leave an untagged release.
+    # A failed tag push must fail the job, not leave an untagged release, so
+    # the step runs the script alone: nothing such as `|| true` may follow it.
     assert tag_step.get("continue-on-error", False) is False, (
         "tag step continues on error"
     )
-    assert not re.search(r"\|\|\s*(true|:)", tag_step["run"]), (
-        "tag script failure is ignored"
+    assert tag_step["run"].strip() == "bash .github/publish-git-tag.sh", (
+        "tag step runs more than the tag script"
     )
 
 
@@ -267,7 +269,7 @@ def tag_even_if_pypi_fails(jobs: dict) -> None:
             (tag_even_if_pypi_fails, "tag step has a condition"),
             (continue_after_pypi_failure, "PyPI step continues on error"),
             (continue_after_tag_failure, "tag step continues on error"),
-            (ignore_tag_failure, "tag script failure is ignored"),
+            (ignore_tag_failure, "tag step runs more than the tag script"),
         ]
     ],
 )

@@ -35,10 +35,18 @@ def strings_in(node):
             yield from strings_in(item)
 
 
-def matrix_keys(job: dict) -> set:
+def matrix_keys(job: dict) -> set | None:
+    """Keys a job's matrix defines, or None when an expression builds it."""
     matrix = job.get("strategy", {}).get("matrix", {})
+    if not isinstance(matrix, dict):
+        return None
     keys = set(matrix) - {"include", "exclude"}
-    for entry in matrix.get("include", []):
+    include = matrix.get("include", [])
+    if not isinstance(include, list):
+        return None
+    for entry in include:
+        if not isinstance(entry, dict):
+            return None
         keys |= set(entry)
     return keys
 
@@ -70,19 +78,22 @@ def test_workflow_matrix_references_have_a_matrix(workflow: Path):
     # by ``matrix.os == 'ubuntu-latest'``, so that condition never held and
     # the documentation deploy was skipped on every release afterwards.
     for name, job in load_jobs(workflow).items():
+        defined = matrix_keys(job)
+        if defined is None:
+            continue
         referenced = {
             key
             for text in strings_in(job)
             for key in re.findall(r"\bmatrix\.([A-Za-z_][\w-]*)", text)
         }
-        missing = referenced - matrix_keys(job)
+        missing = referenced - defined
         assert not missing, (
             f"{workflow.name} job {name} references matrix keys "
             f"{sorted(missing)} that its strategy does not define"
         )
 
 
-def test_release_deploys_documentation_after_tests_pass():
+def test_release_deploys_documentation_after_publishing():
     jobs = load_jobs(PUSH_WORKFLOW)
     assert jobs_using(jobs, DEPLOY_ACTION) == ["Docs"]
     docs = jobs["Docs"]
@@ -93,23 +104,27 @@ def test_release_deploys_documentation_after_tests_pass():
     build = next(step for step in steps if step.get("run") == "make documentation")
 
     assert docs["if"] == jobs["Test"]["if"]
-    assert "Test" in as_list(docs.get("needs"))
-    assert "strategy" not in docs
-    assert all("if" not in step for step in steps)
+    assert {"Test", "Publish"} <= set(as_list(docs.get("needs")))
+    # A condition on the deploy step is how it went unnoticed for two years.
+    assert "if" not in deploy
     assert steps.index(build) < steps.index(deploy)
     # GitHub Pages serves the gh-pages branch root. The action's ``token``
     # input defaults to the job token, which needs write access to push.
-    assert deploy["with"] == {"branch": "gh-pages", "folder": "docs/_build/html"}
-    assert docs["permissions"] == {"contents": "write"}
+    assert deploy["with"]["branch"] == "gh-pages"
+    assert deploy["with"]["folder"] == "docs/_build/html"
+    assert docs["permissions"].get("contents") == "write"
+    assert docs["concurrency"]["cancel-in-progress"] is False
 
 
 def test_documentation_build_matches_deploy_folder():
-    recipe = MAKEFILE.read_text().split("documentation:\n", maxsplit=1)[1]
-    recipe = recipe.split("\n\n", maxsplit=1)[0]
+    recipe = re.search(
+        r"^documentation:.*\n((?:\t.*\n?)+)", MAKEFILE.read_text(), re.MULTILINE
+    )
     extensions = yaml.safe_load(DOCS_CONFIG.read_text())["sphinx"]["extra_extensions"]
 
     # ``jb build docs`` writes HTML to docs/_build/html, the deployed folder.
-    assert "jb build docs" in recipe
+    assert recipe is not None
+    assert "jb build docs" in recipe.group(1)
     # Pages builds a branch source with Jekyll unless its root has .nojekyll,
     # which this extension writes into the HTML output.
     assert "sphinx.ext.githubpages" in extensions

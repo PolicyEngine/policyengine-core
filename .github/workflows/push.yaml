@@ -75,13 +75,18 @@ jobs:
       - uses: codecov/codecov-action@v6
   Docs:
     runs-on: ubuntu-latest
-    # A separate job, so a failed deploy cannot hold back a PyPI release.
-    needs: Test
+    # Deploy only a release that reached PyPI. As its own job, a failed
+    # deploy cannot fail Test or Publish.
+    needs: [Test, Publish]
     if: |
       (github.repository == 'PolicyEngine/policyengine-core')
       && (github.event.head_commit.message == 'Update PolicyEngine Core')
     permissions:
       contents: write
+    # One deploy at a time; a newer release replaces an older waiting one.
+    concurrency:
+      group: gh-pages-deploy
+      cancel-in-progress: false
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6

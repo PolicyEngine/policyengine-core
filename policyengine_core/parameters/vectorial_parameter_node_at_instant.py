@@ -409,7 +409,7 @@ class VectorialParameterNodeAtInstant:
                 # or N-element vectors (after prior vectorial indexing).
                 if values:
                     v0 = numpy.asarray(values[0])
-                    if v0.ndim == 0 or v0.shape[0] <= 1:
+                    if v0.ndim == 0 or v0.shape[0] == 1:
                         # Scalar per child: 1D lookup
                         scalar_vals = numpy.empty(len(values) + 1, dtype=numpy.float64)
                         for i, v in enumerate(values):
@@ -417,7 +417,8 @@ class VectorialParameterNodeAtInstant:
                         scalar_vals[-1] = numpy.nan
                         result = scalar_vals[idx]
                     else:
-                        # N-element vectors: stack into (K+1, N) matrix
+                        # N-element vectors (N may be 0 after an empty
+                        # selection): stack into (K+1, N) matrix
                         m = v0.shape[0]
                         stacked = numpy.empty((len(values) + 1, m), dtype=numpy.float64)
                         for i, v in enumerate(values):

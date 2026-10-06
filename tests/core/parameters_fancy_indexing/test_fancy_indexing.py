@@ -85,6 +85,26 @@ def test_triple_fancy_indexing():
     )
 
 
+def test_empty_fancy_indexing_at_every_level():
+    # Selecting no rows used to raise IndexError at the third level: the
+    # numeric leaf held zero values and the lookup read its first one.
+    none = np.asarray([], dtype=str)
+    for result in [
+        P.single.owner[none],
+        P.single[none][none],
+        P[none][none][none],
+    ]:
+        assert result.shape == (0,)
+        assert result.dtype == np.float64
+
+
+def test_empty_fancy_indexing_on_a_single_path():
+    # The audit witness: one leaf a.b.c and three empty key arrays.
+    node = ParameterNode(data={"a": {"b": {"c": {"2020-01-01": 0}}}})("2020-01-01")
+    none = np.asarray([], dtype=str)
+    assert node[none][none][none].shape == (0,)
+
+
 def test_wrong_key():
     zone = np.asarray(["z1", "z2", "z2", "toto"])
     with pytest.raises(ParameterNotFoundError) as e:

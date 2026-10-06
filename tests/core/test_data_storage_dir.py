@@ -558,27 +558,31 @@ _RESTORED_FORK = """
     if {deleted!r}:
         # Dropped since the fork: the child still reads it.
         storage.delete("2015")
-    storage.put(np.array([8.0, 9.0]), "2015")
+    # The source writes, or a clone made after the fork does.
+    writer = storage.clone() if {cloned!r} else storage
+    writer.put(np.array([8.0, 9.0]), "2015")
     os.write(go_w, b"x")
     child = os.read(report_r, 256).decode()
     _, status = os.waitpid(pid, 0)
     print(os.waitstatus_to_exitcode(status))
     print(child)
-    print(repr(storage.get("2015").tolist()))
+    print(repr(writer.get("2015").tolist()))
 """
 
 
 @pytest.mark.skipif(not hasattr(os, "fork"), reason="needs os.fork")
+@pytest.mark.parametrize("cloned", [False, True], ids=["source", "cloned"])
 @pytest.mark.parametrize("deleted", [False, True], ids=["kept", "deleted"])
 def test_a_restored_storage_writes_over_no_file_a_forked_process_reads(
-    tmp_path, deleted
+    tmp_path, deleted, cloned
 ):
-    """After forking, a storage writes a new file for a key it read back
-    (``restore``) rather than over the file the child reads."""
+    """After forking, a storage, or a clone made from it after the fork,
+    writes a new file for a key it read back (``restore``) rather than over
+    the file the child reads, even after dropping that key."""
     folder = tmp_path / "restored"
     folder.mkdir()
     printed = _run(
-        _RESTORED_FORK.format(folder=str(folder), deleted=deleted),
+        _RESTORED_FORK.format(folder=str(folder), deleted=deleted, cloned=cloned),
         tmp_path,
         NUMEXPR_MAX_THREADS="1",
     )

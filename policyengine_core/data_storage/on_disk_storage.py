@@ -144,10 +144,25 @@ class OnDiskStorage:
         its own (see ``_path_to_write``)."""
         return self._detached or self._creator_pid != os.getpid()
 
+    def _catch_up_after_fork(self) -> None:
+        """If this process forked since this storage last wrote, the forked
+        process may read any file this storage wrote or read back before:
+        those it wrote are in the family, and those it read back join it (all
+        it ever read back, not only those it reads now, since the forked
+        process may still read one this storage has since dropped). Called
+        before every write, and before a clone or copy shares the family, so
+        a clone made after the fork writes over none of them either."""
+        epoch = _epoch()
+        if self._own_epoch != epoch:
+            self._family_files.update(self._restored_paths, self._files.values())
+            self._own_paths = {}
+            self._own_epoch = epoch
+
     def __getstate__(self) -> dict:
         # Whatever this state is read into reads the same files, so from now
         # on this storage writes over none of them, as after ``clone``:
         # those ``restore`` read back included.
+        self._catch_up_after_fork()
         self._family_files.update(self._files.values())
         self._own_paths = {}
         return self.__dict__.copy()
@@ -195,6 +210,7 @@ class OnDiskStorage:
         so the shared directory stays alive, but never own cleanup themselves,
         nor preserve the directory (see ``preserve_storage_dir``).
         """
+        self._catch_up_after_fork()
         clone = OnDiskStorage.__new__(OnDiskStorage)
         clone._start(self.storage_dir, self.is_eternal, self._parent_directory)
         clone._preserve_storage_dir = True
@@ -288,14 +304,7 @@ class OnDiskStorage:
         this storage wrote or read back (``restore``) before, so this storage
         writes over none of them.
         """
-        epoch = _epoch()
-        if self._own_epoch != epoch:
-            # Those it wrote are in the family; those it read back join it.
-            # (All it ever read back, not only those it reads now: the forked
-            # process may still read one this storage has since dropped.)
-            self._family_files.update(self._restored_paths, self._files.values())
-            self._own_paths = {}
-            self._own_epoch = epoch
+        self._catch_up_after_fork()
         own = self._own_paths.get(filename)
         if own is not None:
             return own

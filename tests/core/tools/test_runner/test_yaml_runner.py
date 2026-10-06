@@ -205,7 +205,7 @@ def test_performance_graph_option_output():
 
     test_item.runtest()
 
-    assert test_item.simulation.trace
+    assert test_item.simulation is None
     for path in paths:
         assert os.path.isfile(path)
 
@@ -226,7 +226,7 @@ def test_performance_tables_option_output():
 
     test_item.runtest()
 
-    assert test_item.simulation.trace
+    assert test_item.simulation is None
     for path in paths:
         assert os.path.isfile(path)
 

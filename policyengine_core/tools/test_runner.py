@@ -27,6 +27,7 @@ from policyengine_core.tools.policy_system_cache import (
     PolicySystemCache,
     PolicySystemCacheKey,
 )
+from policyengine_core.tools.yaml_case_execution import YamlCaseExecution
 
 log = logging.getLogger(__name__)
 
@@ -260,39 +261,48 @@ class YamlItem(pytest.Item):
         performance_tables = self.options.get("performance_tables")
         visualize = self.options.get("visualize")
 
-        try:
-            builder.set_default_period(period)
-            self.simulation = builder.build_from_dict(self.tax_benefit_system, input)
-            self.simulation.default_calculation_period = builder.default_period
-        except (VariableNotFoundError, SituationParsingError):
-            raise
-        except Exception as e:
-            error_message = os.linesep.join(
-                [
-                    str(e),
-                    "",
-                    f"Unexpected error raised while parsing '{self.fspath}'",
-                ]
-            )
-            raise ValueError(error_message).with_traceback(
-                sys.exc_info()[2]
-            ) from e  # Keep the stack trace from the root error
+        def build_simulation():
+            try:
+                builder.set_default_period(period)
+                simulation = builder.build_from_dict(self.tax_benefit_system, input)
+                simulation.default_calculation_period = builder.default_period
+                return simulation
+            except (VariableNotFoundError, SituationParsingError):
+                raise
+            except Exception as error:
+                error_message = os.linesep.join(
+                    [
+                        str(error),
+                        "",
+                        f"Unexpected error raised while parsing '{self.fspath}'",
+                    ]
+                )
+                raise ValueError(error_message).with_traceback(
+                    sys.exc_info()[2]
+                ) from error
 
+        execution = YamlCaseExecution(self.tax_benefit_system, build_simulation)
         try:
-            self.simulation.trace = (
-                verbose or performance_graph or performance_tables or visualize
-            )
-            self.check_output()
+            with execution as simulation:
+                self.simulation = simulation
+                simulation.trace = (
+                    verbose or performance_graph or performance_tables or visualize
+                )
+                try:
+                    self.check_output()
+                finally:
+                    tracer = simulation.tracer
+                    if verbose:
+                        self.print_computation_log(tracer)
+                    if performance_graph:
+                        self.generate_performance_graph(tracer)
+                    if performance_tables:
+                        self.generate_performance_tables(tracer)
+                    if visualize:
+                        self.generate_variable_graph(tracer)
         finally:
-            tracer = self.simulation.tracer
-            if verbose:
-                self.print_computation_log(tracer)
-            if performance_graph:
-                self.generate_performance_graph(tracer)
-            if performance_tables:
-                self.generate_performance_tables(tracer)
-            if visualize:
-                self.generate_variable_graph(tracer)
+            self.simulation = None
+            self.tax_benefit_system = None
 
     def print_computation_log(self, tracer):
         print("Computation log:")  # noqa T001

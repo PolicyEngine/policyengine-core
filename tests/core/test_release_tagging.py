@@ -187,7 +187,7 @@ def assert_publish_tags_only_after_pypi_succeeds(publish: dict) -> None:
     )
     # Steps run in order and a failure skips the rest, so the tag step runs
     # only after a successful upload. A condition on either step, or
-    # continue-on-error on the upload, would let it run anyway: a skipped
+    # continue-on-error on the upload, could let it run anyway: a skipped
     # step does not fail the job.
     assert pypi_index < tag_index, "tag step precedes the PyPI step"
     assert "if" not in pypi_step, "PyPI step has a condition"

@@ -73,10 +73,8 @@ outermost calculation
 running in the simulation whose input changed (a `calculate`, or a direct
 `calculate_add`, whose terms run within it) then runs again from the new
 inputs, inner calculations included, until a run changes no input, and keeps
-that result, so uprating and carry-over find its period as they would had the
-inputs come first. After ten reruns it stops: a formula that keeps changing
-inputs returns its last result without keeping it, and a later uprating or
-carry-over may then not find that period. The budget is per simulation whose
+that result. After ten reruns it stops: a formula that keeps changing inputs
+returns its last result without keeping it. The budget is per simulation whose
 input changes, so calculations nested across several such simulations can
 rerun more. An input stored for the very period being
 calculated after the calculation began (by its own formula, say; under the
@@ -95,9 +93,9 @@ branch overrides, unless another branch the formula created for the same
 comparison already handed back a value calculated from that variable: then the
 branch drops what came back and what was calculated after it.
 
-A value written into a holder's storage without going through `set_input` or a
-calculation has no number; an input for a variable holding such a value drops
-every calculated value.
+A value written into a holder's storage directly, not through the storage's
+`put`, has no number; an input for a variable holding such a value drops every
+calculated value.
 
 ### Why this is sound
 
@@ -114,8 +112,9 @@ macro-cache read; restored values and values calculated from a macro-cache
 read are covered by the record that values from a number on may depend on
 anything. So any value that depends on the overridden variable at an
 overlapping period was stored after the earliest record that applies. Uprating
-and carry-over read which periods hold values at all, which is why the first
-uprated or carried-over value also counts. A result whose calculation was
+and carry-over read which periods hold inputs, so a value they give can change
+with an input for any period of the variable, which is why the first uprated
+or carried-over value also counts. A result whose calculation was
 running when an input changed is not kept unless it was calculated again from
 the new inputs.
 
@@ -154,24 +153,20 @@ depend on the input is calculated again) but not less, within these limits:
   create and read its branches the same way. Likewise a formula that catches
   an error raised after such a change returns its own fallback, unkept.
 
-With disk storage (`MemoryConfig`), every store writes a new file, named with
-the sequence number and a token for the process (a forked child gets its own),
-so a value recalculated in one simulation does not change a file another
-simulation, or another process, still maps; files stay until the storage
-directory is removed. `OnDiskStorage.restore` takes each key's most recently
-written file, and on a timestamp tie the current process's own; between two
-other processes' files written within one clock tick it cannot tell which came
-last.
+With disk storage (`MemoryConfig`), a value dropped from a branch only leaves
+its storage's index: the file stays until the storage directory is removed,
+since a clone of the storage may still read it, and storing the key again
+writes a file of the branch's own (see `OnDiskStorage._path_to_write`).
 
 A simulation dump (`dump_simulation`) holds the values the simulation reads
-(on a branch, its own and those it inherited) and records which were inputs.
-`restore_simulation` restores those as inputs and every other value as
-calculated under one later number. The dump does not say what each value was
-calculated from, nor what was read without being kept, so the restored
-simulation records that values from that number on may depend on anything:
-an input set for any variable on a branch of it drops all of them. A dump
-written before inputs were recorded is restored with every value as an
-input, as before, so such values never drop. With disk storage, a branch whose
+(on a branch, its own and those it inherited) and records which were
+calculated (`derived_periods.txt`). `restore_simulation` restores the others
+as inputs and every calculated value under one later number. The dump does not
+say what each value was calculated from, nor what was read without being kept,
+so the restored simulation records that values from that number on may depend
+on anything: an input set for any variable on a branch of it drops all of them.
+A dump written before calculated values were recorded is restored with every
+value as an input, as before, so such values never drop. With disk storage, a branch whose
 name contains `_` cannot be dumped yet: `OnDiskStorage.get_known_periods`
 splits its keys on every `_` (as on master).
 
@@ -188,8 +183,9 @@ drop removed its values.
 `simulation.drop_computed_arrays()` deletes every value the simulation holds
 except inputs (the dataset or situation it was built from, values set with
 `set_input` on it, and, for a branch, values set on the simulations it was
-created from before it was created), and returns how many arrays it deleted.
-Values a custom `set_input` handler calculates are not inputs. Use it on a
+created from before it was created; also values cached with
+`Holder.put_in_cache` without `derived=True`), and returns how many arrays it
+deleted. Values a custom `set_input` handler calculates are not inputs. Use it on a
 branch after changing its policy:
 
 ```python

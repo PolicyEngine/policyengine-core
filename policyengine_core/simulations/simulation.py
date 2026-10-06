@@ -26,7 +26,7 @@ from policyengine_core.periods.helpers import period
 from policyengine_core.tracers import (
     FullTracer,
     SimpleTracer,
-    TracingParameterNodeAtInstant,
+    TracingParameterNode,
 )
 import random
 from policyengine_core.tools.hugging_face import *
@@ -105,6 +105,60 @@ def _uprating_index_value(parameter, instant) -> Optional[float]:
         if value_at_instant.instant_str <= instant_str:
             return value_at_instant.value
     return defined[-1].value
+
+
+_DAYS_BEFORE_MONTH = (0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334)
+
+
+def _end_order(period: Period) -> float:
+    """Sorts periods by when they end: the number of the day after the
+    period's last day, counting days as ``date.toordinal`` does.
+
+    ``period.stop`` gives the same order wherever it has a value, but it
+    raises for a period that ends after 9999-12-31 (``day:9999-12-30:3``),
+    the last date ``datetime`` can represent. This is integer arithmetic on
+    the same (proleptic Gregorian) calendar, so every period has a value and
+    one that ends later always sorts later.
+    """
+    unit, (year, month, day), size = period
+    if unit == ETERNITY:
+        return float("inf")
+    if unit == periods.DAY:
+        day += size
+    elif unit == MONTH:
+        year, month = divmod(year * 12 + month - 1 + size, 12)
+        month += 1
+    else:
+        year += size
+    # The first day of that month, then ``day - 1`` days on: a day past the
+    # month's end runs into the next month, as it does in ``period.stop``.
+    leap = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+    days_before_year = (
+        (year - 1) * 365 + (year - 1) // 4 - (year - 1) // 100 + (year - 1) // 400
+    )
+    return days_before_year + _DAYS_BEFORE_MONTH[month - 1] + (leap and month > 2) + day
+
+
+def _latest_input_key(period: Period, definition_period: str) -> tuple:
+    """Sort key for the stored input that auto-carry-over or uprating reads.
+
+    The input at the variable's own definition-period unit beats one in
+    another unit; then the one that starts last wins; on a tie, the one that
+    ends last (``_end_order``), then the larger unit, then the period's
+    string form. Distinct periods never tie, so the input chosen depends only
+    on which periods are stored, never on the order they were stored in (or
+    on whether a value is in memory or on disk). Compare ``period.start``
+    (temporal order): sorting Period tuples lexicographically puts "year"
+    before "month" alphabetically, so a known "2023" annual value would win
+    over a later "2024-06" monthly value (bug H1).
+    """
+    return (
+        period.unit == definition_period,
+        period.start,
+        _end_order(period),
+        periods.unit_weight(period.unit),
+        str(period),
+    )
 
 
 if TYPE_CHECKING:
@@ -409,6 +463,25 @@ class Simulation:
         recomputes under the new tax-benefit system.
         """
         self.invalidated_caches = set()
+        # Keep only what ``set_input`` stored (``_user_input_keys``): every
+        # other value, calculated or cached directly, is marked derived and
+        # dropped with the calculated ones.
+        user_inputs = {}
+        for variable_name, branch_name, period in (
+            getattr(self, "_user_input_keys", None) or ()
+        ):
+            user_inputs.setdefault(variable_name, set()).add((branch_name, period))
+        # Iterate only over holders that already exist on each population —
+        # lazy-creating a holder for every variable in the tax-benefit
+        # system (thousands in policyengine-us) inflated the cost of
+        # ``apply_reform`` from milliseconds to seconds and broke the
+        # YAML full-suite on downstream repos. Untouched variables have
+        # no holder and therefore nothing to wipe.
+        for population in self.populations.values():
+            for holder in population._holders.values():
+                holder._mark_derived_except(
+                    user_inputs.get(holder.variable.name, ())
+                )
         self._drop_computed()
         for branch in self.branches.values():
             branch._invalidate_all_caches()
@@ -970,13 +1043,37 @@ class Simulation:
                     if known_period.unit == variable.definition_period
                     and known_period.start < period.start
                 ]
-                if variable.uprating is not None and len(earlier_known_periods) > 0:
+                # Uprate only from an input this branch reads (see
+                # ``Holder.get_input_periods``). Every value this simulation
+                # calculated is marked derived when cached, and uprating from
+                # one would make the result depend on which periods were
+                # calculated first: an integer truncated, or a float32
+                # rounded, at an intermediate period would compound, and a
+                # value masked by ``defined_for``, a default, or a value
+                # carried from another unit, cached there, would replace the
+                # input. A period stored only under a branch this one cannot
+                # read would read back as ``None``.
+                earlier_input_periods = []
+                if variable.uprating is not None:
+                    input_periods = set(holder.get_input_periods(self.branch_name))
+                    earlier_input_periods = [
+                        known_period
+                        for known_period in earlier_known_periods
+                        if known_period in input_periods
+                    ]
+                if earlier_input_periods:
                     # Take the latest period from the filtered list itself.
                     # Indexing ``known_periods`` with a position in the
                     # filtered list picked the wrong period whenever a later
-                    # one was stored first.
+                    # one was stored first. Two inputs can start on the same
+                    # day: a yearly variable stores a ``year:2012:2`` input as
+                    # given, beside one for ``2012``. Break that tie as
+                    # auto-carry-over does (the one that ends last), so the
+                    # source never depends on which was stored first. The
+                    # factor below runs from the source's start either way.
                     latest_known_period = max(
-                        earlier_known_periods, key=lambda p: p.start
+                        earlier_input_periods,
+                        key=lambda p: _latest_input_key(p, variable.definition_period),
                     )
                     try:
                         uprating_parameter = get_parameter(
@@ -1011,25 +1108,53 @@ class Simulation:
                     and variable.calculate_output is None
                     and len(known_periods) > 0
                 ):
-                    # Variables with a calculate-output property specify
-                    # Sort by period.start (temporal order). Sorting Period
-                    # tuples lexicographically puts "year" before "month"
-                    # alphabetically, so a known "2023" annual value would
-                    # win over a later "2024-06" monthly value (bug H1).
-                    last_known_period = max(known_periods, key=lambda p: p.start)
-                    if last_known_period.start > period.start:
-                        stored_input = (
-                            self._input_set_meanwhile(holder, period, input_state[2])
-                            if input_state[1] != getattr(self, "_inputs_set", 0)
-                            else None
-                        )
-                        if stored_input is not None:
-                            return stored_input
+                    # Carry over the latest input: of the stored periods that
+                    # start no later than ``period``, the one that starts last
+                    # (on a tie, the one that ends last, then the larger unit;
+                    # see ``_latest_input_key``), preferring periods at the
+                    # variable's own definition-period unit and using another
+                    # unit only when there is none, as for an input to a
+                    # variable with no ``set_input`` helper.
+                    #
+                    # Only inputs carry. Every value this simulation
+                    # calculated is marked derived when cached (formula
+                    # results, carried, uprated and default values, a twelfth
+                    # cached by ``calculate_divide``, a sum cached by
+                    # ``calculate_add``), and carrying one would make the
+                    # result depend on what was calculated first: a later
+                    # period's carried value would hide an earlier input, and
+                    # a value already masked by ``defined_for``, or given by a
+                    # formula that has since ended, would carry forward.
+                    # A later input does not carry backwards.
+                    last_known_period = max(
+                        (
+                            input_period
+                            for input_period in holder.get_input_periods(
+                                self.branch_name
+                            )
+                            if input_period.start <= period.start
+                        ),
+                        key=lambda p: _latest_input_key(p, variable.definition_period),
+                        default=None,
+                    )
+                    if last_known_period is not None:
+                        # Pass branch_name through so auto-carry-over respects
+                        # the active branch instead of reaching for the
+                        # "default" branch's cache (bug H2).
+                        array = holder.get_array(last_known_period, self.branch_name)
+                    elif any(
+                        known_period.start > period.start
+                        for known_period in known_periods
+                    ):
+                        # No input to carry, but a later period is stored: as
+                        # before, return the default without caching it. A
+                        # cached default would change what a formula testing
+                        # whether a value is stored sees. (The uprating path
+                        # above skips derived periods, so it would not uprate
+                        # from one.)
                         return holder.default_array()
-                    # Pass branch_name through so auto-carry-over respects the
-                    # active branch instead of reaching for the "default"
-                    # branch's cache (bug H2).
-                    array = holder.get_array(last_known_period, self.branch_name)
+                    else:
+                        array = holder.default_array()
                 else:
                     array = holder.default_array()
 
@@ -1100,7 +1225,7 @@ class Simulation:
         ``started_at`` ran (by its own formula, say), under any branch name
         the simulation reads.
         """
-        stored_on = holder._branch_holding(period, self.branch_name)
+        stored_on = holder._branch_storing(period, self.branch_name)
         if (
             stored_on is not None
             and holder._is_input(period, stored_on)
@@ -1133,7 +1258,7 @@ class Simulation:
         frames = _calculation_frames.get()
         stale = bool(frames) and _frame_is_stale(*frames[-1])
         if epoch == getattr(self, "_input_epoch", 0) and not stale:
-            holder.put_in_cache(array, period, self.branch_name)
+            holder.put_in_cache(array, period, self.branch_name, derived=True)
         else:
             # Not kept, but whatever reads it is stored after it all the same.
             holder._record_store(period, next_sequence_number())
@@ -1188,10 +1313,11 @@ class Simulation:
                 )
             )
 
+        sub_periods = list(period.get_subperiods(variable.definition_period))
+
         def total():
             return sum(
-                self.calculate(variable_name, sub_period)
-                for sub_period in period.get_subperiods(variable.definition_period)
+                self.calculate(variable_name, sub_period) for sub_period in sub_periods
             )
 
         # As in ``calculate``: only an outermost sum runs again, and while it
@@ -1213,8 +1339,13 @@ class Simulation:
                     frame.update(_new_frame(self))
                     input_state = self._calculation_start()
                     result = total()
-                holder = self.get_holder(variable.name)
-                return self._cache_result(holder, result, period, input_state)
+                # Cache only a sum over several sub-periods, as derived from
+                # them. A single sub-period's value is already stored, as an
+                # input or derived, by ``calculate``.
+                if len(sub_periods) > 1:
+                    holder = self.get_holder(variable.name)
+                    return self._cache_result(holder, result, period, input_state)
+                return result
         finally:
             self._calculations_in_flight -= 1
 
@@ -1351,14 +1482,16 @@ class Simulation:
                             )
             return values
 
-        if self.trace and not isinstance(
-            self.tax_benefit_system.parameters, TracingParameterNodeAtInstant
-        ):
-            # Soft-recast
-            self.tax_benefit_system.parameters.branch_name = self.branch_name
-            self.tax_benefit_system.parameters.trace = True
-            self.tax_benefit_system.parameters.tracer = self.tracer
         parameters_at = self.tax_benefit_system.parameters
+        if self.trace:
+            # Trace through a view of the parameter tree that belongs to this
+            # call. Switching tracing on in the tree itself would leave the
+            # shared tax-benefit system traced for every simulation, branch
+            # and clone that uses it afterwards, with this simulation's tracer
+            # and branch name cached in the tree's nodes at each instant.
+            parameters_at = TracingParameterNode(
+                parameters_at, self.tracer, self.branch_name
+            )
 
         # A rules-engine formula must be a pure, deterministic function of its
         # inputs. Randomness is forbidden statically at variable registration
@@ -1671,6 +1804,21 @@ class Simulation:
         _fast_cache = getattr(self, "_fast_cache", None)
         if _fast_cache is not None:
             _fast_cache.pop((variable_name, period), None)
+            if variable.set_input and period.unit != variable.definition_period:
+                # The helper wrote the input's sub-periods, replacing any
+                # value calculated there, so what ``calculate`` returned for
+                # them is stale too. (``_end_order``, not ``stop``: ``stop``
+                # raises for a period that ends after 9999-12-31.)
+                stale = [
+                    key
+                    for key in _fast_cache
+                    if key[0] == variable_name
+                    and isinstance(key[1], Period)
+                    and period.start <= key[1].start
+                    and _end_order(key[1]) <= _end_order(period)
+                ]
+                for key in stale:
+                    del _fast_cache[key]
 
     def _get_store_history(self) -> StoreHistory:
         history = getattr(self, "_store_history", None)
@@ -1817,6 +1965,11 @@ class Simulation:
             ):
                 new_dict[key] = value
         new._fast_cache = {}
+        # Each simulation records its own inputs. A shared record let an
+        # input set on one replay, in the other's ``apply_reform``, whatever
+        # the other had calculated for that period, as an input.
+        if hasattr(self, "_user_input_keys"):
+            new._user_input_keys = set(self._user_input_keys)
 
         # Only pass ``share_arrays`` when sharing, so a population or holder
         # ``clone`` override with the earlier signature still deep-copies.

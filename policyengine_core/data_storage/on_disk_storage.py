@@ -1,6 +1,6 @@
 import os
 import shutil
-import uuid
+import tempfile
 from typing import Dict, List, Optional, Set, Tuple
 
 import numpy
@@ -14,19 +14,11 @@ from policyengine_core.data_storage.store_history import (
 from policyengine_core.enums import EnumArray
 from policyengine_core.periods import Period
 
-# Distinguishes the files this process writes from other processes' files in
-# the same directory, whose sequence numbers may repeat this process's.
-_PROCESS_TOKEN = uuid.uuid4().hex[:12]
-
-
-def _new_process_token() -> None:
-    global _PROCESS_TOKEN
-    _PROCESS_TOKEN = uuid.uuid4().hex[:12]
-
-
-# A forked child inherits the parent's token and counter: give it its own token.
-if hasattr(os, "register_at_fork"):
-    os.register_at_fork(after_in_child=_new_process_token)
+# Subdirectory of a storage directory for the files ``put`` writes when a
+# key's usual file is shared with a clone (see ``OnDiskStorage._path_to_write``).
+# ``restore`` reads only the files directly in the directory, so it never
+# reads these.
+REPLACEMENTS_DIR = "replaced"
 
 
 class OnDiskStorage:
@@ -42,18 +34,40 @@ class OnDiskStorage:
     ):
         self._files = {}
         self._enums = {}
-        # As in ``InMemoryStorage``: when each file was stored, and which were
-        # stored as inputs.
+        # File keys stored with ``put(..., derived=True)``; see
+        # ``InMemoryStorage``.
+        self._derived = set()
+        # When each file key was stored; see ``InMemoryStorage``.
         self._sequence_numbers: Dict[str, int] = {}
-        self._input_keys: Set[str] = set()
+        # For each key, the file this storage last wrote for it, while it has
+        # not shared that file since: the only files of its family ``put``
+        # writes over (see ``_path_to_write``). Kept when the key is deleted,
+        # so that writing it again reuses the file.
+        self._own_paths = {}
+        # Paths of every file this storage, the storage it was cloned from or
+        # any other clone of either wrote or stored when cloned: one set,
+        # shared by all of them.
+        self._family_files = set()
         self.is_eternal = is_eternal
         self.preserve_storage_dir = preserve_storage_dir
         self.storage_dir = storage_dir
 
+    def __getstate__(self) -> dict:
+        # Whatever this state is read into reads the same files, so from now
+        # on this storage writes over none of them, as after ``clone``.
+        self._own_paths = {}
+        return self.__dict__.copy()
+
     def __setstate__(self, state: dict) -> None:
-        # Storages pickled before stores were numbered have neither record.
+        # A storage pickled before derived marks existed has none: its values
+        # count as inputs.
+        state.setdefault("_derived", set())
+        # Nor did it record the files it wrote: it writes over none it stores.
+        state.setdefault("_own_paths", {})
+        if "_family_files" not in state:
+            state["_family_files"] = set(state.get("_files", {}).values())
+        # Nor numbers: pickled before stores were numbered.
         state.setdefault("_sequence_numbers", {})
-        state.setdefault("_input_keys", set())
         self.__dict__.update(state)
         # Numbers from the process that pickled this storage must stay below
         # those of stores made after unpickling it.
@@ -64,11 +78,11 @@ class OnDiskStorage:
         """Create a private metadata view over this storage directory.
 
         The file and enum mappings are copied so deleting or rewiring entries
-        through the clone does not mutate the source storage. The directory
-        is shared, but every store writes a new file, so writing a key
-        through one view leaves the file another view maps. Files stay until
-        the directory is removed. Clones retain the original cleanup owner so
-        the shared directory stays alive, but never own cleanup themselves.
+        through the clone does not mutate the source storage. The underlying
+        ``.npy`` files are shared, so neither storage writes over them: a later
+        ``put`` of one of their keys, through either storage, writes a new
+        file (see ``_path_to_write``). Clones retain the original cleanup owner
+        so the shared directory stays alive, but never own cleanup themselves.
         """
         clone = OnDiskStorage(
             self.storage_dir,
@@ -77,9 +91,14 @@ class OnDiskStorage:
         )
         clone._files = self._files.copy()
         clone._enums = self._enums.copy()
+        clone._derived = set(self._derived)
         clone._sequence_numbers = dict(self._sequence_numbers)
-        clone._input_keys = set(self._input_keys)
         clone._storage_dir_owner = getattr(self, "_storage_dir_owner", self)
+        # Both storages now read every file stored so far, including any this
+        # family did not write (read back by ``restore``, say).
+        self._family_files.update(self._files.values())
+        clone._family_files = self._family_files
+        self._own_paths = {}
         return clone
 
     def _decode_file(self, file: str) -> ArrayLike:
@@ -99,17 +118,34 @@ class OnDiskStorage:
             return None
         return self._decode_file(values)
 
+    def has(self, period: Period, branch_name: str = "default") -> bool:
+        """Whether a value is stored for ``period`` under ``branch_name``.
+
+        Unlike ``get``, this reads no file.
+        """
+        if self.is_eternal:
+            period = periods.period(periods.ETERNITY)
+        return f"{branch_name}_{periods.period(period)}" in self._files
+
+    def is_derived(self, period: Period, branch_name: str = "default") -> bool:
+        """Whether the value stored for ``period`` under ``branch_name`` was
+        stored with ``derived=True``; ``False`` if none is stored."""
+        if self.is_eternal:
+            period = periods.period(periods.ETERNITY)
+        key = f"{branch_name}_{periods.period(period)}"
+        return key in self._derived and key in self._files
+
     def put(
         self,
         value: ArrayLike,
         period: Period,
         branch_name: str = "default",
+        derived: bool = False,
         sequence_number: Optional[int] = None,
-        is_input: bool = False,
     ) -> None:
         """Store ``value`` for ``period`` on ``branch_name``.
 
-        ``sequence_number`` and ``is_input`` are as in
+        ``derived`` and ``sequence_number`` are as in
         :meth:`InMemoryStorage.put`.
         """
         if self.is_eternal:
@@ -117,67 +153,97 @@ class OnDiskStorage:
         period = periods.period(period)
 
         filename = f"{branch_name}_{period}"
-        if sequence_number is None:
-            sequence_number = next_sequence_number()
-        # A new file for every store: clones share this directory and may
-        # still map an earlier file for the same key. The process token keeps
-        # files from processes whose counters restarted apart.
-        path = (
-            os.path.join(
-                self.storage_dir, f"{filename}.{_PROCESS_TOKEN}.{sequence_number}"
-            )
-            + ".npy"
-        )
+        path = self._path_to_write(filename)
         if isinstance(value, EnumArray):
             self._enums[path] = value.possible_values
             value = value.view(numpy.ndarray)
         numpy.save(path, value)
         self._files[filename] = path
-        self._sequence_numbers[filename] = sequence_number
-        if is_input:
-            self._input_keys.add(filename)
+        self._own_paths[filename] = path
+        self._family_files.add(path)
+        if derived:
+            self._derived.add(filename)
         else:
-            self._input_keys.discard(filename)
+            self._derived.discard(filename)
+        self._sequence_numbers[filename] = (
+            next_sequence_number() if sequence_number is None else sequence_number
+        )
 
     def drop_computed(self, *, since: Optional[int] = None) -> int:
         """Forget stored values that are not inputs, and return how many.
 
         As :meth:`InMemoryStorage.drop_computed`. The files stay on disk
-        (other views of this directory may still use them) until the storage
-        directory is removed.
+        (clones may still read them) until the storage directory is removed;
+        writing a dropped key again reuses this storage's own file for it,
+        as after ``delete``.
         """
+        numbers = self._sequence_numbers
         dropped = [
             key
             for key in self._files
-            if key not in self._input_keys
-            and (since is None or self._sequence_numbers.get(key, since) >= since)
+            if key in self._derived
+            and (since is None or numbers.get(key, since) >= since)
         ]
         for key in dropped:
             del self._files[key]
-            self._sequence_numbers.pop(key, None)
+            numbers.pop(key, None)
+        self._derived.difference_update(dropped)
         return len(dropped)
 
     def inputs_since(self, since: Optional[int] = None) -> List[Tuple[Period, int]]:
         """As :meth:`InMemoryStorage.inputs_since`."""
+        numbers = self._sequence_numbers
         # Period strings contain no "_"; branch names may.
         return [
-            (periods.period(key.rsplit("_", 1)[1]), self._sequence_numbers[key])
-            for key in self._input_keys
-            if key in self._sequence_numbers
-            and (since is None or self._sequence_numbers[key] >= since)
+            (periods.period(key.rsplit("_", 1)[1]), numbers[key])
+            for key in self._files
+            if key not in self._derived
+            and key in numbers
+            and (since is None or numbers[key] >= since)
         ]
+
+    def mark_derived_except(self, keys: Set[str]) -> None:
+        """As :meth:`InMemoryStorage.mark_derived_except`."""
+        self._derived.update(key for key in self._files if key not in keys)
 
     def has_unnumbered_values(self) -> bool:
         """As :meth:`InMemoryStorage.has_unnumbered_values`."""
         return any(key not in self._sequence_numbers for key in self._files)
 
-    def _forget_deleted_keys(self) -> None:
-        self._sequence_numbers = {
-            key: number
-            for key, number in self._sequence_numbers.items()
-            if key in self._files
-        }
-        self._input_keys.intersection_update(self._files)
+    def _forget_dropped_keys(self) -> None:
+        """Forget the derived marks and numbers of keys ``_files`` no longer has."""
+        self._derived.intersection_update(self._files)
+        numbers = self._sequence_numbers
+        if not numbers.keys() <= self._files.keys():
+            self._sequence_numbers = {
+                key: number for key, number in numbers.items() if key in self._files
+            }
+
+    def _path_to_write(self, filename: str) -> str:
+        """The path ``put`` writes the value for key ``filename`` to.
+
+        Storages cloned from one another share a directory and the files
+        stored before cloning, and each can store the same key afterwards,
+        which names the same path. Writing over a file another of them reads
+        would change that storage's value. So ``put`` writes over one of
+        their files only if this storage wrote it and has not shared it since;
+        otherwise the value goes to a new file of its own, in
+        ``REPLACEMENTS_DIR``. A file only storages outside this family wrote
+        is written over, as before.
+        """
+        own = self._own_paths.get(filename)
+        if own is not None:
+            return own
+        path = os.path.join(self.storage_dir, filename) + ".npy"
+        if path not in self._family_files:
+            return path
+        directory = os.path.join(self.storage_dir, REPLACEMENTS_DIR)
+        os.makedirs(directory, exist_ok=True)
+        descriptor, path = tempfile.mkstemp(
+            prefix=f"{filename}.", suffix=".npy", dir=directory
+        )
+        os.close(descriptor)
+        return path
 
     def delete(self, period: Period = None, branch_name: str = "default") -> None:
         if period is None:
@@ -190,7 +256,7 @@ class OnDiskStorage:
                 for period_item, value in self._files.items()
                 if not period_item.startswith(branch_prefix)
             }
-            self._forget_deleted_keys()
+            self._forget_dropped_keys()
             return
 
         if self.is_eternal:
@@ -203,7 +269,7 @@ class OnDiskStorage:
                 for period_item, value in self._files.items()
                 if not period_item == f"{branch_name}_{period}"
             }
-            self._forget_deleted_keys()
+            self._forget_dropped_keys()
 
     def get_known_periods(self) -> list:
         return list([periods.period(x.split("_")[1]) for x in self._files.keys()])
@@ -216,36 +282,16 @@ class OnDiskStorage:
 
     def restore(self) -> None:
         self._files = files = {}
+        # Files read back from a directory carry no derived marks or numbers.
+        self._derived = set()
         self._sequence_numbers = {}
-        self._input_keys = set()
         # Restore self._files from content of storage_dir.
-        latest = {}
         for filename in os.listdir(self.storage_dir):
             if not filename.endswith(".npy"):
                 continue
             path = os.path.join(self.storage_dir, filename)
             filename_core = filename.rsplit(".", 1)[0]
-            # Files are named "<key>.<process token>.<sequence number>.npy"
-            # (each store writes a new file); older dumps are "<key>.npy".
-            # Keep each key's most recently written file: sequence numbers
-            # restart in every process, so they only order one process's files.
-            key, token, number = filename_core, None, 0
-            stem, _, last = filename_core.rpartition(".")
-            if stem and last.isdigit():
-                key, number = stem, int(last)
-                stem, _, middle = key.rpartition(".")
-                if (
-                    stem
-                    and len(middle) == 12
-                    and all(c in "0123456789abcdef" for c in middle)
-                ):
-                    key, token = stem, middle
-            # On a timestamp tie (a coarse filesystem clock), this process's
-            # own file is the later one; numbers only order one process's.
-            order = (os.stat(path).st_mtime_ns, token == _PROCESS_TOKEN, number)
-            if key not in latest or order > latest[key]:
-                latest[key] = order
-                files[key] = path
+            files[filename_core] = path
 
     def __del__(self) -> None:
         if self.preserve_storage_dir:

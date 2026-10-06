@@ -1,3 +1,50 @@
+## [3.32.18] - 2026-10-06
+
+### Fixed
+
+- When two earlier inputs in a variable's own unit start on the same day (such as `2012` and `year:2012:2` for a yearly variable), uprating now starts from the one that ends last, the input auto-carry-over would carry, so the uprated value no longer depends on which input was stored first or on whether it is in memory or on disk.
+
+
+## [3.32.17] - 2026-10-05
+
+### Fixed
+
+- Simulations and storages cloned from one another no longer write over each other's values in on-disk storage: a value stored for a key whose file a clone also reads goes to a new file of its own. Each cloned simulation also keeps its own record of user inputs, so `apply_reform` on one no longer keeps, as an input, a value it calculated for a period the other was given as input.
+- Uprating now starts from the latest earlier input in the variable's own unit and skips periods the simulation calculated, and a yearly input given through a `set_input` helper now replaces months already calculated instead of keeping them, so calculating intermediate periods first no longer compounds rounding or truncation, or carries an eligibility mask, a default or a calculated month into later uprated values.
+
+
+## [3.32.16] - 2026-10-03
+
+### Fixed
+
+- Auto-carry-over now carries only inputs, taking the latest one stored for a period that starts no later than the requested period, so a carried value no longer depends on which periods were calculated first or on a later input.
+
+
+## [3.32.15] - 2026-10-03
+
+### Fixed
+
+- Let vectorial parameter nodes be copied, deep-copied and pickled, so a reform that calls `modify_parameters` keeps a cached fancy-indexing node as a node, and stop reading a child node by name (`node.owner`) from raising `TypeError`.
+
+
+## [3.32.14] - 2026-10-03
+
+### Changed
+
+- The dev dependency on pytest-rerunfailures now requires 16.2 or later, whose reruns no longer leave a module-scoped fixture cached for later test modules.
+
+### Fixed
+
+- Tracing a simulation no longer switches tracing on in the parameter tree of its tax-benefit system, so other simulations, branches and clones of the system stay untraced, every traced simulation and branch records the parameters its formulas read under its own tracer and branch name, and traced parameter nodes can be copied, deep-copied, pickled, iterated and converted to arrays like untraced ones.
+
+
+## [3.32.13] - 2026-10-03
+
+### Fixed
+
+- Stop giving every holder's in-memory storage an empty set of shared keys: a storage now has one only while it shares an array with the storage it was cloned from, which removes about 1.3 MB per simulation for a country with 6,000 variables (the 3.32.12 increase that pushed policyengine-us YAML test batches past their CI runners' memory).
+
+
 ## [3.32.12] - 2026-10-02
 
 ### Changed

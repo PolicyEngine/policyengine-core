@@ -10,8 +10,9 @@ from policyengine_core.data_storage.store_history import next_sequence_number
 from policyengine_core.periods import ETERNITY
 from policyengine_core.simulations import Simulation
 
-# Next to each variable's arrays: the periods whose values were inputs.
-_INPUTS_FILE = "inputs.txt"
+# Periods, one per line, whose dumped value the simulation calculated (see
+# ``Holder.is_derived``), so a restored simulation does not carry them over.
+DERIVED_PERIODS_FILE = "derived_periods.txt"
 
 
 def dump_simulation(simulation, directory):
@@ -84,18 +85,22 @@ def restore_simulation(directory, tax_benefit_system, **kwargs):
 def _dump_holder(holder, directory):
     disk_storage = holder.create_disk_storage(directory, preserve=True)
     branch_name = holder.simulation.branch_name
-    inputs = []
+    derived_periods = set()
     for period in dict.fromkeys(holder.get_known_periods()):
         # What the simulation itself reads: on a branch, its own value, else
         # its nearest ancestor's or the default one.
-        stored_on = holder._branch_holding(period, branch_name)
+        stored_on = holder._branch_storing(period, branch_name)
         if stored_on is None:
             continue
         disk_storage.put(holder._get_array_from_storage(period, stored_on), period)
-        if holder._is_input(period, stored_on):
-            inputs.append(str(period))
-    with open(os.path.join(disk_storage.storage_dir, _INPUTS_FILE), "w") as file:
-        file.write("\n".join(inputs))
+        # Read the mark of exactly the value dumped: the same period on the
+        # same branch.
+        if not holder._is_input(period, stored_on):
+            derived_periods.add(str(period))
+    if derived_periods:
+        path = os.path.join(disk_storage.storage_dir, DERIVED_PERIODS_FILE)
+        with open(path, "w") as file:
+            file.write("\n".join(sorted(derived_periods)) + "\n")
 
 
 def _dump_entity(population, directory):
@@ -163,25 +168,25 @@ def _restore_holder(
     disk_storage.restore()
 
     holder = simulation.get_holder(variable)
-    inputs_path = os.path.join(storage_dir, _INPUTS_FILE)
-    if os.path.exists(inputs_path):
-        with open(inputs_path) as file:
-            input_periods = set(file.read().split())
-    else:
-        # Dumped before inputs were recorded: keep every value, as inputs.
-        input_periods = None
+    # Dumped before derived values were recorded, there is no such file and
+    # every value counts as an input, as it did then.
+    derived_periods_path = os.path.join(storage_dir, DERIVED_PERIODS_FILE)
+    derived_periods = set()
+    if os.path.exists(derived_periods_path):
+        with open(derived_periods_path) as file:
+            derived_periods = set(file.read().split())
 
     restored = 0
     for period in disk_storage.get_known_periods():
-        is_input = input_periods is None or str(period) in input_periods
-        if is_input != inputs:
+        derived = str(period) in derived_periods
+        if derived == inputs:
             continue
         restored += 1
         value = disk_storage.get(period)
         holder._set(
             period,
             value,
-            is_input=is_input,
-            sequence_number=None if is_input else calculated_number,
+            derived=derived,
+            sequence_number=calculated_number if derived else None,
         )
     return restored

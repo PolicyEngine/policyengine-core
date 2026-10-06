@@ -263,7 +263,10 @@ def test_disk_storage_drops_calculated_values_and_keeps_inputs(tax_benefit_syste
     assert dropped
     rent_disk = branch.get_holder("rent")._disk_storage
     assert set(rent_disk._files) == {"default_2017-01", "cheaper_2017-01"}
-    assert rent_disk._input_keys == {"default_2017-01", "cheaper_2017-01"}
+    assert set(rent_disk._files) - rent_disk._derived == {
+        "default_2017-01",
+        "cheaper_2017-01",
+    }
 
 
 def test_value_served_from_the_macro_cache_is_tracked(tax_benefit_system, monkeypatch):
@@ -332,7 +335,7 @@ def test_drop_computed_arrays_keeps_only_inputs(tax_benefit_system):
         (name, key)
         for population in branch.populations.values()
         for name, holder in population._holders.items()
-        for key in holder._memory_storage._input_keys
+        for key in holder._memory_storage._inputs
     }
     assert remaining == inputs
     assert {("rent", "branch:2017-01"), ("salary", "default:2017-01")} <= remaining
@@ -412,14 +415,14 @@ def test_subsample_starts_a_new_store_history():
 
 def test_storage_records_sequence_numbers_and_inputs_through_clone():
     storage = InMemoryStorage(is_eternal=False)
-    storage.put(np.array([1.0]), periods.period("2020"), is_input=True)
+    storage.put(np.array([1.0]), periods.period("2020"))
     first = storage._sequence_numbers["default:2020"]
-    storage.put(np.array([2.0]), periods.period("2021"))
+    storage.put(np.array([2.0]), periods.period("2021"), derived=True)
     clone = storage.clone()
 
     assert clone._sequence_numbers == storage._sequence_numbers
     assert clone._sequence_numbers["default:2021"] > first
-    assert clone._input_keys == {"default:2020"}
+    assert set(clone._inputs) == {"default:2020"}
 
     assert clone.drop_computed(since=first) == 1
     assert set(clone._arrays) == {"default:2020"}
@@ -431,7 +434,9 @@ def test_storage_drops_only_values_at_or_after_since():
     numbers = []
     for year in (2020, 2021, 2022):
         number = next_sequence_number()
-        storage.put(np.array([0.0]), periods.period(year), sequence_number=number)
+        storage.put(
+            np.array([0.0]), periods.period(year), derived=True, sequence_number=number
+        )
         numbers.append(number)
 
     assert storage.drop_computed(since=numbers[1]) == 2
@@ -710,28 +715,20 @@ def test_drop_while_a_formula_runs_keeps_what_it_read_recorded(drop):
     assert branch.calculate("result", "2020").tolist() == [6.0]
 
 
-def test_disk_restore_reads_the_latest_file_of_each_key(tmp_path, monkeypatch):
-    """Sequence numbers restart in each process; restore goes by write time."""
+def test_disk_restore_reads_the_latest_value_of_each_key(tmp_path, monkeypatch):
+    """Sequence numbers restart in each process; restore does not go by them."""
     import itertools
-    import os
 
-    import policyengine_core.data_storage.on_disk_storage as on_disk_storage
     import policyengine_core.data_storage.store_history as store_history
     from policyengine_core.data_storage import OnDiskStorage
 
-    monkeypatch.setattr(on_disk_storage, "_PROCESS_TOKEN", "aaaaaaaaaaaa")
     writer = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
     for _ in range(5):
         writer.put(np.array([1.0]), periods.period("2020"))
-    # A later process: its counter restarts, and it has its own token.
+    # A later process: its counter restarts.
     monkeypatch.setattr(store_history, "_sequence", itertools.count(1))
-    monkeypatch.setattr(on_disk_storage, "_PROCESS_TOKEN", "bbbbbbbbbbbb")
     later = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
     later.put(np.array([2.0]), periods.period("2020"))
-    # The writer's files clearly earlier, even on a coarse file clock.
-    for path in tmp_path.glob("default_2020.aaaaaaaaaaaa.*.npy"):
-        stat = os.stat(path)
-        os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns - 10**9))
 
     reader = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
     reader.restore()
@@ -800,32 +797,6 @@ def test_failed_prerequisite_request_does_not_satisfy_the_gate():
         simulation.calculate("dependent", "2020")
 
 
-def test_disk_files_from_another_process_are_not_overwritten(tmp_path, monkeypatch):
-    """Processes write their own files even when their sequence numbers repeat."""
-    import itertools
-
-    import policyengine_core.data_storage.on_disk_storage as on_disk_storage
-    import policyengine_core.data_storage.store_history as store_history
-    from policyengine_core.data_storage import OnDiskStorage
-
-    monkeypatch.setattr(store_history, "_sequence", itertools.count(1))
-    monkeypatch.setattr(on_disk_storage, "_PROCESS_TOKEN", "aaaaaaaaaaaa")
-    writer = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
-    writer.put(np.array([1.0]), periods.period("2020"))
-    snapshot = writer.clone()
-
-    # A later process: its counter restarts.
-    monkeypatch.setattr(store_history, "_sequence", itertools.count(1))
-    monkeypatch.setattr(on_disk_storage, "_PROCESS_TOKEN", "bbbbbbbbbbbb")
-    reader = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
-    reader.restore()
-    reader.put(np.array([99.0]), periods.period("2020"))
-
-    assert snapshot.get(periods.period("2020")).tolist() == [1.0]
-    reader.restore()
-    assert reader.get(periods.period("2020")).tolist() == [99.0]
-
-
 def test_result_calculated_across_its_own_input_change_is_calculated_again():
     """A formula that read an input and then replaced it runs again from the new one."""
 
@@ -844,8 +815,8 @@ def test_result_calculated_across_its_own_input_change_is_calculated_again():
     assert branch.calculate("result", "2020").tolist() == [6.0]
 
 
-def test_result_calculated_again_is_kept_for_carry_over():
-    """A result that was not kept would leave its period unknown to carry-over."""
+def test_result_calculated_again_is_kept():
+    """A result calculated again after the input change its formula made is cached."""
     from policyengine_core.country_template import entities
     from policyengine_core.variables import Variable
 
@@ -876,7 +847,9 @@ def test_result_calculated_again_is_kept_for_carry_over():
     branch = root.get_branch("branch")
 
     assert branch.calculate("source", "2021").tolist() == [3.0]
-    assert branch.calculate("source", "2022").tolist() == [3.0]  # carried over
+    assert _stored_keys(branch, "source") == {"branch:2021"}
+    # Only inputs carry over, so a later year reads the default either way.
+    assert branch.calculate("source", "2022").tolist() == [0.0]
 
 
 def test_result_is_calculated_again_until_no_input_changes():
@@ -920,7 +893,9 @@ def test_result_is_calculated_again_until_no_input_changes():
     branch = root.get_branch("branch")
 
     assert branch.calculate("source", "2021").tolist() == [3.0]
-    assert branch.calculate("source", "2022").tolist() == [3.0]  # carried over
+    assert _stored_keys(branch, "source") == {"branch:2021"}
+    # Only inputs carry over, so a later year reads the default either way.
+    assert branch.calculate("source", "2022").tolist() == [0.0]
 
 
 def test_direct_sum_is_taken_again_when_a_term_changes_an_earlier_input():
@@ -1241,7 +1216,7 @@ def test_direct_sum_runs_its_terms_again_only_as_a_whole():
 
 
 def test_input_change_in_an_unrelated_simulation_leaves_this_one_caching():
-    """A settled result from another family's simulation is kept, so carry-over finds it."""
+    """A settled result from another family's simulation is kept."""
     from policyengine_core.country_template import entities
     from policyengine_core.variables import Variable
 
@@ -1273,7 +1248,9 @@ def test_input_change_in_an_unrelated_simulation_leaves_this_one_caching():
     branch = SimulationBuilder().build_default_simulation(system).get_branch("consumer")
 
     assert branch.calculate("result", "2020").tolist() == [6.0]
-    assert branch.calculate("result", "2021").tolist() == [6.0]  # carried over
+    assert _stored_keys(branch, "result") == {"consumer:2020"}
+    # Only inputs carry over, so a later year reads the default either way.
+    assert branch.calculate("result", "2021").tolist() == [0.0]
 
 
 def test_refused_result_is_not_kept_by_a_caller_in_another_family():
@@ -1545,7 +1522,7 @@ def test_earlier_read_is_not_kept_after_the_worker_changes_its_input(worker_kind
     assert simulation.calculate("result", "2020").tolist() == [6.0]  # not kept
 
 
-def test_settled_call_into_own_branch_keeps_the_result_for_carry_over():
+def test_settled_call_into_own_branch_keeps_the_result():
     """The branch's change settles before returning: nothing the caller holds is old."""
     from policyengine_core.country_template import entities
     from policyengine_core.variables import Variable
@@ -1576,7 +1553,9 @@ def test_settled_call_into_own_branch_keeps_the_result_for_carry_over():
     root.get_branch("worker")
 
     assert root.calculate("result", "2020").tolist() == [6.0]
-    assert root.calculate("result", "2021").tolist() == [6.0]  # carried over
+    assert _stored_keys(root, "result") == {"default:2020"}
+    # Only inputs carry over, so a later year reads the default either way.
+    assert root.calculate("result", "2021").tolist() == [0.0]
 
 
 def test_input_a_formula_sets_for_its_own_period_wins():
@@ -1983,55 +1962,6 @@ def test_history_pickled_before_journals_still_records():
     assert restored.earliest_dependency("w", periods.period("2020")) == 2
 
 
-def test_disk_restore_reads_older_file_names_and_breaks_time_ties(tmp_path):
-    import os
-
-    import policyengine_core.data_storage.on_disk_storage as on_disk_storage
-    from policyengine_core.data_storage import OnDiskStorage
-
-    # A file named before process tokens, and one from another process.
-    np.save(tmp_path / "default_2020.4.npy", np.array([1.0]))
-    np.save(tmp_path / "default_2020.cccccccccccc.999999999999.npy", np.array([2.0]))
-    storage = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
-    storage.put(np.array([3.0]), periods.period("2020"))  # this process, number lower
-    for path in tmp_path.glob("*.npy"):
-        os.utime(path, ns=(10**18, 10**18))  # a coarse clock: every time ties
-
-    reader = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
-    reader.restore()
-
-    assert set(reader._files) == {"default_2020"}  # one key, old name included
-    assert reader.get(periods.period("2020")).tolist() == [3.0]
-    assert on_disk_storage._PROCESS_TOKEN in reader._files["default_2020"]
-
-
-def test_forked_process_gets_its_own_disk_file_token():
-    import os
-    import warnings
-
-    import policyengine_core.data_storage.on_disk_storage as on_disk_storage
-
-    if not hasattr(os, "fork"):
-        pytest.skip("no fork on this platform")
-    # A bare fork whose child only writes to a pipe: a process pool forked
-    # from a multi-threaded test process can deadlock.
-    read, write = os.pipe()
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
-        pid = os.fork()
-    if pid == 0:
-        try:
-            os.write(write, on_disk_storage._PROCESS_TOKEN.encode())
-        finally:
-            os._exit(0)
-    os.close(write)
-    child_token = os.read(read, 64).decode()
-    os.close(read)
-    os.waitpid(pid, 0)
-
-    assert child_token and child_token != on_disk_storage._PROCESS_TOKEN
-
-
 # ----- Only what may depend on the input is dropped ----- #
 
 
@@ -2171,7 +2101,7 @@ def test_values_a_custom_input_handler_calculates_are_not_inputs():
     branch.set_input("dispatched", "2020-01", np.array([4.0]))
 
     assert branch.calculate("dependent", "2020").tolist() == [8.0]
-    assert not branch.get_holder("dependent")._memory_storage._input_keys
+    assert not branch.get_holder("dependent")._memory_storage._inputs
 
 
 def test_year_input_after_calculating_one_of_its_months():
@@ -2267,10 +2197,13 @@ def test_storage_pickled_before_stores_were_numbered_still_stores():
     import pickle
 
     storage = InMemoryStorage(is_eternal=False)
-    storage.put(np.array([1.0]), periods.period("2020"))
-    del storage._sequence_numbers, storage._input_keys  # as pickled before
+    storage.put(np.array([1.0]), periods.period("2020"), derived=True)
+    del storage._sequence_numbers  # as pickled before
     restored = pickle.loads(pickle.dumps(storage))
 
-    restored.put(np.array([2.0]), periods.period("2021"), is_input=True)
+    restored.put(np.array([2.0]), periods.period("2021"), derived=True)
 
-    assert restored._input_keys == {"default:2021"}
+    assert set(restored._sequence_numbers) == {"default:2021"}
+    assert restored.has_unnumbered_values()  # 2020: anything may depend on it
+    assert restored.drop_computed(since=10**18) == 1  # unnumbered counts as later
+    assert set(restored._arrays) == {"default:2021"}

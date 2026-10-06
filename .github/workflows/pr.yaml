@@ -77,7 +77,7 @@ jobs:
       - name: Install Core and the legacy country smoke bundle
         # Resolve the checkout and all country dependencies together so a later
         # install cannot replace Core or pair a legacy US model with SPM 1.x.
-        run: uv pip install --system . -r .github/requirements/legacy-country-smoke.txt "pytest-rerunfailures>=10,<15"
+        run: uv pip install --system . -r .github/requirements/legacy-country-smoke.txt "pytest-rerunfailures>=16.2,<17"
       - name: Verify installed dependency compatibility
         run: uv pip check --system
       - name: Verify pytest plugins

@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import Dict, FrozenSet, List, Optional, Set, Tuple, Union
 
 import numpy
 from numpy.typing import ArrayLike
@@ -36,32 +36,80 @@ def _read_only_view(array: numpy.ndarray) -> numpy.ndarray:
     return view
 
 
+# What ``InMemoryStorage._shared`` is while a storage shares nothing. Every
+# such storage refers to this one object instead of holding an empty set of
+# its own: a simulation has a storage for each variable, nearly all of them
+# share nothing, and an empty set is 216 bytes.
+_NOTHING_SHARED: FrozenSet[str] = frozenset()
+
+# What ``InMemoryStorage._inputs`` is while a storage holds no input, for the
+# same reason: most storages in a simulation hold no input.
+_NO_INPUTS: FrozenSet[str] = frozenset()
+
+# Key a pickled storage's state carries once it records its inputs; a state
+# without it comes from a version that recorded neither inputs nor derived
+# values (see ``__setstate__``).
+_INPUTS_RECORDED = "_inputs_recorded"
+
+
 class InMemoryStorage:
     """
     Low-level class responsible for storing and retrieving calculated vectors in memory
     """
 
     _arrays: Dict[Period, ArrayLike]
+    # Keys of ``_arrays`` whose array still belongs to the storage this one
+    # was cloned from with ``share_arrays``. ``get`` replaces each with a copy
+    # the first time it is read. A storage has a ``_shared`` attribute of its
+    # own, a set, only while at least one key is shared; otherwise it reads
+    # this class attribute. A key left in the set after code outside this
+    # class empties ``_arrays`` costs one extra copy at most.
+    _shared: Union[Set[str], FrozenSet[str]] = _NOTHING_SHARED
+    # Keys whose value was stored as an input: with ``put(..., derived=False)``,
+    # the default. Every other stored value was calculated by the simulation
+    # (``put(..., derived=True)``), which ``is_derived`` reports. A key counts
+    # only while it is stored, and every ``put`` sets or clears its mark.
+    #
+    # The storage records inputs rather than derived values because a
+    # simulation calculates far more values than it is given (in a
+    # policyengine-us household, 5,201 of 5,204 stored values are derived).
+    # As with ``_shared``, a storage has a set of its own only while it holds
+    # an input; otherwise it reads this class attribute.
+    #
+    # A storage's own inputs are a set it alone changes, or a frozenset it
+    # shares with storages cloned from it (or it from them): ``clone`` hands
+    # both the same frozenset, and whichever changes its inputs first
+    # replaces it with a set of its own (``_own_inputs``). A branch clones
+    # every holder, so copying at each clone would cost a set per input
+    # holder per branch for inputs most branches never change.
+    _inputs: Union[Set[str], FrozenSet[str]] = _NO_INPUTS
     is_eternal: bool
 
     def __init__(self, is_eternal: bool):
         self._arrays = {}
-        # Keys of ``_arrays`` whose array still belongs to the storage this
-        # one was cloned from with ``share_arrays``. ``get`` replaces each
-        # with a copy the first time it is read. A key left here after code
-        # outside this class empties ``_arrays`` costs one extra copy at most.
-        self._shared = set()
-        # When each array was stored (see ``store_history``), and which were
-        # stored as inputs rather than calculated. Both describe the stored
-        # value, so ``clone`` copies them with the arrays.
+        # When each array was stored (see ``store_history``). A number
+        # describes the stored value, as its input mark does, so ``clone``
+        # copies the numbers with the arrays.
         self._sequence_numbers: Dict[str, int] = {}
-        self._input_keys: Set[str] = set()
         self.is_eternal = is_eternal
 
+    def __getstate__(self) -> dict:
+        state = self.__dict__.copy()
+        state[_INPUTS_RECORDED] = True
+        return state
+
     def __setstate__(self, state: dict) -> None:
-        # Storages pickled before stores were numbered have neither record.
+        if not state.pop(_INPUTS_RECORDED, False):
+            # Pickled before storages recorded their inputs, when nothing
+            # marked a calculated value: every stored value counts as an
+            # input, as it did then, except any a development version of this
+            # change marked derived.
+            derived = state.pop("_derived", ())
+            inputs = set(state.get("_arrays", {})).difference(derived)
+            if inputs:
+                state["_inputs"] = inputs
+        # Pickled before stores were numbered: no value has a number.
         state.setdefault("_sequence_numbers", {})
-        state.setdefault("_input_keys", set())
         self.__dict__.update(state)
         # Numbers from the process that pickled this storage must stay below
         # those of stores made after unpickling it.
@@ -94,16 +142,31 @@ class InMemoryStorage:
         """
         clone = InMemoryStorage(self.is_eternal)
         if share_arrays:
+            shared = set()
             for key, array in self._arrays.items():
                 if _can_share(array):
                     clone._arrays[key] = _read_only_view(array)
-                    clone._shared.add(key)
+                    shared.add(key)
                 else:
                     clone._arrays[key] = array.copy()
+            if shared:
+                clone._shared = shared
         else:
             clone._arrays = {key: array.copy() for key, array in self._arrays.items()}
+        # Share the inputs (see ``_inputs``). A mark left behind by code
+        # outside this class emptying ``_arrays`` never counts (see
+        # ``is_derived``), so the clone gets only those of keys it holds.
+        inputs = self._inputs
+        if inputs:
+            if inputs <= clone._arrays.keys():
+                if not isinstance(inputs, frozenset):
+                    inputs = self.__dict__["_inputs"] = frozenset(inputs)
+                clone._inputs = inputs
+            else:
+                held = inputs.intersection(clone._arrays)
+                if held:
+                    clone._inputs = frozenset(held)
         clone._sequence_numbers = dict(self._sequence_numbers)
-        clone._input_keys = set(self._input_keys)
         return clone
 
     def get(self, period: Period, branch_name: str = "default") -> ArrayLike:
@@ -119,22 +182,106 @@ class InMemoryStorage:
             # caller may write into it, so it needs to be this storage's own.
             values = values.copy()
             self._arrays[key] = values
-            self._shared.discard(key)
+            self._stop_sharing(key)
         return values
+
+    def has(self, period: Period, branch_name: str = "default") -> bool:
+        """Whether a value is stored for ``period`` under ``branch_name``.
+
+        Unlike ``get``, this never copies an array shared by ``clone``.
+        """
+        if self.is_eternal:
+            period = periods.period(periods.ETERNITY)
+        return f"{branch_name}:{periods.period(period)}" in self._arrays
+
+    def is_derived(self, period: Period, branch_name: str = "default") -> bool:
+        """Whether the value stored for ``period`` under ``branch_name`` was
+        stored with ``derived=True``; ``False`` if none is stored."""
+        if self.is_eternal:
+            period = periods.period(periods.ETERNITY)
+        key = f"{branch_name}:{periods.period(period)}"
+        return key in self._arrays and key not in self._inputs
+
+    # Each method below reads ``self._shared`` once and works on that set, and
+    # releases it with one ``dict.pop`` that never raises. A storage is still
+    # not safe to read from several threads at once (see ``clone``), but
+    # overlapping first reads do not raise here: neither can mutate the
+    # shared-nothing object or remove an attribute the other already removed.
+
+    def _stop_sharing(self, key: str) -> None:
+        """Record that ``key`` no longer refers to a shared array."""
+        shared = self._shared
+        if key in shared:
+            shared.discard(key)
+            self._release_if_empty(shared)
+
+    def _stop_sharing_dropped_keys(self) -> None:
+        """Forget the shared keys that ``_arrays`` no longer has."""
+        shared = self._shared
+        if shared:
+            shared.intersection_update(self._arrays)
+            self._release_if_empty(shared)
+
+    def _release_if_empty(self, shared: Set[str]) -> None:
+        """Go back to the class's shared-nothing object once nothing is shared.
+
+        The storage's own attribute is removed rather than reassigned, so that
+        a storage sharing nothing carries none, and a copy or pickle of it
+        reads the class attribute too. ``pop`` with a default is one step that
+        never raises, so it is safe when another thread has already removed it.
+        """
+        if not shared:
+            self.__dict__.pop("_shared", None)
+
+    def _own_inputs(self) -> Set[str]:
+        """This storage's inputs as a set that only it changes, made from the
+        inputs it shares, or from nothing, if need be."""
+        inputs = self.__dict__.get("_inputs")
+        if inputs is None:
+            inputs = self.__dict__["_inputs"] = set()
+        elif isinstance(inputs, frozenset):
+            inputs = self.__dict__["_inputs"] = set(inputs)
+        return inputs
+
+    def _mark_input(self, key: str) -> None:
+        """Record that the value stored for ``key`` is an input."""
+        if key not in self._inputs:
+            self._own_inputs().add(key)
+
+    def _unmark_input(self, key: str) -> None:
+        """Record that the value stored for ``key`` was calculated."""
+        if key in self._inputs:
+            inputs = self._own_inputs()
+            inputs.discard(key)
+            self._release_inputs_if_empty(inputs)
+
+    def _unmark_dropped_keys(self) -> None:
+        """Forget the input marks of keys ``_arrays`` no longer has."""
+        inputs = self._inputs
+        if inputs and not inputs <= self._arrays.keys():
+            inputs = self._own_inputs()
+            inputs.intersection_update(self._arrays)
+            self._release_inputs_if_empty(inputs)
+
+    def _release_inputs_if_empty(self, inputs: Set[str]) -> None:
+        """Go back to the class's no-inputs object once no stored value is an
+        input, as ``_release_if_empty`` does for ``_shared``."""
+        if not inputs:
+            self.__dict__.pop("_inputs", None)
 
     def put(
         self,
         value: ArrayLike,
         period: Period,
         branch_name: str = "default",
+        derived: bool = False,
         sequence_number: Optional[int] = None,
-        is_input: bool = False,
     ) -> None:
         """Store ``value`` for ``period`` on ``branch_name``.
 
-        ``sequence_number`` records when the value was stored (a new number
-        by default), and ``is_input`` whether it is an input rather than a
-        calculated value; see :meth:`drop_computed`.
+        ``derived`` marks a value the simulation calculated rather than took
+        as input (see ``_inputs``), and ``sequence_number`` records when the
+        value was stored (a new number by default); see :meth:`drop_computed`.
         """
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
@@ -157,55 +304,64 @@ class InMemoryStorage:
             )
         key = f"{branch_name}:{period}"
         self._arrays[key] = value
-        self._shared.discard(key)
+        self._stop_sharing(key)
+        if derived:
+            self._unmark_input(key)
+        else:
+            self._mark_input(key)
         self._sequence_numbers[key] = (
             next_sequence_number() if sequence_number is None else sequence_number
         )
-        if is_input:
-            self._input_keys.add(key)
-        else:
-            self._input_keys.discard(key)
 
     def drop_computed(self, *, since: Optional[int] = None) -> int:
         """Delete stored values that are not inputs, and return how many.
 
         With ``since``, only values stored with that sequence number or a
         later one are deleted (a value with no recorded number counts as
-        later). Inputs, which ``put`` received with ``is_input``, are kept
+        later). Inputs, which ``put`` received without ``derived``, are kept
         whatever their number.
         """
+        inputs = self._inputs
+        numbers = self._sequence_numbers
         dropped = [
             key
             for key in self._arrays
-            if key not in self._input_keys
-            and (since is None or self._sequence_numbers.get(key, since) >= since)
+            if key not in inputs
+            and (since is None or numbers.get(key, since) >= since)
         ]
         for key in dropped:
             del self._arrays[key]
-            self._sequence_numbers.pop(key, None)
-            self._shared.discard(key)
+            numbers.pop(key, None)
+            self._stop_sharing(key)
         return len(dropped)
 
     def inputs_since(self, since: Optional[int] = None) -> List[Tuple[Period, int]]:
         """The period and number of each input stored at ``since`` or later (or ever)."""
+        numbers = self._sequence_numbers
         return [
-            (periods.period(key.split(":", 1)[1]), self._sequence_numbers[key])
-            for key in self._input_keys
-            if key in self._sequence_numbers
-            and (since is None or self._sequence_numbers[key] >= since)
+            (periods.period(key.split(":", 1)[1]), numbers[key])
+            for key in self._inputs
+            if key in self._arrays
+            and key in numbers
+            and (since is None or numbers[key] >= since)
         ]
+
+    def mark_derived_except(self, keys: Set[str]) -> None:
+        """Mark every stored value derived except those stored for ``keys``."""
+        for key in [key for key in self._inputs if key not in keys]:
+            self._unmark_input(key)
 
     def has_unnumbered_values(self) -> bool:
         """Whether a value was stored without ``put`` (so without a number)."""
         return any(key not in self._sequence_numbers for key in self._arrays)
 
-    def _forget_deleted_keys(self) -> None:
-        self._sequence_numbers = {
-            key: number
-            for key, number in self._sequence_numbers.items()
-            if key in self._arrays
-        }
-        self._input_keys.intersection_update(self._arrays)
+    def _forget_dropped_numbers(self) -> None:
+        """Forget the numbers of keys ``_arrays`` no longer has."""
+        numbers = self._sequence_numbers
+        if not numbers.keys() <= self._arrays.keys():
+            self._sequence_numbers = {
+                key: number for key, number in numbers.items() if key in self._arrays
+            }
 
     def delete(self, period: Period = None, branch_name: str = "default") -> None:
         if period is None:
@@ -217,8 +373,9 @@ class InMemoryStorage:
                 for period_item, value in self._arrays.items()
                 if not period_item.startswith(branch_prefix)
             }
-            self._shared.intersection_update(self._arrays)
-            self._forget_deleted_keys()
+            self._stop_sharing_dropped_keys()
+            self._unmark_dropped_keys()
+            self._forget_dropped_numbers()
             return
 
         if self.is_eternal:
@@ -236,8 +393,9 @@ class InMemoryStorage:
                 and period.contains(periods.period(period_item.split(":", 1)[1]))
             )
         }
-        self._shared.intersection_update(self._arrays)
-        self._forget_deleted_keys()
+        self._stop_sharing_dropped_keys()
+        self._unmark_dropped_keys()
+        self._forget_dropped_numbers()
 
     def get_known_periods(self) -> list:
         # Split on the first colon only: an anchored period's string form

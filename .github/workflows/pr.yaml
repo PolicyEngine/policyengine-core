@@ -14,8 +14,12 @@ jobs:
   lint-workflows:
     name: Lint workflows
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - name: Run actionlint
         # rhysd/actionlint 1.7.12. The image bundles shellcheck and pyflakes,
         # which actionlint runs on `run:` scripts.

@@ -186,9 +186,11 @@ def assert_publish_tags_only_after_pypi_succeeds(publish: dict) -> None:
         "checkout is not fetch-depth 0"
     )
     # Steps run in order and a failure skips the rest, so the tag step runs
-    # only after a successful upload, unless a status condition or
-    # continue-on-error lets it run anyway.
+    # only after a successful upload. A condition on either step, or
+    # continue-on-error on the upload, would let it run anyway: a skipped
+    # step does not fail the job.
     assert pypi_index < tag_index, "tag step precedes the PyPI step"
+    assert "if" not in pypi_step, "PyPI step has a condition"
     assert "if" not in tag_step, "tag step has a condition"
     assert pypi_step.get("continue-on-error", False) is False, (
         "PyPI step continues on error"
@@ -255,6 +257,11 @@ def tag_even_if_pypi_fails(jobs: dict) -> None:
     find_step(jobs, "publish-git-tag.sh")["if"] = "always()"
 
 
+def skip_pypi_on_this_branch(jobs: dict) -> None:
+    # The default branch is master, so this skips the upload on every release.
+    find_step(jobs, "gh-action-pypi-publish")["if"] = "github.ref == 'refs/heads/main'"
+
+
 @pytest.mark.parametrize(
     ("mutate", "violation"),
     [
@@ -266,6 +273,7 @@ def tag_even_if_pypi_fails(jobs: dict) -> None:
             ),
             (shallow_checkout, "checkout is not fetch-depth 0"),
             (tag_before_pypi, "tag step precedes the PyPI step"),
+            (skip_pypi_on_this_branch, "PyPI step has a condition"),
             (tag_even_if_pypi_fails, "tag step has a condition"),
             (continue_after_pypi_failure, "PyPI step continues on error"),
             (continue_after_tag_failure, "tag step continues on error"),
@@ -279,3 +287,25 @@ def test_publish_workflow_check_rejects_unsafe_release_order(mutate, violation):
 
     with pytest.raises(AssertionError, match=violation):
         assert_publish_tags_only_after_pypi_succeeds(jobs["Publish"])
+
+
+def grant_write_all(jobs: dict) -> None:
+    jobs["Publish"]["permissions"] = "write-all"
+
+
+def quote_fetch_depth(jobs: dict) -> None:
+    find_step(jobs, "actions/checkout@")["with"]["fetch-depth"] = "0"
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(mutate, id=mutate.__name__)
+        for mutate in [grant_write_all, quote_fetch_depth]
+    ],
+)
+def test_publish_workflow_check_accepts_equivalent_settings(mutate):
+    jobs = yaml.safe_load(PUSH_WORKFLOW.read_text())["jobs"]
+    mutate(jobs)
+
+    assert_publish_tags_only_after_pypi_succeeds(jobs["Publish"])

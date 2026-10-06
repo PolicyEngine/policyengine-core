@@ -58,7 +58,7 @@ import pickle  # noqa: E402
 from dataclasses import dataclass, field  # noqa: E402
 from pathlib import Path  # noqa: E402
 
-from hypothesis import HealthCheck, given, settings  # noqa: E402
+from hypothesis import HealthCheck, example, given, settings  # noqa: E402
 from hypothesis import strategies as st  # noqa: E402
 import numpy as np  # noqa: E402
 
@@ -328,6 +328,26 @@ def _check_left(root, given, preserved):
     suppress_health_check=[HealthCheck.too_slow],
 )
 @given(operations=OPERATIONS, caller_chooses_the_folder=st.booleans())
+# Counterexamples from before a simulation kept alive the folder its own is
+# in: a simulation given a subfolder of another's folder, or the clone of
+# one given the folder itself, stores a new variable once the other is
+# collected. The derandomized examples need not include either.
+@example(
+    operations=[
+        ("nest", 0, True),
+        ("collect", 0),
+        ("set", 0, VARIABLES[0], YEARS[0], 0),
+    ],
+    caller_chooses_the_folder=False,
+)
+@example(
+    operations=[
+        ("nest", 0, False),
+        ("collect", 0),
+        ("set", 0, VARIABLES[0], YEARS[0], 0),
+    ],
+    caller_chooses_the_folder=False,
+)
 def test_storage_folders_keep_what_is_read_and_leave_only_what_is_preserved(
     operations, caller_chooses_the_folder
 ):

@@ -469,13 +469,44 @@ def test_an_input_ending_after_the_last_date_is_uprated(system, stored, asked):
     )
 
 
+@pytest.mark.parametrize(
+    "values,asked",
+    [
+        (
+            {"day:2012-01-01:4000000": [10.0, 20.0], "day:2012-01-01:2": [1.0, 2.0]},
+            "2013-01-01",
+        ),
+        # Both end after 9999-12-31. As strings, ":10" sorts before ":3".
+        (
+            {"day:9999-12-30:10": [10.0, 20.0], "day:9999-12-30:3": [1.0, 2.0]},
+            "9999-12-31",
+        ),
+    ],
+    ids=["one_after", "both_after"],
+)
 @pytest.mark.parametrize("longer_first", [True, False], ids=["longer", "shorter"])
-def test_an_input_ending_after_the_last_date_ends_last(system, longer_first):
-    values = {"day:2012-01-01:4000000": [10.0, 20.0], "day:2012-01-01:2": [1.0, 2.0]}
+def test_an_input_ending_after_the_last_date_ends_last(
+    system, values, asked, longer_first
+):
     inputs = {"uprated_daily_flat": _in_order(values, longer_first)}
-    np.testing.assert_array_equal(
-        alone(system, inputs, "uprated_daily_flat", "2013-01-01"), [10, 20]
-    )
+    result = alone(system, inputs, "uprated_daily_flat", asked)
+    np.testing.assert_array_equal(result, [10, 20])
+    assert_bitwise_equal(result, reference(system, inputs, "uprated_daily_flat", asked))
+
+
+@pytest.mark.parametrize("longer_first", [True, False], ids=["longer", "shorter"])
+def test_inputs_ending_after_the_last_date_carry_the_one_ending_last(
+    system, longer_first
+):
+    """``stop`` raises ``OverflowError`` for days that end after 9999-12-31,
+    but not for months: ``month:9999-01:13`` ends on 10000-01-31, after
+    ``day:9999-01-01:370`` (10000-01-05), so it is the one carried."""
+    values = {"month:9999-01:13": [1.0, 2.0], "day:9999-01-01:370": [3.0, 4.0]}
+    inputs = {"carried_any_unit": _in_order(values, longer_first)}
+    result = alone(system, inputs, "carried_any_unit", "9999")
+    expected = [1, 2] if system.auto_carry_over_input_variables else [0, 0]
+    np.testing.assert_array_equal(result, expected)
+    assert_bitwise_equal(result, reference(system, inputs, "carried_any_unit", "9999"))
 
 
 # A yearly input for a monthly variable goes through its ``set_input`` helper,

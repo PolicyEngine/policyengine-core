@@ -26,6 +26,7 @@ PolicyEngine/policyengine-core#583).
 
 from __future__ import annotations
 
+import datetime
 import tempfile
 
 import numpy as np
@@ -75,9 +76,11 @@ def _disk_stores_any_period() -> bool:
 
     It names a value's file after its period, and on Windows ``numpy.save``
     raises ``OSError`` for ``default_year:2012:2.npy``, whose name has two
-    colons (PolicyEngine/policyengine-core#526). Where it cannot, the tests
-    keep every period whose string form has a colon in memory; once storage
-    can, they are on disk again."""
+    colons (PolicyEngine/policyengine-core#526). Where it cannot, the
+    property keeps every drawn period whose string form has a colon in
+    memory, the regression that needs one on disk is skipped, and the
+    example that puts one there expects the ``OSError``. Once storage can,
+    they all put such periods on disk again."""
     with tempfile.TemporaryDirectory() as directory:
         storage = OnDiskStorage(directory, preserve_storage_dir=True)
         try:
@@ -260,19 +263,34 @@ def _stored_inputs(system, inputs, variable):
     return stored
 
 
+def last_day(stored_period):
+    """The number of the period's last day, counting days as
+    ``date.toordinal`` does, also after 9999-12-31, the last date ``datetime``
+    can represent.
+
+    For days, the start's number plus the days after it: their ``stop``
+    raises ``OverflowError`` past that date. For months and years, ``stop``
+    (an ``Instant``, which can be later), moved back by whole 400-year cycles
+    of the Gregorian calendar to a year ``datetime`` has: the calendar
+    repeats every 400 years, which are 146097 days."""
+    unit, start, size = stored_period
+    if unit == periods.ETERNITY:
+        return float("inf")
+    if unit == periods.DAY:
+        return start.date.toordinal() + size - 1
+    year, month, day = stored_period.stop
+    cycles = max(0, (year - 9999 + 399) // 400)
+    return datetime.date(year - 400 * cycles, month, day).toordinal() + 146097 * cycles
+
+
 def _latest(stored_period):
     """Of inputs in one unit class, the latest: the one that starts last; on
     a tie, the one that ends last, then the larger unit, then the period's
     string form. Distinct periods never tie, so the choice does not depend on
     the order the inputs are listed in."""
-    try:
-        # A period ending after 9999-12-31 has no ``stop``: it ends last.
-        ends = (0, stored_period.stop)
-    except OverflowError:
-        ends = (1,)
     return (
         stored_period.start,
-        ends,
+        last_day(stored_period),
         periods.unit_weight(stored_period.unit),
         str(stored_period),
     )

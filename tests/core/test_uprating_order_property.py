@@ -32,9 +32,12 @@ The domain:
   PolicyEngine/policyengine-core#526): there, periods whose string form has
   a colon stay in memory.
 
-One more property, ``test_helper_input_replaces_values_calculated_in_its_year``,
-covers yearly inputs given through a ``set_input`` helper after calculations
-in that year; its domain is stated above it.
+Two more properties have their domains stated above them:
+``test_helper_input_replaces_values_calculated_in_its_year`` covers yearly
+inputs given through a ``set_input`` helper after calculations in that year,
+and ``test_the_reference_rule_ends_a_period_where_end_order_does`` checks
+that the reference rule orders period ends as the simulation does, after
+9999-12-31 too.
 """
 
 from __future__ import annotations
@@ -49,6 +52,8 @@ pytestmark = pytest.mark.filterwarnings(
     "ignore::policyengine_core.warnings.memory_config_warning.MemoryConfigWarning"
 )
 
+from datetime import date  # noqa: E402
+
 from hypothesis import HealthCheck, example, given, settings  # noqa: E402
 from hypothesis import strategies as st  # noqa: E402
 import numpy as np  # noqa: E402
@@ -57,12 +62,14 @@ from policyengine_core import periods  # noqa: E402
 from policyengine_core.experimental import MemoryConfig  # noqa: E402
 from policyengine_core.reforms import Reform  # noqa: E402
 from policyengine_core.simulations import SimulationBuilder  # noqa: E402
+from policyengine_core.simulations.simulation import _end_order  # noqa: E402
 from tests.fixtures.uprating_order import (  # noqa: E402
     COUNT,
     DISK_STORES_ANY_PERIOD,
     assert_bitwise_equal,
     build_system,
     can_store_on_disk,
+    last_day,
     reference,
     request,
     simulation,
@@ -768,3 +775,26 @@ def test_helper_input_replaces_values_calculated_in_its_year(
         fresh.calculate(variable, target),
         f"{message}: {target}",
     )
+
+
+# The domain: a period of days, months or years, starting on any date
+# ``datetime`` has, up to 5,000,000 units long, so many end after 9999-12-31.
+@settings(max_examples=500, deadline=None, derandomize=True)
+@given(
+    unit=st.sampled_from([periods.DAY, periods.MONTH, periods.YEAR]),
+    start=st.dates(min_value=date(1, 1, 1), max_value=date(9999, 12, 31)),
+    size=st.integers(min_value=1, max_value=5_000_000),
+)
+@example(unit=periods.DAY, start=date(9999, 12, 30), size=10)
+@example(unit=periods.MONTH, start=date(9999, 1, 1), size=13)
+@example(unit=periods.YEAR, start=date(9999, 1, 1), size=1)
+@example(unit=periods.MONTH, start=date(2012, 1, 31), size=1)
+def test_the_reference_rule_ends_a_period_where_end_order_does(unit, start, size):
+    """The reference rule's ``last_day`` is written apart from the
+    simulation's ``_end_order``, which ``test_carry_over_order_property.py``
+    checks against ``Period.stop`` and numpy's calendar. The day after a
+    period's last day is the one ``_end_order`` gives."""
+    period = periods.Period(
+        (unit, periods.Instant((start.year, start.month, start.day)), size)
+    )
+    assert last_day(period) + 1 == _end_order(period)

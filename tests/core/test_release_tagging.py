@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -154,3 +155,24 @@ def test_publish_workflow_tags_only_after_pypi_succeeds():
     assert "fetch-depth: 0" in publish_job
     assert publish_job.index(tag_step) > publish_job.index(publish_step)
     assert "publish-git-tag.sh || true" not in publish_job
+
+
+def test_publish_workflow_publishes_only_after_tests_pass():
+    # Without ``needs: Test``, Publish ran beside Test, so a release could
+    # reach PyPI while its tests were still running or after they failed.
+    jobs = yaml.safe_load(PUSH_WORKFLOW.read_text())["jobs"]
+    publishing = [
+        name
+        for name, job in jobs.items()
+        if any(
+            "gh-action-pypi-publish" in step.get("uses", "")
+            for step in job.get("steps", [])
+        )
+    ]
+
+    assert publishing == ["Publish"]
+    needs = jobs["Publish"].get("needs", [])
+    assert "Test" in ([needs] if isinstance(needs, str) else needs)
+    # A job that needs Test is skipped whenever Test is, so both must run on
+    # the same commits for releases to happen at all.
+    assert jobs["Publish"]["if"] == jobs["Test"]["if"]

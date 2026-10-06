@@ -455,44 +455,134 @@ def test_a_forked_process_and_its_parent_keep_their_own_values(
         assert not os.path.exists(made)
 
 
+_FORK_THEN_PARENT_COLLECTS = """
+    import gc, os, traceback
+    from tests.fixtures.data_storage_dir import disk_simulation, read, values
+
+    simulation = disk_simulation()
+    simulation.set_input("disk_amount", "2015", values("disk_amount", 1))
+    folder = simulation.data_storage_dir
+    ready_r, ready_w = os.pipe()
+    go_r, go_w = os.pipe()
+    report_r, report_w = os.pipe()
+    pid = os.fork()
+    if pid == 0:
+        status = 1
+        try:
+            if {own!r}:
+                # A variable with no holder yet: the child stores it in a
+                # folder of its own, made inside the one it inherited.
+                simulation.set_input("disk_level", "2015", values("disk_level", 2))
+                assert os.path.dirname(simulation.data_storage_dir) == folder
+            os.write(ready_w, b"x")
+            os.read(go_r, 1)
+            try:
+                read(simulation, {variable!r}, "2015")
+                reported = "read"
+            except FileNotFoundError:
+                reported = "FileNotFoundError"
+            os.write(report_w, reported.encode())
+            status = 0
+        except BaseException:
+            traceback.print_exc()
+        finally:
+            os._exit(status)
+    os.close(ready_w)
+    os.close(report_w)
+    os.read(ready_r, 1)
+    del simulation
+    gc.collect()
+    removed = not os.path.exists(folder)
+    os.write(go_w, b"x")
+    reported = os.read(report_r, 64).decode() or "nothing"
+    _, status = os.waitpid(pid, 0)
+    print(os.waitstatus_to_exitcode(status), removed, reported)
+"""
+
+
 @pytest.mark.skipif(not hasattr(os, "fork"), reason="needs os.fork")
 @pytest.mark.xfail(
     strict=True,
+    # Only the documented failure counts: any other is a real one.
+    raises=FileNotFoundError,
     reason=(
         "Documented limit: nothing in a forked process keeps alive the "
-        "folder of the process it was forked from (see "
+        "folder of the process it was forked from, and removing that "
+        "folder removes the folder the forked process made inside it (see "
         "policyengine_core.data_storage.storage_directory)."
     ),
 )
-def test_a_forked_process_reads_values_the_parent_has_collected(tmp_path):
+@pytest.mark.parametrize("own", [False, True], ids=["inherited", "its_own"])
+def test_a_forked_process_reads_values_the_parent_has_collected(tmp_path, own):
+    """A value the child inherited, or one it stored itself after forking."""
     printed = _run(
-        """
-        import gc, os
-        from tests.fixtures.data_storage_dir import disk_simulation, read, values
+        _FORK_THEN_PARENT_COLLECTS.format(
+            own=own, variable="disk_level" if own else "disk_amount"
+        ),
+        tmp_path,
+        NUMEXPR_MAX_THREADS="1",
+    )
+    status, removed, reported = printed.split()[-3:]
 
-        simulation = disk_simulation()
-        simulation.set_input("disk_amount", "2015", values("disk_amount", 1))
-        go_r, go_w = os.pipe()
-        pid = os.fork()
-        if pid == 0:
-            status = 1
-            try:
-                os.read(go_r, 1)
-                read(simulation, "disk_amount", "2015")
-                status = 0
-            finally:
-                os._exit(status)
-        del simulation
-        gc.collect()
-        os.write(go_w, b"x")
-        _, status = os.waitpid(pid, 0)
-        print(os.waitstatus_to_exitcode(status))
-        """,
+    # The child ran to the end, and the parent removed its folder.
+    assert (status, removed) == ("0", "True")
+    if reported == "FileNotFoundError":
+        raise FileNotFoundError(f"the child read no value ({own=})")
+    assert reported == "read"
+
+
+_RESTORED_FORK = """
+    import os, traceback
+    import numpy as np
+    from policyengine_core.data_storage import OnDiskStorage
+
+    folder = {folder!r}
+    np.save(os.path.join(folder, "default_2015.npy"), np.array([1.0, 2.0]))
+    storage = OnDiskStorage(folder, preserve_storage_dir=True)
+    storage.restore()
+    go_r, go_w = os.pipe()
+    report_r, report_w = os.pipe()
+    pid = os.fork()
+    if pid == 0:
+        status = 1
+        try:
+            os.read(go_r, 1)
+            os.write(report_w, repr(storage.get("2015").tolist()).encode())
+            status = 0
+        except BaseException:
+            traceback.print_exc()
+        finally:
+            os._exit(status)
+    os.close(report_w)
+    if {deleted!r}:
+        # Dropped since the fork: the child still reads it.
+        storage.delete("2015")
+    storage.put(np.array([8.0, 9.0]), "2015")
+    os.write(go_w, b"x")
+    child = os.read(report_r, 256).decode()
+    _, status = os.waitpid(pid, 0)
+    print(os.waitstatus_to_exitcode(status))
+    print(child)
+    print(repr(storage.get("2015").tolist()))
+"""
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="needs os.fork")
+@pytest.mark.parametrize("deleted", [False, True], ids=["kept", "deleted"])
+def test_a_restored_storage_writes_over_no_file_a_forked_process_reads(
+    tmp_path, deleted
+):
+    """After forking, a storage writes a new file for a key it read back
+    (``restore``) rather than over the file the child reads."""
+    folder = tmp_path / "restored"
+    folder.mkdir()
+    printed = _run(
+        _RESTORED_FORK.format(folder=str(folder), deleted=deleted),
         tmp_path,
         NUMEXPR_MAX_THREADS="1",
     )
 
-    assert printed.split()[-1] == "0"
+    assert printed.splitlines()[-3:] == ["0", "[1.0, 2.0]", "[8.0, 9.0]"]
 
 
 # ----- Disk storages that preserve their folder ----- #
@@ -596,6 +686,92 @@ def test_a_disk_storage_made_to_read_a_folder_another_removes_keeps_it_and_prese
 
     np.testing.assert_array_equal(reader.get("2015"), values("disk_amount", 1))
     del reader
+    gc.collect()
+    assert not os.path.exists(folder)
+
+
+# ----- A folder in one another simulation made ----- #
+
+
+def _first_folder(first_stored):
+    """A simulation and the folder it made, in which it stored a value or
+    nothing."""
+    first = disk_simulation()
+    if first_stored:
+        first.set_input("disk_level", "2015", values("disk_level", 0))
+    return first, first.data_storage_dir
+
+
+@pytest.mark.parametrize("first_stored", [True, False], ids=["stored", "made"])
+def test_a_clone_of_a_simulation_given_another_simulations_folder_reads_its_values_after_that_one_is_collected(
+    first_stored,
+):
+    first, folder = _first_folder(first_stored)
+    given = disk_simulation(folder)
+    # Cloned before it made any holder, so the clone makes a folder of its
+    # own in the given one, owned by the clone.
+    clone = given.clone()
+    stored = {"disk_amount": values("disk_amount", 5)}
+    clone.set_input("disk_amount", "2015", stored["disk_amount"])
+    assert Path(clone.data_storage_dir).parent.resolve() == Path(folder).resolve()
+    del given
+
+    del first
+    gc.collect()
+
+    _assert_reads(clone, stored)
+    del clone
+    gc.collect()
+    assert not os.path.exists(folder)
+
+
+@pytest.mark.parametrize(
+    "order", [("first", "clone"), ("clone", "first")], ids=["first", "clone"]
+)
+def test_a_disk_storage_preserving_its_folder_in_a_folder_made_in_another_simulations_keeps_it(
+    order,
+):
+    first, folder = _first_folder(True)
+    clone = disk_simulation(folder).clone()
+    stored = values("disk_amount", 6)
+    clone.set_input("disk_amount", "2015", stored)
+    storage = clone.persons._holders["disk_amount"]._disk_storage
+    storage.preserve_storage_dir = True
+    storage_dir = storage.storage_dir
+    relative = Path(storage_dir).relative_to(folder).as_posix()
+    del storage
+    simulations = {"first": first, "clone": clone}
+    del first, clone
+    try:
+        for name in order:
+            del simulations[name]
+            gc.collect()
+
+        # Only the preserved folder is left, whole, with the folders leading
+        # to it, and reads back as it was.
+        assert _files(folder) == [f"{relative}/default_2015.npy"]
+        np.testing.assert_array_equal(_restored(storage_dir).get("2015"), stored)
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+@pytest.mark.parametrize("first_stored", [True, False], ids=["stored", "made"])
+@pytest.mark.parametrize("storing", ["given", "clone"])
+def test_a_simulation_given_another_simulations_folder_stores_in_it_after_that_one_is_collected(
+    first_stored, storing
+):
+    first, folder = _first_folder(first_stored)
+    given = disk_simulation(folder)
+    storer = given if storing == "given" else given.clone()
+    del given
+
+    del first
+    gc.collect()
+
+    stored = {"disk_amount": values("disk_amount", 7)}
+    storer.set_input("disk_amount", "2015", stored["disk_amount"])
+    _assert_reads(storer, stored)
+    del storer
     gc.collect()
     assert not os.path.exists(folder)
 

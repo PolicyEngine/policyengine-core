@@ -14,6 +14,11 @@ on disk, starting from one simulation:
   own;
 * ``make``: a disk storage on its own is made in a new subfolder of a
   simulation's folder, preserving it or not (``preserve_storage_dir``);
+* ``nest``: a new simulation is given a simulation's folder: a new
+  subfolder of it, or the folder itself, in which case only its clone,
+  made before it stores anything, is kept (two simulations storing a
+  variable in one folder would share its subfolder). Its clones then make
+  their folders in a folder another simulation may have made;
 * ``preserve``: a disk storage a simulation or ``make`` made is set to
   preserve its folder;
 * ``collect``: one simulation or disk storage on its own is dropped and the
@@ -31,7 +36,8 @@ caller (``_data_storage_dir``):
    folders left in the temporary folder or in the caller's are the subfolders
    of disk storages that preserve theirs and the folders leading to them, and
    each still holds the files its storage last read, unchanged.
-3. A folder the caller chose is never removed.
+3. A folder the caller chose is never removed, unless it is in a folder a
+   simulation made: that one removes it with everything else in it.
 
 Regressions are in ``test_data_storage_dir.py``.
 """
@@ -48,6 +54,7 @@ import gc  # noqa: E402
 import os  # noqa: E402
 import pickle  # noqa: E402
 from dataclasses import dataclass, field  # noqa: E402
+from pathlib import Path  # noqa: E402
 
 from hypothesis import HealthCheck, given, settings  # noqa: E402
 from hypothesis import strategies as st  # noqa: E402
@@ -93,6 +100,7 @@ OPERATIONS = st.lists(
             st.sampled_from(sorted(COPIERS)),
         ),
         st.tuples(st.just("make"), _index, st.booleans()),
+        st.tuples(st.just("nest"), _index, st.booleans()),
         st.tuples(st.just("preserve"), _index, st.sampled_from(VARIABLES)),
         st.tuples(st.just("collect"), _index),
     ),
@@ -182,6 +190,8 @@ class _Run:
     def __init__(self, chosen_folder):
         self.live = [_Simulation(disk_simulation(chosen_folder))]
         self.made = 0
+        # The folders ``nest`` gave simulations, as a caller would.
+        self.given = []
         # The files each preserved storage last read: ``{storage directory:
         # {path: values}}``.
         self.preserved = {}
@@ -240,6 +250,18 @@ class _Run:
                     preserved=preserve,
                 )
             )
+        elif kind == "nest":
+            _, _, inside = operation
+            folder = target.simulation.data_storage_dir
+            if inside:
+                self.made += 1
+                folder = os.path.join(folder, f"nested_{self.made}")
+                os.mkdir(folder)
+                self.given.append(folder)
+                nested = disk_simulation(folder)
+            else:
+                nested = disk_simulation(folder).clone()
+            self.live.append(_Simulation(nested))
         elif kind == "preserve":
             _, _, variable = operation
             if variable in target.made:
@@ -255,9 +277,10 @@ class _Run:
                 }
 
 
-def _run(operations, chosen_folder) -> dict:
+def _run(operations, chosen_folder) -> tuple:
     """Apply ``operations``, check what is left reads its values, and return
-    the files preserved storages last read."""
+    the files preserved storages last read, and the folders ``nest`` gave
+    simulations."""
     run = _Run(chosen_folder)
     for operation in operations:
         if not run.live:
@@ -265,16 +288,23 @@ def _run(operations, chosen_folder) -> dict:
         run.apply(operation)
     for item in run.live:
         item.check()
-    return run.preserved
+    return run.preserved, run.given
 
 
-def _check_left(root, chosen, preserved):
-    """Only the preserved folders, and the folders leading to them, are left
-    in ``root``, holding the files their storages last read."""
+def _check_left(root, given, preserved):
+    """Only the folders given to simulations that are in no folder a
+    simulation made, the preserved folders, and the folders leading to them
+    are left in ``root``; the preserved folders hold the files their storages
+    last read."""
     kept = {os.path.realpath(storage_dir) for storage_dir in preserved}
     leading = {os.path.realpath(root)}
-    if chosen is not None:
-        leading.add(os.path.realpath(chosen))
+    for folder in given:
+        if not any(
+            part.startswith("openfisca_")
+            for part in Path(os.path.relpath(folder, root)).parts
+        ):
+            assert os.path.isdir(folder), f"{folder}, given, is removed"
+            leading.add(os.path.realpath(folder))
     for folder, _, files in os.walk(root):
         real = os.path.realpath(folder)
         if any(real == path or real.startswith(path + os.sep) for path in kept):
@@ -304,9 +334,10 @@ def test_storage_folders_keep_what_is_read_and_leave_only_what_is_preserved(
             chosen = os.path.join(root, "chosen")
             os.mkdir(chosen)
 
-        preserved = _run(operations, chosen)
+        preserved, given = _run(operations, chosen)
         gc.collect()
 
         if chosen is not None:
             assert os.path.isdir(chosen)
-        _check_left(root, chosen, preserved)
+            given.append(chosen)
+        _check_left(root, given, preserved)

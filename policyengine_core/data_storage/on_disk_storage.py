@@ -97,6 +97,11 @@ class OnDiskStorage:
         # any other clone of either wrote or stored when cloned: one set,
         # shared by all of them.
         self._family_files = set()
+        # Paths ``restore`` read back. They join the family once something
+        # else may read them (see ``restore``): those this storage reads,
+        # when it is cloned or copied; all of them, once this process forks
+        # (see ``_path_to_write``).
+        self._restored_paths = set()
         self.is_eternal = is_eternal
         self.storage_dir = storage_dir
         self._creator_pid = os.getpid()
@@ -141,7 +146,9 @@ class OnDiskStorage:
 
     def __getstate__(self) -> dict:
         # Whatever this state is read into reads the same files, so from now
-        # on this storage writes over none of them, as after ``clone``.
+        # on this storage writes over none of them, as after ``clone``:
+        # those ``restore`` read back included.
+        self._family_files.update(self._files.values())
         self._own_paths = {}
         return self.__dict__.copy()
 
@@ -169,6 +176,7 @@ class OnDiskStorage:
         state["_detached"] = True
         state["_own_paths"] = {}
         state["_own_epoch"] = _epoch()
+        state["_restored_paths"] = set()
         owner = _DIRECTORY_OWNERS.get(path_key(state["storage_dir"]))
         if owner is not None:
             state["_storage_dir_owner"] = owner
@@ -277,10 +285,15 @@ class OnDiskStorage:
         it, shares the directory with storages it cannot know of: it writes
         every value it has not written itself in this process to a new file.
         And after this process forks, the forked process may read any file
-        written before, so this storage writes over none of them.
+        this storage wrote or read back (``restore``) before, so this storage
+        writes over none of them.
         """
         epoch = _epoch()
         if self._own_epoch != epoch:
+            # Those it wrote are in the family; those it read back join it.
+            # (All it ever read back, not only those it reads now: the forked
+            # process may still read one this storage has since dropped.)
+            self._family_files.update(self._restored_paths, self._files.values())
             self._own_paths = {}
             self._own_epoch = epoch
         own = self._own_paths.get(filename)
@@ -333,6 +346,15 @@ class OnDiskStorage:
         ]
 
     def restore(self) -> None:
+        """Read back the values stored in this storage's directory: for each
+        key, the file named for it (not those in ``REPLACEMENTS_DIR``).
+
+        This storage writes over those files, as over those it wrote, until
+        it is cloned or copied, or this process forks: from then on it writes
+        a new file instead, since the clone, copy or forked process reads
+        them. A storage made separately for the directory, the one that wrote
+        them say, still writes over them, as before.
+        """
         self._files = files = {}
         # Files read back from a directory carry no derived marks.
         self._derived = set()
@@ -343,6 +365,7 @@ class OnDiskStorage:
             path = os.path.join(self.storage_dir, filename)
             filename_core = filename.rsplit(".", 1)[0]
             files[filename_core] = path
+        self._restored_paths.update(files.values())
 
     def __del__(self, _rmtree=shutil.rmtree, _getpid=os.getpid) -> None:
         # (The defaults keep the two functions reachable while the

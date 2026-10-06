@@ -150,6 +150,9 @@ class TemporaryStorageDirectory:
     to the process that created it.
     """
 
+    # The live directory this one was made in, if any (see ``__init__``).
+    _container = None
+
     def __init__(self, parent: Optional[str] = None):
         """Create the directory, in ``parent`` or the default temporary directory."""
         self.path = tempfile.mkdtemp(prefix="openfisca_", dir=parent)
@@ -158,6 +161,11 @@ class TemporaryStorageDirectory:
         # The subfolders (by ``path_key``) left when the directory is removed
         # (see ``keep``); the finalizer reads this set, not this object.
         self._kept = set()
+        # Removing a live directory this one was made in (a simulation given
+        # another's folder made this one in it, say) would remove this one
+        # with it, so this one keeps that one alive, and has it leave what
+        # this one keeps (see ``keep``). That one may keep another, and so on.
+        self._container = directory_containing(os.path.dirname(self.path))
         self._finalizer = weakref.finalize(
             self, _remove_directory, self.path, key, self._creator_pid, self._kept
         )
@@ -174,12 +182,21 @@ class TemporaryStorageDirectory:
         )
 
     def keep(self, path: str) -> None:
-        """Leave ``path``, a folder in the directory, when removing it."""
-        self._kept.add(path_key(path))
+        """Leave ``path``, a folder in the directory, when removing it, or
+        any live directory this one was made in."""
+        key = path_key(path)
+        directory = self
+        while directory is not None:
+            directory._kept.add(key)
+            directory = directory._container
 
     def release(self, path: str) -> None:
         """Remove ``path`` with the directory again (see ``keep``)."""
-        self._kept.discard(path_key(path))
+        key = path_key(path)
+        directory = self
+        while directory is not None:
+            directory._kept.discard(key)
+            directory = directory._container
 
     def __reduce__(self):
         return _attach, (self.path,)

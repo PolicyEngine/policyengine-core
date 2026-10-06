@@ -14,6 +14,7 @@ from policyengine_core import commons, periods
 from policyengine_core.data.dataset import Dataset
 from policyengine_core.data_storage.storage_directory import (
     TemporaryStorageDirectory,
+    directory_containing,
 )
 from policyengine_core.entities.entity import Entity
 from policyengine_core.enums import Enum, EnumArray
@@ -205,7 +206,6 @@ class Simulation:
     start_instant: str = None
     """The earliest data input instant of the simulation."""
 
-    _data_storage_dir: str = None
     # The temporary folder this simulation made for the values it stores on
     # disk, if it made one (see ``data_storage_dir``).
     _storage_directory: TemporaryStorageDirectory = None
@@ -215,6 +215,30 @@ class Simulation:
     # The process ``_data_storage_dir`` is for: the one that made the
     # simulation or the folder, or first stored a value on disk in it.
     _storage_dir_pid: int = None
+    # The live temporary folder a simulation made that is or contains this
+    # simulation's folder, or, until this one makes its folder, the folder
+    # it will make it in: kept alive while this simulation is, since
+    # removing it would remove this simulation's folder (see
+    # ``_data_storage_dir``).
+    _storage_dir_keeper: TemporaryStorageDirectory = None
+
+    @property
+    def _data_storage_dir(self) -> Optional[str]:
+        """The folder this simulation stores values on disk in, once it has
+        one. Set it to choose the folder (see ``data_storage_dir``)."""
+        # Kept in the instance's ``__dict__`` under the same name, which
+        # this property takes precedence over.
+        return self.__dict__.get("_data_storage_dir")
+
+    @_data_storage_dir.setter
+    def _data_storage_dir(self, path: Optional[str]) -> None:
+        self.__dict__["_data_storage_dir"] = path
+        # A folder in a temporary folder a simulation made (another
+        # simulation's, given to this one, say) goes when that one is
+        # removed, so this simulation keeps that one alive.
+        self._storage_dir_keeper = (
+            None if path is None else directory_containing(os.fspath(path))
+        )
 
     def __init__(
         self,
@@ -1680,7 +1704,8 @@ class Simulation:
         # ``OnDiskStorage.clone``). A clone of a simulation given a folder
         # makes its own inside that one, and so does one made in a process
         # forked from the one this simulation's folder is for (see
-        # ``data_storage_dir``).
+        # ``data_storage_dir``). Until it makes its own, it keeps the
+        # temporary folder it will make it in, if a simulation made that one.
         if self._data_storage_dir is not None and (
             not self._made_data_storage_dir()
             or self._storage_dir_pid not in (None, os.getpid())
@@ -1688,6 +1713,8 @@ class Simulation:
             new._storage_dir_parent = self._data_storage_dir
         new._data_storage_dir = None
         new._storage_directory = None
+        if new._storage_dir_parent is not None:
+            new._storage_dir_keeper = directory_containing(new._storage_dir_parent)
         # Each simulation records its own inputs. A shared record let an
         # input set on one replay, in the other's ``apply_reform``, whatever
         # the other had calculated for that period, as an input.

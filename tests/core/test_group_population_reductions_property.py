@@ -1,7 +1,8 @@
 """Property: group reductions and ranks match a plain-Python oracle.
 
 For any number of groups (1 to 6), any assignment of 0 to 30 persons to them
-(so groups may be empty, and there may be no persons at all) and any values:
+(so groups may be empty, and there may be no persons at all), given as an
+integer array or a plain list, and any values:
 
 * ``sum``, ``nb_persons``, ``any``, ``all``, ``max`` and ``min`` equal the
   oracle, with 0, False, True, -inf and inf for groups with no members;
@@ -37,14 +38,18 @@ def _groups(draw):
             max_size=len(members_entity_id),
         )
     )
-    return count, members_entity_id, values
+    as_list = draw(st.booleans())
+    return count, members_entity_id, values, as_list
 
 
 @settings(max_examples=300, deadline=None)
 @given(_groups())
 def test_reductions_and_ranks_match_oracle(case):
-    count, members_entity_id, values = case
+    count, members_entity_id, values, as_list = case
     persons, households = populations(members_entity_id, count)
+    if as_list:
+        # Memberships may come as a plain list; an empty one is float.
+        households.members_entity_id = list(members_entity_id)
     array = np.array(values, dtype=float)
 
     members = {group: [] for group in range(count)}

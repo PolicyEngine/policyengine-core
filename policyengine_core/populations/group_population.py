@@ -92,6 +92,10 @@ class GroupPopulation(Population):
 
     @members_entity_id.setter
     def members_entity_id(self, members_entity_id: ArrayLike) -> None:
+        if members_entity_id is not None and len(members_entity_id) == 0:
+            # An empty list or ``numpy.array([])`` is float, and NumPy indexes
+            # only with integers (or booleans): keep no members as integers.
+            members_entity_id = numpy.zeros(0, dtype=numpy.intp)
         self._members_entity_id = members_entity_id
 
     @property

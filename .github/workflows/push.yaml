@@ -83,7 +83,7 @@ jobs:
       && (github.event.head_commit.message == 'Update PolicyEngine Core')
     permissions:
       contents: write
-    # One deploy at a time; a newer release replaces an older waiting one.
+    # One deploy at a time; a newly queued deploy replaces one still waiting.
     concurrency:
       group: gh-pages-deploy
       cancel-in-progress: false

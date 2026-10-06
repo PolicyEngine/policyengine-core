@@ -37,7 +37,7 @@ def strings_in(node):
 
 def matrix_keys(job: dict) -> set | None:
     """Keys a job's matrix defines, or None when an expression builds it."""
-    matrix = job.get("strategy", {}).get("matrix", {})
+    matrix = (job.get("strategy") or {}).get("matrix") or {}
     if not isinstance(matrix, dict):
         return None
     keys = set(matrix) - {"include", "exclude"}
@@ -113,7 +113,12 @@ def test_release_deploys_documentation_after_publishing():
     assert deploy["with"]["branch"] == "gh-pages"
     assert deploy["with"]["folder"] == "docs/_build/html"
     assert docs["permissions"].get("contents") == "write"
-    assert docs["concurrency"]["cancel-in-progress"] is False
+    # A constant group serializes deploys across release runs.
+    concurrency = docs["concurrency"]
+    if isinstance(concurrency, str):
+        concurrency = {"group": concurrency}
+    assert "${{" not in concurrency["group"]
+    assert concurrency.get("cancel-in-progress", False) is False
 
 
 def test_documentation_build_matches_deploy_folder():
@@ -124,7 +129,7 @@ def test_documentation_build_matches_deploy_folder():
 
     # ``jb build docs`` writes HTML to docs/_build/html, the deployed folder.
     assert recipe is not None
-    assert "jb build docs" in recipe.group(1)
+    assert "jb build docs" in [line.strip() for line in recipe.group(1).splitlines()]
     # Pages builds a branch source with Jekyll unless its root has .nojekyll,
     # which this extension writes into the HTML output.
     assert "sphinx.ext.githubpages" in extensions

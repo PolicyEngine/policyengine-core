@@ -715,8 +715,11 @@ class Simulation:
         takes that system's entity, so it looks variables up there, and each
         holder takes that system's variable, so a variable the reform
         neutralized or redefined is the baseline's again. Holders, recorded
-        inputs and ``input_variables`` entries for variables the system does
-        not have (ones the reform added) are dropped.
+        inputs and ``input_variables`` entries are dropped for variables the
+        system does not have (ones the reform added), and for variables whose
+        holder was built for the reform's definition in a way a new variable
+        cannot change: in another entity's population, or with storage for
+        (or not for) an ``ETERNITY`` variable.
         """
         system = self.tax_benefit_system
         if system is None:
@@ -728,21 +731,31 @@ class Simulation:
             for entity in [system.person_entity, *system.group_entities]
         }
         variables = system.variables
+        dropped = set()
         for population in self.populations.values():
             population.entity = entities[population.entity.key]
             for name, holder in list(population._holders.items()):
-                if name in variables:
-                    holder.variable = variables[name]
-                else:
+                variable = variables.get(name)
+                if (
+                    variable is None
+                    or variable.entity.key != population.entity.key
+                    or (variable.definition_period == ETERNITY)
+                    != holder._memory_storage.is_eternal
+                ):
                     del population._holders[name]
+                    dropped.add(name)
+                else:
+                    holder.variable = variable
+
+        def kept(name):
+            return name in variables and name not in dropped
+
         if getattr(self, "_user_input_keys", None) is not None:
             self._user_input_keys = {
-                key for key in self._user_input_keys if key[0] in variables
+                key for key in self._user_input_keys if kept(key[0])
             }
         if getattr(self, "input_variables", None) is not None:
-            self.input_variables = [
-                name for name in self.input_variables if name in variables
-            ]
+            self.input_variables = [name for name in self.input_variables if kept(name)]
 
     def create_shortcuts(self) -> None:
         for _key, population in self.populations.items():
@@ -1824,7 +1837,10 @@ class Simulation:
         new.trace = trace
 
         # A branch shares its parent's baseline: formulas that run in a
-        # branch read the parent's baseline values through it.
+        # branch read the parent's baseline values through it. That holds for
+        # every clone of this simulation made while ``get_branch`` is making
+        # a branch of it, not only the one that shares its arrays (a subclass
+        # ``clone`` may clone it directly first; see ``_BranchClone``).
         branching = request is not None and request.simulation is self
         baseline = getattr(self, "baseline", None)
         if (
@@ -1838,10 +1854,11 @@ class Simulation:
             # through either, ``get_branch("baseline")`` on the copy made a
             # branch under the copy's (reform) policy, ``subsample`` of the
             # copy left its baseline at the old size, and the copy kept this
-            # simulation alive. The copy gets a copy of the branch, not a new
-            # branch of itself as in ``__init__``: its cached arrays include
-            # values calculated under this simulation's policy, which a new
-            # branch would read as its own.
+            # simulation alive through the branch's ``parent_branch``. The
+            # copy gets a copy of the branch, not a new branch of itself as in
+            # ``__init__``: its cached arrays include values calculated under
+            # this simulation's policy, which a new branch would read as its
+            # own.
             new_baseline = baseline.clone(
                 debug=debug, trace=trace, clone_tax_benefit_system=False
             )
@@ -2331,11 +2348,13 @@ class Simulation:
             baseline_tax_benefit_system = self.branches["baseline"].tax_benefit_system
             del self.branches["baseline"]
             baseline = self.get_branch("baseline")
+            # As in ``__init__``, the branch is traced in this simulation,
+            # uses the baseline system's entities and variables, and has no
+            # baseline of its own: ``get_branch`` gave it this simulation's,
+            # the branch it replaces, which kept the old population alive.
+            baseline.trace = self.trace
+            baseline.tracer = self.tracer
             baseline.tax_benefit_system = baseline_tax_benefit_system
-            # As in ``__init__``, the branch uses the baseline system's
-            # entities and variables, and has no baseline of its own:
-            # ``get_branch`` gave it this simulation's, the branch it
-            # replaces, which kept the old population alive.
             baseline._bind_to_tax_benefit_system()
             baseline.baseline = None
             if getattr(self, "baseline", None) is not None:

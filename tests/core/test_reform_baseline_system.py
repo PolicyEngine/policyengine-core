@@ -21,7 +21,7 @@ from policyengine_core.country_template import (
     Microsimulation,
     Simulation,
 )
-from policyengine_core.country_template.entities import Person
+from policyengine_core.country_template.entities import Household, Person
 from policyengine_core.errors import VariableNotFoundError
 from policyengine_core.periods import MONTH
 from policyengine_core.reforms import Reform
@@ -55,6 +55,17 @@ class salary(Variable):
 class change_salary_default(Reform):
     def apply(self):
         self.update_variable(salary)
+
+
+class household_salary(Variable):
+    entity = Household
+
+
+class move_salary_to_households(Reform):
+    def apply(self):
+        # ``update_variable`` matches by class name, and this module already
+        # has a ``salary`` class (another reform's).
+        self.update_variable(type("salary", (household_salary,), {}))
 
 
 class doubled_salary(Variable):
@@ -170,6 +181,30 @@ def test_the_baseline_uses_its_systems_entities_and_variables(make_baseline, ref
             assert holder.variable is system.variables[name]
 
 
+def test_the_baseline_drops_a_holder_built_for_another_entity():
+    """A reform that moves an input to another entity.
+
+    The reform simulation holds that variable in the other entity's
+    population; a holder re-pointed at the baseline's variable there would
+    sit in the wrong population, with arrays of the wrong length.
+    """
+    situation = {
+        "persons": {"a": {}, "b": {}},
+        "households": {"h": {"parents": ["a", "b"]}},
+    }
+    reform = Simulation(situation=situation, reform=move_salary_to_households)
+    baseline = reform.baseline
+
+    assert "salary" in reform.household._holders
+    assert "salary" not in baseline.household._holders
+    for key, population in baseline.populations.items():
+        for holder in population._holders.values():
+            assert holder.variable.entity.key == key
+    assert baseline.get_holder("salary").population is baseline.persons
+    np.testing.assert_array_equal(baseline.calculate("salary", PERIOD), [0, 0])
+    np.testing.assert_array_equal(baseline.calculate("income_tax", PERIOD), [0, 0])
+
+
 def test_the_baselines_record_of_inputs_is_its_own():
     reform = Simulation(situation=SITUATION, reform=add_doubled_salary)
 
@@ -186,6 +221,20 @@ def test_subsample_leaves_the_baseline_without_a_baseline():
 
     assert simulation.baseline.baseline is None
     assert simulation.baseline.parent_branch is simulation
+
+
+@pytest.mark.parametrize("trace", [False, True])
+def test_subsample_leaves_the_baseline_traced_in_its_simulation(trace):
+    simulation = Microsimulation(reform=neutralize_income_tax, trace=trace)
+    assert simulation.baseline.tracer is simulation.tracer
+
+    simulation.subsample(n=1, seed="baseline-system", time_period="2022")
+
+    assert simulation.baseline.tracer is simulation.tracer
+    assert simulation.baseline.trace == trace
+    # And so is a clone's copy of it.
+    clone = simulation.clone()
+    assert clone.baseline.tracer is clone.tracer
 
 
 def test_a_reform_simulation_without_a_default_system_instance_still_builds():

@@ -33,6 +33,7 @@ from hypothesis import HealthCheck, example, given, settings  # noqa: E402
 from hypothesis import strategies as st  # noqa: E402
 
 from policyengine_core.country_template import Simulation  # noqa: E402
+from policyengine_core.periods import ETERNITY  # noqa: E402
 from tests.core.test_reform_baseline_system import (  # noqa: E402
     add_doubled_salary,
     change_salary_default,
@@ -290,6 +291,10 @@ def test_every_clone_has_a_baseline_of_its_own(reform, salary, steps_):
             assert population.entity is entities[key]
             for name, holder in population._holders.items():
                 assert holder.variable is system.variables[name]
+                assert holder.variable.entity.key == key
+                assert holder._memory_storage.is_eternal == (
+                    holder.variable.definition_period == ETERNITY
+                )
 
     # Differential: each returns what a new simulation with its inputs and
     # policy returns.

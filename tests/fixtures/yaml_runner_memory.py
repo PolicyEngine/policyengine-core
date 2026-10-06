@@ -7,9 +7,14 @@ import tracemalloc
 import weakref
 from pathlib import Path
 
+import numpy as np
 import pytest
 import yaml
 
+from policyengine_core.country_template import CountryTaxBenefitSystem
+from policyengine_core.country_template.variables.taxes import (
+    income_tax as template_income_tax,
+)
 from policyengine_core.simulations import Simulation
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 from policyengine_core.tracers import FullTracer
@@ -44,6 +49,79 @@ def write_cases(path: Path, count: int, reform_every: int = 3) -> Path:
         cases.append(case)
     path.write_text(yaml.safe_dump(cases, sort_keys=False))
     return path
+
+
+def write_cases_at_distinct_dates(path: Path, count: int, people: int = 256) -> Path:
+    """Write ``count`` income tax cases for ``people`` people each, every one
+    in a month no other case uses, so each reads the parameters at an instant
+    of its own."""
+    cases = [
+        {
+            "name": f"case {i}",
+            "period": f"{2017 + i // 12}-{1 + i % 12:02d}",
+            "input": {"salary": [1000] * people},
+            "output": {"income_tax": [150] * people},
+        }
+        for i in range(count)
+    ]
+    path.write_text(yaml.safe_dump(cases))
+    return path
+
+
+def system_reading_its_parameters() -> CountryTaxBenefitSystem:
+    """A country-template system whose income tax formula reads the rate
+    through the public ``TaxBenefitSystem.get_parameters_at_instant``, not
+    through the formula's ``parameters`` argument."""
+    system = CountryTaxBenefitSystem()
+
+    class income_tax(template_income_tax):
+        def formula(person, period, parameters):
+            system_parameters = (
+                person.simulation.tax_benefit_system.get_parameters_at_instant(
+                    period.start
+                )
+            )
+            return person("salary", period) * system_parameters.taxes.income_tax_rate
+
+    system.update_variable(income_tax)
+    return system
+
+
+def mark_parameter_trees_traced(monkeypatch) -> None:
+    """Have every simulation that switches tracing on mark its system's
+    parameter tree traced with its own tracer and branch name.
+
+    Core's simulations trace per call and leave the tree untraced; code
+    outside core still marks it (policyengine-us's
+    ``isolate_parameter_tracing`` marks the root of a tree no one else reads
+    where it stands).
+    """
+    original = Simulation.trace
+
+    def set_trace(simulation, trace):
+        original.fset(simulation, trace)
+        if trace:
+            parameters = simulation.tax_benefit_system.parameters
+            parameters.trace = True
+            parameters.tracer = simulation.tracer
+            parameters.branch_name = simulation.branch_name
+
+    monkeypatch.setattr(Simulation, "trace", property(original.fget, set_trace))
+
+
+def record_results(monkeypatch) -> list:
+    """Weak references to every array a ``FullTracer`` records as a
+    calculation result from now on."""
+    refs = []
+    original = FullTracer.record_calculation_result
+
+    def record(tracer, value):
+        if isinstance(value, np.ndarray):
+            refs.append(weakref.ref(value))
+        original(tracer, value)
+
+    monkeypatch.setattr(FullTracer, "record_calculation_result", record)
+    return refs
 
 
 def live(cls) -> weakref.WeakSet:

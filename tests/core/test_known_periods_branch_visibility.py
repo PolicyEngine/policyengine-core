@@ -4,13 +4,18 @@ Holder storage keys embed the branch name (``"no_salt:2018"`` in memory,
 ``"no_salt_2018"`` on disk), and a holder can hold keys for branches other
 than the simulation's own. ``Holder.get_known_periods()`` lists the periods of
 every key, while ``Holder.get_array(period, branch_name)`` reads only that
-branch, its ``parent_branch`` ancestors and ``default``. Three defects came
-from that gap:
+branch, its ``parent_branch`` ancestors and ``default``.
+``Holder.get_known_periods(branch_name)`` lists exactly the periods
+``get_array`` reads for that branch, each once. Three defects came from the
+gap between the two:
 
-* ``Simulation._calculate`` took the latest known earlier period from the
-  unscoped list. If that period was stored only under a branch the simulation
-  cannot read, ``get_array`` returned ``None``: uprating raised ``TypeError``
-  (``None * factor``) and auto-carry-over cached ``NaN``.
+* ``Simulation._calculate`` checked the unscoped list for stored periods. When
+  it took the latest earlier period from it, a period stored only under a
+  branch the simulation cannot read gave ``None``: uprating raised
+  ``TypeError`` (``None * factor``) and auto-carry-over cached ``NaN``. Since
+  both read only inputs the branch reads (``Holder.get_input_periods``), such
+  a period still made the simulation leave a default uncached that it would
+  otherwise cache.
 * ``OnDiskStorage`` parsed ``f"{branch}_{period}"`` keys with
   ``split("_")[1]``. A branch name containing ``_`` raised ``ValueError``
   (``no_salt`` -> period ``"salt"``) or listed the wrong period
@@ -18,7 +23,11 @@ from that gap:
   ``pre_tcja_ctc``, whose key shares the prefix.
 * ``dump_simulation`` read every listed period under ``default``, saving
   ``None`` for a period stored only on the dumped branch, which
-  ``restore_simulation`` could not load.
+  ``restore_simulation`` could not load, and the derived marks of the
+  ``default`` branch's values rather than those of the values dumped.
+
+``test_known_periods_branch_visibility_property.py`` checks the listing
+against ``get_array`` and ``get_input_periods`` for random stored values.
 """
 
 import itertools
@@ -181,9 +190,9 @@ def test_carry_over_ignores_later_period_on_unrelated_branch(carry_over_system):
 
 
 # Invariant: values stored only under branches a simulation cannot read do not
-# change what it calculates. Checked exhaustively against a simulation that
-# never had those values, for every combination of readable years, unreadable
-# years and requested year below.
+# change what it calculates, nor what it stores where it reads. Checked
+# exhaustively against a simulation that never had those values, for every
+# combination of readable years, unreadable years and requested year below.
 READABLE_YEAR_SETS = [(), (2016,), (2018,), (2016, 2018)]
 UNREADABLE_YEAR_SETS = [
     years
@@ -194,13 +203,20 @@ REQUESTED_YEARS = (2017, 2018, 2019, 2020)
 
 
 def _calculate_with(system, variable, readable, unreadable, requested):
+    """The branch's result, and the (period, derived) pairs it then reads."""
     simulation = new_simulation(system)
     branch = simulation.get_branch("reform")
     for year in readable:
         store(branch, variable, year, 1_000.0 * (year - 2000), "reform")
     for year in unreadable:
         store(branch, variable, year, 7_777.0, "baseline")
-    return only(branch.calculate(variable, requested))
+    result = only(branch.calculate(variable, requested))
+    holder = branch.get_holder(variable)
+    read = sorted(
+        (str(period), holder.is_derived(period, "reform"))
+        for period in holder.get_known_periods("reform")
+    )
+    return result, read
 
 
 @pytest.mark.parametrize("requested", REQUESTED_YEARS)
@@ -228,7 +244,7 @@ def test_unreadable_branch_periods_do_not_change_results(
         tax_benefit_system, variable, readable, (), requested
     )
 
-    assert math.isfinite(with_unreadable)
+    assert math.isfinite(with_unreadable[0])
     assert with_unreadable == without_unreadable
 
 
@@ -290,6 +306,24 @@ def test_known_periods_for_branch_are_exactly_the_readable_ones(
 
         assert set(listed) == readable, reader_name
         assert len(listed) == len(set(listed)), reader_name
+
+
+@pytest.mark.parametrize("on_disk", [False, True])
+def test_known_periods_for_branch_list_each_period_once(system, tmp_path, on_disk):
+    """A period stored under several branches a reader reads, or both in
+    memory and on disk, is listed once."""
+    period = periods.period(2016)
+    for reader_name, reader in _lineage(system).items():
+        holder = reader.get_holder("uprated_income")
+        directory = tmp_path / reader_name.replace(" ", "-")
+        directory.mkdir()
+        holder._disk_storage = holder.create_disk_storage(str(directory), preserve=True)
+        storages = [holder._memory_storage, holder._disk_storage]
+        for branch_name in STORED_BRANCHES:
+            for storage in storages if on_disk else storages[:1]:
+                storage.put(np.array([1.0]), period, branch_name)
+
+        assert holder.get_known_periods(reader.branch_name) == [period], reader_name
 
 
 def test_get_known_periods_without_branch_lists_every_branch(system):
@@ -426,3 +460,34 @@ def test_dump_branch_saves_the_values_the_branch_reads(system):
     assert only(holder.get_array(2016)) == 1_000
     assert only(holder.get_array(2017)) == 3_000
     assert only(holder.get_array(2018)) == 5_000
+
+
+def test_restored_branch_dump_calculates_what_the_branch_calculates(system):
+    """The dump keeps the derived mark of each value the branch reads, so the
+    restored simulation uprates from the same inputs as the branch."""
+    simulation = new_simulation(system)
+    simulation.set_input("uprated_income", 2016, [1_000.0])
+    # Calculated on ``default``, then set as an input on the branch.
+    simulation.calculate("uprated_income", 2019)
+    branch = simulation.get_branch("reform")
+    branch.set_input("uprated_income", 2019, [3_000.0])
+    # Calculated on the branch only.
+    branch.calculate("uprated_income", 2017)
+
+    directory = os.path.join(tempfile.mkdtemp(), "dump")
+    simulation_dumper.dump_simulation(branch, directory)
+    restored = simulation_dumper.restore_simulation(directory, system)
+
+    holder = restored.get_holder("uprated_income")
+    assert sorted(
+        (str(period), holder.is_derived(period))
+        for period in holder.get_known_periods()
+    ) == [("2016", False), ("2017", True), ("2019", False)]
+    for year in range(2016, 2023):
+        assert only(restored.calculate("uprated_income", year)) == pytest.approx(
+            only(branch.calculate("uprated_income", year))
+        ), year
+    assert only(restored.calculate("uprated_income", 2021)) == pytest.approx(
+        3_000 * growth(2019, 2021)
+    )
+

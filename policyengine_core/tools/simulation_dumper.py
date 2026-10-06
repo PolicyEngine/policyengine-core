@@ -36,7 +36,7 @@ def dump_simulation(simulation, directory):
 
         # Dump variable values
         for holder in entity._holders.values():
-            _dump_holder(holder, directory, simulation.branch_name)
+            _dump_holder(holder, directory)
 
 
 def restore_simulation(directory, tax_benefit_system, **kwargs):
@@ -68,16 +68,16 @@ def restore_simulation(directory, tax_benefit_system, **kwargs):
     return simulation
 
 
-def _dump_holder(holder, directory, branch_name="default"):
-    # Dump the values the simulation's branch reads. A holder can also store
-    # periods under branches this one cannot see; reading those back under
-    # this branch gives ``None``, which would be saved as an object array
-    # that ``restore_simulation`` cannot load.
+def _dump_holder(holder, directory):
     disk_storage = holder.create_disk_storage(directory, preserve=True)
+    # Dump what the simulation reads: on a branch, its own value, else its
+    # nearest ancestor's or the default one. A value stored only under a
+    # branch the simulation cannot read is left out: read here, it would be
+    # ``None``, saved as an array ``restore_simulation`` cannot load.
+    branch_name = holder.simulation.branch_name
     derived_periods = set()
-    for period in dict.fromkeys(holder.get_known_periods(branch_name)):
-        value = holder.get_array(period, branch_name)
-        disk_storage.put(value, period)
+    for period in holder.get_known_periods(branch_name):
+        disk_storage.put(holder.get_array(period, branch_name), period)
         # Read the mark of exactly the value dumped: the same period on the
         # same branch as ``get_array``.
         if holder.is_derived(period, branch_name):

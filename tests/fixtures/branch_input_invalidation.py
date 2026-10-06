@@ -1,6 +1,9 @@
 """A synthetic system for derived values and branches inside formulas."""
 
+import atexit
+import shutil
 import tempfile
+import weakref
 
 import numpy as np
 
@@ -140,6 +143,22 @@ PEOPLE = 3
 YEARS = ["2012", "2013", "2014", "2015"]
 
 
+_RUN_DIRECTORY = None
+
+
+def _run_directory():
+    """A directory for this process's simulation directories, removed at exit.
+
+    A run killed before it can remove them leaves this one directory behind,
+    not one for each simulation still alive.
+    """
+    global _RUN_DIRECTORY
+    if _RUN_DIRECTORY is None:
+        _RUN_DIRECTORY = tempfile.mkdtemp(prefix="policyengine-branch-tests-")
+        atexit.register(shutil.rmtree, _RUN_DIRECTORY, ignore_errors=True)
+    return _RUN_DIRECTORY
+
+
 def synthetic_simulation(
     inputs, memory_config=None, system=SYNTHETIC_SYSTEM, opt_out_cache=False
 ):
@@ -147,11 +166,15 @@ def synthetic_simulation(
     simulation = SimulationBuilder().build_default_simulation(system, count=PEOPLE)
     simulation.opt_out_cache = opt_out_cache
     if memory_config is not None:
-        # Each holder's disk storage removes its directory, and this one
-        # once empty, when garbage-collected.
-        simulation._data_storage_dir = tempfile.mkdtemp(
-            prefix="policyengine-branch-tests-"
-        )
+        # A directory of its own, removed once the simulation is
+        # garbage-collected, or at interpreter exit if it is still alive then
+        # (a system keeps the last simulation built with it). Its branches
+        # keep it alive (``parent_branch``), so the directory lasts while any
+        # of them can read it. Not a pytest ``tmp_path``: the property test
+        # builds simulations in each of its examples.
+        directory = tempfile.mkdtemp(dir=_run_directory())
+        weakref.finalize(simulation, shutil.rmtree, directory, ignore_errors=True)
+        simulation._data_storage_dir = directory
         simulation.memory_config = memory_config
         # Holders read the memory configuration when created; nothing is
         # stored yet, so create them again. Create them all here, so every
@@ -161,7 +184,12 @@ def synthetic_simulation(
         for population in simulation.populations.values():
             population._holders = {}
         for variable in system.variables:
-            simulation.get_holder(variable)
+            disk_storage = simulation.get_holder(variable)._disk_storage
+            # The directory is removed as a whole, above. A disk storage
+            # removing its own subdirectory too, when collected with the
+            # simulation, could find it already gone.
+            if disk_storage is not None:
+                disk_storage.preserve_storage_dir = True
     for (variable, period), values in sorted(
         inputs.items(),
         key=lambda item: periods.key_period_size(periods.period(item[0][1])),

@@ -174,6 +174,11 @@ from policyengine_core.parameters import get_parameter
 from policyengine_core.simulations.simulation_macro_cache import (
     SimulationMacroCache,
 )
+from policyengine_core.simulations.simulation_result_cache import (
+    ResultCacheKey,
+    SimulationResultCache,
+    SuppliedInputKey,
+)
 
 
 @dataclass(frozen=True)
@@ -245,6 +250,71 @@ class Simulation:
     # ``_data_storage_dir``).
     _storage_dir_keeper: TemporaryStorageDirectory = None
 
+    def _ensure_result_cache(self) -> SimulationResultCache[Period, ArrayLike]:
+        cache = self.__dict__.get("_result_cache")
+        if cache is None:
+            cache = SimulationResultCache()
+            legacy_results = self.__dict__.pop("_fast_cache", None)
+            legacy_invalidated = self.__dict__.pop("invalidated_caches", None)
+            legacy_inputs = self.__dict__.pop("_user_input_keys", None)
+            legacy_contexts = self.__dict__.pop("_user_input_contexts", None)
+            if legacy_results:
+                cache.replace_entries(legacy_results)
+            if legacy_invalidated:
+                cache.replace_invalidated(legacy_invalidated)
+            if legacy_inputs:
+                cache.replace_supplied_inputs(legacy_inputs)
+            if legacy_contexts:
+                cache.replace_input_contexts(legacy_contexts)
+            self.__dict__["_result_cache"] = cache
+        return cache
+
+    @property
+    def result_cache(self) -> SimulationResultCache[Period, ArrayLike]:
+        """The simulation-owned calculated-result and input-provenance cache."""
+
+        return self._ensure_result_cache()
+
+    @property
+    def _fast_cache(self) -> dict:
+        """Compatibility view; use :attr:`result_cache` in new code."""
+
+        return self.result_cache.entries
+
+    @_fast_cache.setter
+    def _fast_cache(self, entries: dict) -> None:
+        self.result_cache.replace_entries(entries)
+
+    @property
+    def invalidated_caches(self) -> set:
+        """Compatibility view; use :attr:`result_cache` in new code."""
+
+        return self.result_cache.invalidated
+
+    @invalidated_caches.setter
+    def invalidated_caches(self, entries: set) -> None:
+        self.result_cache.replace_invalidated(entries)
+
+    @property
+    def _user_input_keys(self) -> set:
+        """Compatibility view; use supplied-input methods in new code."""
+
+        return self.result_cache.supplied_inputs
+
+    @_user_input_keys.setter
+    def _user_input_keys(self, entries: set) -> None:
+        self.result_cache.replace_supplied_inputs(entries)
+
+    @property
+    def _user_input_contexts(self) -> list[str]:
+        """Compatibility view for country subclasses with custom builders."""
+
+        return self.result_cache.input_contexts
+
+    @_user_input_contexts.setter
+    def _user_input_contexts(self, contexts: list[str]) -> None:
+        self.result_cache.replace_input_contexts(contexts)
+
     @property
     def _data_storage_dir(self) -> Optional[str]:
         """The folder this simulation stores values on disk in, once it has
@@ -295,14 +365,14 @@ class Simulation:
                 dataset = self.default_dataset
         self.is_over_dataset = dataset is not None
 
-        self.invalidated_caches = set()
-        self._fast_cache: dict = {}
+        self._result_cache: SimulationResultCache[Period, ArrayLike] = (
+            SimulationResultCache()
+        )
         # ``set_input`` records each (variable_name, branch_name, period) it
         # populates so ``_invalidate_all_caches`` can tell user-provided
         # source data apart from formula-computed caches. Without this the
         # post-``apply_reform`` cache wipe would also wipe the dataset the
         # simulation was loaded from.
-        self._user_input_keys: set[tuple[str, str, Period]] = set()
         self.debug: bool = False
         self.trace: bool = trace
         self.tracer: SimpleTracer = SimpleTracer() if not trace else FullTracer()
@@ -425,9 +495,14 @@ class Simulation:
         # ``_fast_cache``, in-memory holder storage, and on-disk holder
         # storage populated with pre-reform values, so the next
         # ``calculate`` call returned stale values (bug H3).
-        self._invalidate_all_caches()
+        self.clear_calculated_results()
 
     def _invalidate_all_caches(self) -> None:
+        """Compatibility alias for :meth:`clear_calculated_results`."""
+
+        self.clear_calculated_results()
+
+    def clear_calculated_results(self) -> None:
         """Purge cached formula output, preserving user-provided inputs.
 
         Called after ``apply_reform`` and any other operation that changes
@@ -441,14 +516,14 @@ class Simulation:
         wiped so the next ``calculate`` recomputes under the new
         tax-benefit system.
         """
-        self._fast_cache = {}
-        self.invalidated_caches = set()
+        self.result_cache.clear_calculated_results()
         # Snapshot user-provided inputs before wiping so they can be
         # replayed into the fresh storage. Use the storage API instead of
         # hand-building keys, since ETERNITY variables canonicalize every
         # period to the single ETERNITY storage key.
         preserved: list[PreservedUserInput] = []
-        user_input_keys = getattr(self, "_user_input_keys", None) or set()
+        user_input_keys = self.result_cache.supplied_inputs
+        preserved_keys: set[SuppliedInputKey[Period]] = set()
         for variable_name, branch_name, period in user_input_keys:
             holder = self.get_holder(variable_name)
             stored_value = holder._memory_storage.get(period, branch_name)
@@ -462,6 +537,7 @@ class Simulation:
                         storage="memory",
                     )
                 )
+                preserved_keys.add(SuppliedInputKey(variable_name, branch_name, period))
                 continue
             if holder._disk_storage is not None:
                 disk_period = (
@@ -483,6 +559,9 @@ class Simulation:
                             disk_file=disk_file,
                             disk_enum=holder._disk_storage._enums.get(disk_file),
                         )
+                    )
+                    preserved_keys.add(
+                        SuppliedInputKey(variable_name, branch_name, period)
                     )
         # Iterate only over holders that already exist on each population —
         # lazy-creating a holder for every variable in the tax-benefit
@@ -512,8 +591,27 @@ class Simulation:
                     user_input.period,
                     user_input.branch_name,
                 )
+        self.result_cache.replace_supplied_inputs(preserved_keys)
         for branch in self.branches.values():
-            branch._invalidate_all_caches()
+            branch.clear_calculated_results()
+
+    def retain_supplied_inputs(self, variable_names: List[str]) -> None:
+        """Remove all calculated values and retain inputs for named variables."""
+
+        allowed_variables = set(variable_names)
+
+        def restrict_provenance(simulation: "Simulation") -> None:
+            retained = {
+                key
+                for key in simulation.result_cache.supplied_inputs
+                if key[0] in allowed_variables
+            }
+            simulation.result_cache.replace_supplied_inputs(retained)
+            for child in simulation.branches.values():
+                restrict_provenance(child)
+
+        restrict_provenance(self)
+        self.clear_calculated_results()
 
     def build_from_populations(self, populations: Dict[str, Population]) -> None:
         """This method of initialisation requires the populations to be pre-initialised.
@@ -845,12 +943,12 @@ class Simulation:
         # already-computed values. map_to and decode_enums are NOT cached here —
         # they are post-processing steps that vary per call site.
         if map_to is None and not decode_enums and not getattr(self, "trace", False):
-            _fast_key = (variable_name, period)
-            _fast_cache = getattr(self, "_fast_cache", None)
-            if _fast_cache is not None:
-                _cached = _fast_cache.get(_fast_key)
-                if _cached is not None:
-                    return _cached
+            cached = self.result_cache.get(
+                ResultCacheKey(variable_name, period),
+                None,
+            )
+            if cached is not None:
+                return cached
 
         self.tracer.record_calculation_start(variable_name, period, self.branch_name)
 
@@ -1239,8 +1337,7 @@ class Simulation:
         if is_cache_available:
             smc.set_cache_value(cache_path, array)
 
-        if hasattr(self, "_fast_cache"):
-            self._fast_cache[(variable_name, period)] = array
+        self.result_cache.put(ResultCacheKey(variable_name, period), array)
 
         return array
 
@@ -1248,16 +1345,11 @@ class Simulation:
         # We wait for the end of calculate(), signalled by an empty stack, before purging the cache
         if self.tracer.stack:
             return
-        _fast_cache = getattr(self, "_fast_cache", None)
-        invalidated_caches = getattr(self, "invalidated_caches", None)
-        if invalidated_caches is None:
-            return
-        for _name, _period in invalidated_caches:
+        for key in self.result_cache.take_invalidated():
+            _name, _period = key
             holder = self.get_holder(_name)
             holder.delete_arrays(_period)
-            if _fast_cache is not None:
-                _fast_cache.pop((_name, _period), None)
-        self.invalidated_caches = set()
+            self.result_cache.discard(key)
 
     def calculate_add(
         self,
@@ -1552,11 +1644,7 @@ class Simulation:
             raise SpiralError(message, variable)
 
     def invalidate_cache_entry(self, variable: str, period: Period) -> None:
-        invalidated_caches = getattr(self, "invalidated_caches", None)
-        if invalidated_caches is None:
-            self.invalidated_caches = {(variable, period)}
-            return
-        invalidated_caches.add((variable, period))
+        self.result_cache.invalidate(ResultCacheKey(variable, period))
 
     def invalidate_spiral_variables(self, variable: str) -> None:
         # Visit the stack, from the bottom (most recent) up; we know that we'll find
@@ -1634,19 +1722,20 @@ class Simulation:
         True
         """
         holder = self.get_holder(variable)
-        for branch_name in self._get_visible_branch_names():
+        visible_branches = self._get_visible_branch_names()
+        for branch_name in visible_branches:
             holder.delete_arrays(period, branch_name)
-        _fast_cache = getattr(self, "_fast_cache", None)
         if period is None:
-            if _fast_cache is not None:
-                self._fast_cache = {
-                    k: v for k, v in _fast_cache.items() if k[0] != variable
-                }
+            self.result_cache.discard_variable(variable)
         else:
             if not isinstance(period, Period):
                 period = periods.period(period)
-            if _fast_cache is not None:
-                _fast_cache.pop((variable, period), None)
+            self.result_cache.discard(ResultCacheKey(variable, period))
+        self.result_cache.discard_supplied_inputs(
+            variable,
+            visible_branches,
+            period,
+        )
 
     def get_known_periods(self, variable: str) -> List[Period]:
         """
@@ -1691,24 +1780,26 @@ class Simulation:
         if (variable.end is not None) and (period.start.date > variable.end):
             return
         self.get_holder(variable_name).set_input(period, value, self.branch_name)
-        _fast_cache = getattr(self, "_fast_cache", None)
-        if _fast_cache is not None:
-            _fast_cache.pop((variable_name, period), None)
-            if variable.set_input and period.unit != variable.definition_period:
-                # The helper wrote the input's sub-periods, replacing any
-                # value calculated there, so what ``calculate`` returned for
-                # them is stale too. (``_end_order``, not ``stop``: ``stop``
-                # raises for a period that ends after 9999-12-31.)
-                stale = [
-                    key
-                    for key in _fast_cache
-                    if key[0] == variable_name
-                    and isinstance(key[1], Period)
-                    and period.start <= key[1].start
-                    and _end_order(key[1]) <= _end_order(period)
-                ]
-                for key in stale:
-                    del _fast_cache[key]
+        self.result_cache.discard(ResultCacheKey(variable_name, period))
+        if getattr(variable, "set_input", None) and period.unit != getattr(
+            variable,
+            "definition_period",
+            period.unit,
+        ):
+            # The helper wrote the input's sub-periods, replacing any
+            # value calculated there, so what ``calculate`` returned for
+            # them is stale too. (``_end_order``, not ``stop``: ``stop``
+            # raises for a period that ends after 9999-12-31.)
+            stale = [
+                key
+                for key in self.result_cache.entries
+                if key[0] == variable_name
+                and isinstance(key[1], Period)
+                and period.start <= key[1].start
+                and _end_order(key[1]) <= _end_order(period)
+            ]
+            for key in stale:
+                self.result_cache.discard(ResultCacheKey(*key))
 
     def get_variable_population(self, variable_name: str) -> Population:
         variable = self.tax_benefit_system.get_variable(
@@ -1786,7 +1877,7 @@ class Simulation:
                 "trace",
                 "tracer",
                 "branches",
-                "_fast_cache",
+                "_result_cache",
             ):
                 new_dict[key] = value
         # Aliases of this simulation's methods (``calc`` and ``df``, and any a
@@ -1796,7 +1887,7 @@ class Simulation:
         for key, value in new_dict.items():
             if isinstance(value, types.MethodType) and value.__self__ is self:
                 new_dict[key] = types.MethodType(value.__func__, new)
-        new._fast_cache = {}
+        new._result_cache = self.result_cache.clone()
         # The clone stores what it puts on disk in a folder of its own, made
         # when first needed, never in this simulation's. Disk storages the
         # two each made for a variable in one folder would write the same
@@ -1818,19 +1909,6 @@ class Simulation:
         new._storage_directory = None
         if new._storage_dir_parent is not None:
             new._storage_dir_keeper = directory_containing(new._storage_dir_parent)
-        # Each simulation records its own inputs. A shared record let an
-        # input set on one replay, in the other's ``apply_reform``, whatever
-        # the other had calculated for that period, as an input.
-        if hasattr(self, "_user_input_keys"):
-            new._user_input_keys = set(self._user_input_keys)
-        # Each records its own invalidations, too. With one set, a spiral in
-        # one (in a branch, say) made the other delete, at its next purge,
-        # its own cached values for those variables and periods, inputs
-        # among them. Invalidations this simulation has not purged yet carry
-        # over: the clone's cached arrays start as copies of its arrays.
-        if getattr(self, "invalidated_caches", None) is not None:
-            new.invalidated_caches = set(self.invalidated_caches)
-
         # Only pass ``share_arrays`` when sharing, so a population or holder
         # ``clone`` override with the earlier signature still deep-copies.
         sharing = {"share_arrays": True} if share_arrays else {}
@@ -2166,14 +2244,7 @@ class Simulation:
         if not self._is_exportable_input_variable(variable_name):
             return []
 
-        user_input_periods = {
-            period
-            for input_variable_name, branch_name, period in getattr(
-                self, "_user_input_keys", set()
-            )
-            if input_variable_name == variable_name
-            and branch_name in self._get_visible_branch_names()
-        }
+        user_input_periods = set(self.supplied_input_periods(variable_name))
         if not user_input_periods:
             return []
         variable = self.tax_benefit_system.get_variable(variable_name)
@@ -2182,6 +2253,40 @@ class Simulation:
             return holder.get_known_periods()
         known_periods = set(holder.get_known_periods())
         return sorted(user_input_periods & known_periods, key=str)
+
+    def supplied_input_periods(self, variable_name: str) -> List[Period]:
+        """Return caller-supplied periods visible to this branch."""
+
+        return self.result_cache.supplied_input_periods(
+            variable_name,
+            self._get_visible_branch_names(),
+        )
+
+    def get_supplied_input(
+        self,
+        variable_name: str,
+        input_period: Period,
+    ) -> Optional[ArrayLike]:
+        """Return an exact visible supplied input without calculating it."""
+
+        input_period = periods.period(input_period)
+        holder = self.get_holder(variable_name)
+        is_eternal = holder.variable.definition_period == ETERNITY
+        for branch_name in self._get_visible_branch_names():
+            matching = any(
+                key[0] == variable_name
+                and key[1] == branch_name
+                and (is_eternal or key[2] == input_period)
+                for key in self.result_cache.supplied_inputs
+            )
+            if not matching:
+                continue
+            value = holder._memory_storage.get(input_period, branch_name)
+            if value is None and holder._disk_storage is not None:
+                value = holder._disk_storage.get(input_period, branch_name)
+            if value is not None:
+                return value
+        return None
 
     def to_input_dataframe(
         self,

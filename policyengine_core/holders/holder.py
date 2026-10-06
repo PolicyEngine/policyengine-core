@@ -1,5 +1,6 @@
 import os
 import warnings
+from contextlib import nullcontext
 from typing import TYPE_CHECKING, Any, List, Tuple
 
 import numpy
@@ -272,22 +273,18 @@ class Holder:
             array = tools.eval_expression(array)
         self._raise_if_input_contains_nan(numpy.asarray(array))
         simulation = getattr(self, "simulation", None)
-        if simulation is not None:
-            if not hasattr(simulation, "_user_input_keys"):
-                simulation._user_input_keys = set()
-            if not hasattr(simulation, "_user_input_contexts"):
-                simulation._user_input_contexts = []
-            simulation._user_input_contexts.append(branch_name)
-        try:
+        input_context = (
+            simulation.result_cache.supplied_input_context(branch_name)
+            if simulation is not None
+            else nullcontext()
+        )
+        with input_context:
             if (
                 self.variable.set_input
                 and period.unit != self.variable.definition_period
             ):
                 return self.variable.set_input(self, period, array)
             return self._set(period, array, branch_name, validate_nan=True)
-        finally:
-            if simulation is not None:
-                simulation._user_input_contexts.pop()
 
     def _raise_if_input_contains_nan(self, value: ArrayLike) -> None:
         if self.variable.value_type not in (float, int):
@@ -357,11 +354,13 @@ class Holder:
         # A value calculated while an input is being set (say, by a
         # ``set_input`` helper that calculates) is not part of that input: it
         # belongs to the branch it was calculated on.
-        user_input_contexts = (
-            None if derived else getattr(simulation, "_user_input_contexts", None)
+        input_branch = (
+            None
+            if derived or simulation is None
+            else simulation.result_cache.current_input_branch
         )
-        if user_input_contexts and branch_name == "default":
-            branch_name = user_input_contexts[-1]
+        if input_branch is not None and branch_name == "default":
+            branch_name = input_branch
         value = self._to_array(value, validate_nan=validate_nan)
         if self.variable.definition_period != periods.ETERNITY:
             if period is None:
@@ -380,10 +379,12 @@ class Holder:
             self._disk_storage.put(value, period, branch_name, derived=derived)
         else:
             self._memory_storage.put(value, period, branch_name, derived=derived)
-        if user_input_contexts:
-            if not hasattr(simulation, "_user_input_keys"):
-                simulation._user_input_keys = set()
-            simulation._user_input_keys.add((self.variable.name, branch_name, period))
+        if input_branch is not None:
+            simulation.result_cache.record_supplied_input(
+                self.variable.name,
+                branch_name,
+                period,
+            )
 
     def put_in_cache(
         self,

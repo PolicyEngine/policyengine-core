@@ -12,9 +12,10 @@ log = logging.getLogger(__name__)
 
 def get_input_branch(holder: Holder) -> str:
     simulation = getattr(holder, "simulation", None)
-    user_input_contexts = getattr(simulation, "_user_input_contexts", None)
-    if user_input_contexts:
-        return user_input_contexts[-1]
+    if simulation is not None:
+        input_branch = simulation.result_cache.current_input_branch
+        if input_branch is not None:
+            return input_branch
     return "default"
 
 

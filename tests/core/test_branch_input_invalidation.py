@@ -1320,7 +1320,7 @@ def test_refused_result_is_not_kept_by_a_caller_in_another_family():
     assert run(input_first=False) == run(input_first=True) == ([6.0], [6.0])
 
 
-def test_caller_in_the_same_family_does_not_keep_what_it_read_before_the_change():
+def test_caller_in_the_same_family_runs_again_after_the_change():
     """A parent read its branch, then called a branch formula that changed the branch's input."""
 
     def run(input_first):
@@ -1351,11 +1351,10 @@ def test_caller_in_the_same_family_does_not_keep_what_it_read_before_the_change(
         if input_first:
             kept.set_input("source", "2020", np.array([3.0]))
         first = root.calculate("result", "2020").tolist()
-        return first, root.calculate("result", "2020").tolist()
+        return first, root.get_array("result", "2020").tolist()
 
-    live_first, live_next = run(input_first=False)
-    assert live_first == [2.0]  # documented: what it read stays read
-    assert live_next == run(input_first=True)[1] == [6.0]  # but it was not kept
+    # The first run read 2 before the change, so the formula ran again.
+    assert run(input_first=False) == run(input_first=True) == ([6.0], [6.0])
 
 
 def _worker_and_consumer(leaf, auto_carry_over=False, worker_inputs=()):
@@ -1433,7 +1432,7 @@ def test_refused_result_that_returns_early_still_taints_its_caller():
     assert run(input_first=False) == run(input_first=True) == ([6.0], [6.0])
 
 
-def test_caller_that_catches_an_error_after_an_input_change_does_not_keep_its_result():
+def test_caller_that_catches_an_error_after_an_input_change_runs_again():
     from policyengine_core.country_template import entities
     from policyengine_core.variables import Variable
 
@@ -1463,13 +1462,14 @@ def test_caller_that_catches_an_error_after_an_input_change_does_not_keep_its_re
         .get_branch("consumer")
     )
 
-    assert consumer.calculate("result", "2020").tolist() == [0.0]  # its own fallback
-    assert consumer.calculate("result", "2020").tolist() == [6.0]  # not kept
+    # The first run fell back to 0 after the change, so the formula ran again.
+    assert consumer.calculate("result", "2020").tolist() == [6.0]
+    assert consumer.get_array("result", "2020").tolist() == [6.0]
 
 
 @pytest.mark.parametrize("worker_kind", ["other_family", "own_branch_in_a_thread"])
-def test_earlier_read_is_not_kept_after_the_worker_changes_its_input(worker_kind):
-    """What a formula read before stays read, but its result is not kept."""
+def test_earlier_read_is_read_again_after_the_worker_changes_its_input(worker_kind):
+    """A formula that read a value before its simulation's input changed runs again."""
     import threading
 
     def changes_source(person, period):
@@ -1518,8 +1518,8 @@ def test_earlier_read_is_not_kept_after_the_worker_changes_its_input(worker_kind
         simulation.set_input("source", "2020", np.array([1.0]))
         simulation.get_branch("kept")
 
-    assert simulation.calculate("result", "2020").tolist() == [2.0]  # read before
-    assert simulation.calculate("result", "2020").tolist() == [6.0]  # not kept
+    assert simulation.calculate("result", "2020").tolist() == [6.0]
+    assert simulation.get_array("result", "2020").tolist() == [6.0]
 
 
 def test_settled_call_into_own_branch_keeps_the_result():
@@ -2207,3 +2207,245 @@ def test_storage_pickled_before_stores_were_numbered_still_stores():
     assert restored.has_unnumbered_values()  # 2020: anything may depend on it
     assert restored.drop_computed(since=10**18) == 1  # unnumbered counts as later
     assert set(restored._arrays) == {"default:2021"}
+
+
+# ----- Reads outside a frame, reads before settling, idle simulations ----- #
+
+
+def _in_thread(call, copy_context=False):
+    """Run ``call`` in a thread started with an empty (or a copied) context."""
+    import contextvars
+    import threading
+
+    returned, failures = [], []
+
+    def target():
+        try:
+            returned.append(call())
+        except BaseException as error:  # re-raised in the caller
+            failures.append(error)
+
+    context = contextvars.copy_context() if copy_context else contextvars.Context()
+    thread = threading.Thread(target=context.run, args=(target,))
+    thread.start()
+    thread.join()
+    if failures:
+        raise failures[0]
+    return returned[0]
+
+
+@pytest.mark.parametrize("change_in_a_thread", [False, True])
+@pytest.mark.parametrize("copy_context", [False, True])
+def test_value_read_from_own_branch_in_a_thread_is_read_again_after_a_change(
+    change_in_a_thread, copy_context
+):
+    """A read in a thread started without the formula's context still counts."""
+
+    def changes_source(person, period):
+        if np.any(person("source", period) != 3):
+            person.simulation.set_input("source", period, np.full(person.count, 3.0))
+        return np.zeros(person.count)
+
+    def result(person, period):
+        worker = person.simulation.branches["worker"]
+        doubled = _in_thread(lambda: worker.calculate("doubled", period), copy_context)
+
+        def change():
+            return worker.calculate("changes_source", period)
+
+        if change_in_a_thread:
+            _in_thread(change, copy_context)
+        else:
+            change()
+        return doubled
+
+    system = _one_person_system(
+        _yearly_variable("source"),
+        _yearly_variable(
+            "doubled", lambda person, period: person("source", period) * 2
+        ),
+        _yearly_variable("changes_source", changes_source),
+        _yearly_variable("result", result),
+    )
+
+    def run(input_first):
+        root = SimulationBuilder().build_default_simulation(system)
+        root.set_input("source", "2020", np.array([1.0]))
+        worker = root.get_branch("worker")
+        if input_first:
+            worker.set_input("source", "2020", np.array([3.0]))
+        first = root.calculate("result", "2020").tolist()
+        return first, root.get_array("result", "2020").tolist()
+
+    assert run(input_first=False) == run(input_first=True) == ([6.0], [6.0])
+
+
+def test_fast_cache_hit_in_a_thread_counts_as_a_read():
+    """A value already calculated, read again from a thread without the context."""
+
+    def changes_source(person, period):
+        if np.any(person("source", period) != 3):
+            person.simulation.set_input("source", period, np.full(person.count, 3.0))
+        return np.zeros(person.count)
+
+    def result(person, period):
+        worker = person.simulation.branches["worker"]
+        doubled = _in_thread(lambda: worker.calculate("doubled", period))
+        worker.calculate("changes_source", period)
+        return doubled
+
+    system = _one_person_system(
+        _yearly_variable("source"),
+        _yearly_variable(
+            "doubled", lambda person, period: person("source", period) * 2
+        ),
+        _yearly_variable("changes_source", changes_source),
+        _yearly_variable("result", result),
+    )
+    root = SimulationBuilder().build_default_simulation(system)
+    root.set_input("source", "2020", np.array([1.0]))
+    worker = root.get_branch("worker")
+    assert worker.calculate("doubled", "2020").tolist() == [2.0]  # now a fast hit
+
+    assert root.calculate("result", "2020").tolist() == [6.0]
+    assert root.get_array("result", "2020").tolist() == [6.0]
+
+
+def _consumer_of(worker, result_2020):
+    """A simulation in another family whose ``result`` for 2020 reads ``worker``."""
+    from policyengine_core.country_template import entities
+    from policyengine_core.variables import Variable
+
+    class result(Variable):
+        value_type = float
+        entity = entities.Person
+        definition_period = periods.YEAR
+        label = "result"
+
+        def formula_2020(person, period):
+            return result_2020(person, period)
+
+    return SimulationBuilder().build_default_simulation(_one_person_system(result))
+
+
+def _worker(leaf, input_first):
+    worker_root = SimulationBuilder().build_default_simulation(
+        _one_person_system(_yearly_variable("source"), _yearly_variable("leaf", leaf))
+    )
+    worker_root.set_input("source", "2020", np.array([1.0]))
+    worker = worker_root.get_branch("worker")
+    if input_first:
+        worker.set_input("source", "2020", np.array([3.0]))
+    return worker
+
+
+@pytest.mark.parametrize("input_first", [False, True])
+def test_value_recovered_after_a_failed_call_is_kept(input_first):
+    """The call that failed read the old input; the retry's value is current."""
+
+    def leaf(person, period):
+        if np.any(person("source", period) != 3):
+            person.simulation.set_input("source", period, np.full(person.count, 3.0))
+            raise ValueError("input was normalised; retry")
+        return person("source", period) * 2
+
+    worker = _worker(leaf, input_first)
+
+    def result(person, period):
+        try:
+            return worker.calculate("leaf", period)
+        except ValueError:
+            return worker.calculate("leaf", period)
+
+    consumer = _consumer_of(worker, result)
+
+    assert consumer.calculate("result", "2020").tolist() == [6.0]
+    assert consumer.get_array("result", "2020").tolist() == [6.0]
+
+
+@pytest.mark.parametrize("input_first", [False, True])
+def test_value_read_after_the_callee_settles_is_kept(input_first):
+    """A formula checks the worker, asks it to settle, then returns its value."""
+
+    def normalize(person, period):
+        if np.any(person("source", period) != 3):
+            person.simulation.set_input("source", period, np.full(person.count, 3.0))
+        return np.zeros(person.count)
+
+    def leaf(person, period):
+        return person("source", period) * 2
+
+    worker = _worker(leaf, input_first)
+    worker.tax_benefit_system.add_variable(_yearly_variable("normalize", normalize))
+
+    def result(person, period):
+        if np.any(worker.calculate("source", period) != 3):
+            worker.calculate("normalize", period)
+        return worker.calculate("leaf", period)
+
+    consumer = _consumer_of(worker, result)
+
+    assert consumer.calculate("result", "2020").tolist() == [6.0]
+    assert consumer.get_array("result", "2020").tolist() == [6.0]
+
+
+@pytest.mark.parametrize("input_first", [False, True])
+def test_input_set_directly_on_an_idle_simulation_after_reading_it(input_first):
+    """The worker has finished calculating when the formula replaces its input."""
+    worker = _worker(lambda person, period: person("source", period) * 2, input_first)
+
+    def result(person, period):
+        earlier = worker.calculate("leaf", period)
+        worker.set_input("source", period, np.full(person.count, 3.0))
+        return earlier
+
+    consumer = _consumer_of(worker, result)
+
+    assert consumer.calculate("result", "2020").tolist() == [6.0]
+    assert consumer.get_array("result", "2020").tolist() == [6.0]
+    assert worker.calculate("leaf", "2020").tolist() == [6.0]
+
+
+# ----- Setting the input a branch already reads ----- #
+
+
+def test_setting_the_input_a_branch_already_reads_drops_nothing():
+    simulation = synthetic_simulation(ROOT_INPUTS)
+    branch = simulation.get_branch("branch")
+    branch.calculate("p_sum", "2013")
+    held = _stored_keys(branch, "p_sum")
+    epoch = getattr(branch, "_input_epoch", 0)
+
+    branch.set_input("p_a", "2013", np.asarray(ROOT_INPUTS[("p_a", "2013")]))
+
+    assert _stored_keys(branch, "p_sum") == held
+    assert getattr(branch, "_input_epoch", 0) == epoch
+    branch.set_input("p_a", "2013", np.asarray(ROOT_INPUTS[("p_a", "2013")]) + 1)
+    assert not _stored_keys(branch, "p_sum") & held
+    assert getattr(branch, "_input_epoch", 0) > epoch
+
+
+def test_input_equal_to_a_calculated_value_still_drops():
+    """An input where a value was calculated changes which periods hold inputs."""
+    simulation = synthetic_simulation(ROOT_INPUTS)
+    branch = simulation.get_branch("branch")
+    calculated = branch.calculate("p_sum", "2013").copy()
+    branch.calculate("p_prod", "2013")
+
+    branch.set_input("p_sum", "2013", calculated)
+
+    assert _stored_keys(branch, "p_prod") == set()
+
+
+def test_input_a_helper_spreads_over_months_still_drops():
+    simulation = synthetic_simulation(ROOT_INPUTS)
+    branch = simulation.get_branch("branch")
+    yearly = sum(
+        np.asarray(ROOT_INPUTS[("p_m", f"2013-{m:02d}")]) for m in range(1, 13)
+    )
+    branch.calculate("p_month", "2013-07")
+    epoch = getattr(branch, "_input_epoch", 0)
+
+    branch.set_input("p_m", "2013", yearly)
+
+    assert getattr(branch, "_input_epoch", 0) > epoch

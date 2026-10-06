@@ -56,27 +56,35 @@ earliest recorded store of the variable for a period that shares a day with
 variable. It then forgets the records numbered from there on (its remaining
 values were all stored earlier) and records again the inputs it keeps, unless a
 formula is still running in the branch: such a formula may hold, in its own
-variables, a value it read before the drop, so the records stay. A
-calculation that was running then (one whose formula sets an input, say) may
-have read the replaced value, so its result is kept neither in storage nor in
-the macro cache. Neither is any result calculated from it, in any simulation:
-each calculation notes, for every other simulation it got a value from
-(directly or through the calculations it called), that simulation's count of
-such input changes when the value's calculation began, and keeps its own
-result only if none has changed since. So a parent formula calculating in a
-branch whose formula calls back into the parent and then changes the branch's
-input does not keep what it got, nor does a formula that read a branch and
-then calculated there something that changed the branch's input. A
-calculation whose call into another simulation settled before returning keeps
-its result, and unrelated simulations and other threads keep caching. The
-outermost calculation
-running in the simulation whose input changed (a `calculate`, or a direct
-`calculate_add`, whose terms run within it) then runs again from the new
-inputs, inner calculations included, until a run changes no input, and keeps
-that result. After ten reruns it stops: a formula that keeps changing inputs
-returns its last result without keeping it. The budget is per simulation whose
-input changes, so calculations nested across several such simulations can
-rerun more. An input stored for the very period being
+variables, a value it read before the drop, so the records stay. Each drop
+counts as an input change of the branch. A calculation running in the branch
+then (one whose formula sets an input, say) may have read the replaced value,
+so its result is kept neither in storage nor in the macro cache. Neither is
+any result calculated from a value the branch gave before the change, in any
+simulation: each calculation notes, for every other simulation it got a value
+from (directly or through the calculations it called), that simulation's count
+of input changes when the value's calculation began, and keeps its own result
+only if none has changed since. So a parent formula calculating in a branch
+whose formula calls back into the parent and then changes the branch's input
+does not keep what it got, nor does a formula that read a branch and then
+calculated there something that changed the branch's input, or set an input on
+it directly. A value calculated in a thread started without the formula's
+context counts too: with no calculation above it in that thread, every
+calculation running in the simulation's ancestors notes it (`asyncio.to_thread`
+and `contextvars.copy_context` keep the context, so the formula notes it
+directly). A calculation whose call into another simulation settled before
+returning keeps its result, and unrelated simulations keep caching. The
+outermost calculation running in each simulation that does not keep its
+result (a `calculate`, or a direct `calculate_add`, whose terms run within it)
+then runs again, inner calculations included, until a run reads nothing that
+has changed since, and keeps that result, as a simulation given the new inputs
+first would. After ten reruns it stops: a formula that keeps changing inputs
+returns its last result without keeping it. The budget is per simulation, so
+calculations nested across several such simulations can rerun more. An input
+set again with the value the branch already reads for that very period (not
+through a `set_input` helper that spreads it over other periods) changes
+nothing, so it drops nothing and is no input change. An input stored for the
+very period being
 calculated after the calculation began (by its own formula, say; under the
 branch's name or any it reads, such as `default` through `Holder.set_input`)
 is the result, as it would be had it been set first.
@@ -116,7 +124,10 @@ and carry-over read which periods hold inputs, so a value they give can change
 with an input for any period of the variable, which is why the first uprated
 or carried-over value also counts. A result whose calculation was
 running when an input changed is not kept unless it was calculated again from
-the new inputs.
+the new inputs. An input set again with the value the branch
+already reads for that period, as an input, changes no value read anywhere, so
+dropping nothing then is sound; one set where the value was calculated still
+drops, since it changes which periods hold inputs.
 
 The rule can drop more than it needs to (a value stored later that does not
 depend on the input is calculated again) but not less, within these limits:
@@ -136,8 +147,9 @@ depend on the input is calculated again) but not less, within these limits:
 - **Unrelated simulations in other threads.** A formula that calculates in a
   simulation other than its own branches, from a thread it starts without
   copying its context (`contextvars.copy_context`, which `asyncio.to_thread`
-  does), does not take in that simulation's history. Its own branches are
-  covered: their history goes to every ancestor with a calculation running.
+  does), does not take in that simulation's history, nor note what it read
+  there. Its own branches are covered: their history, and what was read in
+  them, go to every ancestor with a calculation running.
 - **A branch a formula keeps between calls is a snapshot.** It holds what its
   parent held when it was created, so inputs set on the parent afterwards do
   not reach what the formula reads from it.
@@ -146,12 +158,17 @@ depend on the input is calculated again) but not less, within these limits:
   calculated stay.
 - **Existing child branches keep their values.** An input set on a branch does
   not reach branches already created from it.
-- **Values already read stay read.** A formula that read a value from another
-  simulation and then calculates there a formula that changes that
-  simulation's input keeps what it read before the change. Its result is
-  returned but not kept, and it is not run again: running it again would
-  create and read its branches the same way. Likewise a formula that catches
-  an error raised after such a change returns its own fallback, unkept.
+- **Values kept elsewhere stay.** A value one simulation calculated from
+  another's (its branch's, its parent's, or another family's) and kept stays
+  when that other simulation's input changes after the calculation ended: only
+  calculations still running then are not kept, and run again. A rerun reads
+  such a kept value as it is. Variables in `cache_blacklist` or
+  `variables_to_drop` are still kept in the simulation's fast cache, as
+  before, so this applies to them too.
+- **Formulas that create a branch each run.** A formula that creates a branch,
+  reads it, and then changes its input runs again until the budget is spent
+  (each run reads a new branch from before the change), then returns its last
+  result without keeping it.
 
 With disk storage (`MemoryConfig`), a value dropped from a branch only leaves
 its storage's index: the file stays until the storage directory is removed,

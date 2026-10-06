@@ -134,6 +134,32 @@ class Holder:
                 return not storage.is_derived(period, branch_name)
         return False
 
+    def _input_unchanged(
+        self, period: Period, array: ArrayLike, branch_name: str = "default"
+    ) -> bool:
+        """Whether :meth:`set_input` would store, for ``period`` itself, the
+        input :meth:`get_array` already reads there for ``branch_name``.
+
+        Then nothing calculated from that input changes. An input a
+        ``set_input`` helper spreads over other periods never counts, nor
+        does a value equal only after conversion to the variable's type (a
+        float rounded to float32, say).
+        """
+        if self.variable.set_input and period.unit != self.variable.definition_period:
+            return False
+        stored_on = self._branch_storing(period, branch_name)
+        if stored_on is None or not self._is_input(period, stored_on):
+            return False
+        try:
+            return bool(
+                numpy.array_equal(
+                    self._get_array_from_storage(period, stored_on),
+                    numpy.asarray(array),
+                )
+            )
+        except Exception:  # values that cannot be compared are not equal
+            return False
+
     def _stored_sequence_number(
         self, period: Period, branch_name: str = "default"
     ) -> Optional[int]:
@@ -330,8 +356,12 @@ class Holder:
         simulation = getattr(self, "simulation", None)
         if simulation is not None:
             # On a branch, drop what may have been calculated from the value
-            # this input replaces (see ``Simulation.set_input``).
-            simulation._drop_values_that_may_depend_on(self.variable.name, period)
+            # this input replaces (see ``Simulation.set_input``), unless it
+            # replaces the same input.
+            if getattr(
+                simulation, "parent_branch", None
+            ) is None or not self._input_unchanged(period, array, branch_name):
+                simulation._drop_values_that_may_depend_on(self.variable.name, period)
             # A calculation running meanwhile looks for inputs set for its own
             # period (``Simulation._cache_result``).
             simulation._inputs_set = getattr(simulation, "_inputs_set", 0) + 1

@@ -326,8 +326,7 @@ class InMemoryStorage:
         dropped = [
             key
             for key in self._arrays
-            if key not in inputs
-            and (since is None or numbers.get(key, since) >= since)
+            if key not in inputs and (since is None or numbers.get(key, since) >= since)
         ]
         for key in dropped:
             del self._arrays[key]

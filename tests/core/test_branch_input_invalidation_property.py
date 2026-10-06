@@ -1,8 +1,9 @@
 """Branch results do not depend on what was calculated before.
 
 Random sequences of calculations, branches (including reused and forgotten
-names), inputs, ``drop_computed_arrays`` and dumps restored as new
-simulations run on a synthetic system, with
+names), inputs (some setting again the value already read),
+``drop_computed_arrays`` and dumps restored as new simulations run on a
+synthetic system, with
 values held in memory, on disk, not kept, or blacklisted. Every calculation
 in a branch must equal the same calculation in a new simulation given the
 branch's inputs, its own and those it inherited when it was created, before
@@ -120,6 +121,8 @@ single_operation = st.one_of(
     st.tuples(st.just("branch"), simulation_index, branch_name),
     st.tuples(st.just("forget"), simulation_index),
     st.tuples(st.just("drop"), simulation_index),
+    # Set again, on a branch, an input it reads, with the value it reads.
+    st.tuples(st.just("reset"), simulation_index, st.integers(0, 50)),
     # Dump a simulation (a branch, say) and restore it as a new one.
     st.tuples(st.just("dump"), simulation_index),
 )
@@ -160,6 +163,18 @@ override_after_calculating = st.tuples(
         ]
     )
 )
+# Calculate the value in a new branch, set again there the input it depends
+# on, with the value the branch reads, and calculate the value again.
+reset_after_calculating = st.tuples(
+    simulation_index, st.sampled_from(DEPENDENCIES)
+).map(
+    lambda drawn: [
+        ("branch", drawn[0], None),
+        ("calculate", -1, drawn[1][0], drawn[1][1]),
+        ("reset", -1, (drawn[1][2], drawn[1][3])),
+        ("calculate", -1, drawn[1][0], drawn[1][1]),
+    ]
+)
 # The same through a dump: calculate the value, dump that simulation, restore
 # it, branch from the restored one, override the input and calculate again.
 override_after_restoring = st.tuples(
@@ -177,6 +192,7 @@ operations = st.lists(
     st.one_of(
         single_operation.map(lambda operation: [operation]),
         override_after_calculating,
+        reset_after_calculating,
         override_after_restoring,
     ),
     min_size=1,
@@ -260,6 +276,25 @@ def _run(program, mode):
             simulation.set_input(variable, period, np.asarray(value))
             inputs[index].update(stored)
             own_inputs[index].update(stored)
+        elif kind == "reset":
+            if index in roots:
+                continue
+            # Only inputs stored for the variable's own period unit: a helper
+            # spreading a year over months stores something else.
+            keys = sorted(
+                key
+                for key in inputs[index]
+                if periods.period(key[1]).unit
+                == SYNTHETIC_SYSTEM.get_variable(key[0]).definition_period
+            )
+            selector = operation[2]
+            if isinstance(selector, tuple):
+                keys = [selector] if selector in keys else []
+            if not keys:
+                continue
+            key = keys[selector % len(keys)] if isinstance(selector, int) else keys[0]
+            simulation.set_input(key[0], key[1], np.asarray(inputs[index][key]))
+            own_inputs[index][key] = inputs[index][key]
         elif kind == "calculate":
             _, _, variable, period = operation
             value = np.array(simulation.calculate(variable, period), copy=True)

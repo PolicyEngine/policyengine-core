@@ -33,14 +33,15 @@ class FlatTrace:
             # We don't want cache read to overwrite data about the initial
             # calculation.
             #
-            # We therefore use a non-overwriting update.
-            trace.update(
-                {
-                    key: node_trace
-                    for key, node_trace in self._get_flat_trace(node).items()
-                    if key not in trace
-                }
-            )
+            # We therefore use a non-overwriting update, except over a
+            # calculation that never recorded a result: one abandoned to
+            # calculate a deeper period first (see ``Simulation.calculate``),
+            # or ended by an error. The first that completes replaces it.
+            for key, node_trace in self._get_flat_trace(node).items():
+                if key not in trace or (
+                    trace[key]["value"] is None and node_trace["value"] is not None
+                ):
+                    trace[key] = node_trace
 
         return trace
 

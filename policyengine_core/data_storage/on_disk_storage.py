@@ -350,11 +350,19 @@ class OnDiskStorage:
             }
             self._derived.intersection_update(self._files)
 
-    def delete_exact(self, period: Period, branch_name: str = "default") -> None:
-        """Drop the file recorded for exactly ``period``."""
+    def delete_exact(
+        self,
+        period: Period,
+        branch_name: str = "default",
+        derived_only: bool = False,
+    ) -> None:
+        """Drop the file recorded for exactly ``period``. With
+        ``derived_only``, an input stored there stays."""
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
         key = f"{branch_name}_{periods.period(period)}"
+        if derived_only and key in self._files and key not in self._derived:
+            return
         self._files.pop(key, None)
         self._derived.discard(key)
 

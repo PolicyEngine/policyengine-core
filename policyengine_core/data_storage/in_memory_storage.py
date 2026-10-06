@@ -320,14 +320,22 @@ class InMemoryStorage:
         self._stop_sharing_dropped_keys()
         self._unmark_dropped_keys()
 
-    def delete_exact(self, period: Period, branch_name: str = "default") -> None:
+    def delete_exact(
+        self,
+        period: Period,
+        branch_name: str = "default",
+        derived_only: bool = False,
+    ) -> None:
         """Drop the array stored for exactly ``period``.
 
-        Unlike ``delete``, this leaves the periods ``period`` contains.
+        Unlike ``delete``, this leaves the periods ``period`` contains. With
+        ``derived_only``, an input stored there stays.
         """
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
         key = f"{branch_name}:{periods.period(period)}"
+        if derived_only and key in self._inputs:
+            return
         self._arrays.pop(key, None)
         self._stop_sharing(key)
         self._unmark_input(key)

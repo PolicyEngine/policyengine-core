@@ -110,13 +110,20 @@ class Holder:
         if self._disk_storage:
             self._disk_storage.delete(period, branch_name)
 
-    def delete_array(self, period: Period, branch_name: str = "default") -> None:
+    def delete_array(
+        self,
+        period: Period,
+        branch_name: str = "default",
+        derived_only: bool = False,
+    ) -> None:
         """
-        Remove the value stored for exactly ``period``, leaving the periods it contains (unlike ``delete_arrays``).
+        Remove the value stored for exactly ``period`` under ``branch_name``, leaving the periods it contains (unlike ``delete_arrays``).
+
+        With ``derived_only``, remove it only if the simulation calculated it (see ``put_in_cache``): an input stored there stays.
         """
-        self._memory_storage.delete_exact(period, branch_name)
+        self._memory_storage.delete_exact(period, branch_name, derived_only)
         if self._disk_storage:
-            self._disk_storage.delete_exact(period, branch_name)
+            self._disk_storage.delete_exact(period, branch_name, derived_only)
 
     def _get_array_from_storage(
         self, period: Period, branch_name: str = "default"

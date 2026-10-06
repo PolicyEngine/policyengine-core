@@ -16,7 +16,6 @@ is kept once the calculation ends.
 import pytest
 
 from policyengine_core.errors import CycleError
-from policyengine_core.simulations import simulation as simulation_module
 from tests.fixtures.spirals import build, make_recurrence, run, stored_years
 
 
@@ -159,10 +158,60 @@ def test_formula_catching_exception_does_not_swallow_the_deeper_period():
     assert fresh == after == [31.0]
 
 
-def test_cap_on_deeper_periods_falls_back_to_the_cut(monkeypatch):
-    monkeypatch.setattr(simulation_module, "MAX_SPIRAL_DEFERRALS", 0)
-    simulation = build([counting_up()], {("recursive", 2010): 1})
-    assert run(simulation, "recursive", 2021) == [10.0]
+def test_recursion_changing_direction_ends():
+    # zigzag(t) = 1 + zigzag(t + 2) in odd years and 1 + zigzag(t - 1) in
+    # even ones, until 2020: it heads back towards its first formula, then
+    # forward towards its end, in turn. Each deeper period is started once,
+    # so the calculation ends, and with the same value however it starts.
+    from policyengine_core.country_template.entities import Person
+    from policyengine_core.periods import YEAR
+    from policyengine_core.variables import Variable
+
+    class zigzag(Variable):
+        value_type = float
+        entity = Person
+        definition_period = YEAR
+        label = "Recursion heading back and forward in turn"
+        end = "2020-12-31"
+
+        def formula_2010(person, period):
+            lag = 1 if period.start.year % 2 == 0 else -2
+            return person("zigzag", period.offset(-lag, "year")) + 1
+
+    # Evaluated in full: 2021 has no formula and is 0, 2009 likewise.
+    expected = {2010: 1, 2011: 5, 2012: 6, 2013: 4, 2014: 5, 2015: 3}
+    expected.update({2016: 4, 2017: 2, 2018: 3, 2019: 1, 2020: 2})
+    for loops in (1, 2, 10):
+        for year, value in expected.items():
+            fresh, after = fresh_and_after(
+                [zigzag], {}, ("zigzag", year), [("zigzag", 2017)], loops
+            )
+            assert fresh == after == [float(value)]
+
+
+def test_copy_made_in_a_formula_ends_its_recursion():
+    # A formula that makes a copy of the simulation and calculates on it
+    # makes a new copy each time the calculation starts again, so the copy's
+    # deeper periods are never finished first: its recursion is cut, as
+    # before, instead of starting again for ever.
+    from policyengine_core.country_template.entities import Person
+    from policyengine_core.periods import YEAR
+    from policyengine_core.variables import Variable
+
+    class on_copy(Variable):
+        value_type = float
+        entity = Person
+        definition_period = YEAR
+        label = "Calculates recursive on a new copy of the simulation"
+
+        def formula(person, period):
+            return person.simulation.clone().calculate("recursive", period)
+
+    simulation = build([counting_up(), on_copy], {}, 1)
+    assert run(simulation, "on_copy", 2015) == [1.0]
+    # On the copy itself, outside a calculation, it is evaluated in full.
+    copy = simulation.clone()
+    assert run(copy, "recursive", 2015) == [6.0]
 
 
 def test_spiral_in_a_branch_is_purged_from_the_branch():
@@ -273,3 +322,348 @@ def test_branch_spiral_does_not_purge_the_parent():
     assert run(branch, "recursive", 2021) == [10.0]
     assert run(simulation, "recursive", 2016) == [101.0]
     assert simulation.get_array("recursive", "2015").tolist() == [100.0]
+
+
+# Round-2 review regressions. Each case compares a calculation with the same
+# calculation in a new simulation, or with the full evaluation of an anchored
+# chain, which is what a new simulation returns.
+
+
+def reads(name, target, lag=0):
+    """A yearly variable equal to ``target`` ``lag`` years earlier."""
+    from policyengine_core.country_template.entities import Person
+    from policyengine_core.periods import YEAR
+    from policyengine_core.variables import Variable
+
+    def formula(person, period):
+        return person(target, period.offset(-lag, "year"))
+
+    return type(
+        name,
+        (Variable,),
+        dict(
+            value_type=float,
+            entity=Person,
+            definition_period=YEAR,
+            label=f"Reads {target}",
+            formula=formula,
+        ),
+    )
+
+
+@pytest.mark.parametrize("traced", [False, True])
+def test_cut_in_the_parent_keeps_a_branch_input_under_the_same_name(traced):
+    # A branch of a branch can be named "default", like the simulation it
+    # descends from. A cut in the simulation's calculation used to delete the
+    # simulation's branch-name key from every descendant, and with it this
+    # branch's own input.
+    simulation = build(
+        [counting_up(start=None), reads("wrapper", "recursive")], max_spiral_loops=1
+    )
+    simulation.trace = traced
+    branch = simulation.get_branch("one").get_branch("default")
+    branch.set_input("wrapper", "2021", [100])
+    assert run(simulation, "wrapper", 2021) == [1.0]
+    assert branch.get_array("wrapper", "2021").tolist() == [100.0]
+    assert run(branch, "wrapper", 2021) == [100.0]
+
+
+@pytest.mark.parametrize("traced", [False, True])
+def test_cut_keeps_an_input_set_on_a_branch_during_the_calculation(traced):
+    from policyengine_core.country_template.entities import Person
+    from policyengine_core.periods import YEAR
+    from policyengine_core.variables import Variable
+
+    class via(Variable):
+        value_type = float
+        entity = Person
+        definition_period = YEAR
+        label = "Sets an input on a branch, then reads a cut recursion there"
+
+        def formula(person, period):
+            branch = person.simulation.get_branch("one").get_branch("default")
+            branch.set_input("via", period, [100])
+            return branch.calculate("recursive", period)
+
+    simulation = build([counting_up(start=None), via], max_spiral_loops=1)
+    simulation.trace = traced
+    assert run(simulation, "via", 2021) == [1.0]
+    branch = simulation.branches["one"].branches["default"]
+    assert branch.get_array("via", "2021").tolist() == [100.0]
+    assert run(branch, "via", 2021) == [100.0]
+
+
+def catching(name, handler):
+    """A dated recursion whose formula reads last year inside a bare except."""
+    from policyengine_core.country_template.entities import Person
+    from policyengine_core.periods import YEAR
+    from policyengine_core.variables import Variable
+
+    def formula_2010(person, period):
+        try:
+            return person(name, period.last_year) + 1
+        except:  # noqa: E722 - the case under test
+            return handler(person, period)
+
+    return type(
+        name,
+        (Variable,),
+        dict(
+            value_type=float,
+            entity=Person,
+            definition_period=YEAR,
+            label="Recursion inside a bare except",
+            formula_2010=formula_2010,
+        ),
+    )
+
+
+def _fallback(person, period):
+    return person.filled_array(-1000.0)
+
+
+def _reraise(person, period):
+    raise ValueError("the formula turned the exception into its own")
+
+
+def _fallback_calculation(person, period):
+    return person("plain", period) - 1000
+
+
+@pytest.mark.parametrize("handler", [_fallback, _reraise, _fallback_calculation])
+@pytest.mark.parametrize("prior", [[], [2011], [2010, 2011]])
+def test_bare_except_in_a_formula_does_not_swallow_the_deeper_period(handler, prior):
+    # The chain is anchored (2009 has no formula), so 2012 is 3 whatever was
+    # calculated before. A bare except used to catch the request to finish
+    # the deeper period first and cache its fallback.
+    variables = [catching("catches_all", handler), make_recurrence("plain", [])]
+    fresh, after = fresh_and_after(
+        variables,
+        {},
+        ("catches_all", 2012),
+        [("catches_all", year) for year in prior],
+        loops=1,
+    )
+    assert fresh == after == [3.0]
+
+
+def requires_caller():
+    from policyengine_core.country_template.entities import Person
+    from policyengine_core.periods import YEAR
+    from policyengine_core.variables import Variable
+
+    class caller(Variable):
+        value_type = float
+        entity = Person
+        definition_period = YEAR
+        label = "Calls dependent"
+
+        def formula(person, period):
+            return person("dependent", period)
+
+    class dependent(Variable):
+        value_type = float
+        entity = Person
+        definition_period = YEAR
+        label = "Requires caller to be requested first"
+        requires_computation_after = "caller"
+
+        def formula_2010(person, period):
+            return person("dependent", period.last_year) + 1
+
+    return [caller, dependent]
+
+
+@pytest.mark.parametrize(
+    "loops, year, prior, expected",
+    [
+        (1, 2012, [], 3.0),
+        (1, 2012, [2011], 3.0),
+        (None, 2021, [], 12.0),
+        (None, 2021, [2015], 12.0),
+    ],
+)
+def test_deeper_periods_keep_the_caller_requires_computation_after_needs(
+    loops, year, prior, expected
+):
+    # dependent may only be calculated while caller is: the deeper periods
+    # finished first used to run with an empty stack, and raised ValueError.
+    fresh, after = fresh_and_after(
+        requires_caller(),
+        {},
+        ("caller", year),
+        [("caller", earlier) for earlier in prior],
+        loops,
+    )
+    assert fresh == after == [expected]
+
+
+def test_requires_computation_after_still_refuses_a_direct_request():
+    assert run(build(requires_caller()), "dependent", 2012) == ValueError.__name__
+
+
+def copying(copies, branch=False):
+    """A variable that reads recursive, then copies the simulation."""
+    from policyengine_core.country_template.entities import Person
+    from policyengine_core.periods import YEAR
+    from policyengine_core.variables import Variable
+
+    def formula(person, period):
+        value = person("recursive", period)
+        simulation = person.simulation
+        if branch:
+            copies.append(simulation.get_branch(f"late{len(copies)}"))
+        else:
+            copies.append(simulation.clone())
+        return value
+
+    return type(
+        "copy_after_cut",
+        (Variable,),
+        dict(
+            value_type=float,
+            entity=Person,
+            definition_period=YEAR,
+            label="Copies the simulation after a cut",
+            formula=formula,
+        ),
+    )
+
+
+@pytest.mark.parametrize("branch", [False, True])
+@pytest.mark.parametrize("loops", [1, None])
+@pytest.mark.parametrize("year", [2015, 2021, 2022])
+def test_copy_made_during_a_cut_does_not_keep_the_cut_values(branch, loops, year):
+    # The copy is made while the cut recursion's values are cached and
+    # waiting to be purged; it used to keep them, so its later results
+    # depended on the cut.
+    copies = []
+    simulation = build([counting_up(start=None), copying(copies, branch)], {}, loops)
+    run(simulation, "copy_after_cut", 2021)
+    copy = copies[0]
+    name = copy.branch_name
+    assert stored_years(copy, "recursive", "default") == []
+    fresh = build([counting_up(start=None)], {}, loops)
+    if branch:
+        fresh = fresh.get_branch(name)
+    assert run(copy, "recursive", year) == run(fresh, "recursive", year)
+
+
+@pytest.mark.parametrize("loops", [1, 2, 10])
+@pytest.mark.parametrize("end", [2012, 2020])
+@pytest.mark.parametrize("carry", [False, True])
+def test_forward_anchor_does_not_read_carried_calculations(carry, end, loops):
+    # forward(t) = forward(t + 1) + 1 until its end; 2008 and 2009 are 7.
+    # Only inputs carry over, so the year after the end is 0 whatever was
+    # calculated before.
+    from policyengine_core.country_template.entities import Person
+    from policyengine_core.periods import YEAR
+    from policyengine_core.variables import Variable
+
+    class forward(Variable):
+        value_type = float
+        entity = Person
+        definition_period = YEAR
+        label = "Forward recursion with an earlier constant formula"
+
+        def formula_2008(person, period):
+            return person.filled_array(7)
+
+        def formula_2010(person, period):
+            return person("forward", period.offset(1, "year")) + 1
+
+    forward.end = f"{end}-12-31"
+
+    def new():
+        simulation = build([forward], {}, loops)
+        simulation.tax_benefit_system.auto_carry_over_input_variables = carry
+        return simulation
+
+    fresh, used = new(), new()
+    run(used, "forward", 2008)
+    assert run(fresh, "forward", 2010) == run(used, "forward", 2010)
+    assert run(fresh, "forward", 2010) == [end - 2010 + 1.0]
+
+
+@pytest.mark.parametrize("loops, year", [(1, 2011), (None, 2021)])
+def test_traced_deeper_periods_serialize_the_completed_calculation(loops, year):
+    # The first attempt at the request is abandoned when it reaches the
+    # limit; its trace nodes have no value. The flat trace used to keep them.
+    simulation = build([counting_up()], {}, loops)
+    simulation.trace = True
+    expected = [year - 2009.0]
+    assert run(simulation, "recursive", year) == expected
+    trace = simulation.tracer.get_serialized_flat_trace()
+    for earlier in range(2010, year + 1):
+        node = trace[f"recursive<{earlier}, (default)>"]
+        assert node["value"] == [earlier - 2009.0]
+    assert trace[f"recursive<{year}, (default)>"]["dependencies"] == [
+        f"recursive<{year - 1}, (default)>"
+    ]
+    assert simulation.tracer.stack == []
+
+
+def without_storage(simulation, method):
+    if method == "drop":
+        simulation.get_holder("recursive")._do_not_store = True
+    elif method == "blacklist":
+        simulation.opt_out_cache = True
+        simulation.tax_benefit_system.cache_blacklist = {"recursive"}
+
+
+@pytest.mark.parametrize("traced", [False, True])
+@pytest.mark.parametrize("method", ["drop", "blacklist"])
+@pytest.mark.parametrize(
+    "start, loops, year, prior, expected",
+    [
+        # Anchored: evaluated in full, whatever the storage or tracing.
+        (2010, 1, 2012, [], 3.0),
+        (2010, 1, 2012, [2011], 3.0),
+        (2010, None, 2021, [], 12.0),
+        (2010, None, 2021, [2015], 12.0),
+        # Not anchored: cut at the limit; nothing calculated from the cut is
+        # reused afterwards, even untraced from the fast cache.
+        (None, 1, 2012, [], 1.0),
+        (None, 1, 2012, [2011], 1.0),
+        (None, None, 2021, [], 10.0),
+        (None, None, 2021, [2020], 10.0),
+    ],
+)
+def test_deeper_periods_do_not_depend_on_storage_or_tracing(
+    traced, method, start, loops, year, prior, expected
+):
+    def new():
+        simulation = build([counting_up(start)], {}, loops)
+        simulation.trace = traced
+        without_storage(simulation, method)
+        return simulation
+
+    fresh, used = new(), new()
+    for earlier in prior:
+        run(used, "recursive", earlier)
+    assert run(fresh, "recursive", year) == [expected]
+    assert run(used, "recursive", year) == [expected]
+
+
+def test_long_anchored_recursion_is_evaluated_in_full_however_long():
+    # 10,002 monthly formula periods at max_spiral_loops 1: past what a
+    # budget of 10,000 deeper periods allowed, after which the chain was
+    # cut, or not, depending on what was cached.
+    from policyengine_core.country_template.entities import Person
+    from policyengine_core.periods import MONTH
+    from policyengine_core.variables import Variable
+
+    class monthly(Variable):
+        value_type = float
+        entity = Person
+        definition_period = MONTH
+        label = "Dated monthly backward recurrence"
+
+        def formula_2010(person, period):
+            return person("monthly", period.offset(-1, "month")) + 1
+
+    fresh = build([monthly], {}, 1)
+    warm = build([monthly], {}, 1)
+    assert warm.calculate("monthly", "2010-01").tolist() == [1.0]
+    assert fresh.calculate("monthly", "2843-06").tolist() == [10002.0]
+    assert warm.calculate("monthly", "2843-06").tolist() == [10002.0]

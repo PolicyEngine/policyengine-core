@@ -88,3 +88,27 @@ def test_to_marginal():
         [0.1, 0.25, 0.4, 0.5],
         absolute_error_margin=1e-10,
     )
+
+
+@pytest.mark.parametrize("rate", [0, 0.37])
+def test_to_marginal_of_a_single_bracket(rate):
+    # One bracket used to raise UnboundLocalError: the top rate was read from
+    # a loop variable that only the second and later brackets set.
+    tax_base = numpy.array([0, 1, 1.5, 1_000])
+    tax_scale = taxscales.LinearAverageRateTaxScale()
+    tax_scale.add_bracket(0, rate)
+
+    result = tax_scale.to_marginal()
+
+    assert result.thresholds == [0]
+    assert result.rates == [rate]
+    tools.assert_near(
+        result.calc(tax_base), tax_scale.calc(tax_base), absolute_error_margin=1e-10
+    )
+
+
+def test_to_marginal_of_no_brackets():
+    result = taxscales.LinearAverageRateTaxScale().to_marginal()
+
+    assert result.thresholds == []
+    assert result.rates == []

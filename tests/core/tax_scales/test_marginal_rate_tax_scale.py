@@ -222,6 +222,20 @@ def test_to_average():
     )
 
 
+@pytest.mark.parametrize("rate", [0, 0.37])
+def test_to_average_of_a_single_bracket(rate):
+    # One bracket used to raise UnboundLocalError: the top rate was read from
+    # a loop variable that only the second and later brackets set.
+    tax_scale = taxscales.MarginalRateTaxScale()
+    tax_scale.add_bracket(0, rate)
+
+    result = tax_scale.to_average()
+
+    assert result.thresholds == [0, numpy.inf]
+    assert result.rates == [0, rate]
+    assert result.to_marginal().rates == [rate]
+
+
 def test_rate_from_bracket_indice():
     tax_base = numpy.array([0, 1_000, 1_500, 50_000])
     tax_scale = taxscales.MarginalRateTaxScale()

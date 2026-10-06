@@ -1,6 +1,7 @@
 import os
 import shutil
 import tempfile
+import warnings
 import weakref
 
 import numpy
@@ -11,6 +12,7 @@ from policyengine_core.data_storage.storage_directory import (
     directory_containing,
     path_key,
 )
+from policyengine_core.data_storage.storage_keys import check_storable
 from policyengine_core.enums import EnumArray
 from policyengine_core.periods import Period
 
@@ -57,6 +59,19 @@ def _split_key(key: str) -> tuple:
     """
     branch_name, period = key.rsplit("_", 1)
     return branch_name, period
+
+
+def _is_key(key: str) -> bool:
+    """Whether ``key`` is one ``put`` writes: ``f"{branch_name}_{period}"``,
+    with the period in its string form, so that it splits back into the
+    branch name and the period it was written for."""
+    _, separator, period = key.rpartition("_")
+    if not separator:
+        return False
+    try:
+        return str(periods.period(period)) == period
+    except ValueError:
+        return False
 
 
 def _is_within(key: str, branch_name: str, period: Period) -> bool:
@@ -295,6 +310,11 @@ class OnDiskStorage:
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
+        # The key must split back into this branch name and period (see
+        # ``get_known_branch_periods`` and ``delete``): reject what
+        # ``InMemoryStorage.put`` rejects. A month anchored mid-month, say,
+        # would be stored under the key of the calendar month.
+        check_storable(branch_name, period)
 
         filename = f"{branch_name}_{period}"
         path = self._path_to_write(filename)
@@ -388,6 +408,10 @@ class OnDiskStorage:
         """Read back the values stored in this storage's directory: for each
         key, the file named for it (not those in ``REPLACEMENTS_DIR``).
 
+        A ``.npy`` file whose name is not a key ``put`` writes (a branch
+        name, ``_`` and a period in its string form) holds no value of this
+        storage: it is left out, with a warning.
+
         This storage writes over those files, as over those it wrote, until
         it is cloned or copied, or this process forks: from then on it writes
         a new file instead, since the clone, copy or forked process reads
@@ -399,14 +423,28 @@ class OnDiskStorage:
         self._files = files = {}
         # Files read back from a directory carry no derived marks.
         self._derived = set()
+        not_keys = []
         # Restore self._files from content of storage_dir.
         for filename in os.listdir(self.storage_dir):
             if not filename.endswith(".npy"):
                 continue
             path = os.path.join(self.storage_dir, filename)
             filename_core = filename.rsplit(".", 1)[0]
+            if not _is_key(filename_core):
+                # Reading it back would put a key in ``_files`` that names no
+                # branch and period, which ``delete`` and
+                # ``get_known_periods`` could not parse.
+                not_keys.append(filename)
+                continue
             files[filename_core] = path
         self._restored_paths.update(files.values())
+        if not_keys:
+            warnings.warn(
+                f"Not restoring {', '.join(sorted(not_keys))} in "
+                f"{self.storage_dir}: a stored value's file is named for a "
+                "branch name, '_' and a period.",
+                stacklevel=2,
+            )
 
     def __del__(self, _rmtree=shutil.rmtree, _getpid=os.getpid) -> None:
         # (The defaults keep the two functions reachable while the

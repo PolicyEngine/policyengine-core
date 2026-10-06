@@ -4,6 +4,7 @@ import numpy
 from numpy.typing import ArrayLike
 
 from policyengine_core import periods
+from policyengine_core.data_storage.storage_keys import check_storable
 from policyengine_core.periods import Period
 
 
@@ -266,20 +267,8 @@ class InMemoryStorage:
         period = periods.period(period)
 
         # Keys embed f"{branch_name}:{period}", so reject inputs whose key
-        # would be ambiguous to parse back: branch names containing the
-        # separator, and month/year periods anchored mid-month (their string
-        # form drops the day). See policyengine-core#526 for the structured-
-        # key refactor that will lift these restrictions.
-        if ":" in branch_name:
-            raise ValueError(
-                f"Branch name {branch_name!r} may not contain ':' "
-                "(see policyengine-core#526)."
-            )
-        if period.unit in (periods.YEAR, periods.MONTH) and period.start.day != 1:
-            raise ValueError(
-                f"Cannot cache period {period} anchored mid-month: its "
-                "string form is lossy (see policyengine-core#526)."
-            )
+        # would be ambiguous to parse back, as ``OnDiskStorage.put`` does.
+        check_storable(branch_name, period)
         key = f"{branch_name}:{period}"
         self._arrays[key] = value
         self._stop_sharing(key)

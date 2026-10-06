@@ -490,3 +490,18 @@ def test_restored_branch_dump_calculates_what_the_branch_calculates(system):
     assert only(restored.calculate("uprated_income", 2021)) == pytest.approx(
         3_000 * growth(2019, 2021)
     )
+
+
+def test_restore_simulation_leaves_out_files_that_are_not_values(system, tmp_path):
+    simulation = new_simulation(system)
+    simulation.set_input("uprated_income", 2016, [1_000.0])
+    directory = str(tmp_path / "dump")
+    simulation_dumper.dump_simulation(simulation, directory)
+    np.save(os.path.join(directory, "uprated_income", "stray.npy"), np.array([9.0]))
+
+    with pytest.warns(UserWarning, match="stray.npy"):
+        restored = simulation_dumper.restore_simulation(directory, system)
+
+    holder = restored.get_holder("uprated_income")
+    assert holder.get_known_periods() == [periods.period(2016)]
+    assert only(holder.get_array(2016)) == 1_000

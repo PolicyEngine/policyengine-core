@@ -316,3 +316,127 @@ def test_holder_delete_arrays_deletes_the_months_of_a_year(on_disk):
     holder.delete_arrays("2025", "default")
 
     assert holder.get_known_periods() == [periods.period("2026-01")]
+
+
+# ----- Keys no storage can hold (#565 review, finding 1) ----------------------
+
+# A year or month anchored mid-month has a string form that drops the day
+# (``month:2025-03-15`` is ``2025-03``), and ``:`` separates the parts of an
+# in-memory key. In-memory storage rejected both (policyengine-core#526); disk
+# storage stored a mid-month month under the calendar month's key, so reading
+# the calendar month returned it, and deleting the period it was put for,
+# which does not contain that calendar month, left it.
+UNSTORABLE_KEYS = [
+    ("default", periods.Period((periods.MONTH, periods.Instant((2025, 3, 15)), 1))),
+    ("default", periods.Period((periods.MONTH, periods.Instant((2025, 3, 2)), 2))),
+    ("default", periods.Period((periods.YEAR, periods.Instant((2025, 3, 15)), 1))),
+    ("no_salt", periods.Period((periods.YEAR, periods.Instant((2025, 1, 2)), 2))),
+    ("my:reform", periods.period(2025)),
+]
+
+
+@pytest.mark.parametrize("backend", BACKENDS)
+@pytest.mark.parametrize(
+    "branch_name, period",
+    UNSTORABLE_KEYS,
+    ids=[
+        f"{branch}-{period.unit}-{period.start}" for branch, period in UNSTORABLE_KEYS
+    ],
+)
+def test_put_rejects_keys_no_storage_can_hold(
+    make_storage, backend, branch_name, period
+):
+    storage = make_storage(backend)
+    put_all(storage, [("default", "2025-03")])
+
+    with pytest.raises(ValueError, match="policyengine-core#526"):
+        storage.put(np.array([9.0]), period, branch_name)
+
+    assert known(storage) == [("default", "2025-03")]
+    np.testing.assert_array_equal(storage.get("2025-03", "default"), [0.0])
+
+
+@pytest.mark.parametrize("on_disk", [False, True], ids=["memory", "disk"])
+def test_mid_month_input_is_rejected_whichever_storage_it_goes_to(on_disk):
+    # The review's reproduction: on disk, this input was accepted, then
+    # ``delete_arrays`` of its own period left it ([500.] instead of None).
+    simulation = simulation_with_rent(on_disk)
+    holder = simulation.get_holder("rent")
+
+    with pytest.raises(ValueError, match="anchored mid-month"):
+        simulation.set_input("rent", "month:2025-03-15", [500.0])
+    simulation.delete_arrays("rent", "month:2025-03-15")
+
+    assert holder.get_array("month:2025-03-15") is None
+    assert holder.get_array("2025-03") is None
+    assert sorted(map(str, holder.get_known_periods())) == [
+        "2025-01",
+        "2025-02",
+        "2026-01",
+    ]
+
+
+# ----- Files restored from a directory (#565 review, finding 2) ---------------
+
+# ``restore`` read back every ``.npy`` file in the directory. One whose name
+# is not a key ``put`` writes (no ``_``, no period after the last ``_``, or a
+# period not in its string form) names no value, and deleting any period of
+# any branch then raised parsing it, leaving the value it was to delete.
+# Names without ``:``, which Windows file names cannot hold.
+NOT_KEYS = [
+    "stray.npy",
+    "default_garbage.npy",
+    "default_.npy",
+    "_.npy",
+    "default_2025-3.npy",
+    "default_2025-03-1.npy",
+]
+if os.name != "nt":
+    NOT_KEYS += ["default_month:2025-01:12.npy", "no_salt_year:2025:1.npy"]
+
+
+def test_restore_leaves_out_files_that_are_not_keys(tmp_path):
+    storage = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
+    put_all(storage, [("default", "2025-01"), ("no_salt", "2025-02")])
+    for name in NOT_KEYS:
+        np.save(str(tmp_path / name), np.array([9.0]))
+
+    restored = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
+    with pytest.warns(UserWarning, match="Not restoring") as caught:
+        restored.restore()
+
+    assert known(restored) == [("default", "2025-01"), ("no_salt", "2025-02")]
+    (warning,) = caught
+    for name in NOT_KEYS:
+        assert name in str(warning.message)
+
+    # Deleting works as before the files were added.
+    restored.delete(periods.period(2025), "default")
+    assert restored.get("2025-01", "default") is None
+    assert known(restored) == [("no_salt", "2025-02")]
+    restored.delete(None, "no_salt")
+    assert known(restored) == []
+
+
+def test_restore_reads_back_every_key_without_warning(tmp_path):
+    keys = [
+        ("default", "2025"),
+        ("no_salt", "2025-03"),
+        ("y_2019", "2025-03-05"),
+        ("trailing_", "ETERNITY"),
+    ]
+    if os.name != "nt":
+        keys += [("pre_tcja", "year:2025-03"), ("default", "month:2025-01:3")]
+    storage = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
+    put_all(storage, keys)
+
+    restored = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        restored.restore()
+
+    assert known(restored) == known(storage)
+    for branch_name, period in keys:
+        np.testing.assert_array_equal(
+            restored.get(period, branch_name), storage.get(period, branch_name)
+        )

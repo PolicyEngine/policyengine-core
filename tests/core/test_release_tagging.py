@@ -176,3 +176,7 @@ def test_publish_workflow_publishes_only_after_tests_pass():
     # A job that needs Test is skipped whenever Test is, so both must run on
     # the same commits for releases to happen at all.
     assert jobs["Publish"]["if"] == jobs["Test"]["if"]
+    # A status function such as always() would let Publish run after a
+    # failed Test; without one, Publish runs only when Test succeeds.
+    for function in ("always()", "failure()", "cancelled()", "success()"):
+        assert function not in jobs["Publish"]["if"]

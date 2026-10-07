@@ -56,7 +56,6 @@ from tests.fixtures.data_storage_dir import (
     STORE_ON_DISK,
     VARIABLES,
     Level,
-    clone,
     disk_simulation,
     read,
     storage_folders,
@@ -159,7 +158,7 @@ def test_a_clone_outliving_its_source_reads_every_value_on_disk():
     source = disk_simulation()
     stored = _fill(source)
     folder = source.data_storage_dir
-    cloned = clone(source)
+    cloned = source.clone()
 
     del source
     gc.collect()
@@ -177,7 +176,7 @@ def test_a_clone_of_a_branch_outliving_both_reads_every_value_on_disk():
     branch = source.get_branch("measurement")
     branch_stored = {"disk_amount": values("disk_amount", 7)}
     branch.set_input("disk_amount", "2016", branch_stored["disk_amount"])
-    cloned = clone(branch)
+    cloned = branch.clone()
     folder = source.data_storage_dir
     # The branch stored its value through the disk storage it copied, in the
     # source's folder: it made none of its own.
@@ -719,7 +718,7 @@ def test_a_clone_of_a_simulation_given_another_simulations_folder_reads_its_valu
     given = disk_simulation(folder)
     # Cloned before it made any holder, so the clone makes a folder of its
     # own in the given one, owned by the clone.
-    nested = clone(given)
+    nested = given.clone()
     stored = {"disk_amount": values("disk_amount", 5)}
     nested.set_input("disk_amount", "2015", stored["disk_amount"])
     assert Path(nested.data_storage_dir).parent.resolve() == Path(folder).resolve()
@@ -746,7 +745,7 @@ def test_a_disk_storage_preserving_its_folder_in_a_folder_made_in_another_simula
     order,
 ):
     first, folder = _first_folder(True)
-    nested = clone(disk_simulation(folder))
+    nested = disk_simulation(folder).clone()
     stored = values("disk_amount", 6)
     nested.set_input("disk_amount", "2015", stored)
     storage = nested.persons._holders["disk_amount"]._disk_storage
@@ -776,7 +775,7 @@ def test_a_simulation_given_another_simulations_folder_stores_in_it_after_that_o
 ):
     first, folder = _first_folder(first_stored)
     given = disk_simulation(folder)
-    storer = given if storing == "given" else clone(given)
+    storer = given if storing == "given" else given.clone()
     del given
 
     del first

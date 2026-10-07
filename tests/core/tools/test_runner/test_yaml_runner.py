@@ -19,6 +19,11 @@ from policyengine_core.variables import Variable
 
 
 class TaxBenefitSystem:
+    result_cache_token = (0,)
+
+    def clear_parameter_caches(self):
+        """This runner stub has no dated parameter views."""
+
     def __init__(self):
         salary = TestVariable()
         salary.name = "salary"

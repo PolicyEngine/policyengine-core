@@ -114,6 +114,7 @@ class TaxBenefitSystem:
         # TODO: Currently: Don't use a weakref, because they are cleared by Paste (at least) at each call.
         self.replace_parameters(None)
         self.variables: Dict[Any, Any] = {}
+        self._variables_revision = 0
         # Tax benefit systems are mutable, so entities (which need to know about our variables) can't be shared among them
         if entities is None or len(entities) == 0:
             raise Exception("A tax and benefit sytem must have at least an entity.")
@@ -159,9 +160,8 @@ class TaxBenefitSystem:
             return
         if not isinstance(value, typing.Mapping):
             raise TypeError("_parameters_at_instant_cache must be a mapping")
-        revision = (
-            self.parameters.parameter_revision if self.parameters is not None else 0
-        )
+        parameters = getattr(self, "parameters", None)
+        revision = parameters.parameter_revision if parameters is not None else 0
         cache = ParameterAtInstantCache(revision=revision)
         for instant_key, dated_node in value.items():
             if isinstance(dated_node, TracingParameterNodeAtInstant):
@@ -172,7 +172,7 @@ class TaxBenefitSystem:
     def clear_parameter_caches(self) -> None:
         """Clear all dated parameter views owned by this policy system."""
 
-        self._parameters_at_instant_cache.clear()
+        self._parameters_at_instant_cache_store.clear()
         parameters = getattr(self, "parameters", None)
         if parameters is not None:
             parameters.clear_at_instant_caches(recursive=True)
@@ -184,7 +184,38 @@ class TaxBenefitSystem:
             raise TypeError("parameters must be a ParameterNode or None")
         self.parameters = parameters
         revision = parameters.parameter_revision if parameters is not None else 0
-        self._parameters_at_instant_cache = ParameterAtInstantCache(revision=revision)
+        self._parameters_at_instant_cache_store = ParameterAtInstantCache(
+            revision=revision
+        )
+
+    @property
+    def result_cache_token(self) -> tuple[int, int, int, int]:
+        """Constant-size identity for simulation results under supported policy writes.
+
+        Raw mutations of a shared variables dictionary are not supported. Country
+        packages deliberately sharing such dictionaries must explicitly rebind
+        and invalidate every affected simulation after changing that registry.
+        """
+        # Observe Core-owned state, not a country's `parameters` accessor:
+        # reading that accessor may deliberately detach a shared tree during
+        # reform application. The bound revision object identifies the tree.
+        cache = self._parameters_at_instant_cache_store
+        revision = cache.revision_source
+        # Preparatory-release compatibility: ordinary old country classes may
+        # still assign a root directly. Inspect an instance field without
+        # invoking a descriptor; migrated descriptors use install/share APIs.
+        if "parameters" in self.__dict__:
+            parameters = self.__dict__["parameters"]
+            if parameters is not None:
+                revision = parameters.parameter_revision
+            else:
+                revision = None
+        return (
+            id(self.variables),
+            getattr(self, "_variables_revision", 0),
+            id(revision),
+            revision.current if revision is not None else 0,
+        )
 
     def share_parameters_from(self, other: "TaxBenefitSystem") -> None:
         """Deliberately share a parameter tree and its tracer-neutral cache."""
@@ -192,11 +223,13 @@ class TaxBenefitSystem:
         if not isinstance(other, TaxBenefitSystem):
             raise TypeError("other must be a TaxBenefitSystem")
         if other.parameters is not None:
-            other._parameters_at_instant_cache.bind_revision(
+            other._parameters_at_instant_cache_store.bind_revision(
                 other.parameters.parameter_revision
             )
         self.parameters = other.parameters
-        self._parameters_at_instant_cache = other._parameters_at_instant_cache
+        self._parameters_at_instant_cache_store = (
+            other._parameters_at_instant_cache_store
+        )
 
     def set_parameter_materializer(
         self,
@@ -207,7 +240,7 @@ class TaxBenefitSystem:
         if self.parameters is None:
             raise ValueError("the tax-benefit system has no parameter tree")
         self.parameters.set_parameter_materializer(materializer)
-        self._parameters_at_instant_cache.bind_revision(
+        self._parameters_at_instant_cache_store.bind_revision(
             self.parameters.parameter_revision
         )
 
@@ -289,6 +322,7 @@ class TaxBenefitSystem:
 
         variable = variable_class(baseline_variable=baseline_variable)
         self.variables[variable.name] = variable
+        self._variables_revision = getattr(self, "_variables_revision", 0) + 1
 
         return variable
 
@@ -564,6 +598,7 @@ class TaxBenefitSystem:
         self.variables[variable_name] = variables.get_neutralized_variable(
             self.get_variable(variable_name)
         )
+        self._variables_revision = getattr(self, "_variables_revision", 0) + 1
         self.data_modified = True
 
     def annualize_variable(
@@ -572,6 +607,7 @@ class TaxBenefitSystem:
         self.variables[variable_name] = variables.get_annualized_variable(
             self.get_variable(variable_name, period)
         )
+        self._variables_revision = getattr(self, "_variables_revision", 0) + 1
 
     def load_parameters(
         self,
@@ -626,10 +662,10 @@ class TaxBenefitSystem:
 
         if self.parameters is None:
             return None
-        self._parameters_at_instant_cache.bind_revision(
+        self._parameters_at_instant_cache_store.bind_revision(
             self.parameters.parameter_revision
         )
-        return self._parameters_at_instant_cache.get_or_create(
+        return self._parameters_at_instant_cache_store.get_or_create(
             instant,
             lambda: self.parameters.get_plain_at_instant(str(instant)),
         )
@@ -729,7 +765,7 @@ class TaxBenefitSystem:
                 new_dict[key] = value
 
         new_dict["parameters"] = self.parameters.clone()
-        new._parameters_at_instant_cache = ParameterAtInstantCache(
+        new._parameters_at_instant_cache_store = ParameterAtInstantCache(
             revision=new_dict["parameters"].parameter_revision
         )
         new_dict["variables"] = {
@@ -806,7 +842,7 @@ class TaxBenefitSystem:
             and previous_parameters.parameter_revision.current == previous_revision
         ):
             previous_parameters.parameter_revision.advance()
-        self._parameters_at_instant_cache = ParameterAtInstantCache(
+        self._parameters_at_instant_cache_store = ParameterAtInstantCache(
             revision=self.parameters.parameter_revision
         )
         return self

@@ -87,6 +87,7 @@ class OnDiskStorage:
         # File keys stored with ``put(..., derived=True)``; see
         # ``InMemoryStorage``.
         self._derived = set()
+        self._supplied = set()
         # For each key, the file this storage last wrote for it, while it has
         # not shared that file since: the only files of its family ``put``
         # writes over (see ``_path_to_write``). Kept when the key is deleted,
@@ -177,6 +178,7 @@ class OnDiskStorage:
         # A storage pickled before derived marks existed has none: its values
         # count as inputs.
         state["_derived"] = set(state.get("_derived", ()))
+        state["_supplied"] = set(state.get("_supplied", ()))
         # Nor did it record the files of its family.
         state["_family_files"] = set(
             state.get("_family_files", state["_files"].values())
@@ -221,6 +223,7 @@ class OnDiskStorage:
         clone._files = self._files.copy()
         clone._enums = self._enums.copy()
         clone._derived = set(self._derived)
+        clone._supplied = set(self._supplied)
         # One set of read-back paths for the family, so a clone made before
         # ``restore`` still writes over none of them after a fork.
         clone._restored_paths = self._restored_paths
@@ -273,7 +276,11 @@ class OnDiskStorage:
         period: Period,
         branch_name: str = "default",
         derived: bool = False,
+        *,
+        supplied: bool = False,
     ) -> None:
+        if supplied and derived:
+            raise ValueError("A supplied input cannot also be a derived result")
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
@@ -291,6 +298,25 @@ class OnDiskStorage:
             self._derived.add(filename)
         else:
             self._derived.discard(filename)
+        if supplied:
+            self._supplied.add(filename)
+        else:
+            self._supplied.discard(filename)
+
+    def is_supplied(self, period: Period, branch_name: str = "default") -> bool:
+        """Whether this exact file reference belongs to a supplied input."""
+        if self.is_eternal:
+            period = periods.period(periods.ETERNITY)
+        key = f"{branch_name}_{periods.period(period)}"
+        return key in self._supplied and key in self._files
+
+    def retain_supplied_inputs(self) -> None:
+        """Drop calculated file references without reading retained inputs."""
+        self._files = {
+            key: self._files[key] for key in self._supplied if key in self._files
+        }
+        self._supplied.intersection_update(self._files)
+        self._derived.intersection_update(self._files)
 
     def _path_to_write(self, filename: str) -> str:
         """The path ``put`` writes the value for key ``filename`` to.
@@ -331,13 +357,13 @@ class OnDiskStorage:
             # Only wipe files belonging to the requested branch (previously
             # this wiped every branch regardless of ``branch_name`` — same
             # class of bug as C2 in InMemoryStorage).
-            branch_prefix = f"{branch_name}_"
             self._files = {
                 period_item: value
                 for period_item, value in self._files.items()
-                if not period_item.startswith(branch_prefix)
+                if period_item.rsplit("_", 1)[0] != branch_name
             }
             self._derived.intersection_update(self._files)
+            self._supplied.intersection_update(self._files)
             return
 
         if self.is_eternal:
@@ -348,17 +374,30 @@ class OnDiskStorage:
             self._files = {
                 period_item: value
                 for period_item, value in self._files.items()
-                if not period_item == f"{branch_name}_{period}"
+                if not (
+                    period_item.rsplit("_", 1)[0] == branch_name
+                    and period.contains(periods.period(period_item.rsplit("_", 1)[1]))
+                )
             }
             self._derived.intersection_update(self._files)
+            self._supplied.intersection_update(self._files)
 
     def get_known_periods(self) -> list:
-        return list([periods.period(x.split("_")[1]) for x in self._files.keys()])
+        return [periods.period(x.rsplit("_", 1)[1]) for x in self._files]
+
+    def discard(self, period: Period, branch_name: str = "default") -> None:
+        """Remove one exact file reference without deleting contained periods."""
+        if self.is_eternal:
+            period = periods.period(periods.ETERNITY)
+        key = f"{branch_name}_{periods.period(period)}"
+        self._files.pop(key, None)
+        self._derived.discard(key)
+        self._supplied.discard(key)
 
     def get_known_branch_periods(self) -> list:
         return [
             (branch_name, periods.period(period))
-            for branch_name, period in map(lambda x: x.split("_"), self._files.keys())
+            for branch_name, period in map(lambda x: x.rsplit("_", 1), self._files)
         ]
 
     def restore(self) -> None:
@@ -376,6 +415,7 @@ class OnDiskStorage:
         self._files = files = {}
         # Files read back from a directory carry no derived marks.
         self._derived = set()
+        self._supplied = set()
         # Restore self._files from content of storage_dir.
         for filename in os.listdir(self.storage_dir):
             if not filename.endswith(".npy"):

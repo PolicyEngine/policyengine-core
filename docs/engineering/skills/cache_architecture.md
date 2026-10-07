@@ -31,12 +31,13 @@ idempotent, and operations after closure fail explicitly.
 | C: parameter at date | A parameter node or tax-benefit system policy state | A policy revision and instant to an ordinary parameter-at-date view | Cached values contain no tracer. Lazy materialization is the default. Lazy views bind to one revision and reject access after mutation; callers may explicitly select eager snapshots. |
 | D: simulation input and result | One simulation, including its branch-local index | Variable, period, and branch to an immutable array entry; it also owns supplied-input provenance | Input or policy mutation conservatively removes every derived result. Branches may share immutable entries but never indexes or writable arrays. |
 | E: YAML case execution reuse | One YAML case execution | Not a key/value cache; it controls how a case borrows a Type B system | Every case receives a new simulation and releases it after success or failure. Results must equal fully uncached execution and must not depend on case order. |
+| F: persistent macro results | Per-call helper over dataset-folder files that outlive a simulation | Dataset name, variable, period, and branch filename; arrays plus Core/country version metadata | Existing identity is incomplete for arbitrary policies or changed datasets. Redesign and general reuse are deferred beyond Phases 1–6. |
 
 Trace state is not a cache type. It belongs to the active calculation. A
 parameter cache may provide an ordinary view to a short-lived tracing adapter,
 but it must never retain that adapter.
 
-`SimulationMacroCache` is a separate persistent feature. Its current identity
+Type F (`SimulationMacroCache`) is a separate persistent feature. Its current identity
 is not a general content identity for arbitrary policy results. Keep it
 disabled or narrowly scoped unless dataset contents, policy, configuration,
 extensions, schema, and serialization identity are complete. Redesigning it
@@ -111,15 +112,74 @@ independent revisions and caches.
 
 ## Type D requirements
 
-- Supplied inputs and calculated values have explicit, separate provenance.
-- All mutation paths use one conservative invalidation operation.
-- Invalidation preserves supplied inputs and removes derived values from fast
-  lookup, holder memory, and disk storage together.
+- Supplied inputs are authoritative simulation state, not evictable results.
+  Each memory or disk storage owns its supplied-input metadata alongside its
+  immutable values. The simulation owns a separate query index and coordinates
+  updates through `Holder.set_input`, `Holder.delete_arrays`, and its public APIs.
+  A value inserted only through `put_in_cache` is not a supplied input, even
+  when its legacy `derived` flag is false.
+- The supplied-input key is `(variable_name, branch_name, Period)`. Storage
+  canonicalizes eternity variables to `ETERNITY`. The result lookup key is
+  `ResultCacheKey(variable_name, Period)` within one simulation owner. Pending
+  invalidations use that same result key and are copied independently on clone.
+- All supported input mutation paths invalidate that simulation's results.
+  Invalidation removes non-supplied values from fast lookup, holder memory, and
+  disk indexes together, without reading, copying, or replaying supplied arrays.
+  Input loading does not scan previously loaded inputs after each insertion.
+- Branches are snapshots of input state. Clearing, replacing, pruning, or
+  deleting a parent's inputs or results never mutates an existing branch.
+  Linked scenarios must be updated by explicitly invoking the public mutation
+  API on each intended simulation; containment in `branches` is not consent.
+- Deliberately shared policy trees remain shared. A simulation verifies policy
+  identity and revision before result reuse and invalidates its own results
+  when either changes. Shared input state and shared policy state are distinct.
+  Supported variable registration, replacement, update, neutralization, and
+  annualization also advance the owning system's revision. Country code that
+  deliberately shares a raw variables dictionary between distinct systems must
+  explicitly rebind and invalidate the affected simulations after changing it.
+  Identity observation reads the Core-owned dated cache's bound revision, not
+  a country's parameter accessor, which may trigger copy-on-write. Shallow
+  wrappers sharing the same registry, tree revision, and variable revision
+  have the same policy identity; a wrapper object alone is not a policy change.
 - Arrays are copied on insertion and stored read-only.
 - Reads return read-only arrays. Callers that need a mutable value use
   `.copy()` and replace the stored value through a supported simulation API.
 - A branch receives an independent index that may reference the same immutable
   entries. Replacement or deletion in one branch cannot change another.
+- `retain_supplied_inputs(variable_names)` removes all calculated values and
+  unnamed supplied inputs in the receiving simulation only.
+- `Simulation.input_revision` is a monotonic, owner-local integer advanced by
+  successful supplied writes and actual deletions/pruning. Clones copy the
+  revision and advance independently. Rejected/ignored inputs and calculated
+  writes or result clearing do not advance it. A country helper reusing a
+  derived comparison branch must compare the source input revision and rebuild
+  its cached comparison when it changes; ordinary branches remain snapshots.
+- `Holder.put_in_cache` cannot overwrite a supplied input, including when its
+  legacy `derived=False` argument is used. Replacement requires `set_input`.
+  `SimulationResultCache.clear()` clears result lookup entries only, not inputs;
+  simulation-level invalidation coordinates holder storage and pending work.
+- `rebind_tax_benefit_system()` binds populations and holders to the currently
+  installed system and removes provenance for removed or incompatible variables.
+  If that policy differs from the results' recorded policy, rebinding discards
+  calculated values before accepting the new revision. Core cloning first
+  synchronizes the source policy, then preserves only valid copied results.
+  A clone also rebinds bound-method aliases to the clone rather than its source.
+  Its `set_simulation_backreference=True` option is for a system privately
+  owned by that simulation; the default preserves a shared system's owner.
+
+## Release sequence
+
+The migration has three stages and four pull requests: preparatory Core, US
+and UK migrations, then final Core compatibility removal. Preparatory Core
+provides the complete ownership and public-API guarantees; country migrations
+remove direct cache mutation and correctness workarounds in that stage, not
+after final cleanup. Country releases must require the actual published Core
+version providing these APIs. Final cleanup waits for both country releases.
+
+Compatibility mappings, old private attribute setters, and recovery of old
+initialization layouts exist only during this transition. Core and migrated
+country production code must not use those adapters. Removing them does not
+change the public ownership guarantees or introduce Phase 7 model separation.
 
 ## Type E requirements
 

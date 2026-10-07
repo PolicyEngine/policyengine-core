@@ -53,9 +53,9 @@ class Holder:
         """
         Copy the holder just enough to be able to run a new simulation without modifying the original simulation.
 
-        With ``share_arrays``, the new holder's in-memory storage shares
-        this holder's arrays and copies each one when it is first read,
-        instead of copying them all now (see :meth:`InMemoryStorage.clone`).
+        Both ``share_arrays`` modes use independent storage indexes over
+        immutable entries. Reads do not copy payloads; replacing or deleting
+        an entry changes only this holder (see :meth:`InMemoryStorage.clone`).
         """
         new = commons.empty_clone(self)
         new_dict = new.__dict__
@@ -114,6 +114,25 @@ class Holder:
         self._memory_storage.delete(period, branch_name)
         if self._disk_storage:
             self._disk_storage.delete(period, branch_name)
+        simulation = getattr(self, "simulation", None)
+        if simulation is not None:
+            deleted_period = (
+                periods.period(periods.ETERNITY)
+                if self.variable.definition_period == periods.ETERNITY
+                else (periods.period(period) if period is not None else None)
+            )
+            removed = simulation.result_cache.discard_supplied_inputs(
+                self.variable.name, [branch_name], deleted_period
+            )
+            simulation.result_cache.discard_variable(self.variable.name)
+            if removed:
+                simulation.clear_calculated_results()
+
+    def clear_calculated_results(self) -> None:
+        """Keep exact supplied snapshots without reading or reinserting arrays."""
+        self._memory_storage.retain_supplied_inputs()
+        if self._disk_storage is not None:
+            self._disk_storage.retain_supplied_inputs()
 
     def _get_array_from_storage(
         self, period: Period, branch_name: str = "default"
@@ -384,7 +403,16 @@ class Holder:
         if should_store_on_disk:
             if entry is not None:
                 value = entry.read()
-            self._disk_storage.put(value, period, branch_name, derived=derived)
+            self._disk_storage.put(
+                value,
+                period,
+                branch_name,
+                derived=derived,
+                supplied=input_branch is not None,
+            )
+            # The opposite backing store must not retain a previous value
+            # which would later become visible after deleting this one.
+            self._memory_storage.discard(period, branch_name)
             stored_value = protect_cached_array(value)
         else:
             stored_value = self._memory_storage.put(
@@ -392,13 +420,34 @@ class Holder:
                 period,
                 branch_name,
                 derived=derived,
+                supplied=input_branch is not None,
             )
+            if self._disk_storage is not None:
+                self._disk_storage.discard(period, branch_name)
         if input_branch is not None:
+            input_period = (
+                periods.period(periods.ETERNITY)
+                if self.variable.definition_period == periods.ETERNITY
+                else periods.period(period)
+            )
             simulation.result_cache.record_supplied_input(
                 self.variable.name,
                 branch_name,
-                period,
+                input_period,
             )
+            # Only a successful write invalidates. Helpers may write multiple
+            # subperiods; after the first, there are no result holders to scan.
+            simulation.clear_calculated_results()
+        elif simulation is not None:
+            simulation.result_cache.forget_supplied_input(
+                self.variable.name,
+                branch_name,
+                periods.period(periods.ETERNITY)
+                if self.variable.definition_period == periods.ETERNITY
+                else periods.period(period),
+            )
+            simulation.result_cache.record_result_storage(self.variable.name)
+            simulation.result_cache.discard_result_entries(self.variable.name)
         return stored_value
 
     def put_in_cache(
@@ -431,12 +480,20 @@ class Holder:
         ):
             return protect_cached_array(value)
 
-        if (
-            derived
-            and self._branch_storing(period, branch_name) is not None
-            and not self.is_derived(period, branch_name)
-        ):
+        storing = self._branch_storing(period, branch_name)
+        if derived and storing is not None and not self.is_derived(period, branch_name):
             return self.get_array(period, branch_name)
+
+        if (
+            storing is not None
+            and self.simulation.result_cache.current_input_branch is None
+        ):
+            supplied = self._memory_storage.is_supplied(period, storing) or (
+                self._disk_storage is not None
+                and self._disk_storage.is_supplied(period, storing)
+            )
+            if supplied:
+                return self.get_array(period, branch_name)
 
         self._set(period, value, branch_name, derived=derived)
         return self._get_array_from_storage(period, branch_name)

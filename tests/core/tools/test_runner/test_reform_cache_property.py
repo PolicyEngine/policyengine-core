@@ -22,6 +22,9 @@ class StubSystem:
     def __init__(self, applied=()):
         self.applied = tuple(applied)
 
+    def clear_parameter_caches(self):
+        """This construction-only stub has no parameter tree to clear."""
+
     def clone(self):
         return StubSystem(self.applied)
 

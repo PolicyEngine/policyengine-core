@@ -152,7 +152,9 @@ def test_invalid_lifecycle_operations_are_prevented(scenario: str) -> None:
         None if scenario == "non-callable-builder" else lambda: FakeSimulation("case")
     )
     if scenario == "none-simulation":
-        builder = lambda: None
+
+        def builder():
+            return None
 
     if scenario in {"none-system", "non-callable-builder"}:
         with pytest.raises(YamlCaseExecutionError):

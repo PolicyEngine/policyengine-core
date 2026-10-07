@@ -284,6 +284,13 @@ def test_supplied_input_context_stack_is_balanced(branches: tuple[str, ...]) -> 
     entered: list[str] = []
 
     for branch in branches:
+        if not branch or ":" in branch:
+            with pytest.raises(InvalidCacheKeyError):
+                with cache.supplied_input_context(branch):
+                    pytest.fail("An invalid branch must never enter the context")
+            assert cache.current_input_branch is None
+            assert cache.input_revision == 0
+            return
         with cache.supplied_input_context(branch):
             entered.append(cache.current_input_branch)
         assert cache.current_input_branch is None

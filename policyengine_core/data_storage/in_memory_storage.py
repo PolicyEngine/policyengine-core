@@ -52,6 +52,7 @@ class InMemoryStorage:
     # every holder, so copying at each clone would cost a set per input
     # holder per branch for inputs most branches never change.
     _inputs: Union[Set[str], FrozenSet[str]] = _NO_INPUTS
+    _supplied: Union[Set[str], FrozenSet[str]] = frozenset()
     is_eternal: bool
 
     def __init__(self, is_eternal: bool):
@@ -93,6 +94,7 @@ class InMemoryStorage:
             if inputs:
                 state["_inputs"] = inputs
         self.__dict__.update(state)
+        self._supplied = frozenset(state.get("_supplied", ()))
         if "_entry_cache" not in self.__dict__:
             self._entry_cache = ImmutableArrayCache()
         if arrays is not None:
@@ -109,6 +111,8 @@ class InMemoryStorage:
         """
         clone = InMemoryStorage(self.is_eternal)
         clone._entry_cache = self._entry_cache.fork()
+        self._supplied = frozenset(self._supplied)
+        clone._supplied = self._supplied
         # Share the inputs (see ``_inputs``). A mark left behind by code
         # outside this class emptying ``_arrays`` never counts (see
         # ``is_derived``), so the clone gets only those of keys it holds.
@@ -196,7 +200,11 @@ class InMemoryStorage:
         period: Period,
         branch_name: str = "default",
         derived: bool = False,
+        *,
+        supplied: bool = False,
     ) -> CachedArrayEntry[ArrayLike]:
+        if supplied and derived:
+            raise ValueError("A supplied input cannot also be a derived result")
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
@@ -226,7 +234,30 @@ class InMemoryStorage:
             self._unmark_input(key)
         else:
             self._mark_input(key)
+        if supplied:
+            if not isinstance(self._supplied, set):
+                self._supplied = set(self._supplied)
+            self._supplied.add(key)
+        elif key in self._supplied:
+            if not isinstance(self._supplied, set):
+                self._supplied = set(self._supplied)
+            self._supplied.discard(key)
         return entry
+
+    def is_supplied(self, period: Period, branch_name: str = "default") -> bool:
+        """Whether this exact stored entry came from a supported input write."""
+        if self.is_eternal:
+            period = periods.period(periods.ETERNITY)
+        key = f"{branch_name}:{periods.period(period)}"
+        return key in self._supplied and self.has(period, branch_name)
+
+    def retain_supplied_inputs(self) -> None:
+        """Drop non-supplied entries without copying any retained payload."""
+        self._entry_cache.replace_entries(
+            {key: self._arrays[key] for key in self._supplied if key in self._arrays}
+        )
+        self._supplied = self._supplied.intersection(self._arrays)
+        self._unmark_dropped_keys()
 
     def delete(self, period: Period = None, branch_name: str = "default") -> None:
         if period is None:
@@ -239,6 +270,7 @@ class InMemoryStorage:
                 if not period_item.startswith(branch_prefix)
             }
             self._unmark_dropped_keys()
+            self._supplied = self._supplied.intersection(self._arrays)
             return
 
         if self.is_eternal:
@@ -257,6 +289,18 @@ class InMemoryStorage:
             )
         }
         self._unmark_dropped_keys()
+        self._supplied = self._supplied.intersection(self._arrays)
+
+    def discard(self, period: Period, branch_name: str = "default") -> None:
+        """Remove one exact key, never its contained or overlapping periods."""
+        if self.is_eternal:
+            period = periods.period(periods.ETERNITY)
+        key = f"{branch_name}:{periods.period(period)}"
+        self._entry_cache.discard(key)
+        self._unmark_input(key)
+        if key in self._supplied:
+            self._supplied = set(self._supplied)
+            self._supplied.discard(key)
 
     def get_known_periods(self) -> list:
         # Split on the first colon only: an anchored period's string form

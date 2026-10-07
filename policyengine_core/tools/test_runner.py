@@ -471,7 +471,7 @@ def _get_tax_benefit_system(
                 )
             else:
                 current_tax_benefit_system = reform_path(current_tax_benefit_system)
-            current_tax_benefit_system._parameters_at_instant_cache = {}
+            current_tax_benefit_system.clear_parameter_caches()
 
         for extension in extensions:
             current_tax_benefit_system = current_tax_benefit_system.clone()

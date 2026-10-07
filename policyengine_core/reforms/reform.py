@@ -5,7 +5,6 @@ from typing import Callable, Union, TYPE_CHECKING
 
 from policyengine_core.parameters import (
     Parameter,
-    ParameterAtInstantCache,
     ParameterNode,
 )
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
@@ -161,12 +160,9 @@ class Reform(TaxBenefitSystem):
         # deep-copying, but plenty of reforms mutate ``self.parameters``
         # directly (bug C4).
         if baseline.parameters is not None:
-            self.parameters = baseline.parameters.clone()
+            self.replace_parameters(baseline.parameters.clone())
         else:
-            self.parameters = None
-        # Use a fresh at-instant cache so reform mutations aren't shadowed
-        # by previously-computed baseline ``ParameterNodeAtInstant`` objects.
-        self._parameters_at_instant_cache = {}
+            self.replace_parameters(None)
         self.variables = baseline.variables.copy()
         self.decomposition_file_path = baseline.decomposition_file_path
         self.key = self.__class__.__name__
@@ -213,10 +209,7 @@ class Reform(TaxBenefitSystem):
             )
         if previous_parameters is not None:
             previous_parameters.parameter_revision.advance()
-        self.parameters = reform_parameters
-        self._parameters_at_instant_cache = ParameterAtInstantCache(
-            revision=self.parameters.parameter_revision
-        )
+        self.replace_parameters(reform_parameters)
 
     @staticmethod
     def from_dict(

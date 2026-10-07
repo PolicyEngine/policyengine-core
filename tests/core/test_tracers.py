@@ -3,6 +3,7 @@
 import csv
 import json
 import os
+from types import SimpleNamespace
 
 import numpy as np
 from pytest import approx, fixture, mark, raises
@@ -23,6 +24,7 @@ from .parameters_fancy_indexing.test_fancy_indexing import parameters
 
 class StubSimulation(Simulation):
     def __init__(self):
+        self.tax_benefit_system = SimpleNamespace(result_cache_token=(0,))
         self.exception = None
         self.max_spiral_loops = 1
         self.branch_name = "default"

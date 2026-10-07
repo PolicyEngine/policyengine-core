@@ -527,9 +527,10 @@ def test_a_value_calculated_while_an_input_is_set_stays_on_its_own_branch(system
     np.testing.assert_array_equal(
         holder.get_array(periods.period("2012"), "other"), [20, 20]
     )
-    np.testing.assert_array_equal(
-        holder.get_array(periods.period("2012"), "default"), [6, 7]
-    )
+    # The helper's later input write invalidates this intermediate result,
+    # including when the helper is invoked directly through Holder.
+    assert holder.get_array(periods.period("2012"), "default") is None
+    np.testing.assert_array_equal(built.calculate("formula_until_2013", "2012"), [6, 7])
     assert holder.is_derived(periods.period("2012"), "default")
     assert not holder.is_derived(periods.period("2012"), "other")
     assert ("formula_until_2013", "default", periods.period("2012")) not in (

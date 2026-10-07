@@ -86,9 +86,14 @@ class CachedArrayEntry(Generic[ArrayT]):
 
     _value: ArrayT
 
+    def __post_init__(self) -> None:
+        # Construction itself establishes ownership; accepting a prebuilt entry
+        # in storage must never be a way to retain a caller's writable array.
+        object.__setattr__(self, "_value", _freeze_array(self._value))
+
     @classmethod
     def from_value(cls, value: ArrayT) -> CachedArrayEntry[ArrayT]:
-        return cls(_freeze_array(value))  # type: ignore[arg-type]
+        return cls(value)
 
     def read(self) -> ArrayT:
         """Return a view that cannot make the owned snapshot writeable."""
@@ -108,6 +113,18 @@ class CachedArrayEntry(Generic[ArrayT]):
         if copy is True:
             return value.copy()
         return value
+
+    def __copy__(self) -> CachedArrayEntry[ArrayT]:
+        return self
+
+    def __deepcopy__(self, memo: dict) -> CachedArrayEntry[ArrayT]:
+        # Immutable payloads can be shared; copying NumPy flags through pickle
+        # or deepcopy without construction would otherwise restore writability.
+        memo[id(self)] = self
+        return self
+
+    def __reduce__(self):
+        return type(self), (self._value,)
 
 
 class ImmutableArrayCache(

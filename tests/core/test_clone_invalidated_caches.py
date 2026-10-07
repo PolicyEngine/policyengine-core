@@ -16,6 +16,7 @@ import pytest
 from policyengine_core import periods
 from policyengine_core.country_template import CountryTaxBenefitSystem, entities
 from policyengine_core.simulations import SimulationBuilder
+from policyengine_core.simulations.simulation_result_cache import ResultCacheKey
 from policyengine_core.variables import Variable
 
 MONTH = periods.period("2020-06")
@@ -139,3 +140,93 @@ def test_a_pending_invalidation_purges_each_copy_once(system, make):
     assert source.invalidated_caches == {("salary", MONTH)}
     source.purge_cache_of_invalid_values()
     assert source.get_holder("salary").get_array(MONTH) is None
+
+
+@pytest.mark.parametrize("make", MAKERS)
+@pytest.mark.parametrize(
+    "pending",
+    [
+        pytest.param((), id="no-pending-invalidations"),
+        pytest.param((ResultCacheKey("salary", MONTH),), id="typed-pending-key"),
+        pytest.param((("salary", MONTH),), id="legacy-pending-tuple"),
+        pytest.param(
+            (
+                ResultCacheKey("salary", MONTH),
+                ResultCacheKey("salary", PREVIOUS_MONTH),
+            ),
+            id="same-variable-distinct-periods",
+        ),
+        pytest.param(
+            (
+                ResultCacheKey("salary", MONTH),
+                ResultCacheKey("income_tax", MONTH),
+            ),
+            id="distinct-variables-same-period",
+        ),
+    ],
+)
+def test_copy_inherits_exact_pending_state_without_sharing_its_set(
+    system, make, pending
+):
+    source = _simulation(system)
+    # The compatibility view can contain old tuple keys as well as typed keys.
+    source.invalidated_caches.update(pending)
+    original_set = source.invalidated_caches
+
+    copy = make(source)
+
+    assert copy.invalidated_caches == set(pending)
+    assert copy.invalidated_caches is not original_set
+    assert source.invalidated_caches is original_set
+    assert source.invalidated_caches == set(pending)
+    # Even an initially empty invalidation set must be independently owned.
+    copy.invalidate_cache_entry("basic_income", MONTH)
+    assert copy.invalidated_caches == set(pending) | {
+        ResultCacheKey("basic_income", MONTH)
+    }
+    assert source.invalidated_caches == set(pending)
+
+
+@pytest.mark.parametrize("make", MAKERS)
+@pytest.mark.parametrize(
+    "operation",
+    [
+        "invalidate-source",
+        "invalidate-copy",
+        "consume-source",
+        "consume-copy",
+        "discard-copy-key",
+    ],
+)
+def test_pending_invalidation_mutations_are_local_after_copy(system, make, operation):
+    source = _simulation(system)
+    pending = ResultCacheKey("salary", MONTH)
+    other_period = ResultCacheKey("salary", PREVIOUS_MONTH)
+    added = ResultCacheKey("income_tax", MONTH)
+    initial = {pending, other_period}
+    for key in initial:
+        source.invalidate_cache_entry(*key)
+
+    copy = make(source)
+    assert copy.invalidated_caches == initial
+
+    if operation == "invalidate-source":
+        source.invalidate_cache_entry(*added)
+        assert source.invalidated_caches == initial | {added}
+        assert copy.invalidated_caches == initial
+    elif operation == "invalidate-copy":
+        copy.invalidate_cache_entry(*added)
+        assert copy.invalidated_caches == initial | {added}
+        assert source.invalidated_caches == initial
+    elif operation == "consume-source":
+        assert source.result_cache.take_invalidated() == initial
+        assert source.result_cache.take_invalidated() == set()
+        assert copy.invalidated_caches == initial
+    elif operation == "consume-copy":
+        assert copy.result_cache.take_invalidated() == initial
+        assert copy.result_cache.take_invalidated() == set()
+        assert source.invalidated_caches == initial
+    else:
+        copy.result_cache.discard_invalidated(pending)
+        assert copy.invalidated_caches == {other_period}
+        assert source.invalidated_caches == initial

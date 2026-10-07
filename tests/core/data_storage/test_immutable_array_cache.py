@@ -95,6 +95,7 @@ def test_cached_entry_does_not_follow_later_source_mutation(mutation: str) -> No
     source = np.arange(6, dtype=np.float64)
     expected = source.copy()
     entry = CachedArrayEntry.from_value(source)
+    assert not np.shares_memory(source, entry.read())
     if mutation == "set-first":
         source[0] = 99
     elif mutation == "set-last":
@@ -115,9 +116,13 @@ def test_cached_entry_does_not_follow_later_source_mutation(mutation: str) -> No
     elif mutation == "change-dtype":
         source.dtype = np.int64
     elif mutation == "resize-larger":
-        source.resize(10)
+        # Coverage retains Python references on 3.11. The cache owns separate
+        # memory (asserted above), so those references must not block resizing.
+        source.resize(10, refcheck=False)
+        assert source.shape == (10,)
     elif mutation == "resize-smaller":
-        source.resize(3)
+        source.resize(3, refcheck=False)
+        assert source.shape == (3,)
     else:
         source[:] = -1
     np.testing.assert_array_equal(entry.read(), expected)

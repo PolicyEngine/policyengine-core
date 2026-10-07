@@ -2,7 +2,6 @@ import hashlib
 import os
 import types
 from contextvars import ContextVar
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
 import numpy as np
@@ -43,14 +42,10 @@ import json
 class _BranchClone:
     """The simulation ``get_branch`` is cloning into a new branch.
 
-    ``get_branch`` announces the clone it is about to make, and ``clone``
-    shares the cached arrays with the copy (instead of copying them) only for
-    that simulation, and only once: the first ``clone`` of it while
-    ``get_branch`` runs. Any other ``clone`` call made meanwhile, or after
-    ``get_branch`` returns, copies as usual. A subclass's ``clone`` normally
-    reaches this class's ``clone`` once, through ``super().clone``; if it
-    first clones the same simulation directly, that clone is the one that
-    shares.
+    ``get_branch`` announces the clone it is about to make. The first
+    matching clone receives the legacy ``share_arrays=True`` argument so
+    subclass overrides retain their calling convention. Core storage shares
+    immutable entries safely in either mode; no copy-on-first-read is used.
     """
 
     def __init__(self, simulation: "Simulation"):
@@ -178,20 +173,7 @@ from policyengine_core.simulations.simulation_macro_cache import (
 from policyengine_core.simulations.simulation_result_cache import (
     ResultCacheKey,
     SimulationResultCache,
-    SuppliedInputKey,
 )
-
-
-@dataclass(frozen=True)
-class PreservedUserInput:
-    variable_name: str
-    branch_name: str
-    period: Period
-    value: object
-    storage: str
-    disk_key: Optional[str] = None
-    disk_file: Optional[str] = None
-    disk_enum: object = None
 
 
 class Simulation:
@@ -275,6 +257,16 @@ class Simulation:
         """The simulation-owned calculated-result and input-provenance cache."""
 
         return self._ensure_result_cache()
+
+    @property
+    def input_revision(self) -> int:
+        """Revision of this simulation's supplied inputs, independent of its branches.
+
+        Helpers caching a derived comparison branch can record this value and
+        rebuild that branch after a successful input mutation. Calculations,
+        result clearing, and rejected writes do not advance it.
+        """
+        return self.result_cache.input_revision
 
     @property
     def _fast_cache(self) -> dict:
@@ -369,11 +361,9 @@ class Simulation:
         self._result_cache: SimulationResultCache[Period, ArrayLike] = (
             SimulationResultCache()
         )
-        # ``set_input`` records each (variable_name, branch_name, period) it
-        # populates so ``_invalidate_all_caches`` can tell user-provided
-        # source data apart from formula-computed caches. Without this the
-        # post-``apply_reform`` cache wipe would also wipe the dataset the
-        # simulation was loaded from.
+        # Holder writes record supplied input provenance with their storage
+        # entries. Result invalidation leaves those authoritative snapshots
+        # in place, including when a reform is applied after dataset loading.
         self.debug: bool = False
         self.trace: bool = trace
         self.tracer: SimpleTracer = SimpleTracer() if not trace else FullTracer()
@@ -477,11 +467,12 @@ class Simulation:
             # looked variables up there, and its holders kept the reform's
             # variables, so a variable the reform neutralized read as the
             # default in the baseline too.
-            self.baseline._bind_to_tax_benefit_system()
+            self.baseline.rebind_tax_benefit_system()
         else:
             self.baseline = None
 
         self.parent_branch = None
+        self._result_policy_token = self.tax_benefit_system.result_cache_token
 
     def apply_reform(self, reform: Union[tuple, Reform]):
         if isinstance(reform, tuple):
@@ -497,6 +488,7 @@ class Simulation:
         # storage populated with pre-reform values, so the next
         # ``calculate`` call returned stale values (bug H3).
         self.clear_calculated_results()
+        self.rebind_tax_benefit_system()
 
     def _invalidate_all_caches(self) -> None:
         """Compatibility alias for :meth:`clear_calculated_results`."""
@@ -504,114 +496,30 @@ class Simulation:
         self.clear_calculated_results()
 
     def clear_calculated_results(self) -> None:
-        """Purge cached formula output, preserving user-provided inputs.
+        """Remove this simulation's results, retaining exact supplied snapshots.
 
-        Called after ``apply_reform`` and any other operation that changes
-        the tax-benefit system underneath an already-calculated simulation.
-
-        Every (variable, branch, period) that was populated via
-        ``set_input`` is preserved — those are source data, not stale
-        formula output — so a structural reform applied after dataset
-        load doesn't silently discard the dataset. Everything else
-        (formula outputs, cached short-path results, on-disk caches) is
-        wiped so the next ``calculate`` recomputes under the new
-        tax-benefit system.
+        Existing branches are independent input snapshots and are not visited.
+        No supplied array is read or rewritten. Only holders known to contain
+        non-supplied values need work, so loading inputs is not quadratic.
         """
         self.result_cache.clear_calculated_results()
-        # Snapshot user-provided inputs before wiping so they can be
-        # replayed into the fresh storage. Use the storage API instead of
-        # hand-building keys, since ETERNITY variables canonicalize every
-        # period to the single ETERNITY storage key.
-        preserved: list[PreservedUserInput] = []
-        user_input_keys = self.result_cache.supplied_inputs
-        preserved_keys: set[SuppliedInputKey[Period]] = set()
-        for variable_name, branch_name, period in user_input_keys:
-            holder = self.get_holder(variable_name)
-            stored_value = holder._memory_storage.get(period, branch_name)
-            if stored_value is not None:
-                preserved.append(
-                    PreservedUserInput(
-                        variable_name=variable_name,
-                        branch_name=branch_name,
-                        period=period,
-                        value=stored_value,
-                        storage="memory",
-                    )
-                )
-                preserved_keys.add(SuppliedInputKey(variable_name, branch_name, period))
-                continue
-            if holder._disk_storage is not None:
-                disk_period = (
-                    periods.period(periods.ETERNITY)
-                    if holder._disk_storage.is_eternal
-                    else periods.period(period)
-                )
-                disk_key = f"{branch_name}_{disk_period}"
-                disk_file = holder._disk_storage._files.get(disk_key)
-                if disk_file is not None:
-                    preserved.append(
-                        PreservedUserInput(
-                            variable_name=variable_name,
-                            branch_name=branch_name,
-                            period=period,
-                            value=None,
-                            storage="disk",
-                            disk_key=disk_key,
-                            disk_file=disk_file,
-                            disk_enum=holder._disk_storage._enums.get(disk_file),
-                        )
-                    )
-                    preserved_keys.add(
-                        SuppliedInputKey(variable_name, branch_name, period)
-                    )
-        # Iterate only over holders that already exist on each population —
-        # lazy-creating a holder for every variable in the tax-benefit
-        # system (thousands in policyengine-us) inflated the cost of
-        # ``apply_reform`` from milliseconds to seconds and broke the
-        # YAML full-suite on downstream repos. Untouched variables have
-        # no holder and therefore nothing to wipe.
-        for population in self.populations.values():
-            for holder in population._holders.values():
-                holder._memory_storage._arrays = {}
-                holder._memory_storage._unmark_dropped_keys()
-                if holder._disk_storage is not None:
-                    holder._disk_storage._files = {}
-                    holder._disk_storage._derived = set()
-        # Replay preserved user inputs so ``calculate`` still sees them.
-        for user_input in preserved:
-            holder = self.get_holder(user_input.variable_name)
-            if user_input.storage == "disk" and holder._disk_storage is not None:
-                holder._disk_storage._files[user_input.disk_key] = user_input.disk_file
-                if user_input.disk_enum is not None:
-                    holder._disk_storage._enums[user_input.disk_file] = (
-                        user_input.disk_enum
-                    )
-            else:
-                holder._memory_storage.put(
-                    user_input.value,
-                    user_input.period,
-                    user_input.branch_name,
-                )
-        self.result_cache.replace_supplied_inputs(preserved_keys)
-        for branch in self.branches.values():
-            branch.clear_calculated_results()
+        for variable_name in self.result_cache.take_result_variables():
+            # A replacement policy may no longer define this variable. Clear
+            # the already-owned holder rather than looking it up in that policy.
+            for population in getattr(self, "populations", {}).values():
+                holder = population._holders.get(variable_name)
+                if holder is not None:
+                    holder.clear_calculated_results()
+                    break
 
     def retain_supplied_inputs(self, variable_names: List[str]) -> None:
-        """Remove all calculated values and retain inputs for named variables."""
-
+        """Keep only named supplied inputs in this simulation, not its branches."""
         allowed_variables = set(variable_names)
-
-        def restrict_provenance(simulation: "Simulation") -> None:
-            retained = {
-                key
-                for key in simulation.result_cache.supplied_inputs
-                if key[0] in allowed_variables
-            }
-            simulation.result_cache.replace_supplied_inputs(retained)
-            for child in simulation.branches.values():
-                restrict_provenance(child)
-
-        restrict_provenance(self)
+        for key in self.result_cache.supplied_input_keys():
+            if key.variable_name not in allowed_variables:
+                self.get_holder(key.variable_name).delete_arrays(
+                    key.period, key.branch_name
+                )
         self.clear_calculated_results()
 
     def build_from_populations(self, populations: Dict[str, Population]) -> None:
@@ -806,7 +714,9 @@ class Simulation:
         for _key, entity_instance in self.populations.items():
             entity_instance.simulation = self
 
-    def _bind_to_tax_benefit_system(self) -> None:
+    def rebind_tax_benefit_system(
+        self, *, set_simulation_backreference: bool = False
+    ) -> None:
         """Make this simulation's populations and holders use its own system.
 
         For a simulation given another system after its populations were
@@ -820,12 +730,22 @@ class Simulation:
         holder was built for the reform's definition in a way a new variable
         cannot change: in another entity's population, or with storage for
         (or not for) an ``ETERNITY`` variable.
+
+        Set ``set_simulation_backreference=True`` only when the installed
+        system belongs to this simulation. Shared systems retain their
+        existing backreference by default.
         """
         system = self.tax_benefit_system
         if system is None:
             # A reform simulation of a class with no default system instance
             # gets a baseline without a system; there is nothing to bind to.
             return
+        token = system.result_cache_token
+        previous = getattr(self, "_result_policy_token", None)
+        if previous is not None and previous != token:
+            self.clear_calculated_results()
+        if set_simulation_backreference:
+            system.simulation = self
         entities = {
             entity.key: entity
             for entity in [system.person_entity, *system.group_entities]
@@ -850,12 +770,26 @@ class Simulation:
         def kept(name):
             return name in variables and name not in dropped
 
-        if getattr(self, "_user_input_keys", None) is not None:
-            self._user_input_keys = {
-                key for key in self._user_input_keys if kept(key[0])
-            }
+        self.result_cache.retain_input_variables(
+            {name for name in variables if kept(name)}
+        )
+        for name in dropped:
+            self.result_cache.discard_variable(name)
         if getattr(self, "input_variables", None) is not None:
             self.input_variables = [name for name in self.input_variables if kept(name)]
+        self._result_policy_token = token
+
+    def _bind_to_tax_benefit_system(self) -> None:
+        """Compatibility alias for :meth:`rebind_tax_benefit_system`."""
+        self.rebind_tax_benefit_system()
+
+    def _check_result_policy(self) -> None:
+        """Reject result reuse after a supported mutation of shared policy state."""
+        token = self.tax_benefit_system.result_cache_token
+        previous = getattr(self, "_result_policy_token", None)
+        if previous is not None and previous != token:
+            self.rebind_tax_benefit_system()
+        self._result_policy_token = token
 
     def create_shortcuts(self) -> None:
         for _key, population in self.populations.items():
@@ -939,6 +873,8 @@ class Simulation:
             period = periods.period(period)
         elif period is None and self.default_calculation_period is not None:
             period = periods.period(self.default_calculation_period)
+
+        self._check_result_policy()
 
         # Fast path: skip tracer, random seed and all _calculate() machinery for
         # already-computed values. map_to and decode_enums are NOT cached here —
@@ -1752,17 +1688,6 @@ class Simulation:
         visible_branches = self._get_visible_branch_names()
         for branch_name in visible_branches:
             holder.delete_arrays(period, branch_name)
-        if period is None:
-            self.result_cache.discard_variable(variable)
-        else:
-            if not isinstance(period, Period):
-                period = periods.period(period)
-            self.result_cache.discard(ResultCacheKey(variable, period))
-        self.result_cache.discard_supplied_inputs(
-            variable,
-            visible_branches,
-            period,
-        )
 
     def get_known_periods(self, variable: str) -> List[Period]:
         """
@@ -1799,27 +1724,14 @@ class Simulation:
         If a ``set_input`` property has been set for the variable, this method may accept inputs for periods not matching the ``definition_period`` of the variable. To read more about this, check the `documentation <https://openfisca.org/doc/coding-the-legislation/35_periods.html#automatically-process-variable-inputs-defined-for-periods-not-matching-the-definitionperiod>`_.
         """
         period = periods.period(period)
-        if self.start_instant is None or self.start_instant > period.start:
-            self.start_instant = period.start
         variable = self.tax_benefit_system.get_variable(
             variable_name, check_existence=True
         )
         if (variable.end is not None) and (period.start.date > variable.end):
             return
         self.get_holder(variable_name).set_input(period, value, self.branch_name)
-        # Formulas can depend on supplied inputs through arbitrary Python,
-        # so there is no complete dependency graph to invalidate precisely.
-        # Conservatively remove every calculated value after a successful
-        # input write. ``clear_calculated_results`` snapshots and restores
-        # all supplied values (including helper-created subperiods and their
-        # branch provenance) while clearing memory- and disk-backed results.
-        if hasattr(self, "populations"):
-            self.clear_calculated_results()
-        else:
-            # Compatibility for deliberately minimal Simulation test doubles:
-            # they have no holder graph to clear, but their result index must
-            # still obey the conservative invalidation contract.
-            self.result_cache.clear_calculated_results()
+        if self.start_instant is None or self.start_instant > period.start:
+            self.start_instant = period.start
 
     def get_variable_population(self, variable_name: str) -> Population:
         variable = self.tax_benefit_system.get_variable(
@@ -1866,13 +1778,9 @@ class Simulation:
         a separate baseline simulation copies it, if it needs to, in its own
         ``clone``.
 
-        Every cached array is copied, except in the first ``clone`` of this
-        simulation made while ``get_branch`` is creating a branch of it: that
-        copy shares the arrays until it reads them (see :meth:`get_branch`).
-        A subclass's ``clone`` that calls this one through ``super().clone``
-        takes part in that the same way. A subclass ``clone`` that first
-        clones the same simulation directly gets the sharing in that direct
-        clone instead, and its branch is a full copy.
+        Cached arrays are immutable snapshots shared through independent
+        storage indexes. Reading, replacing, or deleting in either simulation
+        cannot mutate the other's snapshot.
 
         The copy's method aliases (``calc``, ``df``, and any other bound
         method of this simulation kept on the instance) are bound to the
@@ -1882,6 +1790,10 @@ class Simulation:
         through them. Without it, the copy shares this simulation's system,
         which still names this simulation.
         """
+        # A policy may have changed since the last calculation. Synchronize
+        # before copying holders, otherwise the clone would mark stale copied
+        # results as belonging to its newly cloned/current policy.
+        self._check_result_policy()
         request = _branch_clone.get()
         share_arrays = (
             request is not None and request.pending and request.simulation is self
@@ -1907,7 +1819,9 @@ class Simulation:
         for key, value in new_dict.items():
             if isinstance(value, types.MethodType) and value.__self__ is self:
                 new_dict[key] = types.MethodType(value.__func__, new)
-        new._result_cache = self.result_cache.clone()
+        # Holder snapshots retain cached arrays, so the copy must also retain
+        # pending invalidations in a set it owns independently of the source.
+        new._result_cache = self.result_cache.clone(preserve_invalidated=True)
         # The clone stores what it puts on disk in a folder of its own, made
         # when first needed, never in this simulation's. Disk storages the
         # two each made for a variable in one folder would write the same
@@ -1999,6 +1913,7 @@ class Simulation:
                 new.branches[baseline.branch_name] = new_baseline
             new.baseline = new_baseline
 
+        new._result_policy_token = new.tax_benefit_system.result_cache_token
         return new
 
     def get_branch(
@@ -2006,27 +1921,17 @@ class Simulation:
     ) -> "Simulation":
         """Create a clone of this simulation, whose calculations are traced in the original.
 
-        The branch starts from the values this simulation has cached when the
-        branch is created. It does not copy them up front: each of the
-        branch's holders gets its own index of this simulation's arrays, and
-        copies an array the first time the branch reads it. A numpy array the
-        branch never reads is never copied (masked arrays, and values that
-        are not numpy arrays, are copied when the branch is created).
+        The branch receives independent indexes over immutable array snapshots.
+        Reads return protected views without copying the payload. Input writes,
+        deletions, and result invalidation affect only the receiving simulation;
+        later parent input writes do not alter this branch.
 
-        What the branch stores (``set_input``, calculations, deletions) goes
-        into its own index only, and what it reads is its own copy, so
-        nothing done through the branch changes this simulation's values.
-        What this simulation stores after branching stays out of the branch.
-
-        The one difference from copying every array up front: code that
-        writes in place into one of this simulation's cached arrays
-        (``array[mask] = 0`` or ``array += 1``, instead of storing a new
-        array with ``set_input``) after branching also changes the value the
-        branch reads, if the branch has not read that array yet.
-
-        As with the rest of a simulation, a branch is not safe to read from
-        several threads at once: two first reads of the same array can each
-        make a copy.
+        Policy is shared by default. A supported mutation of a shared policy
+        invalidates this branch's results on its next calculation, but leaves
+        its supplied input snapshots unchanged. Use ``clone_system=True`` for
+        independent policy ownership. Simulation calculations remain unsafe to
+        run concurrently on the same instance because tracing and evaluation
+        state are mutable; use separate simulations or processes.
 
         Args:
             name (str, optional): Name of the branch. Defaults to "branch".
@@ -2277,9 +2182,12 @@ class Simulation:
     def supplied_input_periods(self, variable_name: str) -> List[Period]:
         """Return caller-supplied periods visible to this branch."""
 
-        return self.result_cache.supplied_input_periods(
-            variable_name,
-            self._get_visible_branch_names(),
+        return sorted(
+            self.result_cache.supplied_input_periods(
+                variable_name,
+                self._get_visible_branch_names(),
+            ),
+            key=lambda input_period: (input_period.start, str(input_period)),
         )
 
     def get_supplied_input(
@@ -2293,11 +2201,10 @@ class Simulation:
         holder = self.get_holder(variable_name)
         is_eternal = holder.variable.definition_period == ETERNITY
         for branch_name in self._get_visible_branch_names():
-            matching = any(
-                key[0] == variable_name
-                and key[1] == branch_name
-                and (is_eternal or key[2] == input_period)
-                for key in self.result_cache.supplied_inputs
+            matching = self.result_cache.has_supplied_input(
+                variable_name,
+                branch_name,
+                periods.period(ETERNITY) if is_eternal else input_period,
             )
             if not matching:
                 continue
@@ -2490,7 +2397,7 @@ class Simulation:
         # cleared explicitly or the stale entries bypass ``_calculate``
         # (see the short-circuit at the top of ``calculate``) and surface
         # as "size X != Y = count" projection errors.
-        self._invalidate_all_caches()
+        self.clear_calculated_results()
 
         # Ensure the baseline branch has the new data: rebuild it from the
         # subsampled simulation through ``get_branch`` (the same wiring
@@ -2510,7 +2417,7 @@ class Simulation:
             baseline.trace = self.trace
             baseline.tracer = self.tracer
             baseline.tax_benefit_system = baseline_tax_benefit_system
-            baseline._bind_to_tax_benefit_system()
+            baseline.rebind_tax_benefit_system()
             baseline.baseline = None
             if getattr(self, "baseline", None) is not None:
                 self.baseline = baseline

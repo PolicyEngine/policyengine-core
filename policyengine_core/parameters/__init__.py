@@ -22,8 +22,15 @@ from .operations import (
 from .parameter import Parameter
 from .parameter_at_instant import ParameterAtInstant
 from .parameter_at_instant_cache import ParameterAtInstantCache
+from .parameter_materializer import (
+    EagerParameterMaterializer,
+    LazyParameterMaterializer,
+    LazyParameterNodeAtInstant,
+    ParameterMaterializer,
+)
 from .parameter_node import ParameterNode
 from .parameter_node_at_instant import ParameterNodeAtInstant
+from .parameter_revision import ParameterTreeRevision, StaleParameterViewError
 from .parameter_scale import ParameterScale
 from .parameter_scale_bracket import ParameterScaleBracket
 from .vectorial_parameter_node_at_instant import (

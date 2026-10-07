@@ -11,7 +11,12 @@ from policyengine_core.tracers import TracingParameterNodeAtInstant
 from .at_instant_like import AtInstantLike
 from .parameter import Parameter
 from .parameter_at_instant_cache import ParameterAtInstantCache
+from .parameter_materializer import (
+    EagerParameterMaterializer,
+    ParameterMaterializer,
+)
 from .parameter_node_at_instant import ParameterNodeAtInstant
+from .parameter_revision import ParameterTreeRevision
 from .config import COMMON_KEYS, FILE_EXTENSIONS
 from .helpers import (
     load_parameter_file,
@@ -73,6 +78,7 @@ class ParameterNode(AtInstantLike):
 
         >>> node = ParameterNode('benefits', directory_path = '/path/to/country_package/parameters/benefits')
         """
+        self._initializing = True
         self.name: str = name
         self.children: typing.Dict[
             str,
@@ -85,7 +91,13 @@ class ParameterNode(AtInstantLike):
         self.trace: bool = False
         self.tracer = None
         self.branch_name = None
-        self._at_instant_cache = ParameterAtInstantCache()
+        self._parameter_revision = ParameterTreeRevision()
+        self._parameter_materializer: ParameterMaterializer = (
+            EagerParameterMaterializer()
+        )
+        self._at_instant_cache = ParameterAtInstantCache(
+            revision=self._parameter_revision
+        )
         self.parent = None
 
         if directory_path:
@@ -151,6 +163,7 @@ class ParameterNode(AtInstantLike):
                 self.add_child(child_name, child)
 
         self.modified: bool = False
+        self._initializing = False
 
     def merge(self, other: "ParameterNode") -> None:
         """
@@ -183,6 +196,61 @@ class ParameterNode(AtInstantLike):
         self.children[name] = child
         setattr(self, name, child)
         child.parent = self
+        self._bind_child_context(child)
+        if not self._initializing:
+            self.clear_parent_cache()
+
+    @property
+    def parameter_revision(self) -> ParameterTreeRevision:
+        """Revision shared by every node in this parameter tree."""
+
+        return self._parameter_revision
+
+    @property
+    def parameter_materializer(self) -> ParameterMaterializer:
+        return self._parameter_materializer
+
+    def _bind_child_context(self, child) -> None:
+        if isinstance(child, ParameterNode):
+            child._bind_parameter_context(
+                self._parameter_revision,
+                self._parameter_materializer,
+            )
+        elif isinstance(child, parameters.ParameterScale):
+            for bracket in child.brackets:
+                bracket._bind_parameter_context(
+                    self._parameter_revision,
+                    self._parameter_materializer,
+                )
+
+    def _bind_parameter_context(
+        self,
+        revision: ParameterTreeRevision,
+        materializer: ParameterMaterializer,
+    ) -> None:
+        self._parameter_revision = revision
+        self._parameter_materializer = materializer
+        self._at_instant_cache.bind_revision(revision)
+        self._at_instant_cache.clear()
+        for child in self.children.values():
+            self._bind_child_context(child)
+
+    def set_parameter_materializer(
+        self,
+        materializer: ParameterMaterializer,
+    ) -> None:
+        """Set one eager or lazy strategy for the complete parameter tree."""
+
+        if not isinstance(materializer, ParameterMaterializer):
+            raise TypeError("materializer must be a ParameterMaterializer")
+        root = self
+        while getattr(root, "parent", None) is not None:
+            root = root.parent
+        if not isinstance(root, ParameterNode):
+            raise TypeError("the parameter tree root must be a ParameterNode")
+        revision = root._parameter_revision
+        revision.advance()
+        root._bind_parameter_context(revision, materializer)
 
     def __repr__(self) -> str:
         result = os.linesep.join(
@@ -206,11 +274,17 @@ class ParameterNode(AtInstantLike):
         clone.__dict__ = self.__dict__.copy()
 
         clone.metadata = copy.deepcopy(self.metadata)
+        clone._parameter_revision = self._parameter_revision.clone()
+        clone._parameter_materializer = self._parameter_materializer
         clone.children = {key: child.clone() for key, child in self.children.items()}
         for child_key, child in clone.children.items():
             setattr(clone, child_key, child)
             child.parent = clone
-        clone._at_instant_cache = {}
+            clone._bind_child_context(child)
+        clone._at_instant_cache = ParameterAtInstantCache(
+            revision=clone._parameter_revision
+        )
+        clone._initializing = False
 
         return clone
 
@@ -225,7 +299,8 @@ class ParameterNode(AtInstantLike):
             return
         if not isinstance(value, typing.Mapping):
             raise TypeError("_at_instant_cache must be a mapping")
-        cache = ParameterAtInstantCache()
+        revision = getattr(self, "_parameter_revision", ParameterTreeRevision())
+        cache = ParameterAtInstantCache(revision=revision)
         for instant_key, dated_node in value.items():
             if isinstance(dated_node, TracingParameterNodeAtInstant):
                 dated_node = dated_node.parameter_node_at_instant
@@ -235,9 +310,14 @@ class ParameterNode(AtInstantLike):
     def get_plain_at_instant(self, instant: Instant) -> ParameterNodeAtInstant:
         """Return the ordinary dated view retained by this node."""
 
+        self._at_instant_cache.bind_revision(self._parameter_revision)
         return self._at_instant_cache.get_or_create(
             instant,
-            lambda: ParameterNodeAtInstant(self.name, self, instant),
+            lambda: self._parameter_materializer.materialize(
+                self,
+                instant,
+                self._parameter_revision,
+            ),
         )
 
     def _get_at_instant(self, instant: Instant) -> ParameterNodeAtInstant:
@@ -264,6 +344,8 @@ class ParameterNode(AtInstantLike):
         self._at_instant_cache.clear()
         if self.parent is not None:
             self.parent.clear_parent_cache()
+        else:
+            self._parameter_revision.advance()
 
     def mark_as_modified(self):
         self.modified = True

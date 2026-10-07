@@ -111,6 +111,48 @@ def test_reform_after_a_traced_calculation_can_copy_the_parameters(
 # ----- Each simulation and branch records its own reads ----- #
 
 
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        pytest.param("first-read", id="first-read"),
+        pytest.param("plain-cache-warmed", id="plain-cache-warmed"),
+        pytest.param("second-simulation", id="second-simulation"),
+        pytest.param("replacement-tracer", id="replacement-tracer"),
+        pytest.param("branch", id="branch"),
+    ],
+)
+def test_abolition_lookup_uses_the_current_call_tracer(
+    isolated_tax_benefit_system,
+    scenario,
+):
+    system = isolated_tax_benefit_system
+    system.parameters.add_child(
+        "gov",
+        ParameterNode(
+            "gov",
+            data={"abolitions": {"income_tax": {"values": {"0000-01-01": False}}}},
+        ),
+    )
+    if scenario == "plain-cache-warmed":
+        system.parameters(INSTANT)
+    elif scenario == "second-simulation":
+        first = build_simulation(system, trace=True)
+        first.calculate("income_tax", JANUARY)
+
+    simulation = build_simulation(system, trace=True)
+    if scenario == "replacement-tracer":
+        simulation.tracer = FullTracer()
+    if scenario == "branch":
+        simulation = simulation.get_branch("policy")
+    simulation.calculate("income_tax", JANUARY)
+
+    expected_branch = "policy" if scenario == "branch" else "default"
+    assert ("gov.abolitions.income_tax", expected_branch) in parameter_reads(
+        simulation.tracer.trees
+    )
+    assert_untraced(system.parameters)
+
+
 def test_each_traced_simulation_records_its_own_parameter_reads(
     isolated_tax_benefit_system,
 ):

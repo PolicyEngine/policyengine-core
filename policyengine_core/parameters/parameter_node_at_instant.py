@@ -33,8 +33,13 @@ class ParameterNodeAtInstant:
         self._instant_str = instant_str
         self._children = {}
 
+        from .parameter_node import ParameterNode
+
         for child_name, child in node.children.items():
-            child_at_instant = child._get_at_instant(instant_str)
+            if isinstance(child, ParameterNode):
+                child_at_instant = child.get_plain_at_instant(instant_str)
+            else:
+                child_at_instant = child._get_at_instant(instant_str)
             if child_at_instant is not None:
                 self.add_child(child_name, child_at_instant)
 

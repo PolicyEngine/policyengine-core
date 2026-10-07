@@ -82,6 +82,30 @@ concurrent public operations.
 - A lazy view checks its captured revision on every observable access and
   raises `StaleParameterViewError` after source mutation.
 
+`ParameterTreeRevision` is the shared monotonic revision for one parameter
+tree. Every descendant node and every `ParameterAtInstantCache` attached to
+that tree uses the same revision object. Cache entries have the internal
+identity `(revision, instant)`. `Parameter.update()` and structural
+`ParameterNode.add_child()` mutations advance the root revision; ordinary
+cache clearing does not.
+
+`ParameterMaterializer[SourceT, InstantT, ViewT]` is the generic construction
+strategy contract. `EagerParameterMaterializer` remains the default and
+constructs the complete dated subtree. `LazyParameterMaterializer` is an
+explicit opt-in through `ParameterNode.set_parameter_materializer()` or
+`TaxBenefitSystem.set_parameter_materializer()`. It returns
+`LazyParameterNodeAtInstant`, which resolves one immediate child at a time.
+Changing strategies invalidates existing dated views by advancing the
+revision. Do not enable lazy construction by modifying private cache fields.
+
+An eager view already returned to a caller remains a snapshot of its prior
+policy values. A lazy view instead fails after mutation because continuing to
+resolve children could otherwise combine values from different revisions.
+Tax-benefit systems use `replace_parameters()` to install a tree with a fresh
+dated-view cache. Systems that deliberately use `share_parameters_from()`
+instead share the tree, revision, and dated-view cache; clones receive
+independent revisions and caches.
+
 ## Type D requirements
 
 - Supplied inputs and calculated values have explicit, separate provenance.

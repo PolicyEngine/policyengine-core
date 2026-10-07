@@ -3,7 +3,11 @@ from __future__ import annotations
 import copy
 from typing import Callable, Union, TYPE_CHECKING
 
-from policyengine_core.parameters import ParameterNode, Parameter
+from policyengine_core.parameters import (
+    Parameter,
+    ParameterAtInstantCache,
+    ParameterNode,
+)
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 
 if TYPE_CHECKING:
@@ -196,6 +200,7 @@ class Reform(TaxBenefitSystem):
         Args:
             modifier_function: A function that takes a :obj:`.ParameterNode` and should return an object of the same type.
         """
+        previous_parameters = self.parameters
         baseline_parameters = self.baseline.parameters
         baseline_parameters_copy = copy.deepcopy(baseline_parameters)
         reform_parameters = modifier_function(baseline_parameters_copy)
@@ -206,8 +211,12 @@ class Reform(TaxBenefitSystem):
                     modifier_function.__module__,
                 )
             )
+        if previous_parameters is not None:
+            previous_parameters.parameter_revision.advance()
         self.parameters = reform_parameters
-        self._parameters_at_instant_cache = {}
+        self._parameters_at_instant_cache = ParameterAtInstantCache(
+            revision=self.parameters.parameter_revision
+        )
 
     @staticmethod
     def from_dict(

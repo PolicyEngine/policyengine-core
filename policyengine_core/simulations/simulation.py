@@ -1091,11 +1091,16 @@ class Simulation:
 
         # Check if we've neutralized via parameters.
         try:
+            parameters_at = self.tax_benefit_system.parameters
+            if self.trace:
+                parameters_at = TracingParameterNode(
+                    parameters_at,
+                    self.tracer,
+                    self.branch_name,
+                )
             if (
                 variable.is_neutralized
-                or self.tax_benefit_system.parameters(period).gov.abolitions[
-                    variable.name
-                ]
+                or parameters_at(period).gov.abolitions[variable.name]
             ):
                 return holder.default_array()
         except Exception as e:

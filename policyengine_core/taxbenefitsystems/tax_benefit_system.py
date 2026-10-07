@@ -36,6 +36,7 @@ from policyengine_core.parameters import (
     ParameterNodeAtInstant,
     Parameter,
     ParameterAtInstantCache,
+    ParameterMaterializer,
 )
 from policyengine_core.parameters.operations.homogenize_parameters import (
     homogenize_parameter_structures,
@@ -111,8 +112,7 @@ class TaxBenefitSystem:
             raise ValueError("TaxBenefitSystems must have entities defined.")
 
         # TODO: Currently: Don't use a weakref, because they are cleared by Paste (at least) at each call.
-        self.parameters: Optional[ParameterNode] = None
-        self._parameters_at_instant_cache = {}  # weakref.WeakValueDictionary()
+        self.replace_parameters(None)
         self.variables: Dict[Any, Any] = {}
         # Tax benefit systems are mutable, so entities (which need to know about our variables) can't be shared among them
         if entities is None or len(entities) == 0:
@@ -159,7 +159,10 @@ class TaxBenefitSystem:
             return
         if not isinstance(value, typing.Mapping):
             raise TypeError("_parameters_at_instant_cache must be a mapping")
-        cache = ParameterAtInstantCache()
+        revision = (
+            self.parameters.parameter_revision if self.parameters is not None else 0
+        )
+        cache = ParameterAtInstantCache(revision=revision)
         for instant_key, dated_node in value.items():
             if isinstance(dated_node, TracingParameterNodeAtInstant):
                 dated_node = dated_node.parameter_node_at_instant
@@ -170,16 +173,43 @@ class TaxBenefitSystem:
         """Clear all dated parameter views owned by this policy system."""
 
         self._parameters_at_instant_cache.clear()
-        if self.parameters is not None:
-            self.parameters.clear_at_instant_caches(recursive=True)
+        parameters = getattr(self, "parameters", None)
+        if parameters is not None:
+            parameters.clear_at_instant_caches(recursive=True)
+
+    def replace_parameters(self, parameters: Optional[ParameterNode]) -> None:
+        """Install a parameter tree with a fresh dated-view cache."""
+
+        if parameters is not None and not isinstance(parameters, ParameterNode):
+            raise TypeError("parameters must be a ParameterNode or None")
+        self.parameters = parameters
+        revision = parameters.parameter_revision if parameters is not None else 0
+        self._parameters_at_instant_cache = ParameterAtInstantCache(revision=revision)
 
     def share_parameters_from(self, other: "TaxBenefitSystem") -> None:
         """Deliberately share a parameter tree and its tracer-neutral cache."""
 
         if not isinstance(other, TaxBenefitSystem):
             raise TypeError("other must be a TaxBenefitSystem")
+        if other.parameters is not None:
+            other._parameters_at_instant_cache.bind_revision(
+                other.parameters.parameter_revision
+            )
         self.parameters = other.parameters
         self._parameters_at_instant_cache = other._parameters_at_instant_cache
+
+    def set_parameter_materializer(
+        self,
+        materializer: ParameterMaterializer,
+    ) -> None:
+        """Set eager or lazy construction for this system's dated views."""
+
+        if self.parameters is None:
+            raise ValueError("the tax-benefit system has no parameter tree")
+        self.parameters.set_parameter_materializer(materializer)
+        self._parameters_at_instant_cache.bind_revision(
+            self.parameters.parameter_revision
+        )
 
     def apply_reform_set(self, reform):
         if isinstance(reform, tuple):
@@ -565,7 +595,7 @@ class TaxBenefitSystem:
         if self.preprocess_parameters is not None:
             parameters = self.preprocess_parameters(parameters)
 
-        self.parameters = parameters
+        self.replace_parameters(parameters)
 
     def _get_baseline_parameters_at_instant(
         self, instant: Instant
@@ -596,6 +626,9 @@ class TaxBenefitSystem:
 
         if self.parameters is None:
             return None
+        self._parameters_at_instant_cache.bind_revision(
+            self.parameters.parameter_revision
+        )
         return self._parameters_at_instant_cache.get_or_create(
             instant,
             lambda: self.parameters.get_plain_at_instant(str(instant)),
@@ -696,7 +729,9 @@ class TaxBenefitSystem:
                 new_dict[key] = value
 
         new_dict["parameters"] = self.parameters.clone()
-        new._parameters_at_instant_cache = {}
+        new._parameters_at_instant_cache = ParameterAtInstantCache(
+            revision=new_dict["parameters"].parameter_revision
+        )
         new_dict["variables"] = {
             variable_name: variable.clone()
             for variable_name, variable in self.variables.items()
@@ -741,6 +776,12 @@ class TaxBenefitSystem:
         Args:
             modifier_function: A function that takes a :obj:`.ParameterNode` and should return an object of the same type.
         """
+        previous_parameters = self.parameters
+        previous_revision = (
+            previous_parameters.parameter_revision.current
+            if previous_parameters is not None
+            else None
+        )
         if isinstance(modifier_function, dict):
             for parameter in modifier_function:
                 for time_period in modifier_function[parameter]:
@@ -759,7 +800,15 @@ class TaxBenefitSystem:
                     )
                 )
             self.parameters = reform_parameters
-        self._parameters_at_instant_cache = {}
+        if (
+            previous_parameters is not None
+            and previous_parameters is not self.parameters
+            and previous_parameters.parameter_revision.current == previous_revision
+        ):
+            previous_parameters.parameter_revision.advance()
+        self._parameters_at_instant_cache = ParameterAtInstantCache(
+            revision=self.parameters.parameter_revision
+        )
         return self
 
     def add_modelled_policy_metadata(self):

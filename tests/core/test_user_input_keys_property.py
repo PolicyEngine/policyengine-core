@@ -22,9 +22,10 @@ inputs and nothing else.
 
 A second property runs ``set_input``, ``calculate``, deletes and
 ``_invalidate_all_caches`` on one simulation whose holders store values in
-memory or on disk, switching between the two: the record names exactly the
-inputs some storage still holds. ``test_user_input_keys.py`` pins the same
-behaviour with examples.
+memory or on disk, switching between the two. Its model tracks input values
+separately in each tier and checks the record, reads and exported values;
+a calculation surviving in one tier cannot stand in for a deleted input in
+the other. ``test_user_input_keys.py`` pins storage behavior with examples.
 """
 
 from __future__ import annotations
@@ -369,7 +370,12 @@ DISK_INPUTS = ["salary", "income_tax", "rent", "birth"]
 
 class _Storages:
     """One simulation whose holders store in memory or on disk, and the
-    inputs ``set_input`` stored that some storage still holds."""
+    input values independently tracked in each storage tier.
+
+    A surviving calculation for the same key cannot replace a deleted
+    tier's input in the model. The model retains both copies when both
+    were supplied through ``set_input``, with memory first for reads.
+    """
 
     def __init__(self, tax_benefit_system):
         self.simulation = SimulationBuilder().build_from_entities(
@@ -380,18 +386,33 @@ class _Storages:
             holder = self.simulation.get_holder(variable)
             holder._disk_storage = holder.create_disk_storage()
             holder._on_disk_storable = True
-        self.inputs = {
-            (variable, branch, _canonical(variable, period))
-            for variable, branch, period in SITUATION_INPUTS
+        self.memory_inputs = {
+            (variable, branch, _canonical(variable, period)): value.copy()
+            for (variable, branch, period), value in SITUATION_INPUTS.items()
         }
+        self.disk_inputs = {}
+        self.on_disk = True
 
-    def holds(self, key):
+    def holds(self, key, storage):
         variable, branch, period = key
         holder = self.simulation.get_holder(variable)
-        return (
-            f"{branch}:{period}" in holder._memory_storage._arrays
-            or f"{branch}_{period}" in holder._disk_storage._files
-        )
+        tier = holder._memory_storage if storage == "memory" else holder._disk_storage
+        return tier.has(period, branch)
+
+    def _forget_deleted_inputs(self):
+        self.memory_inputs = {
+            key: value
+            for key, value in self.memory_inputs.items()
+            if self.holds(key, "memory")
+        }
+        self.disk_inputs = {
+            key: value
+            for key, value in self.disk_inputs.items()
+            if self.holds(key, "disk")
+        }
+
+    def readable_inputs(self):
+        return {**self.disk_inputs, **self.memory_inputs}
 
     def stored(self):
         return {
@@ -409,26 +430,98 @@ class _Storages:
         simulation = self.simulation
         if kind == "set_input":
             variable, period, number = arguments
-            simulation.set_input(variable, period, _input_value(variable, number))
-            self.inputs.add((variable, "default", _canonical(variable, period)))
+            key = (variable, "default", _canonical(variable, period))
+            holder = simulation.get_holder(variable)
+            # Existing memory values are replaced in memory, regardless of
+            # the threshold controlling subsequent writes to empty slots.
+            writes_to_disk = self.on_disk and not holder._memory_storage.has(
+                key[2], key[1]
+            )
+            value = _input_value(variable, number)
+            simulation.set_input(variable, period, value)
+            inputs = self.disk_inputs if writes_to_disk else self.memory_inputs
+            inputs[key] = _expected_array(variable, value)
         elif kind == "calculate":
             simulation.calculate(*arguments)
         elif kind == "delete":
             simulation.delete_arrays(*arguments)
+            self._forget_deleted_inputs()
         elif kind == "holder_delete":
             variable, period = arguments
             simulation.get_holder(variable).delete_arrays(period)
+            self._forget_deleted_inputs()
         elif kind == "on_disk":
             (on_disk,) = arguments
+            self.on_disk = on_disk
             simulation.memory_config.max_memory_occupation_pc = 0 if on_disk else 101
         elif kind == "invalidate":
+            expected = self.readable_inputs()
             simulation._invalidate_all_caches()
-            assert self.stored() == set(simulation._user_input_keys)
-        # An input stops being one when no storage holds its value any more.
-        self.inputs = {key for key in self.inputs if self.holds(key)}
+            # Replay preserves memory before disk and keeps one copy. It
+            # must discard every stored value that the model did not input.
+            assert self.stored() == set(expected)
+            self.disk_inputs = {
+                key: value
+                for key, value in self.disk_inputs.items()
+                if key not in self.memory_inputs
+            }
 
     def assert_record_matches(self):
-        assert set(self.simulation._user_input_keys) == self.inputs
+        simulation = self.simulation
+        inputs = self.readable_inputs()
+        assert set(simulation._user_input_keys) == set(inputs)
+        for tier, expected_inputs in (
+            ("memory", self.memory_inputs),
+            ("disk", self.disk_inputs),
+        ):
+            for (variable, branch, period), expected in expected_inputs.items():
+                holder = simulation.get_holder(variable)
+                storage = (
+                    holder._memory_storage if tier == "memory" else holder._disk_storage
+                )
+                actual = storage.get(period, branch)
+                assert actual is not None, (tier, variable, branch, period)
+                assert np.array_equal(actual, expected), (
+                    tier,
+                    variable,
+                    branch,
+                    period,
+                )
+        for (variable, branch, period), expected in inputs.items():
+            actual = simulation.get_holder(variable).get_array(period, branch)
+            assert actual is not None, (variable, branch, period)
+            assert np.array_equal(actual, expected), (variable, branch, period)
+        self._assert_export_matches(inputs)
+
+    def _assert_export_matches(self, inputs):
+        simulation = self.simulation
+        expected = {}
+        for (variable, branch, period), value in inputs.items():
+            definition_period = simulation.tax_benefit_system.get_variable(
+                variable
+            ).definition_period
+            if (
+                branch == "default"
+                and variable in EXPORTABLE
+                and period.unit == definition_period
+            ):
+                if variable in ("rent", "quarterly_rent"):
+                    value = np.repeat(value, 2)
+                expected[f"{variable}__{period}"] = value
+        stored_before = self.stored()
+        fast_cache = dict(simulation._fast_cache)
+
+        exported = simulation.to_input_dataframe()
+
+        # Preserve the generated sequence's cache state while checking
+        # export's actual columns and values against the independent model.
+        simulation._fast_cache = fast_cache
+        assert self.stored() == stored_before
+        assert set(exported.columns) == set(expected)
+        for column, value in expected.items():
+            assert np.array_equal(
+                exported[column].to_numpy().astype(value.dtype), value
+            ), column
 
 
 _disk_operation = st.one_of(
@@ -458,6 +551,15 @@ _disk_operation = st.one_of(
     max_examples=200,
     deadline=None,
     suppress_health_check=[hypothesis.HealthCheck.too_slow],
+)
+@hypothesis.example(
+    operations=[
+        ("calculate", "rent", "2025-02"),
+        ("on_disk", False),
+        ("set_input", "rent", "2025-02", 500),
+        ("delete", "rent", "2025"),
+        ("invalidate",),
+    ]
 )
 @hypothesis.given(operations=st.lists(_disk_operation, max_size=25))
 def test_user_input_keys_follow_memory_and_disk_storage(operations):

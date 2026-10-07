@@ -501,6 +501,8 @@ class Simulation:
                 if holder._disk_storage is not None:
                     holder._disk_storage._files = {}
                     holder._disk_storage._derived = set()
+                if hasattr(holder, "_user_input_storage"):
+                    holder._user_input_storage = {}
         # Replay preserved user inputs so ``calculate`` still sees them.
         for user_input in preserved:
             holder = self.get_holder(user_input.variable_name)
@@ -516,6 +518,9 @@ class Simulation:
                     user_input.period,
                     user_input.branch_name,
                 )
+            holder._record_input_storage(
+                user_input.period, user_input.branch_name, user_input.storage
+            )
         for branch in self.branches.values():
             branch._invalidate_all_caches()
 
@@ -1872,11 +1877,7 @@ class Simulation:
             new.tax_benefit_system = self.tax_benefit_system
         new.debug = debug
         new.trace = trace
-        # The copy stores its own values, so it keeps its own record of
-        # which are inputs: one set on either simulation afterwards reaches
-        # only that simulation's storage and record. A ``set_input`` running
-        # on this simulation is not running on the copy.
-        new._user_input_keys = set(getattr(self, "_user_input_keys", ()))
+        # A ``set_input`` running on this simulation is not running on the copy.
         new._user_input_contexts = []
 
         # A branch shares its parent's baseline: formulas that run in a

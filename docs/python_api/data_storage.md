@@ -1,6 +1,6 @@
 # Data storage
 
-The `policyengine_core.data_storage` module contains two classes that are used to handle the storage of data in simulations.
+The `policyengine_core.data_storage` module contains the classes that are used to handle the storage of data in simulations.
 
 ## InMemoryStorage
 
@@ -15,6 +15,18 @@ The `policyengine_core.data_storage` module contains two classes that are used t
 
 ```{eval-rst}
 .. autoclass:: policyengine_core.data_storage.on_disk_storage.OnDiskStorage
+    :members:
+    :undoc-members:
+    :show-inheritance:
+```
+
+## TemporaryStorageDirectory
+
+```{eval-rst}
+.. automodule:: policyengine_core.data_storage.storage_directory
+    :no-members:
+
+.. autoclass:: policyengine_core.data_storage.storage_directory.TemporaryStorageDirectory
     :members:
     :undoc-members:
     :show-inheritance:

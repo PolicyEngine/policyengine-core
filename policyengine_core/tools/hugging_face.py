@@ -53,6 +53,14 @@ def download_huggingface_dataset(
     """
     Download a PolicyEngine dataset file from the Hugging Face Hub.
 
+    Private repos and public-but-gated repos both require authentication,
+    so for either the token is resolved by get_or_prompt_hf_token()
+    (HUGGING_FACE_TOKEN, else an interactive prompt when stdin is a TTY,
+    else None) and passed explicitly to hf_hub_download. Public, ungated
+    repos are requested with token=None and never prompt; huggingface_hub
+    may still apply its own implicitly configured token (HF_TOKEN or the
+    login file) in that case.
+
     Args:
         repo: Hugging Face model repository identifier in ``owner/name``
             format.
@@ -65,18 +73,36 @@ def download_huggingface_dataset(
 
     Returns:
         Path to the downloaded local file.
+
+    Warns:
+        UserWarning: If the repo requires authentication but no
+            HUGGING_FACE_TOKEN was available. The download still runs with
+            token=None, so huggingface_hub applies its own cached token
+            (HF_TOKEN, or the file written by `hf auth login`, which is
+            `huggingface-cli login` before huggingface_hub 0.34) if it has
+            one, unless HF_HUB_DISABLE_IMPLICIT_TOKEN is set; the warning
+            explains a 401 that follows when there is no such token, or a
+            403 when a gated repo has not approved it.
     """
     # Attempt connection to Hugging Face model_info endpoint
     # (https://huggingface.co/docs/huggingface_hub/v0.26.5/en/package_reference/hf_api#huggingface_hub.HfApi.model_info)
-    # Attempt to fetch model info to determine if repo is private
+    # Attempt to fetch model info to determine if the repo requires
+    # authentication. Testing `private` alone is not enough: a public but
+    # gated repo still answers model_info() without a token, but the file
+    # download returns 401 unless a gate-approved token is sent.
+    # ModelInfo.gated is False for ungated repos, "auto" or "manual" for
+    # gated repos, and None if the field is absent, so a truthiness test
+    # covers every state (both gate modes need an authenticated request).
     # A RepositoryNotFoundError & 401 likely means the repo is private,
     # but this error will also surface for public repos with malformed URL, etc.
     try:
         fetched_model_info: ModelInfo = model_info(repo)
-        is_repo_private = bool(fetched_model_info.private)
+        requires_authentication: bool = bool(fetched_model_info.private) or bool(
+            fetched_model_info.gated
+        )
     except RepositoryNotFoundError as e:
         # If this error type arises, it's likely the repo is private; see docs above
-        is_repo_private = True
+        requires_authentication = True
         pass
     except Exception as e:
         # Otherwise, there probably is just a download error
@@ -86,8 +112,27 @@ def download_huggingface_dataset(
         )
 
     authentication_token: str | None = None
-    if is_repo_private:
+    if requires_authentication:
         authentication_token = get_or_prompt_hf_token()
+        if authentication_token is None:
+            # Deliberately not an error: huggingface_hub resolves its own
+            # cached token when token=None, so `hf auth login` users still
+            # work. Warn so that the bare 401 huggingface_hub raises when
+            # that fallback is empty too can be traced back here (#529).
+            warnings.warn(
+                f"Hugging Face repo '{repo}' requires authentication, but no "
+                "HUGGING_FACE_TOKEN was available (the environment variable "
+                "is unset or empty, and no token was entered at a prompt). "
+                "huggingface_hub normally falls back to its own cached token "
+                "if it has one (the HF_TOKEN environment variable, or the file "
+                "written by `hf auth login`, which is `huggingface-cli login` "
+                "before huggingface_hub 0.34). If the download that follows "
+                "fails with RepositoryNotFoundError or GatedRepoError (a 401 "
+                "when no token was sent, or a 403 when a gated repo has not "
+                "approved the token), set HUGGING_FACE_TOKEN to a token whose "
+                "account has access.",
+                stacklevel=2,
+            )
 
     return hf_hub_download(
         repo_id=repo,

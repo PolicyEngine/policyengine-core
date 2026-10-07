@@ -42,7 +42,7 @@ jobs:
         run: |
           uv pip install --system towncrier
           python .github/bump_version.py
-          towncrier build --yes --version $(python -c "import re; print(re.search(r'version = \"(.+?)\"', open('pyproject.toml').read()).group(1))")
+          towncrier build --yes --version "$(python -c "import re; print(re.search(r'version = \"(.+?)\"', open('pyproject.toml').read()).group(1))")"
       - name: Preview changelog update
         run: ".github/get-changelog-diff.sh"
       - name: Update changelog
@@ -109,6 +109,6 @@ jobs:
         with:
           user: __token__
           password: ${{ secrets.PYPI }}
-          skip_existing: true
+          skip-existing: true
       - name: Publish a git tag
         run: bash .github/publish-git-tag.sh

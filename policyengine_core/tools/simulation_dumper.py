@@ -156,4 +156,9 @@ def _restore_holder(simulation, variable, directory):
 
     for period in disk_storage.get_known_periods():
         value = disk_storage.get(period)
-        holder.put_in_cache(value, period, derived=str(period) in derived_periods)
+        derived = str(period) in derived_periods
+        holder.put_in_cache(value, period, derived=derived)
+        if not derived:
+            # Restored source values must also be available to input-only
+            # exports, including explicit values of formula-backed variables.
+            simulation._user_input_keys.add((variable, simulation.branch_name, period))

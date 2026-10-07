@@ -2387,6 +2387,13 @@ class Simulation:
         # as "size X != Y = count" projection errors.
         self._invalidate_all_caches()
 
+        # Other branches still contain the pre-subsample populations. Forget
+        # them so a formula's next ``get_branch`` starts from the new sample.
+        # Keep the baseline long enough to preserve its policy below.
+        self.branches = {
+            name: branch for name, branch in self.branches.items() if name == "baseline"
+        }
+
         # Ensure the baseline branch has the new data: rebuild it from the
         # subsampled simulation through ``get_branch`` (the same wiring
         # ``__init__`` uses), then restore the saved baseline tax-benefit

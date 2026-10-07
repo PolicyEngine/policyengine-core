@@ -68,7 +68,25 @@ class overridden(Variable):
         return person.filled_array(-1.0)
 
 
-FORMULA_VARIABLES = ["doubled", "ended", "household_total", "person_weight"]
+class via_branch(Variable):
+    value_type = float
+    entity = Person
+    definition_period = YEAR
+    label = "A formula that changes an input in its own branch"
+
+    def formula(person, period):
+        branch = person.simulation.get_branch("probe")
+        branch.set_input("base", period, np.full(person.count, 1.0))
+        return branch.calculate("doubled", period)
+
+
+FORMULA_VARIABLES = [
+    "doubled",
+    "ended",
+    "household_total",
+    "person_weight",
+    "via_branch",
+]
 OVERRIDDEN = [float(index) for index in range(len(BASE))]
 
 
@@ -91,7 +109,7 @@ def build(carry_over: bool = True) -> Simulation:
     """A ten-person, six-household simulation loaded from ``dataframe()``."""
     system = CountryTaxBenefitSystem()
     system.auto_carry_over_input_variables = carry_over
-    system.add_variables(base, doubled, ended, household_total, overridden)
+    system.add_variables(base, doubled, ended, household_total, overridden, via_branch)
     return Simulation(
         tax_benefit_system=system,
         dataset=Dataset.from_dataframe(dataframe(), DATASET_YEAR),

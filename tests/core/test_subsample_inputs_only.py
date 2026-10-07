@@ -8,6 +8,7 @@ so results after subsampling depended on what had been calculated before.
 """
 
 import numpy as np
+import pytest
 
 from policyengine_core.reforms import Reform
 from policyengine_core.variables import Variable
@@ -104,3 +105,33 @@ def test_formulas_run_on_the_subsample_after_subsample():
     )
     household_total = simulation.calculate("household_total", DATASET_YEAR)
     assert household_total.sum() == simulation.calculate("doubled", DATASET_YEAR).sum()
+
+
+@pytest.mark.parametrize("with_baseline", [False, True])
+def test_subsample_recreates_formula_branches_on_the_new_population(with_baseline):
+    fresh = build()
+    used = build()
+    if with_baseline:
+        for simulation in (fresh, used):
+            simulation.baseline = simulation.get_branch("baseline", clone_system=True)
+        baseline_system = used.baseline.tax_benefit_system
+
+    used.calculate("via_branch", DATASET_YEAR)
+    stale_branch = used.get_branch("probe")
+    for simulation in (fresh, used):
+        simulation.subsample(n=4, seed=SEED, time_period=DATASET_YEAR)
+
+    assert "probe" not in used.branches
+    if with_baseline:
+        assert used.baseline is used.branches["baseline"]
+        assert used.baseline.tax_benefit_system is baseline_system
+        assert used.baseline.persons.count == used.persons.count
+
+    for year in (DATASET_YEAR, "2023"):
+        np.testing.assert_array_equal(
+            used.calculate("via_branch", year), fresh.calculate("via_branch", year)
+        )
+    branch = used.get_branch("probe")
+    assert branch is not stale_branch
+    assert branch.persons.count == used.persons.count
+    assert branch.household.count == used.household.count

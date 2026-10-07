@@ -32,6 +32,13 @@ def subsampled(carry_over, prior, n, seed):
 
 
 @hypothesis.settings(max_examples=150, deadline=None)
+@hypothesis.example(
+    carry_over=True,
+    prior=[("via_branch", DATASET_YEAR)],
+    later=[("via_branch", DATASET_YEAR), ("via_branch", "2023")],
+    n=4,
+    seed="a",
+)
 @hypothesis.given(
     carry_over=st.booleans(),
     prior=st.lists(REQUESTS, min_size=1, max_size=6),

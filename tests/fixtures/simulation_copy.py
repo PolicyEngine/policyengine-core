@@ -6,6 +6,7 @@ import copy
 import pickle
 
 from policyengine_core.country_template import CountryTaxBenefitSystem
+from policyengine_core.enums import Enum, EnumArray
 from policyengine_core.parameters import ParameterNode
 from policyengine_core.reforms import Reform
 from policyengine_core.simulations import SimulationBuilder
@@ -17,6 +18,15 @@ COPIERS = {
     "deepcopy": copy.deepcopy,
     "pickle": lambda value: pickle.loads(pickle.dumps(value)),
 }
+
+
+class CopyEnum(Enum):
+    first = "First"
+    second = "Second"
+
+
+class ChildEnumArray(EnumArray):
+    """Importable subclass for copy and pickle type-preservation checks."""
 
 
 def build_simulation(

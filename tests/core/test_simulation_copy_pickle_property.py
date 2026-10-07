@@ -8,6 +8,10 @@ does, and writing to the copy leaves the original unchanged.
 
 from __future__ import annotations
 
+import copy
+import pickle
+
+import numpy as np
 import pytest
 
 # The country-package smoke job installs no dev dependencies.
@@ -15,8 +19,16 @@ hypothesis = pytest.importorskip("hypothesis")
 st = hypothesis.strategies
 
 from policyengine_core.country_template import CountryTaxBenefitSystem
+from policyengine_core.enums import EnumArray
 from policyengine_core.tools import assert_near
-from tests.fixtures.simulation_copy import COPIERS, FEB, JAN, build_simulation
+from tests.fixtures.simulation_copy import (
+    COPIERS,
+    FEB,
+    JAN,
+    ChildEnumArray,
+    CopyEnum,
+    build_simulation,
+)
 
 YEAR = "2025"
 VARIABLES = (
@@ -97,3 +109,30 @@ def test_copy_calculates_like_a_fresh_simulation_and_stays_independent(
     assert original.persons.get_holder("disposable_income").get_array(FEB) is None
     for variable in warmed:
         assert_near(original.calculate(variable, JAN), fresh.calculate(variable, JAN))
+
+
+@hypothesis.settings(max_examples=40, deadline=None)
+@hypothesis.given(
+    indices=st.lists(st.integers(0, 1), max_size=40),
+    dtype=st.sampled_from(["uint8", "int16", "int32"]),
+    array_class=st.sampled_from([EnumArray, ChildEnumArray]),
+    protocol=st.integers(0, 5),
+)
+def test_enum_array_copy_and_pickle_preserve_numpy_values(
+    indices, dtype, array_class, protocol
+):
+    """Copies and round trips agree with the plain NumPy array reference."""
+    reference = np.array(indices, dtype=dtype).reshape(-1, 1)
+    original = array_class(reference.copy(), CopyEnum)
+
+    for restored in (
+        copy.copy(original),
+        copy.deepcopy(original),
+        pickle.loads(pickle.dumps(original, protocol=protocol)),
+    ):
+        assert type(restored) is array_class
+        assert restored.possible_values is CopyEnum
+        assert restored.dtype == reference.dtype
+        assert restored.shape == reference.shape
+        np.testing.assert_array_equal(restored.view(np.ndarray), reference)
+        assert not np.shares_memory(restored, original)

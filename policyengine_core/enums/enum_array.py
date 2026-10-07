@@ -12,7 +12,9 @@ if typing.TYPE_CHECKING:
 
 
 def _restore_enum_array(
-    array: numpy.ndarray, enum_name: Optional[Tuple[str, str]]
+    array: numpy.ndarray,
+    enum_name: Optional[Tuple[str, str]],
+    array_type: Optional[Type[EnumArray]] = None,
 ) -> EnumArray:
     """Rebuild a pickled EnumArray, with its enum if this process can find it.
 
@@ -33,7 +35,11 @@ def _restore_enum_array(
             possible_values = operator.attrgetter(qualified_name)(module)
         except (ImportError, AttributeError):
             pass
-    return EnumArray(array, possible_values)
+    # Do not invoke a subclass's constructor: it may require other arguments.
+    # The default also accepts pickles written by the two-argument reducer.
+    restored = array.view(EnumArray if array_type is None else array_type)
+    restored.possible_values = possible_values
+    return restored
 
 
 class EnumArray(numpy.ndarray):
@@ -67,9 +73,10 @@ class EnumArray(numpy.ndarray):
         # ``possible_values``, so an unpickled EnumArray could be neither
         # decoded nor compared with an enum item. The enum travels by name
         # rather than by reference; see ``_restore_enum_array``.
-        enum = self.possible_values
+        # Legacy NumPy pickles do not restore this attribute at all.
+        enum = getattr(self, "possible_values", None)
         name = None if enum is None else (enum.__module__, enum.__qualname__)
-        return _restore_enum_array, (self.view(numpy.ndarray), name)
+        return _restore_enum_array, (self.view(numpy.ndarray), name, type(self))
 
     def __eq__(self, other: Any) -> bool:
         # When comparing to an item of self.possible_values, use the item index

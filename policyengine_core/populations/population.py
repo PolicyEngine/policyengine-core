@@ -57,7 +57,21 @@ class Population:
         # They are missing while copy or pickle rebuilds a population (both
         # probe the new, empty instance for ``__setstate__`` before restoring
         # its ``__dict__``), and looking them up would recurse here.
-        if attribute in ("entity", "simulation"):
+        # Reject protocol probes before shortcut lookup, including when a
+        # subclass's entity property reads state that has not been restored.
+        if attribute in (
+            "entity",
+            "simulation",
+            "__slots__",
+            "__copy__",
+            "__deepcopy__",
+            "__getstate__",
+            "__setstate__",
+            "__reduce__",
+            "__reduce_ex__",
+            "__getnewargs__",
+            "__getnewargs_ex__",
+        ):
             raise AttributeError(
                 f"{type(self).__name__!s} has no attribute {attribute!r}"
             )

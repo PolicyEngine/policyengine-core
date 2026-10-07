@@ -28,7 +28,11 @@ import pytest
 
 from policyengine_core.country_template import CountryTaxBenefitSystem
 from policyengine_core.enums import Enum, EnumArray
-from policyengine_core.parameters import VectorialParameterNodeAtInstant
+from policyengine_core.parameters import (
+    ParameterNode,
+    ParameterNodeAtInstant,
+    VectorialParameterNodeAtInstant,
+)
 from policyengine_core.populations import GroupPopulation, Population
 from policyengine_core.tools import assert_near
 from policyengine_core.tracers import FullTracer, TracingParameterNodeAtInstant
@@ -36,10 +40,41 @@ from tests.fixtures.simulation_copy import (
     COPIERS,
     FEB,
     JAN,
+    ChildEnumArray,
     DoubleIncomeTaxRate,
     build_simulation,
     rate_node,
 )
+
+
+class PropertyBackedPopulation(Population):
+    @property
+    def entity(self):
+        return self._entity
+
+    @entity.setter
+    def entity(self, value):
+        self._entity = value
+
+
+class SlottedNodeState:
+    __slots__ = ()
+
+    def __getstate__(self):
+        return self.__dict__, self.marker
+
+    def __setstate__(self, state):
+        attributes, self.marker = state
+        self.__dict__.update(attributes)
+
+
+class SlottedScalarNode(SlottedNodeState, ParameterNodeAtInstant):
+    __slots__ = ("marker",)
+
+
+class SlottedVectorialNode(SlottedNodeState, VectorialParameterNodeAtInstant):
+    __slots__ = ("marker",)
+
 
 # Population: lookups on an instance that copy or pickle has not filled yet.
 
@@ -80,6 +115,30 @@ def test_shallow_copy_of_a_population_shares_its_holders():
 
     assert population.entity is simulation.persons.entity
     assert population._holders is simulation.persons._holders
+
+
+@pytest.mark.parametrize("copier", [copy.copy, copy.deepcopy])
+def test_property_backed_population_can_be_copied(copier):
+    population = PropertyBackedPopulation(build_simulation().persons.entity)
+    population.ids = ["person"]
+
+    copied = copier(population)
+
+    assert type(copied) is PropertyBackedPopulation
+    assert copied.entity.key == population.entity.key
+    assert copied.ids == population.ids
+
+
+@pytest.mark.parametrize("protocol", range(6))
+def test_property_backed_population_can_be_pickled(protocol):
+    population = PropertyBackedPopulation(build_simulation().persons.entity)
+    population.ids = ["person"]
+
+    restored = pickle.loads(pickle.dumps(population, protocol=protocol))
+
+    assert type(restored) is PropertyBackedPopulation
+    assert restored.entity.key == population.entity.key
+    assert restored.ids == population.ids
 
 
 # Simulations.
@@ -195,14 +254,16 @@ def test_copied_simulation_keeps_enum_inputs(copier):
 
 
 @pytest.mark.parametrize("protocol", range(pickle.HIGHEST_PROTOCOL + 1))
-def test_pickled_enum_array_keeps_its_possible_values(protocol):
+@pytest.mark.parametrize("array_class", [EnumArray, ChildEnumArray])
+def test_pickled_enum_array_keeps_its_possible_values(protocol, array_class):
     status = build_simulation(occupancy=["free_lodger"]).household(
         "housing_occupancy_status", JAN
     )
+    status = status.view(array_class)
 
     restored = pickle.loads(pickle.dumps(status, protocol=protocol))
 
-    assert type(restored) is EnumArray
+    assert type(restored) is array_class
     assert restored.possible_values is status.possible_values
     assert list(restored.decode_to_str()) == ["free_lodger"]
     assert (restored == status.possible_values.free_lodger).all()
@@ -244,11 +305,14 @@ def test_enum_array_whose_enum_cannot_be_found_unpickles_without_it(
     assert restored.tolist() == [1, 0, 1]
 
 
-def test_enum_array_pickled_by_an_earlier_release_still_loads():
+@pytest.mark.parametrize("protocol", range(6))
+@pytest.mark.parametrize("array_class", [EnumArray, ChildEnumArray])
+def test_enum_array_pickled_by_an_earlier_release_still_loads(protocol, array_class):
     """Earlier releases pickled an EnumArray as numpy pickles any ndarray."""
     status = build_simulation(occupancy=["owner"]).household(
         "housing_occupancy_status", JAN
     )
+    status = status.view(array_class)
 
     class EarlierPickler(pickle.Pickler):
         def reducer_override(self, obj):
@@ -257,27 +321,76 @@ def test_enum_array_pickled_by_an_earlier_release_still_loads():
             return NotImplemented
 
     buffer = io.BytesIO()
-    EarlierPickler(buffer).dump(status)
+    EarlierPickler(buffer, protocol=protocol).dump(status)
 
     restored = pickle.loads(buffer.getvalue())
 
-    assert type(restored) is EnumArray
+    assert type(restored) is array_class
     assert restored.tolist() == status.tolist()
+    assert not hasattr(restored, "possible_values")
+
+    repickled = pickle.loads(pickle.dumps(restored, protocol=protocol))
+
+    assert type(repickled) is array_class
+    assert repickled.possible_values is None
+    assert repickled.dtype == status.dtype
+    assert repickled.shape == status.shape
+    np.testing.assert_array_equal(repickled.view(np.ndarray), status.view(np.ndarray))
 
 
-def test_copied_enum_array_keeps_its_possible_values():
+@pytest.mark.parametrize("array_class", [EnumArray, ChildEnumArray])
+def test_copied_enum_array_keeps_its_possible_values(array_class):
     status = build_simulation(occupancy=["owner"]).household(
         "housing_occupancy_status", JAN
     )
+    status = status.view(array_class)
 
     for copied in (copy.copy(status), copy.deepcopy(status)):
-        assert type(copied) is EnumArray
+        assert type(copied) is array_class
         assert copied.possible_values is status.possible_values
         assert list(copied.decode_to_str()) == ["owner"]
         assert not np.shares_memory(copied, status)
 
 
 # Parameter wrappers that forward attribute lookups.
+
+
+def test_vectorial_parameter_field_named_vector_still_resolves():
+    rate = ParameterNode(
+        "rate",
+        data={
+            "single": {"vector": {"values": {"2015-01-01": 100}}},
+            "couple": {"vector": {"values": {"2015-01-01": 500}}},
+        },
+    )
+    vectorial = rate("2015-01-01")[np.array(["single", "couple"])]
+
+    np.testing.assert_array_equal(vectorial["vector"], [100, 500])
+
+
+@pytest.mark.parametrize("protocol", range(6))
+@pytest.mark.parametrize("node_class", [SlottedScalarNode, SlottedVectorialNode])
+def test_tracing_wrapper_of_a_slotted_node_can_be_pickled(protocol, node_class):
+    source = rate_node()("2015-01-01")
+    if node_class is SlottedVectorialNode:
+        source = source[np.array(["single", "couple"])]
+    inner = node_class.__new__(node_class)
+    inner.__dict__.update(source.__dict__)
+    inner.marker = "slotted"
+
+    # The wrapper must preserve the protocol support of its wrapped node.
+    unwrapped = pickle.loads(pickle.dumps(inner, protocol=protocol))
+    wrapped = TracingParameterNodeAtInstant(inner, FullTracer(), "default")
+    restored = pickle.loads(pickle.dumps(wrapped, protocol=protocol))
+
+    assert type(restored) is TracingParameterNodeAtInstant
+    restored_inner = restored.parameter_node_at_instant
+    assert type(restored_inner) is type(unwrapped) is node_class
+    assert restored_inner.marker == unwrapped.marker == "slotted"
+    if node_class is SlottedVectorialNode:
+        np.testing.assert_array_equal(restored_inner.owner, unwrapped.owner)
+    else:
+        assert restored_inner.single.owner == unwrapped.single.owner == 100
 
 
 @pytest.mark.parametrize("copier", COPIERS.values(), ids=COPIERS.keys())

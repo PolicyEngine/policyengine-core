@@ -30,6 +30,7 @@ from tests.fixtures.yaml_runner_memory import (
     write_cases,
     write_cases_at_distinct_dates,
 )
+from tests.fixtures.tracing import build_simulation
 
 
 def _rate_reform(rate):
@@ -222,12 +223,27 @@ def test_cases_on_a_tree_marked_traced_release_their_tracers(tmp_path, monkeypat
     assert reform_free.parameters.tracer is None
 
 
-def test_cases_whose_simulation_fails_to_build_release_it(tmp_path):
+@pytest.mark.parametrize(
+    "invalid_input",
+    [
+        pytest.param({"salary": "not a number"}, id="variable-value"),
+        pytest.param(
+            {"persons": {"person": {"salary": {"2017-01": "not a number"}}}},
+            id="entity-value",
+        ),
+        pytest.param({"unknown_variable": 1}, id="unknown-variable"),
+    ],
+)
+@pytest.mark.parametrize("existing_simulation", [False, True])
+def test_cases_whose_simulation_fails_to_build_release_it(
+    tmp_path, invalid_input, existing_simulation
+):
+    """Both builder paths release failed cases and restore any prior backlink."""
     cases = [
         {
             "name": f"bad input {i}",
             "period": "2017-01",
-            "input": {"salary": "not a number"},
+            "input": invalid_input,
             "output": {"income_tax": 0},
         }
         for i in range(8)
@@ -235,12 +251,34 @@ def test_cases_whose_simulation_fails_to_build_release_it(tmp_path):
     path = tmp_path / "bad.yaml"
     path.write_text(yaml.safe_dump(cases))
     system = CountryTaxBenefitSystem()
+    reform_free = _get_tax_benefit_system(system, [], [])
+    previous = build_simulation(reform_free) if existing_simulation else None
     probe = run_with_probe(system, path, outcome="failed")
+    assert len(probe.outcomes) == len(probe.items) == 8
     assert probe.live_simulations == 0
-    assert (
-        getattr(_tax_benefit_system_cache[system].reform_free, "simulation", None)
-        is None
-    )
+    assert getattr(reform_free, "simulation", None) is previous
+    for item in probe.items:
+        assert item.simulation is None
+        assert item.tax_benefit_system is None
+        assert item._system_simulation is None
+
+
+def test_successful_cases_restore_the_systems_previous_simulation(tmp_path):
+    """Successful and failed builds have the same ownership after teardown."""
+    system = CountryTaxBenefitSystem()
+    reform_free = _get_tax_benefit_system(system, [], [])
+    previous = build_simulation(reform_free)
+    path = write_cases(tmp_path / "good.yaml", 3, reform_every=0)
+
+    probe = run_with_probe(system, path)
+
+    assert len(probe.outcomes) == len(probe.items) == 3
+    assert probe.live_simulations == 0
+    assert reform_free.simulation is previous
+    for item in probe.items:
+        assert item.simulation is None
+        assert item.tax_benefit_system is None
+        assert item._system_simulation is None
 
 
 def test_inline_parameter_values_key_by_type(tmp_path):

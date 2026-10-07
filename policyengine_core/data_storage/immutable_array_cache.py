@@ -194,20 +194,28 @@ class ImmutableArrayCache(
     def entries(self) -> dict[K, CachedArrayEntry[ArrayT]]:
         """Mutable compatibility mapping for legacy storage serialization."""
 
-        return self._entries
+        with self._cache_lock:
+            return self._entries
 
     def replace_entries(
         self,
         entries: dict[K, CachedArrayEntry[ArrayT] | ArrayT],
     ) -> None:
-        normalized = {}
-        for key, value in entries.items():
-            normalized[key] = (
-                value
-                if isinstance(value, CachedArrayEntry)
-                else CachedArrayEntry.from_value(value)
-            )
-        self._entries = normalized
+        with self._open_operation():
+            normalized = {}
+            for key, value in entries.items():
+                self._validate_key(key)
+                entry = (
+                    value
+                    if isinstance(value, CachedArrayEntry)
+                    else CachedArrayEntry.from_value(value)
+                )
+                self._validate_value(entry)
+                normalized[key] = entry
+            self._cache_deletions += len(self._entries.keys() - normalized.keys())
+            self._cache_writes += len(normalized)
+            self._entries = normalized
+            self._cache_peak_entries = max(self._cache_peak_entries, len(normalized))
 
     def fork(self) -> ImmutableArrayCache[K, ArrayT]:
         fork: ImmutableArrayCache[K, ArrayT] = ImmutableArrayCache()

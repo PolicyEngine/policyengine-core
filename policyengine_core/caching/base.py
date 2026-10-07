@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from threading import RLock
 from types import TracebackType
@@ -67,6 +69,13 @@ class BaseCache(ABC, Generic[K, V]):
         self._cache_deletions = 0
         self._cache_evictions = 0
         self._cache_peak_entries = 0
+
+    @contextmanager
+    def _open_operation(self) -> Iterator[None]:
+        """Serialize a concrete compound operation and reject closed owners."""
+        with self._cache_lock:
+            self._ensure_open()
+            yield
 
     @abstractmethod
     def _lookup(self, key: K) -> V:

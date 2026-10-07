@@ -55,7 +55,8 @@ class SimulationResultCache(
     @property
     def input_revision(self) -> int:
         """Monotonic revision of this owner's successful supplied-input mutations."""
-        return self._input_revision
+        with self._cache_lock:
+            return self._input_revision
 
     def _lookup(self, key: ResultCacheKey[InstantT]) -> ValueT:
         return self._entries[key]
@@ -88,113 +89,147 @@ class SimulationResultCache(
 
     @property
     def entries(self) -> dict[ResultCacheKey[InstantT], ValueT]:
-        """Return the compatibility mapping used by older country packages."""
-
-        return self._entries
+        """Return the transitional live mapping used by older country packages."""
+        with self._cache_lock:
+            return self._entries
 
     def replace_entries(
         self,
         entries: dict[ResultCacheKey[InstantT], ValueT]
         | dict[tuple[str, InstantT], ValueT],
     ) -> None:
-        """Replace result entries supplied through the legacy attribute."""
+        """Validate and replace results, retaining preparatory tuple conversion."""
 
-        normalized: dict[ResultCacheKey[InstantT], ValueT] = {}
-        for key, value in entries.items():
-            typed_key = key if isinstance(key, ResultCacheKey) else ResultCacheKey(*key)
-            self._validate_key(typed_key)
-            normalized[typed_key] = value
-        self._entries = normalized
+        with self._cache_lock:
+            self._ensure_open()
+            normalized: dict[ResultCacheKey[InstantT], ValueT] = {}
+            for key, value in entries.items():
+                key = key if isinstance(key, ResultCacheKey) else ResultCacheKey(*key)
+                self._validate_key(key)
+                self._validate_value(value)
+                normalized[key] = value
+            self._cache_deletions += len(self._entries.keys() - normalized.keys())
+            self._cache_writes += len(normalized)
+            self._entries = normalized
+            self._cache_peak_entries = max(self._cache_peak_entries, len(normalized))
 
     @property
     def invalidated(self) -> set[ResultCacheKey[InstantT]]:
-        return self._invalidated
+        with self._cache_lock:
+            return self._invalidated
 
     def replace_invalidated(
         self,
         entries: set[ResultCacheKey[InstantT]] | set[tuple[str, InstantT]],
     ) -> None:
-        self._invalidated = {
-            key if isinstance(key, ResultCacheKey) else ResultCacheKey(*key)
-            for key in entries
-        }
+        with self._cache_lock:
+            self._ensure_open()
+            normalized = set()
+            for key in entries:
+                key = key if isinstance(key, ResultCacheKey) else ResultCacheKey(*key)
+                self._validate_key(key)
+                normalized.add(key)
+            self._invalidated = normalized
 
     @property
     def supplied_inputs(self) -> set[SuppliedInputKey[InstantT]]:
-        return self._supplied_inputs
+        with self._cache_lock:
+            return self._supplied_inputs
 
     def supplied_input_keys(self) -> frozenset[SuppliedInputKey[InstantT]]:
         """Return a read-only snapshot of the supplied-input query index."""
-        return frozenset(self._supplied_inputs)
+        with self._cache_lock:
+            return frozenset(self._supplied_inputs)
 
     def has_supplied_input(
         self, variable_name: str, branch_name: str, input_period: InstantT
     ) -> bool:
         """Check exact supplied provenance without scanning other inputs."""
-        return (
-            SuppliedInputKey(variable_name, branch_name, input_period)
-            in self._supplied_inputs
-        )
+        with self._cache_lock:
+            return (
+                SuppliedInputKey(variable_name, branch_name, input_period)
+                in self._supplied_inputs
+            )
 
     def retain_input_variables(self, variable_names: set[str]) -> None:
         """Prune provenance for removed holders without invalidating retained results."""
-        retained = {
-            key for key in self._supplied_inputs if key.variable_name in variable_names
-        }
-        if retained != self._supplied_inputs:
-            self._input_revision += 1
-        self._supplied_inputs = retained
-        self._result_variables.intersection_update(variable_names)
+        with self._open_operation():
+            retained = {
+                key
+                for key in self._supplied_inputs
+                if key.variable_name in variable_names
+            }
+            if retained != self._supplied_inputs:
+                self._input_revision += 1
+            self._supplied_inputs = retained
+            self._result_variables.intersection_update(variable_names)
 
     def record_result_storage(self, variable_name: str) -> None:
         """Record a holder that needs clearing after the next input mutation."""
-        self._result_variables.add(variable_name)
+        with self._open_operation():
+            self._result_variables.add(variable_name)
 
     def forget_supplied_input(
         self, variable_name: str, branch_name: str, input_period: InstantT
     ) -> None:
         """Remove exact provenance after replacing an entry, in constant time."""
-        key = SuppliedInputKey(variable_name, branch_name, input_period)
-        if key in self._supplied_inputs:
-            self._supplied_inputs.remove(key)
-            self._input_revision += 1
+        with self._open_operation():
+            key = SuppliedInputKey(variable_name, branch_name, input_period)
+            if key in self._supplied_inputs:
+                self._supplied_inputs.remove(key)
+                self._input_revision += 1
 
     def take_result_variables(self) -> set[str]:
         """Consume this owner's set of holders containing non-supplied values."""
-        names, self._result_variables = self._result_variables, set()
-        return names
+        with self._open_operation():
+            names, self._result_variables = self._result_variables, set()
+            return names
 
     def replace_supplied_inputs(
         self,
-        entries: set[SuppliedInputKey[InstantT]] | set[tuple[str, str, InstantT]],
+        entries: set[SuppliedInputKey[InstantT]]
+        | frozenset[SuppliedInputKey[InstantT]]
+        | set[tuple[str, str, InstantT]],
     ) -> None:
-        normalized = {
-            key if isinstance(key, SuppliedInputKey) else SuppliedInputKey(*key)
-            for key in entries
-        }
-        if normalized != self._supplied_inputs:
-            self._input_revision += 1
-        self._supplied_inputs = normalized
+        with self._cache_lock:
+            self._ensure_open()
+            normalized = set()
+            for key in entries:
+                key = (
+                    key if isinstance(key, SuppliedInputKey) else SuppliedInputKey(*key)
+                )
+                self._validate_supplied_input(
+                    key.variable_name, key.branch_name, key.period
+                )
+                normalized.add(key)
+            if normalized != self._supplied_inputs:
+                self._input_revision += 1
+            self._supplied_inputs = normalized
 
     def replace_input_contexts(self, contexts: list[str]) -> None:
-        self._input_contexts = list(contexts)
+        """Replace a legacy initialization stack without bypassing cache lifecycle."""
+        with self._open_operation():
+            self._input_contexts = list(contexts)
 
     @property
     def input_contexts(self) -> list[str]:
-        return self._input_contexts
+        with self._cache_lock:
+            return self._input_contexts
 
     @property
     def current_input_branch(self) -> str | None:
-        return self._input_contexts[-1] if self._input_contexts else None
+        with self._cache_lock:
+            return self._input_contexts[-1] if self._input_contexts else None
 
     @contextmanager
     def supplied_input_context(self, branch_name: str) -> Iterator[None]:
-        self._validate_input_branch(branch_name)
-        self._input_contexts.append(branch_name)
-        try:
-            yield
-        finally:
-            self._input_contexts.pop()
+        with self._open_operation():
+            self._validate_input_branch(branch_name)
+            self._input_contexts.append(branch_name)
+            try:
+                yield
+            finally:
+                self._input_contexts.pop()
 
     @staticmethod
     def _validate_input_branch(branch_name: str) -> None:
@@ -211,30 +246,40 @@ class SimulationResultCache(
         branch_name: str,
         input_period: InstantT,
     ) -> SuppliedInputKey[InstantT]:
+        with self._open_operation():
+            self._validate_supplied_input(variable_name, branch_name, input_period)
+            key = SuppliedInputKey(variable_name, branch_name, input_period)
+            self._supplied_inputs.add(key)
+            self._input_revision += 1
+            return key
+
+    @classmethod
+    def _validate_supplied_input(cls, variable_name, branch_name, input_period) -> None:
         if not isinstance(variable_name, str) or not variable_name:
             raise InvalidCacheKeyError("input variable names must be non-empty strings")
-        self._validate_input_branch(branch_name)
+        cls._validate_input_branch(branch_name)
         if input_period is None:
             raise InvalidCacheKeyError("input periods must not be None")
-        key = SuppliedInputKey(variable_name, branch_name, input_period)
-        self._supplied_inputs.add(key)
-        self._input_revision += 1
-        return key
+        try:
+            hash(input_period)
+        except TypeError as error:
+            raise InvalidCacheKeyError("input periods must be hashable") from error
 
     def supplied_input_periods(
         self,
         variable_name: str,
         visible_branches: tuple[str, ...] | list[str],
     ) -> list[InstantT]:
-        visible = set(visible_branches)
-        return sorted(
-            {
-                key[2]
-                for key in self._supplied_inputs
-                if key[0] == variable_name and key[1] in visible
-            },
-            key=str,
-        )
+        with self._cache_lock:
+            visible = set(visible_branches)
+            return sorted(
+                {
+                    key[2]
+                    for key in self._supplied_inputs
+                    if key[0] == variable_name and key[1] in visible
+                },
+                key=str,
+            )
 
     @staticmethod
     def _period_contains(container: Any, candidate: Any) -> bool:
@@ -251,52 +296,61 @@ class SimulationResultCache(
         visible_branches: tuple[str, ...] | list[str],
         deleted_period: InstantT | None = None,
     ) -> set[SuppliedInputKey[InstantT]]:
-        visible = set(visible_branches)
-        removed = {
-            key
-            for key in self._supplied_inputs
-            if key[0] == variable_name
-            and key[1] in visible
-            and (
-                deleted_period is None or self._period_contains(deleted_period, key[2])
-            )
-        }
-        self._supplied_inputs.difference_update(removed)
-        if removed:
-            self._input_revision += 1
-        return removed
+        with self._open_operation():
+            visible = set(visible_branches)
+            removed = {
+                key
+                for key in self._supplied_inputs
+                if key[0] == variable_name
+                and key[1] in visible
+                and (
+                    deleted_period is None
+                    or self._period_contains(deleted_period, key[2])
+                )
+            }
+            self._supplied_inputs.difference_update(removed)
+            if removed:
+                self._input_revision += 1
+            return removed
 
     def invalidate(self, key: ResultCacheKey[InstantT]) -> None:
-        self._validate_key(key)
-        self._invalidated.add(key)
+        with self._open_operation():
+            self._validate_key(key)
+            self._invalidated.add(key)
 
     def take_invalidated(self) -> set[ResultCacheKey[InstantT]]:
-        invalidated = {
-            key if isinstance(key, ResultCacheKey) else ResultCacheKey(*key)
-            for key in self._invalidated
-        }
-        self._invalidated = set()
-        return invalidated
+        with self._open_operation():
+            invalidated = {
+                key if isinstance(key, ResultCacheKey) else ResultCacheKey(*key)
+                for key in self._invalidated
+            }
+            self._invalidated = set()
+            return invalidated
 
     def discard_invalidated(self, key: ResultCacheKey[InstantT]) -> None:
-        self._invalidated.discard(key)
-        self.discard(key)
+        with self._open_operation():
+            self._validate_key(key)
+            self._invalidated.discard(key)
+            self.discard(key)
 
     def discard_variable(self, variable_name: str) -> None:
-        self.discard_result_entries(variable_name)
-        self._invalidated = {
-            key for key in self._invalidated if key[0] != variable_name
-        }
+        with self._open_operation():
+            self.discard_result_entries(variable_name)
+            self._invalidated = {
+                key for key in self._invalidated if key[0] != variable_name
+            }
 
     def discard_result_entries(self, variable_name: str) -> None:
         """Evict fast lookups without consuming pending calculation invalidations."""
-        for key in tuple(self._entries):
-            if key[0] == variable_name:
-                self.discard(ResultCacheKey(*key))
+        with self._open_operation():
+            for key in tuple(self._entries):
+                if key[0] == variable_name:
+                    self.discard(ResultCacheKey(*key))
 
     def clear_calculated_results(self) -> None:
-        self.clear()
-        self._invalidated.clear()
+        with self._open_operation():
+            self.clear()
+            self._invalidated.clear()
 
     def clone(
         self,
@@ -304,15 +358,16 @@ class SimulationResultCache(
         preserve_results: bool = False,
         preserve_invalidated: bool = False,
     ) -> SimulationResultCache[InstantT, ValueT]:
-        clone: SimulationResultCache[InstantT, ValueT] = SimulationResultCache()
-        if preserve_results:
-            clone._entries = self._entries.copy()
-        if preserve_invalidated:
-            clone._invalidated = self._invalidated.copy()
-        clone._supplied_inputs = self._supplied_inputs.copy()
-        clone._result_variables = self._result_variables.copy()
-        clone._input_revision = self._input_revision
-        return clone
+        with self._open_operation():
+            clone: SimulationResultCache[InstantT, ValueT] = SimulationResultCache()
+            if preserve_results:
+                clone._entries = self._entries.copy()
+            if preserve_invalidated:
+                clone._invalidated = self._invalidated.copy()
+            clone._supplied_inputs = self._supplied_inputs.copy()
+            clone._result_variables = self._result_variables.copy()
+            clone._input_revision = self._input_revision
+            return clone
 
     def fork(self) -> SimulationResultCache[InstantT, ValueT]:
         return self.clone()

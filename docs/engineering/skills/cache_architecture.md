@@ -20,7 +20,8 @@ concrete cache instead.
 Cache values must not retain a simulation, tracer, holder, or caller-owned
 mutable object unless that ownership is part of the documented contract.
 Failed validation or construction must leave a cache unchanged. `close()` is
-idempotent, and operations after closure fail explicitly.
+idempotent. Mutations and value lookups after closure fail explicitly; metrics
+and documented metadata observations remain inspectable.
 
 ## Cache types
 
@@ -60,6 +61,19 @@ capabilities. The common requirements include deterministic keys, exact
 metrics, idempotent clearing and closure, no partial mutation after an error,
 independent metrics snapshots, defined copying and serialization, and safe
 concurrent public operations.
+
+Typed operations already provide their complete lifecycle guarantees in the
+preparatory release. Bulk replacement holds the owner lock, validates every
+converted key and value before changing state, counts each installed entry as
+a write and only absent old keys as deletions, and updates peak size. Metadata
+replacement does not count as a result-entry write. Metadata mutations and
+input-context entry reject closed owners; context cleanup restores its stack
+even if the owner closes inside it. Queries use the same lock.
+
+Preparatory dictionary/set/list observations and raw-value/tuple adapters remain
+available solely for old country compatibility. Their return values are still
+live mutable objects; callers must use typed methods to obtain the guarantees
+above. Final cleanup removes those escape paths without changing the guarantees.
 
 ## Type B requirements
 

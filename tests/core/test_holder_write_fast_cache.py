@@ -216,3 +216,84 @@ def test_a_write_replaces_an_eternity_value_requested_without_a_period(system):
     simulation.get_holder("eternal_code").set_input(periods.period("2015"), [8, 9])
 
     assert simulation.calculate("eternal_code").tolist() == [8, 9]
+
+
+def _disk_simulation(system):
+    """A simulation that stores every value on disk."""
+    simulation = build_simulation(system)
+    with pytest.warns(Warning):
+        simulation.memory_config = MemoryConfig(max_memory_occupation=0)
+    for population in simulation.populations.values():
+        population._holders.clear()
+    return simulation
+
+
+def test_a_branch_write_to_a_disk_file_it_shares_with_its_parent(system):
+    # A branch's disk storage reads its parent's files, and writes a value
+    # for one of their keys to a file of its own (policyengine-core#585).
+    # The branch's fast cache drops what it read there; the parent keeps its
+    # file, its value and its fast-cache entry.
+    simulation = _disk_simulation(system)
+    period = periods.period("2013")
+    parent_value = simulation.calculate("doubled_amount", period)
+    parent_storage = simulation.get_holder("doubled_amount")._disk_storage
+    branch = simulation.get_branch("reform")
+    assert branch.calculate("doubled_amount", period).tolist() == [0, 0]
+    branch_storage = branch.get_holder("doubled_amount")._disk_storage
+
+    branch.get_holder("doubled_amount").put_in_cache(
+        np.array([7.0, 8.0], dtype=np.float32), period
+    )
+
+    assert branch.calculate("doubled_amount", period).tolist() == [7.0, 8.0]
+    assert (
+        branch_storage._files["default_2013"] != parent_storage._files["default_2013"]
+    )
+    assert simulation.calculate("doubled_amount", period) is parent_value
+    assert parent_storage.get(period).tolist() == [0, 0]
+    simulation._fast_cache.clear()
+    assert simulation.calculate("doubled_amount", period).tolist() == [0, 0]
+
+
+def test_a_clone_write_to_disk_replaces_its_value_and_leaves_the_original(system):
+    # A clone stores new values on disk in a folder of its own
+    # (policyengine-core#585), and has a fast cache of its own.
+    simulation = _disk_simulation(system)
+    period = periods.period("2013")
+    original_value = simulation.calculate("doubled_amount", period)
+    clone = simulation.clone()
+    assert clone.calculate("doubled_amount", period).tolist() == [0, 0]
+
+    clone.get_holder("doubled_amount").set_input(period, [7.0, 8.0])
+
+    assert clone.calculate("doubled_amount", period).tolist() == [7.0, 8.0]
+    assert simulation.calculate("doubled_amount", period) is original_value
+    simulation._fast_cache.clear()
+    assert simulation.calculate("doubled_amount", period).tolist() == [0, 0]
+
+
+def test_writes_to_a_key_a_branch_shares_stay_in_their_own_simulation(system):
+    # A branch starts with read-only views of its parent's arrays, and copies
+    # one when it first reads it (policyengine-core#556, #578). A write on
+    # either side replaces only that storage's entry, and drops only that
+    # simulation's fast-cache entry.
+    simulation = build_simulation(system, [("uprated_count", "2012", [1001, 77])])
+    period = periods.period("2013")
+    simulation.calculate("uprated_count", period)
+    branch = simulation.get_branch("reform")
+    branch_storage = branch.get_holder("uprated_count")._memory_storage
+    assert "default:2013" in branch_storage._shared
+
+    simulation.get_holder("uprated_count").set_input(period, [5, 6])
+
+    assert simulation.calculate("uprated_count", period).tolist() == [5, 6]
+    assert "default:2013" in branch_storage._shared
+    assert branch.calculate("uprated_count", period).tolist() == [1038, 79]
+    assert "default:2013" not in branch_storage._shared
+    parent_value = simulation.calculate("uprated_count", period)
+
+    branch.get_holder("uprated_count").put_in_cache(np.array([7, 8]), period)
+
+    assert branch.calculate("uprated_count", period).tolist() == [7, 8]
+    assert simulation.calculate("uprated_count", period) is parent_value
+    assert parent_value.tolist() == [5, 6]

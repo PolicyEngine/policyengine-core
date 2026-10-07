@@ -19,10 +19,17 @@ branch it does not read; ``Simulation.set_input`` and
    entries, because whether it also drops the values calculated from the
    input it replaces is a separate question (policyengine-core#560).
 
+Each property runs twice: with every value in memory, and with every value
+on disk, where a branch's disk storage reads its parent's files and writes
+its own (policyengine-core#585). Branches start with read-only views of
+their parent's arrays (policyengine-core#578) either way.
+
 ``test_holder_write_fast_cache.py`` pins the same behaviour with examples.
 """
 
 from __future__ import annotations
+
+import warnings
 
 import numpy as np
 import pytest
@@ -33,6 +40,7 @@ st = hypothesis.strategies
 
 from policyengine_core import periods
 from policyengine_core.enums import EnumArray
+from policyengine_core.experimental import MemoryConfig
 from tests.fixtures.uprated_inputs import (
     INPUT_VALUE_TYPES,
     PERSON_COUNT,
@@ -127,8 +135,15 @@ def _result(function):
 class _Tree:
     """A root simulation and the branches made from it, in creation order."""
 
-    def __init__(self, system, empty_fast_caches):
-        self.nodes = [build_simulation(system)]
+    def __init__(self, system, empty_fast_caches, on_disk=False):
+        root = build_simulation(system)
+        if on_disk:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                root.memory_config = MemoryConfig(max_memory_occupation=0)
+            for population in root.populations.values():
+                population._holders.clear()
+        self.nodes = [root]
         self.empty_fast_caches = empty_fast_caches
 
     def node(self, index):
@@ -232,7 +247,7 @@ def _stored(tree):
         for population in simulation.populations.values():
             for name, holder in population._holders.items():
                 for branch_name, period in holder.get_known_branch_periods():
-                    value = holder._memory_storage.get(period, branch_name)
+                    value = holder._get_array_from_storage(period, branch_name)
                     values[(name, branch_name, str(period))] = (
                         value.dtype.str,
                         value.tobytes(),
@@ -241,8 +256,7 @@ def _stored(tree):
     return stored
 
 
-@hypothesis.settings(
-    max_examples=500,
+_SETTINGS = dict(
     deadline=None,
     suppress_health_check=[
         hypothesis.HealthCheck.too_slow,
@@ -250,10 +264,25 @@ def _stored(tree):
         hypothesis.HealthCheck.function_scoped_fixture,
     ],
 )
+
+
+@hypothesis.settings(max_examples=500, **_SETTINGS)
 @hypothesis.given(operations=st.lists(_operation, max_size=40))
 def test_fast_cache_is_transparent_and_drops_only_what_changes(system, operations):
-    cached = _Tree(system, empty_fast_caches=False)
-    uncached = _Tree(system, empty_fast_caches=True)
+    _check(system, operations, on_disk=False)
+
+
+@hypothesis.settings(max_examples=100, **_SETTINGS)
+@hypothesis.given(operations=st.lists(_operation, max_size=40))
+def test_fast_cache_is_transparent_and_drops_only_what_changes_on_disk(
+    system, operations
+):
+    _check(system, operations, on_disk=True)
+
+
+def _check(system, operations, on_disk):
+    cached = _Tree(system, empty_fast_caches=False, on_disk=on_disk)
+    uncached = _Tree(system, empty_fast_caches=True, on_disk=on_disk)
 
     for step, operation in enumerate(operations):
         before = cached.fast_cache_keys()

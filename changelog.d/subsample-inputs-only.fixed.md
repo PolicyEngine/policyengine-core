@@ -1,0 +1,1 @@
+Rebuild `Simulation.subsample` from the simulation's inputs only, so values calculated before subsampling (under a reform, say) no longer become inputs of the rebuilt arms and a reform simulation's baseline no longer reads the reform's values.

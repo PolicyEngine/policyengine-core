@@ -2247,6 +2247,68 @@ class Simulation:
 
         return data
 
+    def _structural_variable_names(self) -> List[str]:
+        """The variables that place people in entities, under the names
+        ``build_from_dataset`` reads: the person's id, and each group
+        entity's id and each person's id and role in it."""
+        person = self.tax_benefit_system.person_entity.key
+        names = [f"{person}_id"]
+        for group in self.tax_benefit_system.group_entities:
+            names += [
+                f"{group.key}_id",
+                f"{person}_{group.key}_id",
+                f"{person}_{group.key}_role",
+            ]
+        return [name for name in names if name in self.tax_benefit_system.variables]
+
+    def _to_subsample_dataframe(self) -> pd.DataFrame:
+        """The values ``subsample`` rebuilds the population from.
+
+        Every value set as an input that this branch reads (see
+        ``Holder.get_input_periods``), whether or not its variable has a
+        formula: a dataset can supply a formula-backed variable (such as
+        policyengine-us's ``person_id``), and the rebuilt population must
+        read what this one read. A value the simulation calculated is never
+        kept. Reloaded as an input it would override the formula in every
+        arm of the rebuilt simulation, so after calculating under a reform,
+        the baseline arm would read the reform's values.
+
+        A structural variable (see ``_structural_variable_names``) that has
+        no input but has a formula is calculated at the dataset's period and
+        kept, as the rebuild needs it to place people in entities.
+        """
+        base_period = periods.period(
+            self.dataset.time_period or self.default_calculation_period
+        )
+        structural = set(self._structural_variable_names())
+        df = pd.DataFrame()
+
+        for variable_name, variable in self.tax_benefit_system.variables.items():
+            input_periods = self.get_holder(variable_name).get_input_periods(
+                self.branch_name
+            )
+            if (
+                not input_periods
+                and variable_name in structural
+                and not variable.is_input_variable()
+            ):
+                if variable.definition_period == ETERNITY:
+                    input_periods = [periods.period(ETERNITY)]
+                elif variable.definition_period == YEAR:
+                    input_periods = [base_period.this_year]
+                elif variable.definition_period == MONTH:
+                    input_periods = [base_period.first_month]
+                else:
+                    input_periods = [base_period.first_day]
+            for period in sorted(input_periods, key=str):
+                if variable.definition_period != period.unit:
+                    continue
+                values = self.calculate(variable_name, period, map_to="person")
+                if values is not None:
+                    df[f"{variable_name}__{period}"] = values
+
+        return df
+
     def subsample(
         self,
         n=None,
@@ -2256,6 +2318,12 @@ class Simulation:
         quantize_weights: bool = True,
     ) -> "Simulation":
         """Quantize the simulation to a smaller size by sampling households.
+
+        The sampled households are rebuilt from this simulation's inputs,
+        plus any entity id or membership a formula supplies where no input
+        does (see ``_to_subsample_dataframe``). No other calculated value is
+        carried over, so each arm of a reform simulation recalculates under
+        its own policy, whatever had been calculated before.
 
         Args:
             n (int, optional): The number of households to sample. Defaults to 10_000.
@@ -2275,9 +2343,12 @@ class Simulation:
         if time_period is None:
             time_period = self.default_calculation_period
 
-        # Subsampling rebuilds the complete dataset, so preserve computed
-        # structural variables such as formula-backed IDs.
-        df = self.to_input_dataframe(include_computed_variables=True)
+        # The rebuilt population takes this one's inputs, including those of
+        # formula-backed variables such as dataset-supplied IDs, and nothing
+        # calculated. Exporting calculated values as well (the previous
+        # ``include_computed_variables=True``) made them inputs of every arm,
+        # so a reform simulation's baseline read the reform's values.
+        df = self._to_subsample_dataframe()
 
         # Extract time period from DataFrame columns
         df_time_period = (

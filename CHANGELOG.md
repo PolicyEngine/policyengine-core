@@ -1,3 +1,14 @@
+## [3.32.21] - 2026-10-07
+
+### Changed
+
+- Pull requests now run actionlint on the GitHub Actions workflows, and the release workflow quotes the version it passes to towncrier and uses the `skip-existing` input of the PyPI publish action.
+
+### Fixed
+
+- A reform simulation's baseline branch now uses the baseline system's entities and variables (a variable the reform neutralized or redefined was neutralized or redefined in the baseline too), including after `subsample`, which also keeps the rebuilt branch traced in the reform simulation, as `__init__` does, and no longer leaves it holding the branch it replaced; a clone of a reform simulation gets a copy of the baseline branch as its own instead of sharing its source's; and each clone and branch records its own cache invalidations, so a spiral in one no longer deletes the other's cached values or inputs.
+
+
 ## [3.32.20] - 2026-10-06
 
 ### Fixed

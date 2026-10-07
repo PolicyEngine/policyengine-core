@@ -51,6 +51,47 @@ def _unify_structured_dtypes(values):
     return unified_dtype, all_fields, casted_values
 
 
+# Copying and pickling look these names up on an instance. Answered by the
+# vector, they would copy or restore the vector, not the node. Pickle
+# protocols 0 and 1 read ``__slots__`` to decide whether the node can be
+# pickled at all.
+_COPY_PROTOCOL = frozenset(
+    {
+        "__copy__",
+        "__deepcopy__",
+        "__getstate__",
+        "__setstate__",
+        "__reduce__",
+        "__reduce_ex__",
+        "__getnewargs__",
+        "__getnewargs_ex__",
+        "__slots__",
+    }
+)
+
+
+def _wrapped(wrapper: object, attribute: str, key: str) -> object:
+    """Return the object ``wrapper`` delegates the lookup of ``key`` to.
+
+    ``__getattr__`` only runs when normal lookup fails. Two such lookups must
+    not reach the wrapped object:
+
+    - the copy and pickle protocol (``__deepcopy__``, ``__setstate__``, ...);
+    - any name on an instance ``copy`` or ``pickle`` has created with
+      ``__new__`` and not filled in yet. It has no ``attribute``, so reading
+      it here would call ``__getattr__`` again, without end.
+
+    Every other name is delegated, special names included: NumPy reads its
+    array protocol (``__array_struct__``, ...) from a vectorial node this way.
+    """
+    if key in _COPY_PROTOCOL:
+        raise AttributeError(key)
+    try:
+        return wrapper.__dict__[attribute]
+    except KeyError:
+        raise AttributeError(key) from None
+
+
 class VectorialParameterNodeAtInstant:
     """
     Parameter node of the legislation at a given instant which has been vectorized.
@@ -209,18 +250,22 @@ class VectorialParameterNodeAtInstant:
         self._instant_str = instant_str
 
     def __getattr__(self, attribute: str) -> Any:
-        # ``vector`` is missing while copy or pickle rebuilds a node, and
-        # looking it up would recurse here. ``copy.deepcopy`` looks
-        # ``__deepcopy__`` up on the instance, and the vector's would copy the
-        # vector alone and hand back a bare ``numpy.recarray``.
-        if attribute in ("vector", "__deepcopy__"):
-            raise AttributeError(
-                f"{type(self).__name__!s} has no attribute {attribute!r}"
-            )
-        result = getattr(self.vector, attribute)
+        result = getattr(_wrapped(self, "vector", attribute), attribute)
         if isinstance(result, numpy.recarray):
-            return VectorialParameterNodeAtInstant(result)
+            # A child that is itself a node, such as ``node.owner`` when
+            # ``owner`` has children. Like ``__getitem__``, keep this node's
+            # name and instant.
+            return VectorialParameterNodeAtInstant(
+                self._name, result, self._instant_str
+            )
         return result
+
+    def __getstate__(self) -> dict:
+        # ``_enum_lut_cache`` is keyed by ``id(enum)``. In another process that
+        # id can belong to a different enum, so copies rebuild the cache.
+        state = self.__dict__.copy()
+        state.pop("_enum_lut_cache", None)
+        return state
 
     def __getitem__(self, key: str) -> Any:
         # If the key is a string, just get the subnode

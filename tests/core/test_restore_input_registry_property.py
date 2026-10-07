@@ -2,24 +2,34 @@
 
 For random inputs (including inputs replaced after calculating, inputs split
 by a ``set_input`` helper, ETERNITY inputs set for a year, and inputs set on
-a branch of the dumped simulation) and random calculations before the dump:
+a branch of the dumped simulation), random calculations, values cached with
+``put_in_cache`` but not marked derived, deletions and reforms before the
+dump:
 
 1. **Round trip.** The restored simulation stores exactly the dumped
-   simulation's values (default branch), byte for byte, and records the same
-   storage keys as inputs.
+   simulation's values (default branch), byte for byte, with the same
+   derived marks, and records as inputs exactly the values not marked
+   derived.
 2. **Same answers.** Calculating any sequence of requests on the restored
    simulation gives what the dumped simulation gives.
-3. **Reforms keep the same values.** After ``apply_reform`` with a reform
-   that changes nothing, the restored simulation and the dumped simulation
-   store the same values and give the same answers to the same requests,
-   byte for byte. So does a new simulation given only the inputs, except in
-   the one case below.
+3. **Reforms keep the same values.** When the dumped simulation's input
+   record agrees with its derived marks (it records exactly the stored
+   values not marked derived), the restored simulation records the same
+   inputs, and after ``apply_reform`` with a reform that changes nothing,
+   the restored simulation and the dumped simulation store the same values
+   and give the same answers to the same requests, byte for byte. So does a
+   new simulation given only the explicit inputs, when the sequence contains
+   only input writes, calculations and branch input writes.
 
-The exception is an existing difference between the dumped simulation and a
-new one, not a restore one: a ``set_input`` helper splitting an annual input
-counts a month the simulation already calculated as already set, so the
-split depends on what was calculated before the input (chip task_fd52e7d5).
-The comparison with a new simulation leaves those examples out.
+The record and the marks disagree only after a value is cached without
+``derived=True`` (an input to carry-over that ``set_input`` did not record)
+or after an input is deleted (``delete_arrays`` leaves its record, which
+policyengine-core#561 drops). The restored simulation then follows the marks,
+by property 1.
+
+The new simulation is left out after caching, deletion or a reform, since
+it is given only the explicit inputs. Period-splitting helpers ignore
+calculated values when applying an input, as master requires.
 
 ``test_restore_input_registry.py`` pins the same behaviour with examples.
 """
@@ -89,12 +99,16 @@ _request = st.tuples(st.integers(0, len(REQUESTS) - 1), st.integers(0, 3)).map(
         REQUESTS[draw[0]][1][draw[1] % len(REQUESTS[draw[0]][1])],
     )
 )
-# Before the dump: set an input, calculate, or set an input on a branch (a
-# branch shares the simulation's input record), in any order.
+# Before the dump: set an input, calculate, set an input on a branch, cache
+# a value without marking it derived, delete a variable's values for a
+# period, or apply a reform that changes nothing, in any order.
 _step = st.one_of(
     st.tuples(st.just("input"), _input),
     st.tuples(st.just("calculate"), _request),
     st.tuples(st.just("branch_input"), _input),
+    st.tuples(st.just("cache"), _input),
+    st.tuples(st.just("delete"), _request),
+    st.tuples(st.just("reform"), st.just(None)),
 )
 
 
@@ -127,15 +141,15 @@ def _stored(simulation):
     return stored
 
 
-def _split_after_calculating(steps):
-    """Whether an annual input to the monthly variable follows a calculation."""
-    calculated = False
-    for kind, step in steps:
-        if kind == "calculate":
-            calculated = True
-        elif calculated and step[0] == "monthly_amount" and step[1] == "2013":
-            return True
-    return False
+def _derived_marks(simulation):
+    """Every default-branch value's derived mark, keyed as ``_stored``."""
+    return {
+        (name, str(period)): holder.is_derived(period)
+        for population in simulation.populations.values()
+        for name, holder in population._holders.items()
+        for branch_name, period in holder.get_known_branch_periods()
+        if branch_name == "default"
+    }
 
 
 def _input_keys(simulation):
@@ -176,8 +190,28 @@ def test_restored_simulation_keeps_and_drops_what_the_dumped_one_would(
             # Stays on the branch: the dumped simulation's own values and
             # inputs are what a new simulation is given.
             _result(lambda: dumped.get_branch("reform").set_input(*step))
+        elif kind == "cache":
+            name, period, values = step
+            holder = dumped.get_holder(name)
+            _result(
+                lambda: holder.put_in_cache(
+                    holder._to_array(values), periods.period(period)
+                )
+            )
+        elif kind == "delete":
+            _result(lambda: dumped.delete_arrays(*step))
+        elif kind == "reform":
+            dumped.apply_reform(NoOp)
         else:
             _result(lambda: dumped.calculate(*step))
+
+    stored_keys = {(name, "default", period) for name, period in _stored(dumped)}
+    marked_inputs = {
+        (name, "default", period)
+        for (name, period), derived in _derived_marks(dumped).items()
+        if not derived
+    }
+    records_agree = _input_keys(dumped) & stored_keys == marked_inputs
 
     with tempfile.TemporaryDirectory(prefix="core-restore-") as directory:
         dump_simulation(dumped, directory)
@@ -185,8 +219,10 @@ def test_restored_simulation_keeps_and_drops_what_the_dumped_one_would(
 
     # 1. Round trip.
     assert _stored(restored) == _stored(dumped)
-    stored_keys = {(name, "default", period) for name, period in _stored(dumped).keys()}
-    assert _input_keys(restored) == _input_keys(dumped) & stored_keys
+    assert _derived_marks(restored) == _derived_marks(dumped)
+    assert _input_keys(restored) == marked_inputs
+    if records_agree:
+        assert _input_keys(restored) == _input_keys(dumped) & stored_keys
 
     # 2. Same answers.
     for request in requests:
@@ -194,11 +230,16 @@ def test_restored_simulation_keeps_and_drops_what_the_dumped_one_would(
             lambda: dumped.calculate(*request)
         ), request
 
+    if not records_agree:
+        return
+
     # 3. Reforms keep the same values.
     fresh = build_simulation(system)
     for step in inputs:
         _result(lambda: fresh.set_input(*step))
-    compare_with_fresh = not _split_after_calculating(steps)
+    compare_with_fresh = all(
+        kind in ("input", "calculate", "branch_input") for kind, _ in steps
+    )
     for simulation in (dumped, restored, fresh):
         simulation.apply_reform(NoOp)
     assert _stored(restored) == _stored(dumped)

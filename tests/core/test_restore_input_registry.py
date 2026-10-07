@@ -6,9 +6,11 @@ with ``put_in_cache``, which records nothing, so ``apply_reform`` on a
 restored simulation dropped its inputs too: an uprated input calculated
 three years later came out as ``[0, 0]`` instead of ``[1116, 85]``.
 
-``dump_simulation`` now writes the periods whose values are inputs next to
-each variable's arrays (``inputs.txt``), and ``restore_simulation`` records
-exactly those as inputs. The property test is
+``dump_simulation`` lists the periods of the values the simulation
+calculated next to each variable's arrays (``derived_periods.txt``), and
+marks every dump it writes (``__entities__/dump_format.txt``).
+``restore_simulation`` restores the listed values as calculated ones and
+records every other value as an input. The property test is
 ``test_restore_input_registry_property.py``.
 """
 
@@ -21,14 +23,16 @@ import numpy as np
 import pytest
 
 from policyengine_core import periods
+from policyengine_core.enums import EnumArray
 from policyengine_core.tools.simulation_dumper import (
     dump_simulation,
     restore_simulation,
 )
 from tests.fixtures.uprated_inputs import NoOp, build_simulation, build_system
 
-# Part of the dump format: policyengine-core#560 writes the same file.
-INPUT_PERIODS_FILE = "inputs.txt"
+# The dump records storage provenance and identifies its format explicitly.
+DERIVED_PERIODS_FILE = "derived_periods.txt"
+DUMP_FORMAT_FILE = os.path.join("__entities__", "dump_format.txt")
 
 
 @pytest.fixture(scope="module")
@@ -86,7 +90,7 @@ def test_restore_records_inputs_but_not_calculated_values(system, tmp_path):
     assert holder.get_array(periods.period("2012")).tolist() == [1001, 77]
 
 
-def test_dump_writes_the_input_periods(system, tmp_path):
+def test_dump_lists_the_calculated_periods_and_marks_its_format(system, tmp_path):
     simulation = build_simulation(
         system,
         [
@@ -98,14 +102,26 @@ def test_dump_writes_the_input_periods(system, tmp_path):
     simulation.calculate("doubled_amount", "2013")
     dump_simulation(simulation, str(tmp_path))
 
-    def read(variable):
-        with open(tmp_path / variable / INPUT_PERIODS_FILE) as file:
-            return sorted(file.read().split())
+    def calculated(variable):
+        path = tmp_path / variable / DERIVED_PERIODS_FILE
+        return sorted(path.read_text().split()) if path.exists() else []
 
-    assert read("uprated_count") == ["2012", "2014"]
-    # A calculated variable and a defaulted input record no inputs.
-    assert read("doubled_amount") == []
-    assert read("uprated_amount") == []
+    assert calculated("uprated_count") == ["2013"]
+    # Calculated from the defaulted input, which is calculated too.
+    assert calculated("doubled_amount") == ["2013"]
+    assert calculated("uprated_amount") == ["2013"]
+    assert (tmp_path / DUMP_FORMAT_FILE).exists()
+    # Nothing else: earlier versions wrote the inputs to ``inputs.txt``.
+    assert (
+        sorted(
+            file.name
+            for variable in tmp_path.iterdir()
+            if variable.name != "__entities__"
+            for file in variable.iterdir()
+            if file.suffix != ".npy"
+        )
+        == [DERIVED_PERIODS_FILE] * 3
+    )
 
 
 def test_restore_records_months_split_from_an_annual_input(system, tmp_path):
@@ -162,9 +178,11 @@ def test_an_input_set_on_a_branch_is_not_recorded_for_the_default_value(
     )
 
 
-def _dump_without_input_record(simulation, directory):
-    """A dump as earlier versions wrote it: the arrays and nothing else."""
+def _dump_as_written_before_3_32_16(simulation, directory):
+    """A dump as policyengine-core wrote it before 3.32.16: the arrays and
+    nothing else."""
     dump_simulation(simulation, str(directory))
+    (directory / DUMP_FORMAT_FILE).unlink(missing_ok=True)
     for variable in os.listdir(directory):
         if variable == "__entities__":
             continue
@@ -173,14 +191,26 @@ def _dump_without_input_record(simulation, directory):
                 file.unlink()
 
 
-def test_restore_of_a_dump_without_an_input_record_keeps_every_value(system, tmp_path):
-    # Dumps written before inputs were recorded say nothing about which
-    # values were calculated, so every value is restored as an input.
+def _dump_with_derived_marks_without_a_format_marker(simulation, directory):
+    """The earlier format: calculated periods listed, with no format marker."""
+    dump_simulation(simulation, str(directory))
+    (directory / DUMP_FORMAT_FILE).unlink(missing_ok=True)
+    for variable in os.listdir(directory):
+        if variable == "__entities__":
+            continue
+        for file in (directory / variable).iterdir():
+            if file.suffix != ".npy" and file.name != DERIVED_PERIODS_FILE:
+                file.unlink()
+
+
+def test_restore_of_a_dump_written_before_3_32_16_keeps_every_value(system, tmp_path):
+    # Those dumps say nothing about which values were calculated, so every
+    # value is restored as an input.
     simulation = build_simulation(system, [("uprated_count", "2012", [1001, 77])])
     simulation.calculate("uprated_count", "2013")
-    _dump_without_input_record(simulation, tmp_path)
+    _dump_as_written_before_3_32_16(simulation, tmp_path)
 
-    with pytest.warns(UserWarning, match="does not record which values were inputs"):
+    with pytest.warns(UserWarning, match="does not say which of its values"):
         restored = restore_simulation(str(tmp_path), system)
 
     assert _inputs(restored, "uprated_count") == ["2012", "2013"]
@@ -192,7 +222,28 @@ def test_restore_of_a_dump_without_an_input_record_keeps_every_value(system, tmp
     )
 
 
-def test_restore_of_a_dump_with_an_input_record_does_not_warn(system, tmp_path):
+def test_restore_of_a_dump_with_derived_marks_without_a_marker_records_its_inputs(
+    system, tmp_path
+):
+    # Those dumps list the calculated periods, with no format marker: the
+    # list says which values were inputs, so nothing warns.
+    simulation = build_simulation(system, [("uprated_count", "2012", [1001, 77])])
+    simulation.calculate("uprated_count", "2013")
+    _dump_with_derived_marks_without_a_format_marker(simulation, tmp_path)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        restored = restore_simulation(str(tmp_path), system)
+
+    assert _inputs(restored, "uprated_count") == ["2012"]
+    holder = restored.get_holder("uprated_count")
+    assert holder.is_derived(periods.period("2013"))
+    restored.apply_reform(NoOp)
+    assert holder.get_array(periods.period("2013")) is None
+    assert restored.calculate("uprated_count", "2015").tolist() == [1116, 85]
+
+
+def test_restore_of_a_dump_with_a_format_marker_does_not_warn(system, tmp_path):
     simulation = build_simulation(system, [("uprated_count", "2012", [1001, 77])])
     simulation.calculate("uprated_count", "2013")
     dump_simulation(simulation, str(tmp_path))
@@ -200,6 +251,92 @@ def test_restore_of_a_dump_with_an_input_record_does_not_warn(system, tmp_path):
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         restore_simulation(str(tmp_path), system)
+
+
+def test_restore_of_a_dump_of_inputs_alone_does_not_warn(system, tmp_path):
+    # It lists no calculated value, but its marker says it would have.
+    simulation = build_simulation(system, [("uprated_count", "2012", [1001, 77])])
+    dump_simulation(simulation, str(tmp_path))
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        restored = restore_simulation(str(tmp_path), system)
+
+    assert _inputs(restored, "uprated_count") == ["2012"]
+
+
+def test_restored_enum_input_keeps_its_type_and_reform_provenance(system, tmp_path):
+    simulation = build_simulation(
+        system,
+        [("housing_occupancy_status", "2013-01", ["owner", "tenant"])],
+    )
+    original = simulation.calculate("housing_occupancy_status", "2013-01")
+    restored = _dump_and_restore(simulation, tmp_path)
+
+    for sim in (simulation, restored):
+        sim.apply_reform(NoOp)
+        result = sim.calculate("housing_occupancy_status", "2013-01")
+        assert isinstance(result, EnumArray)
+        assert result.possible_values is original.possible_values
+        assert result.dtype == original.dtype
+        assert result.tobytes() == original.tobytes()
+    assert _inputs(restored, "housing_occupancy_status") == ["2013-01"]
+
+
+def test_a_value_cached_without_derived_is_restored_as_a_recorded_input(
+    system, tmp_path
+):
+    # ``put_in_cache`` without ``derived=True`` stores an input: carry-over
+    # and uprating read it as one, but ``set_input`` did not record it, so
+    # ``apply_reform`` on the dumped simulation drops it. A dump lists which
+    # values were calculated, not where an input came from, so the restored
+    # simulation records it as an input, and ``apply_reform`` keeps it.
+    simulation = build_simulation(system)
+    simulation.get_holder("uprated_count").put_in_cache(
+        np.array([1001, 77]), periods.period("2012")
+    )
+    assert simulation.calculate("uprated_count", "2015").tolist() == [1116, 85]
+    restored = _dump_and_restore(simulation, tmp_path)
+
+    assert _inputs(simulation, "uprated_count") == []
+    assert _inputs(restored, "uprated_count") == ["2012"]
+    holder = restored.get_holder("uprated_count")
+    assert holder.get_input_periods() == [periods.period("2012")]
+    assert restored.calculate("uprated_count", "2016").tolist() == (
+        simulation.calculate("uprated_count", "2016").tolist()
+    )
+
+    simulation.apply_reform(NoOp)
+    restored.apply_reform(NoOp)
+
+    assert simulation.get_holder("uprated_count").get_known_periods() == []
+    assert restored.calculate("uprated_count", "2015").tolist() == [1116, 85]
+
+
+def test_a_value_calculated_after_its_input_was_deleted_is_restored_as_calculated(
+    system, tmp_path
+):
+    # ``delete_arrays`` leaves the input record behind (policyengine-core#561
+    # drops it), so the record names the value calculated there afterwards.
+    # The dump lists that value as calculated, and the restored simulation
+    # restores it as calculated and does not record it.
+    simulation = build_simulation(
+        system,
+        [
+            ("uprated_count", "2012", [1001, 77]),
+            ("uprated_count", "2013", [5, 6]),
+        ],
+    )
+    simulation.delete_arrays("uprated_count", "2013")
+    assert simulation.calculate("uprated_count", "2013").tolist() == [1038, 79]
+    restored = _dump_and_restore(simulation, tmp_path)
+
+    assert _inputs(restored, "uprated_count") == ["2012"]
+    holder = restored.get_holder("uprated_count")
+    assert holder.is_derived(periods.period("2013"))
+    restored.apply_reform(NoOp)
+    assert holder.get_array(periods.period("2013")) is None
+    assert restored.calculate("uprated_count", "2013").tolist() == [1038, 79]
 
 
 def test_restored_simulation_exports_its_inputs(system, tmp_path):

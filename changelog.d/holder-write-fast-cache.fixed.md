@@ -1,1 +1,0 @@
-Writing to or deleting from a holder directly (`Holder.set_input`, `Holder.put_in_cache`, `Holder.delete_arrays`) now drops the `Simulation.calculate` fast-cache entries it replaces, so `calculate` no longer returns the value the holder held before.

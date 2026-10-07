@@ -1,0 +1,1 @@
+Restore non-derived dumped values as recorded inputs using derived-period marks and an explicit format marker, warn for ambiguous legacy dumps, evict affected fast-cache entries on holder writes and deletes, reject non-numeric uprating and defined_for conditions, and preserve existing variables when a replacement is rejected.

@@ -423,7 +423,7 @@ class Variable:
     def check_uprating_value_type(self):
         """Reject ``uprating`` on a variable whose values cannot be multiplied.
 
-        Uprating multiplies the latest earlier value by a ratio of index
+        Uprating multiplies the latest earlier input by a ratio of index
         values. Enum arrays allow only ``==`` and ``!=``, and ``str`` and date
         arrays cannot be multiplied by a float, so ``uprating`` on such a
         variable raised a ``TypeError`` the first time a later period was
@@ -457,7 +457,7 @@ class Variable:
         raise ValueError(
             f'Variable "{self.name}" has uprating "{self.uprating}", but its '
             f"value_type is {_value_type_name(value_type)}. Uprating "
-            "multiplies the latest earlier value by an index ratio, so only "
+            "multiplies the latest earlier input by an index ratio, so only "
             f"bool, int and float variables can be uprated. {advice}"
         )
 

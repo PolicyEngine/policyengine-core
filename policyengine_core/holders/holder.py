@@ -9,6 +9,10 @@ from numpy.typing import ArrayLike
 
 from policyengine_core import commons, periods, tools
 from policyengine_core.data_storage import InMemoryStorage, OnDiskStorage
+from policyengine_core.data_storage.immutable_array_cache import (
+    CachedArrayEntry,
+    protect_cached_array,
+)
 from policyengine_core.enums import Enum
 from policyengine_core.errors import PeriodMismatchError
 from policyengine_core.periods import Period
@@ -100,7 +104,7 @@ class Holder:
 
     def delete_arrays(
         self, period: Period = None, branch_name: str = "default"
-    ) -> None:
+    ) -> ArrayLike:
         """
         If ``period`` is ``None``, remove all known values of the variable.
 
@@ -345,11 +349,11 @@ class Holder:
     def _set(
         self,
         period: Period,
-        value: ArrayLike,
+        value: ArrayLike | CachedArrayEntry[ArrayLike],
         branch_name: str = "default",
         validate_nan: bool = False,
         derived: bool = False,
-    ) -> None:
+    ) -> ArrayLike | CachedArrayEntry[ArrayLike]:
         simulation = getattr(self, "simulation", None)
         # A value calculated while an input is being set (say, by a
         # ``set_input`` helper that calculates) is not part of that input: it
@@ -361,7 +365,9 @@ class Holder:
         )
         if input_branch is not None and branch_name == "default":
             branch_name = input_branch
-        value = self._to_array(value, validate_nan=validate_nan)
+        entry = value if isinstance(value, CachedArrayEntry) else None
+        if entry is None:
+            value = self._to_array(value, validate_nan=validate_nan)
         if self.variable.definition_period != periods.ETERNITY:
             if period is None:
                 raise ValueError(
@@ -376,15 +382,24 @@ class Holder:
         )
 
         if should_store_on_disk:
+            if entry is not None:
+                value = entry.read()
             self._disk_storage.put(value, period, branch_name, derived=derived)
+            stored_value = protect_cached_array(value)
         else:
-            self._memory_storage.put(value, period, branch_name, derived=derived)
+            stored_value = self._memory_storage.put(
+                entry if entry is not None else value,
+                period,
+                branch_name,
+                derived=derived,
+            )
         if input_branch is not None:
             simulation.result_cache.record_supplied_input(
                 self.variable.name,
                 branch_name,
                 period,
             )
+        return stored_value
 
     def put_in_cache(
         self,
@@ -392,7 +407,7 @@ class Holder:
         period: Period,
         branch_name: str = "default",
         derived: bool = False,
-    ) -> None:
+    ) -> ArrayLike:
         """Cache ``value`` for ``period``.
 
         ``derived`` marks a value the simulation calculated rather than took
@@ -407,23 +422,24 @@ class Holder:
         branch_name)`` reads: the input is kept and nothing is stored.
         """
         if self._do_not_store:
-            return
+            return protect_cached_array(value)
 
         if (
             self.simulation.opt_out_cache
             and self.simulation.tax_benefit_system.cache_blacklist
             and self.variable.name in self.simulation.tax_benefit_system.cache_blacklist
         ):
-            return
+            return protect_cached_array(value)
 
         if (
             derived
             and self._branch_storing(period, branch_name) is not None
             and not self.is_derived(period, branch_name)
         ):
-            return
+            return self.get_array(period, branch_name)
 
         self._set(period, value, branch_name, derived=derived)
+        return self._get_array_from_storage(period, branch_name)
 
     def default_array(self) -> ArrayLike:
         """

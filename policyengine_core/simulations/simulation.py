@@ -13,6 +13,7 @@ from pathlib import Path
 
 from policyengine_core import commons, periods
 from policyengine_core.data.dataset import Dataset
+from policyengine_core.data_storage.immutable_array_cache import protect_cached_array
 from policyengine_core.data_storage.storage_directory import (
     TemporaryStorageDirectory,
     directory_containing,
@@ -1124,7 +1125,7 @@ class Simulation:
                     value = smc.get_cache_value(cache_path)
 
                 if value is not None:
-                    return value
+                    return protect_cached_array(value)
 
         if variable.requires_computation_after is not None:
             variables_in_stack = [node.get("name") for node in self.tracer.stack]
@@ -1168,7 +1169,12 @@ class Simulation:
             if np.all(~mask):
                 array = holder.default_array()
                 array = self._cast_formula_result(array, variable)
-                holder.put_in_cache(array, period, self.branch_name, derived=True)
+                array = holder.put_in_cache(
+                    array,
+                    period,
+                    self.branch_name,
+                    derived=True,
+                )
                 return array
 
         array = None
@@ -1316,7 +1322,12 @@ class Simulation:
 
             array = self._cast_formula_result(array, variable)
             # Calculated, not input: auto-carry-over never carries it.
-            holder.put_in_cache(array, period, self.branch_name, derived=True)
+            array = holder.put_in_cache(
+                array,
+                period,
+                self.branch_name,
+                derived=True,
+            )
 
         except SpiralError:
             array = holder.default_array()
@@ -1334,6 +1345,7 @@ class Simulation:
                 f"RecursionError while calculating {variable_name} for period {period}. The full computation stack is:\n{stack_formatted}"
             )
 
+        array = protect_cached_array(array)
         if is_cache_available:
             smc.set_cache_value(cache_path, array)
 
@@ -1394,7 +1406,12 @@ class Simulation:
         # derived, by ``calculate``.
         if len(sub_periods) > 1:
             holder = self.get_holder(variable.name)
-            holder.put_in_cache(result, period, self.branch_name, derived=True)
+            result = holder.put_in_cache(
+                result,
+                period,
+                self.branch_name,
+                derived=True,
+            )
         return result
 
     def calculate_divide(
@@ -1427,7 +1444,12 @@ class Simulation:
             computation_period = period.this_year
             result = self.calculate(variable_name, period=computation_period) / 12.0
             holder = self.get_holder(variable.name)
-            holder.put_in_cache(result, period, self.branch_name, derived=True)
+            result = holder.put_in_cache(
+                result,
+                period,
+                self.branch_name,
+                derived=True,
+            )
             return result
         elif period.unit == periods.YEAR:
             return self.calculate(variable_name, period)

@@ -4,38 +4,15 @@ import numpy
 from numpy.typing import ArrayLike
 
 from policyengine_core import periods
+from policyengine_core.data_storage.immutable_array_cache import (
+    CachedArrayEntry,
+    ImmutableArrayCache,
+)
 from policyengine_core.periods import Period
 
 
-def _can_share(array: ArrayLike) -> bool:
-    """Whether a read-only view of ``array`` protects everything in it.
-
-    A masked array's mask is a second array that a view shares and leaves
-    writeable, and anything that is not a numpy array has no views, so both
-    are copied straight away instead.
-    """
-    return isinstance(array, numpy.ndarray) and not isinstance(
-        array, numpy.ma.MaskedArray
-    )
-
-
-def _read_only_view(array: numpy.ndarray) -> numpy.ndarray:
-    """Return a new view of ``array`` whose data cannot be written through.
-
-    Used for arrays a storage shares with the one it was cloned from, until
-    it copies them (see ``InMemoryStorage.clone``). The view is a new array
-    object even when ``array`` is already read-only, so that reassigning the
-    source's ``shape`` or ``dtype`` does not change what the clone reads.
-    """
-    view = array.view()
-    view.flags.writeable = False
-    return view
-
-
-# What ``InMemoryStorage._shared`` is while a storage shares nothing. Every
-# such storage refers to this one object instead of holding an empty set of
-# its own: a simulation has a storage for each variable, nearly all of them
-# share nothing, and an empty set is 216 bytes.
+# Compatibility value for code that inspected the removed copy-on-first-read
+# index. Immutable entries make that index unnecessary.
 _NOTHING_SHARED: FrozenSet[str] = frozenset()
 
 # What ``InMemoryStorage._inputs`` is while a storage holds no input, for the
@@ -53,13 +30,9 @@ class InMemoryStorage:
     Low-level class responsible for storing and retrieving calculated vectors in memory
     """
 
-    _arrays: Dict[Period, ArrayLike]
-    # Keys of ``_arrays`` whose array still belongs to the storage this one
-    # was cloned from with ``share_arrays``. ``get`` replaces each with a copy
-    # the first time it is read. A storage has a ``_shared`` attribute of its
-    # own, a set, only while at least one key is shared; otherwise it reads
-    # this class attribute. A key left in the set after code outside this
-    # class empties ``_arrays`` costs one extra copy at most.
+    _entry_cache: ImmutableArrayCache[str, ArrayLike]
+    # Compatibility view for the former copy-on-first-read index. Immutable
+    # entries need no mutable shared-key index.
     _shared: Union[Set[str], FrozenSet[str]] = _NOTHING_SHARED
     # Keys whose value was stored as an input: with ``put(..., derived=False)``,
     # the default. Every other stored value was calculated by the simulation
@@ -69,8 +42,8 @@ class InMemoryStorage:
     # The storage records inputs rather than derived values because a
     # simulation calculates far more values than it is given (in a
     # policyengine-us household, 5,201 of 5,204 stored values are derived).
-    # As with ``_shared``, a storage has a set of its own only while it holds
-    # an input; otherwise it reads this class attribute.
+    # A storage has a set of its own only while it holds an input; otherwise
+    # it reads the class-level empty object.
     #
     # A storage's own inputs are a set it alone changes, or a frozenset it
     # shares with storages cloned from it (or it from them): ``clone`` hands
@@ -82,8 +55,24 @@ class InMemoryStorage:
     is_eternal: bool
 
     def __init__(self, is_eternal: bool):
-        self._arrays = {}
+        self._entry_cache = ImmutableArrayCache()
         self.is_eternal = is_eternal
+
+    @property
+    def _arrays(self) -> Dict[str, CachedArrayEntry[ArrayLike]]:
+        """Compatibility mapping of storage keys to immutable entries."""
+
+        return self._entry_cache.entries
+
+    @_arrays.setter
+    def _arrays(
+        self,
+        entries: Dict[str, CachedArrayEntry[ArrayLike] | ArrayLike],
+    ) -> None:
+        cache = getattr(self, "_entry_cache", None)
+        if cache is None:
+            cache = self._entry_cache = ImmutableArrayCache()
+        cache.replace_entries(entries)
 
     def __getstate__(self) -> dict:
         state = self.__dict__.copy()
@@ -91,54 +80,35 @@ class InMemoryStorage:
         return state
 
     def __setstate__(self, state: dict) -> None:
+        arrays = state.pop("_arrays", None)
         if not state.pop(_INPUTS_RECORDED, False):
             # Pickled before storages recorded their inputs, when nothing
             # marked a calculated value: every stored value counts as an
             # input, as it did then, except any a development version of this
             # change marked derived.
             derived = state.pop("_derived", ())
-            inputs = set(state.get("_arrays", {})).difference(derived)
+            cache = state.get("_entry_cache")
+            stored_keys = set(arrays if arrays is not None else cache.entries)
+            inputs = stored_keys.difference(derived)
             if inputs:
                 state["_inputs"] = inputs
         self.__dict__.update(state)
+        if "_entry_cache" not in self.__dict__:
+            self._entry_cache = ImmutableArrayCache()
+        if arrays is not None:
+            self._entry_cache.replace_entries(arrays)
 
     def clone(self, share_arrays: bool = False) -> "InMemoryStorage":
         """Copy this storage.
 
-        By default every stored array is copied straight away.
-
-        With ``share_arrays``, the clone starts with views of this storage's
-        arrays and copies an array only when it is first read through
-        ``get``, so an array the clone never reads is never copied. What
-        ``get`` returns is the clone's own array either way, so writing into
-        it in place does not change this storage. (Masked arrays are copied
-        straight away: a view would share their mask.)
-
-        The clone has its own index in both cases: ``put`` and ``delete`` on
-        either storage replace or drop index entries without touching the
-        arrays, so neither storage sees what the other stores, replaces or
-        deletes after cloning.
-
-        The one difference from copying straight away: writing in place into
-        one of this storage's arrays, after cloning and before the clone
-        first reads it, changes the value the clone reads.
-
-        A storage is not safe to read from several threads at once: two first
-        reads of the same key can each make a copy.
+        Every clone gets an independent key index over the same immutable
+        entries. Reads return protected views, so neither eager copying nor
+        copy-on-first-read state is required for isolation. ``share_arrays``
+        remains in the signature for country-package compatibility; both
+        modes now have the same immutable sharing behavior.
         """
         clone = InMemoryStorage(self.is_eternal)
-        if share_arrays:
-            shared = set()
-            for key, array in self._arrays.items():
-                if _can_share(array):
-                    clone._arrays[key] = _read_only_view(array)
-                    shared.add(key)
-                else:
-                    clone._arrays[key] = array.copy()
-            if shared:
-                clone._shared = shared
-        else:
-            clone._arrays = {key: array.copy() for key, array in self._arrays.items()}
+        clone._entry_cache = self._entry_cache.fork()
         # Share the inputs (see ``_inputs``). A mark left behind by code
         # outside this class emptying ``_arrays`` never counts (see
         # ``is_derived``), so the clone gets only those of keys it holds.
@@ -159,16 +129,13 @@ class InMemoryStorage:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
         key = f"{branch_name}:{period}"
-        values = self._arrays.get(key)
-        if values is None:
+        entry = self._arrays.get(key)
+        if entry is None:
             return None
-        if key in self._shared:
-            # First read of an array shared by ``clone``: from here on the
-            # caller may write into it, so it needs to be this storage's own.
-            values = values.copy()
-            self._arrays[key] = values
-            self._stop_sharing(key)
-        return values
+        if not isinstance(entry, CachedArrayEntry):
+            entry = CachedArrayEntry.from_value(entry)
+            self._arrays[key] = entry
+        return entry.read()
 
     def has(self, period: Period, branch_name: str = "default") -> bool:
         """Whether a value is stored for ``period`` under ``branch_name``.
@@ -186,37 +153,6 @@ class InMemoryStorage:
             period = periods.period(periods.ETERNITY)
         key = f"{branch_name}:{periods.period(period)}"
         return key in self._arrays and key not in self._inputs
-
-    # Each method below reads ``self._shared`` once and works on that set, and
-    # releases it with one ``dict.pop`` that never raises. A storage is still
-    # not safe to read from several threads at once (see ``clone``), but
-    # overlapping first reads do not raise here: neither can mutate the
-    # shared-nothing object or remove an attribute the other already removed.
-
-    def _stop_sharing(self, key: str) -> None:
-        """Record that ``key`` no longer refers to a shared array."""
-        shared = self._shared
-        if key in shared:
-            shared.discard(key)
-            self._release_if_empty(shared)
-
-    def _stop_sharing_dropped_keys(self) -> None:
-        """Forget the shared keys that ``_arrays`` no longer has."""
-        shared = self._shared
-        if shared:
-            shared.intersection_update(self._arrays)
-            self._release_if_empty(shared)
-
-    def _release_if_empty(self, shared: Set[str]) -> None:
-        """Go back to the class's shared-nothing object once nothing is shared.
-
-        The storage's own attribute is removed rather than reassigned, so that
-        a storage sharing nothing carries none, and a copy or pickle of it
-        reads the class attribute too. ``pop`` with a default is one step that
-        never raises, so it is safe when another thread has already removed it.
-        """
-        if not shared:
-            self.__dict__.pop("_shared", None)
 
     def _own_inputs(self) -> Set[str]:
         """This storage's inputs as a set that only it changes, made from the
@@ -250,17 +186,17 @@ class InMemoryStorage:
 
     def _release_inputs_if_empty(self, inputs: Set[str]) -> None:
         """Go back to the class's no-inputs object once no stored value is an
-        input, as ``_release_if_empty`` does for ``_shared``."""
+        input."""
         if not inputs:
             self.__dict__.pop("_inputs", None)
 
     def put(
         self,
-        value: ArrayLike,
+        value: ArrayLike | CachedArrayEntry[ArrayLike],
         period: Period,
         branch_name: str = "default",
         derived: bool = False,
-    ) -> None:
+    ) -> CachedArrayEntry[ArrayLike]:
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
@@ -281,12 +217,16 @@ class InMemoryStorage:
                 "string form is lossy (see policyengine-core#526)."
             )
         key = f"{branch_name}:{period}"
-        self._arrays[key] = value
-        self._stop_sharing(key)
+        if isinstance(value, CachedArrayEntry):
+            entry = value
+            self._entry_cache.put(key, entry)
+        else:
+            entry = self._entry_cache.put_array(key, value)
         if derived:
             self._unmark_input(key)
         else:
             self._mark_input(key)
+        return entry
 
     def delete(self, period: Period = None, branch_name: str = "default") -> None:
         if period is None:
@@ -298,7 +238,6 @@ class InMemoryStorage:
                 for period_item, value in self._arrays.items()
                 if not period_item.startswith(branch_prefix)
             }
-            self._stop_sharing_dropped_keys()
             self._unmark_dropped_keys()
             return
 
@@ -317,7 +256,6 @@ class InMemoryStorage:
                 and period.contains(periods.period(period_item.split(":", 1)[1]))
             )
         }
-        self._stop_sharing_dropped_keys()
         self._unmark_dropped_keys()
 
     def get_known_periods(self) -> list:

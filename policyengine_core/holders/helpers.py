@@ -78,7 +78,7 @@ def set_input_dispatch_by_period(holder: Holder, period: Period, array: ArrayLik
     while sub_period.start < after_instant:
         existing_array = get_stored_input(holder, sub_period, branch_name)
         if existing_array is None:
-            holder._set(sub_period, array, branch_name)
+            array = holder._set(sub_period, array, branch_name)
         else:
             # The array of the current sub-period is reused for the next ones.
             # TODO: refactor or document this behavior
@@ -130,7 +130,11 @@ def set_input_divide_by_period(holder: Holder, period: Period, array: ArrayLike)
         sub_period = period.start.period(cached_period_unit)
         while sub_period.start < after_instant:
             if get_stored_input(holder, sub_period, branch_name) is None:
-                holder._set(sub_period, divided_array, branch_name)
+                divided_array = holder._set(
+                    sub_period,
+                    divided_array,
+                    branch_name,
+                )
             sub_period = sub_period.offset(1)
     elif not (remaining_array == 0).all():
         raise ValueError(

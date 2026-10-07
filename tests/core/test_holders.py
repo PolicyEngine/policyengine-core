@@ -141,9 +141,10 @@ def test_set_input_dispatch_by_period(single):
     assert holder.get_array("2019-01") == holder.get_array(
         "2019-12"
     )  # Check the feature
-    assert holder.get_array("2019-01") is holder.get_array(
-        "2019-12"
-    )  # Check that the vectors are the same in memory, to avoid duplication
+    assert numpy.shares_memory(
+        holder.get_array("2019-01"),
+        holder.get_array("2019-12"),
+    )  # The protected views share one immutable data buffer.
 
 
 force_storage_on_disk = MemoryConfig(max_memory_occupation=0)

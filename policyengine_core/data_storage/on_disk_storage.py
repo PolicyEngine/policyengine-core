@@ -7,6 +7,7 @@ import numpy
 from numpy.typing import ArrayLike
 
 from policyengine_core import periods
+from policyengine_core.data_storage.immutable_array_cache import CachedArrayEntry
 from policyengine_core.data_storage.storage_directory import (
     directory_containing,
     path_key,
@@ -234,9 +235,10 @@ class OnDiskStorage:
     def _decode_file(self, file: str) -> ArrayLike:
         enum = self._enums.get(file)
         if enum is not None:
-            return EnumArray(numpy.load(file), enum)
+            value = EnumArray(numpy.load(file), enum)
         else:
-            return numpy.load(file)
+            value = numpy.load(file)
+        return CachedArrayEntry.from_value(value).read()
 
     def get(self, period: Period, branch_name: str = "default") -> ArrayLike:
         if self.is_eternal:

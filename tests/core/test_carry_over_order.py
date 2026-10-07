@@ -433,17 +433,17 @@ def test_a_value_written_straight_to_storage_is_not_derived(system, delete_first
 
 
 def test_carry_over_in_a_branch_copies_only_the_array_it_reads(system):
-    """Deciding which periods are inputs reads no shared array (#556): the
-    branch copies only the input it carries."""
+    """Carry-over reads shared immutable entries without copying them."""
     built = simulation(
         system, {"carried": {"2012": [1, 1], "2014": [2, 2], "2016": [3, 3]}}
     )
     built.calculate("carried", "2017")
     branch = built.get_branch("reform")
     storage = branch.get_holder("carried")._memory_storage
-    shared = len(storage._shared)
+    before = dict(storage._arrays)
     np.testing.assert_array_equal(branch.calculate("carried", "2020"), [3, 3])
-    assert len(storage._shared) == shared - 1
+    assert not storage._shared
+    assert all(storage._arrays[key] is entry for key, entry in before.items())
 
 
 def _marks(storage):

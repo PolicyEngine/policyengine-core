@@ -2272,6 +2272,12 @@ class Simulation:
     ) -> "Simulation":
         """Quantize the simulation to a smaller size by sampling households.
 
+        Rebuild from recorded inputs, including inputs of formula-backed
+        variables. Calculate household weights for ``time_period`` to choose
+        the sample, then rescale the input weight columns. Calculated weights
+        and other formula results are recomputed on the sample. Calculation
+        branches are recreated on its populations; baseline policy is kept.
+
         Args:
             n (int, optional): The number of households to sample. Defaults to 10_000.
             frac (float, optional): The fraction of households to sample. Defaults to None.
@@ -2308,20 +2314,20 @@ class Simulation:
         df_household_id_column = f"household_id__{df_time_period}"
         df_person_id_column = f"person_id__{df_time_period}"
 
-        # Determine the appropriate household weight column
-        if f"household_weight__{time_period}" in df.columns:
-            household_weight_column = f"household_weight__{time_period}"
-        else:
-            household_weight_column = f"household_weight__{df_time_period}"
-
-        # Group by household ID and get the first entry for each group
-        h_df = df.groupby(df_household_id_column).first()
+        # Sampling needs the requested year's weight even when it was
+        # calculated rather than supplied as an input. Use it for selection
+        # without adding it to the data that will be reloaded as inputs.
+        sampling_df = df[[df_household_id_column]].copy()
+        sampling_df["household_weight"] = np.asarray(
+            self.calculate("household_weight", time_period, map_to="person")
+        )
+        h_df = sampling_df.groupby(df_household_id_column).first()
         h_ids = pd.Series(h_df.index)
         if n is None and frac is None:
             raise ValueError("Either n or frac must be provided.")
         if n is None:
             n = int(len(h_ids) * frac)
-        h_weights = pd.Series(h_df[household_weight_column].values)
+        h_weights = pd.Series(h_df["household_weight"].values)
 
         frac = n / len(h_ids)
 

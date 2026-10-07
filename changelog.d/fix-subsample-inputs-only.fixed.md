@@ -1,1 +1,1 @@
-Rebuild a simulation in `subsample` from the values it was given (the dataset and `set_input`), leaving calculated values out, so results after subsampling no longer depend on what was calculated before it.
+Rebuild subsamples from source inputs, preserve restored inputs, recreate calculation branches and select households using requested-period weights without freezing calculated values.

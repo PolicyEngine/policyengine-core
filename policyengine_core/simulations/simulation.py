@@ -1,5 +1,6 @@
 import hashlib
 import os
+import types
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
@@ -122,11 +123,10 @@ class _SpiralDeferrals:
 
     Each deeper period's calculation starts at most once (``started``), and
     only on the simulation the calculation was requested on or one of its
-    branches (``root``), so the outermost calculation ends: every round
-    starts a period not started before, or ends one, or ends the request,
-    and the periods a deterministic calculation can reach are finite. No
-    count of rounds cuts a long chain, since where such a count fell would
-    depend on what was cached before.
+    registered branches (``root``). For a fixed branch graph and a finite
+    set of reachable calculation keys, every round starts a new period,
+    finishes one, or returns the request. No count of rounds cuts a long
+    chain, since where such a count fell would depend on earlier caching.
     """
 
     # The simulation the outermost calculation was requested on, or the
@@ -407,6 +407,7 @@ class Simulation:
         self.is_over_dataset = dataset is not None
 
         self.invalidated_caches = set()
+        self._spiral_invalidated_caches = set()
         self._fast_cache: dict = {}
         # ``set_input`` records each (variable_name, branch_name, period) it
         # populates so ``_invalidate_all_caches`` can tell user-provided
@@ -513,6 +514,11 @@ class Simulation:
             self.baseline.trace = self.trace
             self.baseline.tracer = self.tracer
             self.baseline.tax_benefit_system = self.default_tax_benefit_system_instance
+            # The branch was built under the reform's system: its populations
+            # looked variables up there, and its holders kept the reform's
+            # variables, so a variable the reform neutralized read as the
+            # default in the baseline too.
+            self.baseline._bind_to_tax_benefit_system()
         else:
             self.baseline = None
 
@@ -549,6 +555,7 @@ class Simulation:
         """
         self._fast_cache = {}
         self.invalidated_caches = set()
+        self._spiral_invalidated_caches = set()
         # Snapshot user-provided inputs before wiping so they can be
         # replayed into the fresh storage. Use the storage API instead of
         # hand-building keys, since ETERNITY variables canonicalize every
@@ -813,6 +820,57 @@ class Simulation:
         for _key, entity_instance in self.populations.items():
             entity_instance.simulation = self
 
+    def _bind_to_tax_benefit_system(self) -> None:
+        """Make this simulation's populations and holders use its own system.
+
+        For a simulation given another system after its populations were
+        built: a reform simulation's baseline branch is a branch under the
+        reform's system that is then given the baseline's. Each population
+        takes that system's entity, so it looks variables up there, and each
+        holder takes that system's variable, so a variable the reform
+        neutralized or redefined is the baseline's again. Holders, recorded
+        inputs and ``input_variables`` entries are dropped for variables the
+        system does not have (ones the reform added), and for variables whose
+        holder was built for the reform's definition in a way a new variable
+        cannot change: in another entity's population, or with storage for
+        (or not for) an ``ETERNITY`` variable.
+        """
+        system = self.tax_benefit_system
+        if system is None:
+            # A reform simulation of a class with no default system instance
+            # gets a baseline without a system; there is nothing to bind to.
+            return
+        entities = {
+            entity.key: entity
+            for entity in [system.person_entity, *system.group_entities]
+        }
+        variables = system.variables
+        dropped = set()
+        for population in self.populations.values():
+            population.entity = entities[population.entity.key]
+            for name, holder in list(population._holders.items()):
+                variable = variables.get(name)
+                if (
+                    variable is None
+                    or variable.entity.key != population.entity.key
+                    or (variable.definition_period == ETERNITY)
+                    != holder._memory_storage.is_eternal
+                ):
+                    del population._holders[name]
+                    dropped.add(name)
+                else:
+                    holder.variable = variable
+
+        def kept(name):
+            return name in variables and name not in dropped
+
+        if getattr(self, "_user_input_keys", None) is not None:
+            self._user_input_keys = {
+                key for key in self._user_input_keys if kept(key[0])
+            }
+        if getattr(self, "input_variables", None) is not None:
+            self.input_variables = [name for name in self.input_variables if kept(name)]
+
     def create_shortcuts(self) -> None:
         for _key, population in self.populations.items():
             # create shortcut simulation.person and simulation.household (for instance)
@@ -927,6 +985,14 @@ class Simulation:
                     state.started.add(deferral.key)
                 state.callers = frozenset() if deferral is None else deferral.callers
                 cuts = state.cuts
+                attempt_tracer = (
+                    self.tracer if deferral is None else deferral.simulation.tracer
+                )
+                attempt_index = (
+                    len(attempt_tracer.trees)
+                    if isinstance(attempt_tracer, FullTracer)
+                    else None
+                )
                 try:
                     if deferral is None:
                         result = self._calculate_traced(
@@ -952,6 +1018,13 @@ class Simulation:
                     pending.extend(self._take_outstanding(state))
                     continue
                 if deferral is None:
+                    # This root is the value actually returned to the
+                    # caller, ahead of cut results from abandoned retries.
+                    if (
+                        attempt_index is not None
+                        and len(attempt_tracer.trees) > attempt_index
+                    ):
+                        attempt_tracer.trees[attempt_index]._spiral_provisional = False
                     return result
                 pending.pop()
                 state.done.add(deferral.key)
@@ -988,6 +1061,8 @@ class Simulation:
         decode_enums: bool = False,
     ) -> ArrayLike:
         self.tracer.record_calculation_start(variable_name, period, self.branch_name)
+        state = _spiral_deferrals.get()
+        cuts = 0 if state is None else state.cuts
 
         # No per-variable RNG seeding: formulas may not use randomness at all
         # (enforced statically at variable registration by
@@ -998,6 +1073,12 @@ class Simulation:
             result = self._calculate(variable_name, period)
             if isinstance(result, EnumArray) and decode_enums:
                 result = result.decode_to_str()
+            if isinstance(self.tracer, FullTracer) and state is not None:
+                node = self.tracer._current_node
+                if node is not None:
+                    node._spiral_provisional = state.cuts != cuts or bool(
+                        state.cut_tracers
+                    )
             self.tracer.record_calculation_result(result)
             if map_to is not None:
                 source_entity = self.tax_benefit_system.get_variable(
@@ -1413,18 +1494,40 @@ class Simulation:
         if invalidated_caches is None:
             return
         branch_name = getattr(self, "branch_name", "default")
+        spiral_invalidations = getattr(self, "_spiral_invalidated_caches", ())
         for _name, _period in invalidated_caches:
             holder = self.get_holder(_name)
-            # Delete the value this simulation calculated: the one stored
-            # under its own branch name, not another branch's, and for that
-            # period only, not the inputs or values of the periods within it.
-            # An input stored there stays. A branch or copy made before now
-            # dropped what it took of these values when it was made (see
-            # ``clone``), and never sees what this simulation stores after.
-            holder.delete_array(_period, branch_name, derived_only=True)
-            if _fast_cache is not None:
-                _fast_cache.pop((_name, _period), None)
+            if (_name, _period) in spiral_invalidations:
+                # A cut only invalidates its calculated value, at exactly
+                # this period and under the calculating branch's name.
+                holder.delete_array(_period, branch_name, derived_only=True)
+                if _fast_cache is not None:
+                    _fast_cache.pop((_name, _period), None)
+            else:
+                # Explicit invalidation retains its public contract: inputs
+                # and contained periods in default storage are deleted too.
+                holder.delete_arrays(_period)
+                if _fast_cache is not None:
+                    invalid_period = periods.period(_period)
+                    eternal = (
+                        getattr(
+                            getattr(holder, "variable", None), "definition_period", None
+                        )
+                        == periods.ETERNITY
+                    )
+                    for key in list(_fast_cache):
+                        if key[0] == _name and (
+                            eternal
+                            or key[1] == _period
+                            or (
+                                isinstance(key[1], Period)
+                                and invalid_period.start <= key[1].start
+                                and _end_order(key[1]) <= _end_order(invalid_period)
+                            )
+                        ):
+                            _fast_cache.pop(key, None)
         self.invalidated_caches = set()
+        self._spiral_invalidated_caches = set()
 
     def calculate_add(
         self,
@@ -1873,11 +1976,28 @@ class Simulation:
             simulation = parent
 
     def invalidate_cache_entry(self, variable: str, period: Period) -> None:
+        """Mark an explicit invalidation, including inputs and contained periods."""
         invalidated_caches = getattr(self, "invalidated_caches", None)
         if invalidated_caches is None:
             self.invalidated_caches = {(variable, period)}
-            return
-        invalidated_caches.add((variable, period))
+        else:
+            invalidated_caches.add((variable, period))
+        spiral_invalidations = getattr(self, "_spiral_invalidated_caches", None)
+        if spiral_invalidations is not None:
+            spiral_invalidations.discard((variable, period))
+
+    def _invalidate_spiral_cache_entry(self, variable: str, period: Period) -> None:
+        """Mark an exact calculated value, preserving explicit invalidations."""
+        key = (variable, period)
+        invalidated_caches = getattr(self, "invalidated_caches", None)
+        if invalidated_caches is None:
+            invalidated_caches = self.invalidated_caches = set()
+        if key not in invalidated_caches:
+            spiral_invalidations = getattr(self, "_spiral_invalidated_caches", None)
+            if spiral_invalidations is None:
+                spiral_invalidations = self._spiral_invalidated_caches = set()
+            spiral_invalidations.add(key)
+            invalidated_caches.add(key)
 
     def invalidate_spiral_variables(self, variable: str) -> None:
         """Purge, once their calculation ends, the values a cut recursion reaches.
@@ -1896,7 +2016,7 @@ class Simulation:
             # the parent's (or another ancestor's).
             owner = self._simulation_for_branch(frame.get("branch_name"))
             if owner is not None:
-                owner.invalidate_cache_entry(frame["name"], frame["period"])
+                owner._invalidate_spiral_cache_entry(frame["name"], frame["period"])
         state = _spiral_deferrals.get()
         if state is None:
             return
@@ -1926,7 +2046,7 @@ class Simulation:
         """Mark a value cached while a cut recursion's calculation runs."""
         state = _spiral_deferrals.get()
         if state is not None and state.cut_tracers:
-            self.invalidate_cache_entry(variable_name, period)
+            self._invalidate_spiral_cache_entry(variable_name, period)
 
     def _leave_frame(self) -> None:
         """Stop marking cached values once every stack a cut reached is empty."""
@@ -2122,6 +2242,19 @@ class Simulation:
         """
         Copy the simulation just enough to be able to run the copy without modifying the original simulation.
 
+        The copy records its own cache invalidations (``invalidated_caches``,
+        starting from this simulation's pending ones). It removes copied
+        values from cut recursions before exposing the copy, preserving
+        inputs; explicit invalidations remain pending until its next purge.
+        If ``baseline`` is a
+        branch of this simulation, as a reform simulation's is, the copy gets
+        a copy of that branch as its own: a branch of the copy, under the same
+        name, with this baseline's tax-benefit system, traced in the copy if
+        this baseline is traced in this simulation. Any other ``baseline`` is
+        shared: a branch's is its parent's, and a country package that builds
+        a separate baseline simulation copies it, if it needs to, in its own
+        ``clone``.
+
         Every cached array is copied, except in the first ``clone`` of this
         simulation made while ``get_branch`` is creating a branch of it: that
         copy shares the arrays until it reads them (see :meth:`get_branch`).
@@ -2129,6 +2262,14 @@ class Simulation:
         takes part in that the same way. A subclass ``clone`` that first
         clones the same simulation directly gets the sharing in that direct
         clone instead, and its branch is a full copy.
+
+        The copy's method aliases (``calc``, ``df``, and any other bound
+        method of this simulation kept on the instance) are bound to the
+        copy. With ``clone_tax_benefit_system``, the copy of the system names
+        the copy as its simulation and the copy's populations use its
+        entities, so nothing in the copy refers back to this simulation
+        through them. Without it, the copy shares this simulation's system,
+        which still names this simulation.
         """
         request = _branch_clone.get()
         share_arrays = (
@@ -2148,6 +2289,13 @@ class Simulation:
                 "_fast_cache",
             ):
                 new_dict[key] = value
+        # Aliases of this simulation's methods (``calc`` and ``df``, and any a
+        # subclass adds) are bound methods of this simulation, which the copy
+        # above carried over as they were: the clone's ``calc`` calculated on
+        # this simulation, and kept it alive. Bind each to the clone.
+        for key, value in new_dict.items():
+            if isinstance(value, types.MethodType) and value.__self__ is self:
+                new_dict[key] = types.MethodType(value.__func__, new)
         new._fast_cache = {}
         # The clone stores what it puts on disk in a folder of its own, made
         # when first needed, never in this simulation's. Disk storages the
@@ -2175,10 +2323,16 @@ class Simulation:
         # the other had calculated for that period, as an input.
         if hasattr(self, "_user_input_keys"):
             new._user_input_keys = set(self._user_input_keys)
-        # Its own set: values a spiral marks in one simulation are purged
-        # from that simulation's holders only. It starts with nothing to
-        # purge: it drops what it takes of this simulation's below.
-        new.invalidated_caches = set()
+        # Each records its own invalidations, too. With one set, a spiral in
+        # one (in a branch, say) made the other delete, at its next purge,
+        # its own cached values for those variables and periods, inputs
+        # among them. Invalidations this simulation has not purged yet carry
+        # over: the clone's cached arrays start as copies of its arrays.
+        if getattr(self, "invalidated_caches", None) is not None:
+            new.invalidated_caches = set(self.invalidated_caches)
+        new._spiral_invalidated_caches = set(
+            getattr(self, "_spiral_invalidated_caches", ())
+        )
 
         # Only pass ``share_arrays`` when sharing, so a population or holder
         # ``clone`` override with the earlier signature still deep-copies.
@@ -2195,12 +2349,61 @@ class Simulation:
                 new, entity.key, population
             )  # create shortcut simulation.household (for instance)
         if clone_tax_benefit_system:
-            new.tax_benefit_system = self.tax_benefit_system.clone()
+            system = self.tax_benefit_system.clone()
+            new.tax_benefit_system = system
+            # The copy of the system is the clone's alone. It names the clone
+            # as its simulation, as a new simulation's system does, and the
+            # clone's populations use its entities, so they look variables up
+            # in it. They had kept this simulation's system: a variable a
+            # reform added to the clone's was not found, and the clone kept
+            # this simulation alive through it.
+            system.simulation = new
+            entities = {
+                entity.key: entity
+                for entity in [system.person_entity, *system.group_entities]
+            }
+            for population in new.populations.values():
+                population.entity = entities[population.entity.key]
         else:
             new.tax_benefit_system = self.tax_benefit_system
         new.debug = debug
         new.trace = trace
         new._drop_invalid_values(self)
+
+        # A branch shares its parent's baseline: formulas that run in a
+        # branch read the parent's baseline values through it. That holds for
+        # every clone of this simulation made while ``get_branch`` is making
+        # a branch of it, not only the one that shares its arrays (a subclass
+        # ``clone`` may clone it directly first; see ``_BranchClone``).
+        branching = request is not None and request.simulation is self
+        baseline = getattr(self, "baseline", None)
+        if (
+            not branching
+            and baseline is not None
+            and getattr(baseline, "parent_branch", None) is self
+        ):
+            # This simulation's own baseline branch (``__init__`` makes one
+            # for a reform). A shared one filled this simulation's caches
+            # with the copy's baseline calculations and took inputs set
+            # through either, ``get_branch("baseline")`` on the copy made a
+            # branch under the copy's (reform) policy, ``subsample`` of the
+            # copy left its baseline at the old size, and the copy kept this
+            # simulation alive through the branch's ``parent_branch``. The
+            # copy gets a copy of the branch, not a new branch of itself as in
+            # ``__init__``: its cached arrays include values calculated under
+            # this simulation's policy, which a new branch would read as its
+            # own.
+            new_baseline = baseline.clone(
+                debug=debug, trace=trace, clone_tax_benefit_system=False
+            )
+            new_baseline.parent_branch = new
+            # A baseline traced in its simulation (as ``__init__`` makes it)
+            # is traced in the copy.
+            if baseline.tracer is self.tracer:
+                new_baseline.tracer = new.tracer
+            if self.branches.get(baseline.branch_name) is baseline:
+                new.branches[baseline.branch_name] = new_baseline
+            new.baseline = new_baseline
 
         return new
 
@@ -2208,13 +2411,13 @@ class Simulation:
         """Drop the values this copy of ``source`` took that ``source`` is to
         purge once its calculation ends (see ``invalidate_spiral_variables``).
 
-        A value a cut recursion reaches is marked when it is cached, or
+        A calculated value a cut recursion reaches is marked when it is cached, or
         before, so every one ``source`` holds now is marked now, and a copy
         never sees what ``source`` caches later. Only the copy's own index
         changes; ``source`` purges its own values when its calculation ends.
         Inputs stay, as they do in ``source``.
         """
-        invalidated_caches = getattr(source, "invalidated_caches", None)
+        invalidated_caches = getattr(source, "_spiral_invalidated_caches", None)
         if not invalidated_caches:
             return
         branch_name = getattr(source, "branch_name", "default")
@@ -2225,6 +2428,8 @@ class Simulation:
             holder = self.populations[variable.entity.key]._holders.get(name)
             if holder is not None:
                 holder.delete_array(invalid_period, branch_name, derived_only=True)
+        self.invalidated_caches.difference_update(invalidated_caches)
+        self._spiral_invalidated_caches.difference_update(invalidated_caches)
 
     def get_branch(
         self, name: str = "branch", clone_system: bool = False
@@ -2701,7 +2906,15 @@ class Simulation:
             baseline_tax_benefit_system = self.branches["baseline"].tax_benefit_system
             del self.branches["baseline"]
             baseline = self.get_branch("baseline")
+            # As in ``__init__``, the branch is traced in this simulation,
+            # uses the baseline system's entities and variables, and has no
+            # baseline of its own: ``get_branch`` gave it this simulation's,
+            # the branch it replaces, which kept the old population alive.
+            baseline.trace = self.trace
+            baseline.tracer = self.tracer
             baseline.tax_benefit_system = baseline_tax_benefit_system
+            baseline._bind_to_tax_benefit_system()
+            baseline.baseline = None
             if getattr(self, "baseline", None) is not None:
                 self.baseline = baseline
 

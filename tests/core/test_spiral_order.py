@@ -667,3 +667,46 @@ def test_long_anchored_recursion_is_evaluated_in_full_however_long():
     assert warm.calculate("monthly", "2010-01").tolist() == [1.0]
     assert fresh.calculate("monthly", "2843-06").tolist() == [10002.0]
     assert warm.calculate("monthly", "2843-06").tolist() == [10002.0]
+
+
+@pytest.mark.parametrize("spiral_first", [False, True])
+def test_explicit_invalidation_keeps_precedence_over_spiral_cleanup(spiral_first):
+    from policyengine_core.periods import period
+
+    simulation = build([counting_up()], {("recursive", 2021): 40})
+    key = ("recursive", period("2021"))
+    markers = [
+        simulation._invalidate_spiral_cache_entry,
+        simulation.invalidate_cache_entry,
+    ]
+    if not spiral_first:
+        markers.reverse()
+    for mark in markers:
+        mark(*key)
+    simulation.purge_cache_of_invalid_values()
+    assert simulation.get_array(*key) is None
+
+
+def test_spiral_cleanup_and_copy_preserve_an_input_at_the_marked_period():
+    from policyengine_core.periods import period
+
+    simulation = build([counting_up()], {("recursive", 2021): 40})
+    key = ("recursive", period("2021"))
+    simulation._invalidate_spiral_cache_entry(*key)
+    copy = simulation.clone()
+    assert copy.invalidated_caches == set()
+    assert copy.get_array(*key).tolist() == [40]
+    simulation.purge_cache_of_invalid_values()
+    assert simulation.get_array(*key).tolist() == [40]
+
+
+def test_explicit_invalidation_removes_contained_inputs_and_fast_values():
+    from policyengine_core.periods import period
+
+    simulation = build([])
+    simulation.set_input("salary", "2020-06", [100])
+    assert simulation.calculate("salary", "2020-06").tolist() == [100]
+    simulation.invalidate_cache_entry("salary", period("2020"))
+    simulation.purge_cache_of_invalid_values()
+    assert simulation.get_array("salary", "2020-06") is None
+    assert simulation.calculate("salary", "2020-06").tolist() == [0]

@@ -1,3 +1,21 @@
+## [3.32.21] - 2026-10-07
+
+### Changed
+
+- Pull requests now run actionlint on the GitHub Actions workflows, and the release workflow quotes the version it passes to towncrier and uses the `skip-existing` input of the PyPI publish action.
+
+### Fixed
+
+- A reform simulation's baseline branch now uses the baseline system's entities and variables (a variable the reform neutralized or redefined was neutralized or redefined in the baseline too), including after `subsample`, which also keeps the rebuilt branch traced in the reform simulation, as `__init__` does, and no longer leaves it holding the branch it replaced; a clone of a reform simulation gets a copy of the baseline branch as its own instead of sharing its source's; and each clone and branch records its own cache invalidations, so a spiral in one no longer deletes the other's cached values or inputs.
+
+
+## [3.32.20] - 2026-10-06
+
+### Fixed
+
+- A cloned simulation or branch now calculates on itself through `calc` and `df`: `Simulation.clone` binds every method alias it copies (`calc`, `df`, and any a subclass keeps on the instance) to the copy, where before they stayed bound to the source, so `clone.calc(...)` returned the source's values and kept the source alive. A clone given its own copy of the tax-benefit system (the default for `clone`, and `get_branch(clone_system=True)`) now names the clone as that copy's simulation, and the clone's populations look variables up in the copy, so a clone can calculate a variable a reform added to its own system (it raised `VariableNotFoundError`). Holders the clone copied from its source keep the source's variable definitions, as holders do after `apply_reform`. A clone of a plain simulation given its own copy of the system no longer keeps its source alive. One sharing the system still does, through the system's `simulation`; so does a clone of a branch, through the branch's parent (`parent_branch`), and a clone of a reform simulation, through the `baseline` branch it shares.
+
+
 ## [3.32.19] - 2026-10-06
 
 ### Fixed

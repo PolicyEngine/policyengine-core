@@ -78,21 +78,6 @@ def disk_simulation(data_storage_dir: str = None):
     return simulation
 
 
-def clone(simulation):
-    """``simulation.clone()``, with nothing in the clone keeping
-    ``simulation`` alive.
-
-    ``Simulation.clone`` copies the source's ``calc`` and ``df``, bound
-    methods of the source (so a clone's ``calc`` calculates on its source, a
-    separate bug), and so a clone kept its source alive. These tests decide
-    when simulations are collected.
-    """
-    new = simulation.clone()
-    new.calc = new.calculate
-    new.df = new.calculate_dataframe
-    return new
-
-
 def values(variable: str, seed: int) -> np.ndarray:
     """Values of ``variable`` for ``PEOPLE`` people, different for each seed
     (each of ``len(Level) ** PEOPLE`` seeds in a row, for ``disk_level``)."""

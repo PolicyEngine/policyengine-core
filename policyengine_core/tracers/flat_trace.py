@@ -28,20 +28,19 @@ class FlatTrace:
 
     def get_trace(self) -> dict:
         trace = {}
+        qualities = {}
 
         for node in self._full_tracer.browse_trace():
-            # We don't want cache read to overwrite data about the initial
-            # calculation.
-            #
-            # We therefore use a non-overwriting update, except over a
-            # calculation that never recorded a result: one abandoned to
-            # calculate a deeper period first (see ``Simulation.calculate``),
-            # or ended by an error. The first that completes replaces it.
+            # Preserve the first completed calculation over later cache
+            # reads. A scheduler retry can leave either no result or a
+            # provisional result from a cut recursion; the first accepted
+            # calculation replaces either. Keep provisional results when
+            # no accepted calculation exists, so dependencies still resolve.
+            quality = 0 if node.value is None else 1 if node._spiral_provisional else 2
             for key, node_trace in self._get_flat_trace(node).items():
-                if key not in trace or (
-                    trace[key]["value"] is None and node_trace["value"] is not None
-                ):
+                if key not in trace or quality > qualities[key]:
                     trace[key] = node_trace
+                    qualities[key] = quality
 
         return trace
 

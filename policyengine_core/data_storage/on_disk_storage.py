@@ -62,9 +62,11 @@ def _split_key(key: str) -> tuple:
 
 
 def _is_key(key: str) -> bool:
-    """Whether ``key`` is one ``put`` writes: ``f"{branch_name}_{period}"``,
-    with the period in its string form, so that it splits back into the
-    branch name and the period it was written for."""
+    """Whether ``key`` ends with a canonical period after the branch separator.
+
+    Legacy branch names and eternal-storage files retain their restore
+    behavior; this check only validates the period's spelling.
+    """
     _, separator, period = key.rpartition("_")
     if not separator:
         return False
@@ -408,9 +410,8 @@ class OnDiskStorage:
         """Read back the values stored in this storage's directory: for each
         key, the file named for it (not those in ``REPLACEMENTS_DIR``).
 
-        A ``.npy`` file whose name is not a key ``put`` writes (a branch
-        name, ``_`` and a period in its string form) holds no value of this
-        storage: it is left out, with a warning.
+        A ``.npy`` file whose name lacks a branch separator and a canonical
+        period string is left out, with a warning.
 
         This storage writes over those files, as over those it wrote, until
         it is cloned or copied, or this process forks: from then on it writes

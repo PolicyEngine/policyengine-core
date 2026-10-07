@@ -376,6 +376,49 @@ def test_mid_month_input_is_rejected_whichever_storage_it_goes_to(on_disk):
     ]
 
 
+@pytest.mark.parametrize("backend", BACKENDS)
+@pytest.mark.parametrize("period", [999, "0999", "0999-03", "0999-03-15"])
+def test_put_rejects_unparseable_period_without_changing_values(
+    make_storage, backend, period
+):
+    # The full #565 review also found put(periods.period(999)): its "999"
+    # key cannot be parsed by containment deletion or restored from disk.
+    storage = make_storage(backend)
+    storage.put(np.array([500.0]), "2025-03", "no_salt", derived=True)
+    period = periods.period(period)
+
+    with pytest.raises(ValueError, match="string form cannot be parsed"):
+        storage.put(np.array([9.0]), period, "no_salt")
+
+    assert storage.get(period, "no_salt") is None
+    assert known(storage) == [("no_salt", "2025-03")]
+    assert storage.is_derived("2025-03", "no_salt")
+    np.testing.assert_array_equal(storage.get("2025-03", "no_salt"), [500.0])
+    storage.delete(periods.period(2025), "no_salt")
+    assert known(storage) == []
+
+
+@pytest.mark.parametrize("backend", BACKENDS)
+@pytest.mark.parametrize("month", [1, 3])
+def test_twelve_month_alias_remains_storable(make_storage, backend, month):
+    period = periods.Period((periods.MONTH, periods.Instant((2025, month, 1)), 12))
+    if os.name == "nt" and ":" in str(period):
+        pytest.skip("Windows file names cannot contain ':'")
+    storage = make_storage(backend)
+
+    storage.put(np.array([500.0]), period, "no_salt", derived=True)
+
+    alias = periods.period(str(period))
+    assert alias.unit == periods.YEAR
+    assert alias.start == period.start
+    assert alias.stop == period.stop
+    assert storage.get_known_branch_periods() == [("no_salt", alias)]
+    assert storage.is_derived(alias, "no_salt")
+    np.testing.assert_array_equal(storage.get(alias, "no_salt"), [500.0])
+    storage.delete(period, "no_salt")
+    assert known(storage) == []
+
+
 # ----- Files restored from a directory (#565 review, finding 2) ---------------
 
 # ``restore`` read back every ``.npy`` file in the directory. One whose name
@@ -390,6 +433,7 @@ NOT_KEYS = [
     "_.npy",
     "default_2025-3.npy",
     "default_2025-03-1.npy",
+    "default_999.npy",
 ]
 if os.name != "nt":
     NOT_KEYS += ["default_month:2025-01:12.npy", "no_salt_year:2025:1.npy"]

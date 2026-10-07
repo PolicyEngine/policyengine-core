@@ -57,7 +57,7 @@ def period_strategy(draw):
     if draw(st.integers(0, 19)) == 0:
         return periods.period(periods.ETERNITY)
     unit = draw(st.sampled_from([periods.YEAR, periods.MONTH, periods.DAY]))
-    year = draw(st.integers(2023, 2026))
+    year = draw(st.one_of(st.sampled_from([999, 1000]), st.integers(2023, 2026)))
     if os.name == "nt":
         # Windows file names cannot contain the ``:`` of a multi-unit or
         # rolling-year period's string form.
@@ -65,7 +65,7 @@ def period_strategy(draw):
         size = 1
     else:
         month = draw(st.integers(1, 12))
-        size = draw(st.integers(1, 3))
+        size = draw(st.sampled_from([1, 2, 3, 12]))
     # Both storages reject years and months anchored mid-month, whose string
     # form drops the day (before writing a file, so on Windows too).
     if unit == periods.DAY:
@@ -79,10 +79,11 @@ def storable(branch_name, period):
     """The model of which keys a storage holds: those whose branch name has no
     ``:`` and whose period's string form names a period starting the same
     day."""
-    return (
-        ":" not in branch_name
-        and periods.period(str(period)).start == periods.period(period).start
-    )
+    try:
+        parsed = periods.period(str(period))
+    except ValueError:
+        return False
+    return ":" not in branch_name and parsed.start == periods.period(period).start
 
 
 def put_both(memory, disk, value, period, branch_name):
@@ -165,7 +166,7 @@ def test_disk_and_memory_storage_delete_the_same_keys(is_eternal, steps):
 # Names of ``.npy`` files that are not keys: no ``_``, no period after the last
 # ``_``, or a period not in its string form. (Not ``eternity``: on a
 # case-insensitive file system that is the ``ETERNITY`` key's file.)
-NON_CANONICAL_PERIODS = ["2025-3", "2025-03-1", "x", ""]
+NON_CANONICAL_PERIODS = ["2025-3", "2025-03-1", "999", "x", ""]
 if os.name != "nt":
     NON_CANONICAL_PERIODS += ["year:2025", "month:2025-01:12", "day:2025-03-01"]
 not_key_names = st.one_of(

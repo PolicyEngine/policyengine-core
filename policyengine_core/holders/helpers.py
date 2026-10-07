@@ -22,6 +22,31 @@ def get_stored_array(holder: Holder, period: Period, branch_name: str) -> ArrayL
     return holder._get_array_from_storage(period, branch_name)
 
 
+def get_stored_input(holder: Holder, period: Period, branch_name: str) -> ArrayLike:
+    """The input stored for ``period`` under ``branch_name`` itself, or
+    ``None``.
+
+    A value the simulation calculated and cached there (see
+    ``Holder.put_in_cache``) is not an input, so the helpers below treat the
+    sub-period as empty and the new input replaces it, as an input set for
+    that sub-period alone would. Treating it as an input kept the calculated
+    value under the input, copied it into the later sub-periods (dispatch),
+    or took it out of the total (divide), so the result depended on what had
+    been calculated before the input was set.
+    """
+    if holder._memory_storage.has(period, branch_name):
+        storage = holder._memory_storage
+    elif holder._disk_storage is not None and holder._disk_storage.has(
+        period, branch_name
+    ):
+        storage = holder._disk_storage
+    else:
+        return None
+    if storage.is_derived(period, branch_name):
+        return None
+    return storage.get(period, branch_name)
+
+
 def set_input_dispatch_by_period(holder: Holder, period: Period, array: ArrayLike):
     """
     This function can be declared as a ``set_input`` attribute of a variable.
@@ -46,11 +71,11 @@ def set_input_dispatch_by_period(holder: Holder, period: Period, array: ArrayLik
 
     after_instant = period.start.offset(period_size, period_unit)
 
-    # Cache the input data, skipping the existing cached months
+    # Cache the input data, skipping the months that already have an input
     branch_name = get_input_branch(holder)
     sub_period = period.start.period(cached_period_unit)
     while sub_period.start < after_instant:
-        existing_array = get_stored_array(holder, sub_period, branch_name)
+        existing_array = get_stored_input(holder, sub_period, branch_name)
         if existing_array is None:
             holder._set(sub_period, array, branch_name)
         else:
@@ -91,7 +116,7 @@ def set_input_divide_by_period(holder: Holder, period: Period, array: ArrayLike)
     sub_period = period.start.period(cached_period_unit)
     sub_periods_count = 0
     while sub_period.start < after_instant:
-        existing_array = get_stored_array(holder, sub_period, branch_name)
+        existing_array = get_stored_input(holder, sub_period, branch_name)
         if existing_array is not None:
             remaining_array -= existing_array
         else:
@@ -103,7 +128,7 @@ def set_input_divide_by_period(holder: Holder, period: Period, array: ArrayLike)
         divided_array = remaining_array / sub_periods_count
         sub_period = period.start.period(cached_period_unit)
         while sub_period.start < after_instant:
-            if get_stored_array(holder, sub_period, branch_name) is None:
+            if get_stored_input(holder, sub_period, branch_name) is None:
                 holder._set(sub_period, divided_array, branch_name)
             sub_period = sub_period.offset(1)
     elif not (remaining_array == 0).all():

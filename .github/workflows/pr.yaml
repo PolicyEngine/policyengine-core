@@ -11,6 +11,21 @@ jobs:
         uses: astral-sh/setup-uv@v8.1.0
       - name: Check formatting
         run: uvx ruff format --check .
+  lint-workflows:
+    name: Lint workflows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Run actionlint
+        # rhysd/actionlint 1.7.12. The image bundles shellcheck and pyflakes,
+        # which actionlint runs on `run:` scripts.
+        uses: docker://rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
+        with:
+          args: -color
   check-changelog:
     name: Check changelog fragment
     runs-on: ubuntu-latest
@@ -77,7 +92,7 @@ jobs:
       - name: Install Core and the legacy country smoke bundle
         # Resolve the checkout and all country dependencies together so a later
         # install cannot replace Core or pair a legacy US model with SPM 1.x.
-        run: uv pip install --system . -r .github/requirements/legacy-country-smoke.txt "pytest-rerunfailures>=10,<15"
+        run: uv pip install --system . -r .github/requirements/legacy-country-smoke.txt "pytest-rerunfailures>=16.2,<17"
       - name: Verify installed dependency compatibility
         run: uv pip check --system
       - name: Verify pytest plugins

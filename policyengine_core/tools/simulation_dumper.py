@@ -18,6 +18,10 @@ from policyengine_core.simulations import Simulation
 # simulation as in the dumped one.
 INPUT_PERIODS_FILE = "inputs.txt"
 
+# Periods, one per line, whose dumped value the simulation calculated (see
+# ``Holder.is_derived``), so a restored simulation does not carry them over.
+DERIVED_PERIODS_FILE = "derived_periods.txt"
+
 
 def dump_simulation(simulation, directory):
     """
@@ -99,16 +103,23 @@ def restore_simulation(directory, tax_benefit_system, **kwargs):
 def _dump_holder(holder, directory, input_keys=frozenset()):
     disk_storage = holder.create_disk_storage(directory, preserve=True)
     input_periods = []
+    derived_periods = set()
     for period in holder.get_known_periods():
         value = holder.get_array(period)
         disk_storage.put(value, period)
-        # The input record of exactly the value dumped: ``get_array`` above
-        # reads the default branch.
+        # The input record and derived mark of exactly the value dumped:
+        # ``get_array`` above reads the default branch.
         if (holder.variable.name, "default", str(period)) in input_keys:
             input_periods.append(str(period))
+        if holder.is_derived(period):
+            derived_periods.add(str(period))
     path = os.path.join(disk_storage.storage_dir, INPUT_PERIODS_FILE)
     with open(path, "w") as file:
         file.write("".join(f"{period}\n" for period in dict.fromkeys(input_periods)))
+    if derived_periods:
+        path = os.path.join(disk_storage.storage_dir, DERIVED_PERIODS_FILE)
+        with open(path, "w") as file:
+            file.write("\n".join(sorted(derived_periods)) + "\n")
 
 
 def _input_storage_keys(simulation):
@@ -204,9 +215,17 @@ def _restore_holder(simulation, variable, directory):
         # calculated, so keep every value as an input.
         input_periods = None
 
+    derived_periods_path = os.path.join(storage_dir, DERIVED_PERIODS_FILE)
+    derived_periods = set()
+    if os.path.exists(derived_periods_path):
+        with open(derived_periods_path) as file:
+            derived_periods = set(file.read().split())
+
     for period in disk_storage.get_known_periods():
         value = disk_storage.get(period)
-        if input_periods is None or str(period) in input_periods:
+        if str(period) in derived_periods:
+            holder.put_in_cache(value, period, derived=True)
+        elif input_periods is None or str(period) in input_periods:
             _restore_input(simulation, holder, period, value)
         else:
             holder.put_in_cache(value, period)

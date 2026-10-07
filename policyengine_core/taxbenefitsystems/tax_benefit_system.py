@@ -88,7 +88,15 @@ class TaxBenefitSystem:
     parameters_dir: str = None
     """Directory containing the YAML parameter tree."""
     auto_carry_over_input_variables: bool = False
-    """Whether to automatically carry over input variables when calculating a variable for a period different from the period of the input variables."""
+    """Whether a variable with no formula result for a period (and no
+    ``uprating`` path from an earlier period) takes an input from another
+    period. If so, the period takes the input stored for the latest-starting
+    period that starts no later than it (on a tie, the one that ends last),
+    preferring inputs at the variable's own definition-period unit, masked by
+    the variable's ``defined_for``; with no such input, the default. An input
+    stored for the period itself is read back as stored. An input never carries backwards, and values the simulation
+    calculated never carry (see ``Holder.is_derived``), so the result does
+    not depend on which periods were calculated first."""
     basic_inputs: List[str] = None
     """Short list of basic inputs to get medium accuracy."""
     modelled_policies: str = None

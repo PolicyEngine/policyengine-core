@@ -338,7 +338,7 @@ def test_clone_has_independent_indexes(
         preserve_results=preserve_results,
         preserve_invalidated=preserve_invalidated,
     )
-    clone.supplied_inputs.clear()
+    clone.replace_supplied_inputs(set())
     clone.discard(key)
 
     assert input_key in cache.supplied_inputs

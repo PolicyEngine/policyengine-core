@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
+from types import MappingProxyType
 from typing import Any, Generic, NamedTuple, TypeVar
 
 from policyengine_core.caching import (
@@ -9,6 +10,7 @@ from policyengine_core.caching import (
     BranchableCache,
     InvalidCacheKeyError,
 )
+from policyengine_core.caching.removed_attribute import RemovedCacheAttribute
 
 InstantT = TypeVar("InstantT")
 ValueT = TypeVar("ValueT")
@@ -88,23 +90,21 @@ class SimulationResultCache(
             raise InvalidCacheKeyError("result periods must be hashable") from error
 
     @property
-    def entries(self) -> dict[ResultCacheKey[InstantT], ValueT]:
-        """Return the transitional live mapping used by older country packages."""
+    def entries(self) -> Mapping[ResultCacheKey[InstantT], ValueT]:
+        """Return an immutable snapshot of the calculated-result index."""
         with self._cache_lock:
-            return self._entries
+            return MappingProxyType(self._entries.copy())
 
     def replace_entries(
         self,
-        entries: dict[ResultCacheKey[InstantT], ValueT]
-        | dict[tuple[str, InstantT], ValueT],
+        entries: Mapping[ResultCacheKey[InstantT], ValueT],
     ) -> None:
-        """Validate and replace results, retaining preparatory tuple conversion."""
+        """Validate and replace typed result entries atomically."""
 
         with self._cache_lock:
             self._ensure_open()
             normalized: dict[ResultCacheKey[InstantT], ValueT] = {}
             for key, value in entries.items():
-                key = key if isinstance(key, ResultCacheKey) else ResultCacheKey(*key)
                 self._validate_key(key)
                 self._validate_value(value)
                 normalized[key] = value
@@ -114,27 +114,26 @@ class SimulationResultCache(
             self._cache_peak_entries = max(self._cache_peak_entries, len(normalized))
 
     @property
-    def invalidated(self) -> set[ResultCacheKey[InstantT]]:
+    def invalidated(self) -> frozenset[ResultCacheKey[InstantT]]:
         with self._cache_lock:
-            return self._invalidated
+            return frozenset(self._invalidated)
 
     def replace_invalidated(
         self,
-        entries: set[ResultCacheKey[InstantT]] | set[tuple[str, InstantT]],
+        entries: set[ResultCacheKey[InstantT]] | frozenset[ResultCacheKey[InstantT]],
     ) -> None:
         with self._cache_lock:
             self._ensure_open()
             normalized = set()
             for key in entries:
-                key = key if isinstance(key, ResultCacheKey) else ResultCacheKey(*key)
                 self._validate_key(key)
                 normalized.add(key)
             self._invalidated = normalized
 
     @property
-    def supplied_inputs(self) -> set[SuppliedInputKey[InstantT]]:
+    def supplied_inputs(self) -> frozenset[SuppliedInputKey[InstantT]]:
         with self._cache_lock:
-            return self._supplied_inputs
+            return frozenset(self._supplied_inputs)
 
     def supplied_input_keys(self) -> frozenset[SuppliedInputKey[InstantT]]:
         """Return a read-only snapshot of the supplied-input query index."""
@@ -188,16 +187,16 @@ class SimulationResultCache(
     def replace_supplied_inputs(
         self,
         entries: set[SuppliedInputKey[InstantT]]
-        | frozenset[SuppliedInputKey[InstantT]]
-        | set[tuple[str, str, InstantT]],
+        | frozenset[SuppliedInputKey[InstantT]],
     ) -> None:
         with self._cache_lock:
             self._ensure_open()
             normalized = set()
             for key in entries:
-                key = (
-                    key if isinstance(key, SuppliedInputKey) else SuppliedInputKey(*key)
-                )
+                if not isinstance(key, SuppliedInputKey):
+                    raise InvalidCacheKeyError(
+                        "input keys must be SuppliedInputKey values"
+                    )
                 self._validate_supplied_input(
                     key.variable_name, key.branch_name, key.period
                 )
@@ -206,15 +205,12 @@ class SimulationResultCache(
                 self._input_revision += 1
             self._supplied_inputs = normalized
 
-    def replace_input_contexts(self, contexts: list[str]) -> None:
-        """Replace a legacy initialization stack without bypassing cache lifecycle."""
-        with self._open_operation():
-            self._input_contexts = list(contexts)
+    replace_input_contexts = RemovedCacheAttribute("supplied_input_context")
 
     @property
-    def input_contexts(self) -> list[str]:
+    def input_contexts(self) -> tuple[str, ...]:
         with self._cache_lock:
-            return self._input_contexts
+            return tuple(self._input_contexts)
 
     @property
     def current_input_branch(self) -> str | None:
@@ -320,10 +316,7 @@ class SimulationResultCache(
 
     def take_invalidated(self) -> set[ResultCacheKey[InstantT]]:
         with self._open_operation():
-            invalidated = {
-                key if isinstance(key, ResultCacheKey) else ResultCacheKey(*key)
-                for key in self._invalidated
-            }
+            invalidated = self._invalidated.copy()
             self._invalidated = set()
             return invalidated
 

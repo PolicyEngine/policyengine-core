@@ -151,7 +151,10 @@ def test_the_baseline_has_nothing_for_a_variable_only_the_reform_has(
     )
     assert "doubled_salary" not in baseline.persons._holders
     assert "doubled_salary" not in baseline.input_variables
-    assert all(key[0] != "doubled_salary" for key in baseline._user_input_keys)
+    assert all(
+        key[0] != "doubled_salary"
+        for key in baseline.result_cache.supplied_input_keys()
+    )
     with pytest.raises(VariableNotFoundError):
         baseline.get_holder("doubled_salary")
     with pytest.raises(ValueError, match="does not exist"):
@@ -209,7 +212,10 @@ def test_the_baselines_record_of_inputs_is_its_own():
     reform = Simulation(situation=SITUATION, reform=add_doubled_salary)
 
     assert reform.baseline.input_variables is not reform.input_variables
-    assert reform.baseline._user_input_keys is not reform._user_input_keys
+    assert (
+        reform.baseline.result_cache.supplied_input_keys()
+        is not reform.result_cache.supplied_input_keys()
+    )
     assert "doubled_salary" in reform.tax_benefit_system.variables
 
 

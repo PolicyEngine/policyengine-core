@@ -82,12 +82,12 @@ def test_a_copy_records_invalidations_in_a_set_of_its_own(system, make):
 
     # It starts from the source's pending invalidations: its cached arrays
     # start as copies of the source's.
-    assert copy.invalidated_caches == {pending}
-    assert copy.invalidated_caches is not source.invalidated_caches
+    assert copy.result_cache.invalidated == {pending}
+    assert copy.result_cache.invalidated is not source.result_cache.invalidated
     copy.invalidate_cache_entry("income_tax", MONTH)
     source.invalidate_cache_entry("basic_income", MONTH)
-    assert source.invalidated_caches == {pending, ("basic_income", MONTH)}
-    assert copy.invalidated_caches == {pending, ("income_tax", MONTH)}
+    assert source.result_cache.invalidated == {pending, ("basic_income", MONTH)}
+    assert copy.result_cache.invalidated == {pending, ("income_tax", MONTH)}
 
 
 @pytest.mark.parametrize("make", MAKERS)
@@ -99,7 +99,7 @@ def test_a_spiral_in_a_copy_keeps_the_sources_input(system, make):
     source.set_input("spiral_b", PREVIOUS_MONTH, [INPUT])
 
     copy.calculate("spiral_a", MONTH)  # spirals
-    assert ("spiral_b", PREVIOUS_MONTH) not in source.invalidated_caches
+    assert ("spiral_b", PREVIOUS_MONTH) not in source.result_cache.invalidated
     source.calculate("salary", MONTH)  # ends with a purge
 
     np.testing.assert_array_equal(
@@ -115,7 +115,7 @@ def test_a_spiral_in_the_source_keeps_a_clones_input(system, make):
     clone.set_input("spiral_b", PREVIOUS_MONTH, [INPUT])
 
     source.calculate("spiral_a", MONTH)  # spirals
-    assert ("spiral_b", PREVIOUS_MONTH) not in clone.invalidated_caches
+    assert ("spiral_b", PREVIOUS_MONTH) not in clone.result_cache.invalidated
     clone.calculate("salary", MONTH)  # ends with a purge
 
     np.testing.assert_array_equal(
@@ -134,10 +134,10 @@ def test_a_pending_invalidation_purges_each_copy_once(system, make):
     copy.purge_cache_of_invalid_values()
 
     assert copy.get_holder("salary").get_array(MONTH) is None
-    assert copy.invalidated_caches == set()
+    assert copy.result_cache.invalidated == set()
     # The source still holds its value until it purges.
     np.testing.assert_array_equal(source.get_holder("salary").get_array(MONTH), [1])
-    assert source.invalidated_caches == {("salary", MONTH)}
+    assert source.result_cache.invalidated == {("salary", MONTH)}
     source.purge_cache_of_invalid_values()
     assert source.get_holder("salary").get_array(MONTH) is None
 
@@ -170,21 +170,22 @@ def test_copy_inherits_exact_pending_state_without_sharing_its_set(
 ):
     source = _simulation(system)
     # The compatibility view can contain old tuple keys as well as typed keys.
-    source.invalidated_caches.update(pending)
-    original_set = source.invalidated_caches
+    for name, input_period in pending:
+        source.invalidate_cache_entry(name, input_period)
+    original_set = source.result_cache.invalidated
 
     copy = make(source)
 
-    assert copy.invalidated_caches == set(pending)
-    assert copy.invalidated_caches is not original_set
-    assert source.invalidated_caches is original_set
-    assert source.invalidated_caches == set(pending)
+    assert copy.result_cache.invalidated == set(pending)
+    assert copy.result_cache.invalidated is not original_set
+    assert source.result_cache.invalidated == original_set
+    assert source.result_cache.invalidated == set(pending)
     # Even an initially empty invalidation set must be independently owned.
     copy.invalidate_cache_entry("basic_income", MONTH)
-    assert copy.invalidated_caches == set(pending) | {
+    assert copy.result_cache.invalidated == set(pending) | {
         ResultCacheKey("basic_income", MONTH)
     }
-    assert source.invalidated_caches == set(pending)
+    assert source.result_cache.invalidated == set(pending)
 
 
 @pytest.mark.parametrize("make", MAKERS)
@@ -208,25 +209,25 @@ def test_pending_invalidation_mutations_are_local_after_copy(system, make, opera
         source.invalidate_cache_entry(*key)
 
     copy = make(source)
-    assert copy.invalidated_caches == initial
+    assert copy.result_cache.invalidated == initial
 
     if operation == "invalidate-source":
         source.invalidate_cache_entry(*added)
-        assert source.invalidated_caches == initial | {added}
-        assert copy.invalidated_caches == initial
+        assert source.result_cache.invalidated == initial | {added}
+        assert copy.result_cache.invalidated == initial
     elif operation == "invalidate-copy":
         copy.invalidate_cache_entry(*added)
-        assert copy.invalidated_caches == initial | {added}
-        assert source.invalidated_caches == initial
+        assert copy.result_cache.invalidated == initial | {added}
+        assert source.result_cache.invalidated == initial
     elif operation == "consume-source":
         assert source.result_cache.take_invalidated() == initial
         assert source.result_cache.take_invalidated() == set()
-        assert copy.invalidated_caches == initial
+        assert copy.result_cache.invalidated == initial
     elif operation == "consume-copy":
         assert copy.result_cache.take_invalidated() == initial
         assert copy.result_cache.take_invalidated() == set()
-        assert source.invalidated_caches == initial
+        assert source.result_cache.invalidated == initial
     else:
         copy.result_cache.discard_invalidated(pending)
-        assert copy.invalidated_caches == {other_period}
-        assert source.invalidated_caches == initial
+        assert copy.result_cache.invalidated == {other_period}
+        assert source.result_cache.invalidated == initial

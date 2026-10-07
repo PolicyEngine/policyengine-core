@@ -58,7 +58,7 @@ def test_lazy_strategy_preserves_parameter_tracing(
     )
     assert all(
         type(value) is LazyParameterNodeAtInstant
-        for value in isolated_tax_benefit_system._parameters_at_instant_cache.values()
+        for value in isolated_tax_benefit_system.parameter_cache.values()
     )
 
 

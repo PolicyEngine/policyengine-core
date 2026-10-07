@@ -182,12 +182,13 @@ def test_low_level_cache_write_is_not_supplied_input(simulation):
     assert holder.get_array(period("2017-01")) is None
 
 
-def test_legacy_cache_init_before_parameter_attribute():
+def test_removed_cache_init_before_parameter_attribute_is_rejected():
     from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 
     system = object.__new__(TaxBenefitSystem)
-    system._parameters_at_instant_cache = {}
-    assert len(system._parameters_at_instant_cache) == 0
+    with pytest.raises(AttributeError):
+        system._parameters_at_instant_cache = {}
+    assert "_parameters_at_instant_cache_store" not in vars(system)
 
 
 @pytest.mark.parametrize(

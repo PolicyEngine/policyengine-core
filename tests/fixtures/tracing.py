@@ -38,6 +38,6 @@ def assert_untraced(parameters, instant="2017-01-01"):
     node_at_instant = parameters(instant)
     assert isinstance(node_at_instant, ParameterNodeAtInstant)
     assert not isinstance(node_at_instant, TracingParameterNodeAtInstant)
-    for node_at_instant in parameters._at_instant_cache.values():
+    for node_at_instant in parameters.parameter_cache.values():
         assert isinstance(node_at_instant, ParameterNodeAtInstant)
         assert not isinstance(node_at_instant, TracingParameterNodeAtInstant)

@@ -24,9 +24,7 @@ import pytest
 from policyengine_core import periods
 from policyengine_core.data_storage import InMemoryStorage
 from policyengine_core.data_storage.in_memory_storage import (
-    _INPUTS_RECORDED,
     _NO_INPUTS,
-    _NOTHING_SHARED,
 )
 from policyengine_core.reforms import Reform
 from tests.fixtures.branch_shared_arrays import build_simulation
@@ -152,7 +150,7 @@ def test_clones_share_the_inputs_until_one_of_them_changes_its_own(share_arrays)
 def test_clone_of_an_emptied_storage_gets_only_the_inputs_it_holds():
     source = InMemoryStorage(is_eternal=False)
     source.put(np.array([1.0]), "2017-01")
-    source._arrays.clear()  # as policyengine-uk clears a dropped branch
+    source.delete()  # as policyengine-uk clears a dropped branch
     assert source.clone()._inputs is _NO_INPUTS
     source.put(np.array([1.0]), "2017-02")
     clone = source.clone()
@@ -170,7 +168,7 @@ def test_copied_or_unpickled_storage_keeps_the_marks(duplicate):
     derived.put(np.array([1.0]), "2017-01", derived=True)
     twin = duplicate(derived)
     assert twin._inputs is _NO_INPUTS
-    assert twin._shared is _NOTHING_SHARED
+    assert not hasattr(twin, "_shared")
     assert twin.is_derived("2017-01")
 
     for cloned_first in (False, True):
@@ -190,47 +188,30 @@ def test_copied_or_unpickled_storage_keeps_the_marks(duplicate):
 
 def _older_state(storage, **extra):
     """The state a version that recorded no inputs pickled."""
-    state = {"_arrays": dict(storage._arrays), "is_eternal": storage.is_eternal}
+    state = {
+        "_arrays": dict(storage.entry_cache.entries),
+        "is_eternal": storage.is_eternal,
+    }
     state.update(extra)
     return state
 
 
-def test_values_from_an_older_pickle_count_as_inputs():
+def test_values_from_an_older_pickle_are_rejected():
     storage = InMemoryStorage(is_eternal=False)
     storage.put(np.array([1.0]), "2017-01", derived=True)
-    storage.put(np.array([1.0]), "2017-02", derived=True)
-    restored = InMemoryStorage.__new__(InMemoryStorage)
-    # 3.32.12 pickled an empty set of shared keys in every storage.
-    restored.__setstate__(_older_state(storage, _shared=set()))
-    assert not restored.is_derived("2017-01")
-    assert not restored.is_derived("2017-02")
-    assert restored._inputs == {"default:2017-01", "default:2017-02"}
-    assert _INPUTS_RECORDED not in vars(restored)
-
-    # A development version of this change recorded derived values instead.
-    restored = InMemoryStorage.__new__(InMemoryStorage)
-    restored.__setstate__(_older_state(storage, _derived={"default:2017-02"}))
-    assert not restored.is_derived("2017-01")
-    assert restored.is_derived("2017-02")
-    assert "_derived" not in vars(restored)
-    # A state with no set of shared keys gets none.
-    assert "_shared" not in vars(restored)
-
-    # An older storage with nothing stored needs no set.
-    restored = InMemoryStorage.__new__(InMemoryStorage)
-    restored.__setstate__(_older_state(InMemoryStorage(is_eternal=False)))
-    assert restored._inputs is _NO_INPUTS
-    assert restored._shared is _NOTHING_SHARED
-    restored.put(np.array([2.0]), "2017-03", derived=True)
-    assert restored.is_derived("2017-03")
+    for extra in ({}, {"_shared": set()}, {"_derived": {"default:2017-01"}}):
+        restored = InMemoryStorage(is_eternal=False)
+        with pytest.raises(ValueError, match="schema"):
+            restored.__setstate__(_older_state(storage, **extra))
+        assert restored.get("2017-01") is None
 
 
 def test_a_pickle_records_that_the_inputs_were_recorded():
     storage = InMemoryStorage(is_eternal=False)
     storage.put(np.array([1.0]), "2017-01", derived=True)
     state = storage.__getstate__()
-    assert state[_INPUTS_RECORDED] is True
-    assert _INPUTS_RECORDED not in vars(storage)
+    assert state["schema_version"] == 1
+    assert "schema_version" not in vars(storage)
     assert pickle.loads(pickle.dumps(storage)).is_derived("2017-01")
 
 
@@ -246,7 +227,7 @@ def test_only_storages_holding_an_input_have_a_set(tax_benefit_system):
         for name, storage in storages.items()
         if any(
             storage.is_derived(key.split(":", 1)[1], key.split(":", 1)[0])
-            for key in storage._arrays
+            for key in storage.entry_cache.entries
         )
     }
     # The situation's inputs, and the values calculated from them.
@@ -256,7 +237,7 @@ def test_only_storages_holding_an_input_have_a_set(tax_benefit_system):
         assert ("_inputs" in vars(storage)) == (name in with_inputs), name
         if name not in with_inputs:
             assert storage._inputs is _NO_INPUTS, name
-            assert storage._shared is _NOTHING_SHARED, name
+            assert not hasattr(storage, "_shared"), name
 
 
 def test_a_branch_shares_its_parents_inputs(tax_benefit_system):
@@ -282,4 +263,4 @@ def test_apply_reform_keeps_only_the_replayed_inputs(tax_benefit_system):
     simulation.apply_reform(_noop)
     for name, storage in _storages(simulation).items():
         assert set(storage._inputs) == before.get(name, set()), name
-        assert set(storage._arrays) == set(storage._inputs), name
+        assert set(storage.entry_cache.entries) == set(storage._inputs), name

@@ -1,4 +1,6 @@
-from typing import Dict, FrozenSet, Set, Union
+from typing import FrozenSet, Set, Union
+
+from policyengine_core.caching.removed_attribute import RemovedCacheAttribute
 
 import numpy
 from numpy.typing import ArrayLike
@@ -11,18 +13,9 @@ from policyengine_core.data_storage.immutable_array_cache import (
 from policyengine_core.periods import Period
 
 
-# Compatibility value for code that inspected the removed copy-on-first-read
-# index. Immutable entries make that index unnecessary.
-_NOTHING_SHARED: FrozenSet[str] = frozenset()
-
 # What ``InMemoryStorage._inputs`` is while a storage holds no input, for the
 # same reason: most storages in a simulation hold no input.
 _NO_INPUTS: FrozenSet[str] = frozenset()
-
-# Key a pickled storage's state carries once it records its inputs; a state
-# without it comes from a version that recorded neither inputs nor derived
-# values (see ``__setstate__``).
-_INPUTS_RECORDED = "_inputs_recorded"
 
 
 class InMemoryStorage:
@@ -31,9 +24,8 @@ class InMemoryStorage:
     """
 
     _entry_cache: ImmutableArrayCache[str, ArrayLike]
-    # Compatibility view for the former copy-on-first-read index. Immutable
-    # entries need no mutable shared-key index.
-    _shared: Union[Set[str], FrozenSet[str]] = _NOTHING_SHARED
+    _arrays = RemovedCacheAttribute("entry_cache and storage mutation methods")
+    _shared = RemovedCacheAttribute("clone with immutable entries")
     # Keys whose value was stored as an input: with ``put(..., derived=False)``,
     # the default. Every other stored value was calculated by the simulation
     # (``put(..., derived=True)``), which ``is_derived`` reports. A key counts
@@ -60,45 +52,70 @@ class InMemoryStorage:
         self.is_eternal = is_eternal
 
     @property
-    def _arrays(self) -> Dict[str, CachedArrayEntry[ArrayLike]]:
-        """Compatibility mapping of storage keys to immutable entries."""
-
-        return self._entry_cache.entries
-
-    @_arrays.setter
-    def _arrays(
-        self,
-        entries: Dict[str, CachedArrayEntry[ArrayLike] | ArrayLike],
-    ) -> None:
-        cache = getattr(self, "_entry_cache", None)
-        if cache is None:
-            cache = self._entry_cache = ImmutableArrayCache()
-        cache.replace_entries(entries)
+    def entry_cache(self) -> ImmutableArrayCache[str, ArrayLike]:
+        """The typed immutable-entry cache owned by this storage."""
+        return self._entry_cache
 
     def __getstate__(self) -> dict:
-        state = self.__dict__.copy()
-        state[_INPUTS_RECORDED] = True
-        return state
+        return {
+            "schema_version": 1,
+            "_entry_cache": self._entry_cache,
+            "is_eternal": self.is_eternal,
+            "_inputs": frozenset(self._inputs),
+            "_supplied": frozenset(self._supplied),
+        }
 
     def __setstate__(self, state: dict) -> None:
-        arrays = state.pop("_arrays", None)
-        if not state.pop(_INPUTS_RECORDED, False):
-            # Pickled before storages recorded their inputs, when nothing
-            # marked a calculated value: every stored value counts as an
-            # input, as it did then, except any a development version of this
-            # change marked derived.
-            derived = state.pop("_derived", ())
-            cache = state.get("_entry_cache")
-            stored_keys = set(arrays if arrays is not None else cache.entries)
-            inputs = stored_keys.difference(derived)
-            if inputs:
-                state["_inputs"] = inputs
-        self.__dict__.update(state)
-        self._supplied = frozenset(state.get("_supplied", ()))
-        if "_entry_cache" not in self.__dict__:
-            self._entry_cache = ImmutableArrayCache()
-        if arrays is not None:
-            self._entry_cache.replace_entries(arrays)
+        expected = {
+            "schema_version",
+            "_entry_cache",
+            "is_eternal",
+            "_inputs",
+            "_supplied",
+        }
+        if (
+            not isinstance(state, dict)
+            or set(state) != expected
+            or state["schema_version"] != 1
+        ):
+            raise ValueError("Unsupported in-memory storage serialization schema")
+        cache = state["_entry_cache"]
+        inputs, supplied = state["_inputs"], state["_supplied"]
+        if not isinstance(cache, ImmutableArrayCache) or not isinstance(
+            state["is_eternal"], bool
+        ):
+            raise ValueError("Invalid in-memory storage cache or eternity flag")
+        if not isinstance(inputs, (set, frozenset)) or not isinstance(
+            supplied, (set, frozenset)
+        ):
+            raise ValueError("Invalid in-memory storage provenance")
+        entries = cache.entries
+        for key, entry in entries.items():
+            if (
+                not isinstance(key, str)
+                or ":" not in key
+                or not isinstance(entry, CachedArrayEntry)
+            ):
+                raise ValueError("Invalid serialized storage entry")
+            _, text_period = key.split(":", 1)
+            try:
+                input_period = periods.period(text_period)
+            except (ValueError, TypeError) as error:
+                raise ValueError("Invalid serialized storage period") from error
+            if str(input_period) != text_period or (
+                state["is_eternal"] and input_period.unit != periods.ETERNITY
+            ):
+                raise ValueError("Serialized storage periods must be canonical")
+        keys = entries.keys()
+        if not inputs <= keys or not supplied <= inputs:
+            raise ValueError("Storage provenance must identify existing input entries")
+        self._entry_cache = cache.fork()
+        self.is_eternal = state["is_eternal"]
+        if inputs:
+            self._inputs = frozenset(inputs)
+        else:
+            self.__dict__.pop("_inputs", None)
+        self._supplied = frozenset(supplied)
 
     def clone(self, share_arrays: bool = False) -> "InMemoryStorage":
         """Copy this storage.
@@ -118,12 +135,12 @@ class InMemoryStorage:
         # ``is_derived``), so the clone gets only those of keys it holds.
         inputs = self._inputs
         if inputs:
-            if inputs <= clone._arrays.keys():
+            if inputs <= clone._entry_cache.entries.keys():
                 if not isinstance(inputs, frozenset):
                     inputs = self.__dict__["_inputs"] = frozenset(inputs)
                 clone._inputs = inputs
             else:
-                held = inputs.intersection(clone._arrays)
+                held = inputs.intersection(clone._entry_cache.entries)
                 if held:
                     clone._inputs = frozenset(held)
         return clone
@@ -133,13 +150,7 @@ class InMemoryStorage:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
         key = f"{branch_name}:{period}"
-        entry = self._arrays.get(key)
-        if entry is None:
-            return None
-        if not isinstance(entry, CachedArrayEntry):
-            entry = CachedArrayEntry.from_value(entry)
-            self._arrays[key] = entry
-        return entry.read()
+        return self._entry_cache.get_array(key, None)
 
     def has(self, period: Period, branch_name: str = "default") -> bool:
         """Whether a value is stored for ``period`` under ``branch_name``.
@@ -148,7 +159,7 @@ class InMemoryStorage:
         """
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
-        return f"{branch_name}:{periods.period(period)}" in self._arrays
+        return f"{branch_name}:{periods.period(period)}" in self._entry_cache
 
     def is_derived(self, period: Period, branch_name: str = "default") -> bool:
         """Whether the value stored for ``period`` under ``branch_name`` was
@@ -156,7 +167,7 @@ class InMemoryStorage:
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
         key = f"{branch_name}:{periods.period(period)}"
-        return key in self._arrays and key not in self._inputs
+        return key in self._entry_cache and key not in self._inputs
 
     def _own_inputs(self) -> Set[str]:
         """This storage's inputs as a set that only it changes, made from the
@@ -183,9 +194,9 @@ class InMemoryStorage:
     def _unmark_dropped_keys(self) -> None:
         """Forget the input marks of keys ``_arrays`` no longer has."""
         inputs = self._inputs
-        if inputs and not inputs <= self._arrays.keys():
+        if inputs and not inputs <= self._entry_cache.entries.keys():
             inputs = self._own_inputs()
-            inputs.intersection_update(self._arrays)
+            inputs.intersection_update(self._entry_cache.entries)
             self._release_inputs_if_empty(inputs)
 
     def _release_inputs_if_empty(self, inputs: Set[str]) -> None:
@@ -254,9 +265,13 @@ class InMemoryStorage:
     def retain_supplied_inputs(self) -> None:
         """Drop non-supplied entries without copying any retained payload."""
         self._entry_cache.replace_entries(
-            {key: self._arrays[key] for key in self._supplied if key in self._arrays}
+            {
+                key: self._entry_cache.get(key)
+                for key in self._supplied
+                if key in self._entry_cache
+            }
         )
-        self._supplied = self._supplied.intersection(self._arrays)
+        self._supplied = self._supplied.intersection(self._entry_cache.entries)
         self._unmark_dropped_keys()
 
     def delete(self, period: Period = None, branch_name: str = "default") -> None:
@@ -264,13 +279,15 @@ class InMemoryStorage:
             # Only wipe arrays belonging to the requested branch (previously
             # this wiped every branch regardless of ``branch_name`` — bug C2).
             branch_prefix = f"{branch_name}:"
-            self._arrays = {
-                period_item: value
-                for period_item, value in self._arrays.items()
-                if not period_item.startswith(branch_prefix)
-            }
+            self._entry_cache.replace_entries(
+                {
+                    period_item: value
+                    for period_item, value in self._entry_cache.entries.items()
+                    if not period_item.startswith(branch_prefix)
+                }
+            )
             self._unmark_dropped_keys()
-            self._supplied = self._supplied.intersection(self._arrays)
+            self._supplied = self._supplied.intersection(self._entry_cache.entries)
             return
 
         if self.is_eternal:
@@ -280,16 +297,18 @@ class InMemoryStorage:
         # Filter by BOTH period containment AND branch_name. Previously the
         # branch_name was silently ignored so deleting a period for one
         # branch deleted it for every branch (bug C2).
-        self._arrays = {
-            period_item: value
-            for period_item, value in self._arrays.items()
-            if not (
-                period_item.startswith(f"{branch_name}:")
-                and period.contains(periods.period(period_item.split(":", 1)[1]))
-            )
-        }
+        self._entry_cache.replace_entries(
+            {
+                period_item: value
+                for period_item, value in self._entry_cache.entries.items()
+                if not (
+                    period_item.startswith(f"{branch_name}:")
+                    and period.contains(periods.period(period_item.split(":", 1)[1]))
+                )
+            }
+        )
         self._unmark_dropped_keys()
-        self._supplied = self._supplied.intersection(self._arrays)
+        self._supplied = self._supplied.intersection(self._entry_cache.entries)
 
     def discard(self, period: Period, branch_name: str = "default") -> None:
         """Remove one exact key, never its contained or overlapping periods."""
@@ -308,7 +327,7 @@ class InMemoryStorage:
         return list(
             map(
                 lambda x: periods.period(x.split(":", 1)[1]),
-                self._arrays.keys(),
+                self._entry_cache.entries.keys(),
             )
         )
 
@@ -316,20 +335,20 @@ class InMemoryStorage:
         return [
             (branch_name, periods.period(period))
             for branch_name, period in map(
-                lambda x: x.split(":", 1), self._arrays.keys()
+                lambda x: x.split(":", 1), self._entry_cache.entries.keys()
             )
         ]
 
     def get_memory_usage(self) -> dict:
-        if not self._arrays:
+        if not self._entry_cache.entries:
             return dict(
                 nb_arrays=0,
                 total_nb_bytes=0,
                 cell_size=numpy.nan,
             )
 
-        nb_arrays = len(self._arrays)
-        array = next(iter(self._arrays.values()))
+        nb_arrays = len(self._entry_cache.entries)
+        array = next(iter(self._entry_cache.entries.values()))
         return dict(
             nb_arrays=nb_arrays,
             total_nb_bytes=array.nbytes * nb_arrays,

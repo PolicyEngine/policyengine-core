@@ -3,7 +3,6 @@
 import csv
 import json
 import os
-from types import SimpleNamespace
 
 import numpy as np
 from pytest import approx, fixture, mark, raises
@@ -12,6 +11,8 @@ from policyengine_core.country_template.variables.housing import (
     HousingOccupancyStatus,
 )
 from policyengine_core.simulations import CycleError, Simulation, SpiralError
+from policyengine_core.entities import Entity
+from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 from policyengine_core.tracers import (
     FullTracer,
     SimpleTracer,
@@ -24,7 +25,10 @@ from .parameters_fancy_indexing.test_fancy_indexing import parameters
 
 class StubSimulation(Simulation):
     def __init__(self):
-        self.tax_benefit_system = SimpleNamespace(result_cache_token=(0,))
+        system = TaxBenefitSystem([Entity("person", "persons", "Person", "")])
+        super().__init__(
+            tax_benefit_system=system, populations=system.instantiate_entities()
+        )
         self.exception = None
         self.max_spiral_loops = 1
         self.branch_name = "default"

@@ -641,7 +641,11 @@ def test_an_input_set_on_a_clone_is_not_replayed_by_its_source(
     clone.apply_reform(_no_change)
 
     december = periods.period("2012-12")
-    assert (variable, "default", december) not in source._user_input_keys
+    assert (
+        variable,
+        "default",
+        december,
+    ) not in source.result_cache.supplied_input_keys()
     assert source.get_holder(variable).get_array(december) is None
     assert_bitwise_equal(
         source.calculate(variable, "2013-01"),

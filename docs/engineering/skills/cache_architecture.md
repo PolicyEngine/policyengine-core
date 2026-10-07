@@ -20,8 +20,8 @@ concrete cache instead.
 Cache values must not retain a simulation, tracer, holder, or caller-owned
 mutable object unless that ownership is part of the documented contract.
 Failed validation or construction must leave a cache unchanged. `close()` is
-idempotent. Mutations and value lookups after closure fail explicitly; metrics
-and documented metadata observations remain inspectable.
+idempotent. Mutations and value lookups after closure fail explicitly; immutable
+metrics and the documented metadata observation snapshots remain inspectable.
 
 ## Cache types
 
@@ -62,18 +62,18 @@ metrics, idempotent clearing and closure, no partial mutation after an error,
 independent metrics snapshots, defined copying and serialization, and safe
 concurrent public operations.
 
-Typed operations already provide their complete lifecycle guarantees in the
+Typed operations provide their complete lifecycle guarantees starting in the
 preparatory release. Bulk replacement holds the owner lock, validates every
-converted key and value before changing state, counts each installed entry as
+key and value before changing state, counts each installed entry as
 a write and only absent old keys as deletions, and updates peak size. Metadata
 replacement does not count as a result-entry write. Metadata mutations and
 input-context entry reject closed owners; context cleanup restores its stack
 even if the owner closes inside it. Queries use the same lock.
 
-Preparatory dictionary/set/list observations and raw-value/tuple adapters remain
-available solely for old country compatibility. Their return values are still
-live mutable objects; callers must use typed methods to obtain the guarantees
-above. Final cleanup removes those escape paths without changing the guarantees.
+The preparatory release retained live dictionary/set/list observations and
+raw-value/tuple adapters solely for old country compatibility. Those adapters
+are now removed. Metadata observations are immutable snapshots, and callers
+must use typed operations to change owned state.
 
 ## Type B requirements
 
@@ -189,11 +189,47 @@ provides the complete ownership and public-API guarantees; country migrations
 remove direct cache mutation and correctness workarounds in that stage, not
 after final cleanup. Country releases must require the actual published Core
 version providing these APIs. Final cleanup waits for both country releases.
+The cleanup draft's country-smoke requirements identify immutable migrated
+source commits. Replace those draft qualification references with actual
+released-country constraints before merge; source validation does not satisfy
+the release prerequisites. Core's supported Python matrix remains unchanged.
 
-Compatibility mappings, old private attribute setters, and recovery of old
-initialization layouts exist only during this transition. Core and migrated
-country production code must not use those adapters. Removing them does not
-change the public ownership guarantees or introduce Phase 7 model separation.
+The final cleanup removes transitional cache mappings and recovery of old
+initialization layouts. These are breaking API changes, not Phase 7 model
+separation. Custom simulation/system constructors must call their Core base
+constructor. Removed attribute reads and writes fail explicitly; writing an
+obsolete name must never create disconnected state in the instance dictionary.
+
+| Removed operation | Supported replacement |
+| --- | --- |
+| Simulation `_fast_cache`, `invalidated_caches`, `_user_input_keys`, `_user_input_contexts` | `result_cache` typed operations; supplied-input queries and context manager |
+| Simulation `_invalidate_all_caches`, `_bind_to_tax_benefit_system` | `clear_calculated_results`, `rebind_tax_benefit_system` |
+| Node `_at_instant_cache`, system `_parameters_at_instant_cache` assignment | `parameter_cache` read-only property; public clear, replace, share and materializer methods |
+| Storage `_arrays` and `_shared` | `entry_cache` read-only property and supported storage mutation methods |
+| Mutation through cache `entries`, `invalidated`, `supplied_inputs`, `input_contexts` | Immutable observation snapshots plus typed mutation methods |
+| Tuple/raw-array conversion in bulk replacements | Explicit `ResultCacheKey`, `SuppliedInputKey`, `CachedArrayEntry` values |
+| Legacy serialized memory/array-cache state | Current explicit `schema_version=1` serialization |
+
+Typed bulk replacements validate their complete input before changing state.
+They hold the cache lock, reject writes after closure, count each installed
+entry as a write and only absent old keys as deletions, and update peak size.
+Provenance/pending-work replacements do not count as result-entry writes.
+Metadata mutations and input-context entry use the same lock and closed-owner
+check; context cleanup restores its stack even if the owner closes inside it.
+Query and snapshot readers also hold the owner lock. Immutable observations
+remain available for inspection after closure; further mutations fail.
+Malformed keys, raw payloads, legacy serialized states and unsupported schema
+versions leave the receiver unchanged. Current copy/deepcopy/pickle preserve
+independent indexes and immutable payloads. Input contexts can only be entered
+through their context manager, so callers cannot replace its active stack.
+
+The existing public `TaxBenefitSystem.parameters` attribute remains supported.
+Policy identity observes ordinary root assignments without invoking a country's
+copy-on-write descriptor. This is distinct from the removed private cache
+adapters; do not remove that freshness check or redesign model ownership here.
+The existing `OnDiskStorage` historical state reader also remains supported;
+this removal versions only the named in-memory and immutable-array formats.
+It does not redesign disk-file ownership or persistent macro results.
 
 ## Type E requirements
 

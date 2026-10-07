@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from policyengine_core.caching.removed_attribute import RemovedCacheAttribute
+
 import copy
 import glob
 import importlib
@@ -73,7 +75,6 @@ class TaxBenefitSystem:
     """
 
     _base_tax_benefit_system: "TaxBenefitSystem" = None
-    _parameters_at_instant_cache: Optional[Dict[Any, Any]] = None
     person_key_plural: str = None
     preprocess_parameters: str = None
     baseline: "TaxBenefitSystem" = None  # Baseline tax-benefit system. Used only by reforms. Note: Reforms can be chained.
@@ -149,25 +150,14 @@ class TaxBenefitSystem:
 
         self.add_modelled_policy_metadata()
 
-    @property
-    def _parameters_at_instant_cache(self) -> ParameterAtInstantCache:
-        return self._parameters_at_instant_cache_store
+    _parameters_at_instant_cache = RemovedCacheAttribute(
+        "parameter_cache and public parameter methods"
+    )
 
-    @_parameters_at_instant_cache.setter
-    def _parameters_at_instant_cache(self, value) -> None:
-        if isinstance(value, ParameterAtInstantCache):
-            self._parameters_at_instant_cache_store = value
-            return
-        if not isinstance(value, typing.Mapping):
-            raise TypeError("_parameters_at_instant_cache must be a mapping")
-        parameters = getattr(self, "parameters", None)
-        revision = parameters.parameter_revision if parameters is not None else 0
-        cache = ParameterAtInstantCache(revision=revision)
-        for instant_key, dated_node in value.items():
-            if isinstance(dated_node, TracingParameterNodeAtInstant):
-                dated_node = dated_node.parameter_node_at_instant
-            cache.put(instant_key, dated_node)
-        self._parameters_at_instant_cache_store = cache
+    @property
+    def parameter_cache(self) -> ParameterAtInstantCache:
+        """The typed dated-view cache; install policy through public methods."""
+        return self._parameters_at_instant_cache_store
 
     def clear_parameter_caches(self) -> None:
         """Clear all dated parameter views owned by this policy system."""
@@ -201,9 +191,9 @@ class TaxBenefitSystem:
         # reform application. The bound revision object identifies the tree.
         cache = self._parameters_at_instant_cache_store
         revision = cache.revision_source
-        # Preparatory-release compatibility: ordinary old country classes may
-        # still assign a root directly. Inspect an instance field without
-        # invoking a descriptor; migrated descriptors use install/share APIs.
+        # Ordinary public parameter attributes may still replace a root.
+        # Observe their field without invoking copy-on-write descriptors;
+        # descriptor-based policies install/share through the public methods.
         if "parameters" in self.__dict__:
             parameters = self.__dict__["parameters"]
             if parameters is not None:

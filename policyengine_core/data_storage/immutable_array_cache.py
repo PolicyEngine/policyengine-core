@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import copy
+from collections.abc import Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Any, Generic, TypeVar, overload
 
 import numpy as np
@@ -191,27 +193,22 @@ class ImmutableArrayCache(
         return self.get(key)
 
     @property
-    def entries(self) -> dict[K, CachedArrayEntry[ArrayT]]:
-        """Mutable compatibility mapping for legacy storage serialization."""
-
+    def entries(self) -> Mapping[K, CachedArrayEntry[ArrayT]]:
+        """Immutable snapshot of this cache's owned entry index."""
         with self._cache_lock:
-            return self._entries
+            return MappingProxyType(self._entries.copy())
 
     def replace_entries(
         self,
-        entries: dict[K, CachedArrayEntry[ArrayT] | ArrayT],
+        entries: Mapping[K, CachedArrayEntry[ArrayT]],
     ) -> None:
-        with self._open_operation():
+        with self._cache_lock:
+            self._ensure_open()
             normalized = {}
             for key, value in entries.items():
                 self._validate_key(key)
-                entry = (
-                    value
-                    if isinstance(value, CachedArrayEntry)
-                    else CachedArrayEntry.from_value(value)
-                )
-                self._validate_value(entry)
-                normalized[key] = entry
+                self._validate_value(value)
+                normalized[key] = value
             self._cache_deletions += len(self._entries.keys() - normalized.keys())
             self._cache_writes += len(normalized)
             self._entries = normalized
@@ -223,8 +220,15 @@ class ImmutableArrayCache(
         return fork
 
     def __getstate__(self) -> dict:
-        return {"entries": self._entries}
+        return {"schema_version": 1, "entries": self._entries.copy()}
 
     def __setstate__(self, state: dict) -> None:
-        self.__init__()
-        self.replace_entries(state.get("entries", {}))
+        if (
+            not isinstance(state, dict)
+            or set(state) != {"schema_version", "entries"}
+            or state["schema_version"] != 1
+        ):
+            raise ValueError("Unsupported immutable-array cache serialization schema")
+        restored = type(self)()
+        restored.replace_entries(state["entries"])
+        self.__dict__.update(restored.__dict__)

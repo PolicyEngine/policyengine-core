@@ -1,0 +1,7 @@
+# Draft-only qualification of the published migration commits, not release pins.
+# Before merging the breaking cleanup, replace these source references with
+# actual released country versions requiring the published preparatory Core.
+# Resolve this file together with the Core checkout; never use --no-deps.
+policyengine-us @ git+https://github.com/PolicyEngine/policyengine-us.git@ba820564c6fb25d420f606b40134162ba05e51f4
+policyengine-uk @ git+https://github.com/PolicyEngine/policyengine-uk.git@e86d030ddc07c23b744c34b50f1c02f4860b9bde
+spm-calculator==1.0.0

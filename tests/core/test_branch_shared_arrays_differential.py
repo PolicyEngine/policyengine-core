@@ -46,7 +46,7 @@ def _snapshot(simulation):
         (name, key): entry.read().copy()
         for population in simulation.populations.values()
         for name, holder in population._holders.items()
-        for key, entry in holder._memory_storage._arrays.items()
+        for key, entry in holder._memory_storage.entry_cache.entries.items()
     }
 
 

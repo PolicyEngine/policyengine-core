@@ -24,7 +24,7 @@ def test_fast_cache_returns_cached_value(tax_benefit_system):
 
     # income_tax is computed via formula, so it enters _fast_cache
     result1 = sim.calculate("income_tax", "2017-01")
-    assert len(sim._fast_cache) > 0
+    assert len(sim.result_cache.entries) > 0
 
     result2 = sim.calculate("income_tax", "2017-01")
     # Must be the exact same object (identity check proves cache hit)
@@ -38,7 +38,7 @@ def test_fast_cache_invalidated_after_set_input(tax_benefit_system):
 
     # Populate the cache with a computed variable
     result1 = sim.calculate("income_tax", "2017-01")
-    assert len(sim._fast_cache) > 0
+    assert len(sim.result_cache.entries) > 0
     old_val = result1[0]
 
     # Overwrite income_tax with a direct value
@@ -59,11 +59,11 @@ def test_fast_cache_invalidated_after_delete_arrays_with_period(
     sim = _make_simulation(tax_benefit_system)
 
     sim.calculate("income_tax", "2017-01")
-    assert len(sim._fast_cache) > 0
+    assert len(sim.result_cache.entries) > 0
 
     sim.delete_arrays("income_tax", "2017-01")
 
-    matching = [k for k in sim._fast_cache if k[0] == "income_tax"]
+    matching = [k for k in sim.result_cache.entries if k[0] == "income_tax"]
     assert len(matching) == 0
 
 
@@ -75,11 +75,11 @@ def test_fast_cache_invalidated_after_delete_arrays_all_periods(
     sim = _make_simulation(tax_benefit_system)
 
     sim.calculate("income_tax", "2017-01")
-    assert len(sim._fast_cache) > 0
+    assert len(sim.result_cache.entries) > 0
 
     sim.delete_arrays("income_tax")
 
-    matching = [k for k in sim._fast_cache if k[0] == "income_tax"]
+    matching = [k for k in sim.result_cache.entries if k[0] == "income_tax"]
     assert len(matching) == 0
 
 
@@ -88,10 +88,10 @@ def test_fast_cache_empty_after_clone(tax_benefit_system):
     sim = _make_simulation(tax_benefit_system)
 
     sim.calculate("income_tax", "2017-01")
-    assert len(sim._fast_cache) > 0
+    assert len(sim.result_cache.entries) > 0
 
     cloned = sim.clone()
-    assert len(cloned._fast_cache) == 0
+    assert len(cloned.result_cache.entries) == 0
 
 
 def test_fast_cache_invalidated_after_purge_cache(tax_benefit_system):
@@ -100,18 +100,18 @@ def test_fast_cache_invalidated_after_purge_cache(tax_benefit_system):
     sim = _make_simulation(tax_benefit_system)
 
     sim.calculate("income_tax", "2017-01")
-    assert len(sim._fast_cache) > 0
+    assert len(sim.result_cache.entries) > 0
 
     # Manually mark the entry as invalidated (simulating what the
     # framework does during dependency tracking)
     from policyengine_core.periods import period as make_period
 
-    sim.invalidated_caches.add(("income_tax", make_period("2017-01")))
+    sim.invalidate_cache_entry("income_tax", make_period("2017-01"))
     # The stack must be empty for purge to fire
     sim.tracer._stack.clear()
     sim.purge_cache_of_invalid_values()
 
-    matching = [k for k in sim._fast_cache if k[0] == "income_tax"]
+    matching = [k for k in sim.result_cache.entries if k[0] == "income_tax"]
     assert len(matching) == 0
 
 
@@ -122,7 +122,7 @@ def test_fast_cache_uses_period_not_str_as_key(tax_benefit_system):
     sim.calculate("income_tax", "2017-01")
 
     # All keys should have Period as second element, not str
-    for key in sim._fast_cache:
+    for key in sim.result_cache.entries:
         variable_name, period_key = key
         assert not isinstance(period_key, str), (
             f"Expected Period as cache key, got str: {period_key!r}"

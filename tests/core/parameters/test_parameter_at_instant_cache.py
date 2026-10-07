@@ -237,7 +237,7 @@ def test_parameter_node_cache_is_tracer_neutral(scenario: str) -> None:
     assert traced_again.parameter_node_at_instant is plain
     assert all(
         type(value) is LazyParameterNodeAtInstant
-        for value in node._at_instant_cache.values()
+        for value in node.parameter_cache.values()
     )
     if scenario == "wrapper-current-tracer":
         assert traced_again.tracer is second_tracer
@@ -306,27 +306,31 @@ def test_parameter_node_compatibility_and_clear_operations(scenario: str) -> Non
     node = make_node()
     dated = node("2026-01-01")
     if scenario == "empty-mapping-assignment":
-        node._at_instant_cache = {}
-        assert len(node._at_instant_cache) == 0
+        with pytest.raises(AttributeError):
+            node._at_instant_cache = {}
+        assert node("2026-01-01") is dated
     elif scenario == "populated-mapping-assignment":
-        node._at_instant_cache = {instant("2026-01-01"): dated}
+        with pytest.raises(AttributeError):
+            node._at_instant_cache = {instant("2026-01-01"): dated}
         assert node("2026-01-01") is dated
     elif scenario == "cache-assignment":
         cache = ParameterAtInstantCache()
-        node._at_instant_cache = cache
-        assert node._at_instant_cache is cache
+        with pytest.raises(AttributeError):
+            node.parameter_cache = cache
+        assert node.parameter_cache is not cache
     elif scenario == "tracing-wrapper-assignment":
         wrapped = TracingParameterNodeAtInstant(dated, FullTracer(), "default")
-        node._at_instant_cache = {instant("2026-01-01"): wrapped}
+        with pytest.raises(AttributeError):
+            node._at_instant_cache = {instant("2026-01-01"): wrapped}
         assert node("2026-01-01") is dated
     elif scenario.startswith("clear"):
         node.clear_at_instant_caches(recursive=scenario == "clear-recursive")
-        assert len(node._at_instant_cache) == 0
+        assert len(node.parameter_cache) == 0
     else:
         cloned = node.clone()
-        assert len(cloned._at_instant_cache) == 0
+        assert len(cloned.parameter_cache) == 0
         if scenario == "clone-independent":
-            assert cloned._at_instant_cache is not node._at_instant_cache
+            assert cloned.parameter_cache is not node.parameter_cache
 
 
 @pytest.mark.parametrize(
@@ -347,29 +351,24 @@ def test_tax_benefit_system_parameter_cache_operations(scenario: str) -> None:
     dated = system.get_parameters_at_instant("2026-01-01")
     if scenario.startswith("clear"):
         system.clear_parameter_caches()
-        assert len(system._parameters_at_instant_cache) == 0
-        assert len(system.parameters._at_instant_cache) == 0
+        assert len(system.parameter_cache) == 0
+        assert len(system.parameters.parameter_cache) == 0
     elif scenario.startswith("share"):
         other = CountryTaxBenefitSystem()
         other.share_parameters_from(system)
         assert other.parameters is system.parameters
-        assert other._parameters_at_instant_cache is system._parameters_at_instant_cache
+        assert other.parameter_cache is system.parameter_cache
         if scenario == "share-node-cache":
-            assert (
-                other.parameters._at_instant_cache
-                is system.parameters._at_instant_cache
-            )
+            assert other.parameters.parameter_cache is system.parameters.parameter_cache
     elif scenario == "clone-independent":
         cloned = system.clone()
-        assert (
-            cloned._parameters_at_instant_cache
-            is not system._parameters_at_instant_cache
-        )
+        assert cloned.parameter_cache is not system.parameter_cache
     elif scenario == "mapping-compatibility":
-        system._parameters_at_instant_cache = {instant("2026-01-01"): dated}
+        with pytest.raises(AttributeError):
+            system._parameters_at_instant_cache = {instant("2026-01-01"): dated}
         assert system.get_parameters_at_instant("2026-01-01") is dated
     else:
         assert all(
             type(value) is LazyParameterNodeAtInstant
-            for value in system._parameters_at_instant_cache.values()
+            for value in system.parameter_cache.values()
         )

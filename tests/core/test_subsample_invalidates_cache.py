@@ -14,6 +14,8 @@ normal ``sim.calc(...)`` entry point.
 
 from __future__ import annotations
 
+from policyengine_core.simulations.simulation_result_cache import ResultCacheKey
+
 import numpy as np
 import pandas as pd
 
@@ -104,12 +106,14 @@ def test_subsample_clears_stale_fast_cache_entries() -> None:
     # ``to_input_dataframe`` caches ``household_weight @ 2025`` (the
     # ``default_calculation_period``) at the pre-subsample size.
     stale_period = make_period("2023-01")
-    sim._fast_cache[("salary", stale_period)] = np.arange(10, dtype=float)
+    sim.result_cache.put(
+        ResultCacheKey("salary", stale_period), np.arange(10, dtype=float)
+    )
 
     sim.subsample(n=2)
 
     assert sim.populations["household"].count == 2
-    assert ("salary", stale_period) not in sim._fast_cache, (
+    assert ("salary", stale_period) not in sim.result_cache.entries, (
         "subsample() left a pre-subsample-sized entry in _fast_cache; the "
         "fast-path short-circuit in Simulation.calculate will return this "
         "stale array whenever a caller passes decode_enums=False."

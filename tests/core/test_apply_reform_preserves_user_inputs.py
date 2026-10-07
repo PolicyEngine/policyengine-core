@@ -1,7 +1,7 @@
 """Regression test: ``apply_reform`` must not wipe user-provided inputs.
 
 The cache-invalidation added to fix bug H3 cleared
-``holder._memory_storage._arrays`` for every variable, which also wiped
+``holder._memory_storage.entry_cache.entries`` for every variable, which also wiped
 values populated via ``set_input`` that pre-dated the reform. Those values
 are source data, not stale formula output, and must survive
 ``apply_reform`` so that downstream country packages (e.g. policyengine-uk,

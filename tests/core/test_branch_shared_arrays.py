@@ -20,7 +20,7 @@ def _entries(simulation) -> dict[tuple[str, str], CachedArrayEntry]:
         (name, key): entry
         for population in simulation.populations.values()
         for name, holder in population._holders.items()
-        for key, entry in holder._memory_storage._arrays.items()
+        for key, entry in holder._memory_storage.entry_cache.entries.items()
     }
 
 
@@ -58,8 +58,8 @@ def test_branch_storage_indexes_are_independent(tax_benefit_system) -> None:
             branch_holder = branch_population._holders[name]
             assert branch_holder._memory_storage is not holder._memory_storage
             assert (
-                branch_holder._memory_storage._arrays
-                is not holder._memory_storage._arrays
+                branch_holder._memory_storage.entry_cache.entries
+                is not holder._memory_storage.entry_cache.entries
             )
 
 
@@ -254,7 +254,7 @@ def test_legacy_storage_clear_on_dropped_branch_leaves_parent(
 
     for population in branch.populations.values():
         for holder in population._holders.values():
-            holder._memory_storage._arrays.clear()
+            holder.delete_arrays()
 
     _assert_snapshot(simulation, snapshot)
 
@@ -273,6 +273,6 @@ def test_country_clone_override_still_gets_isolated_indexes(
     branch = simulation.get_branch("branch")
 
     assert branch.country_clone
-    assert branch.get_holder("salary")._memory_storage._arrays is not (
-        simulation.get_holder("salary")._memory_storage._arrays
+    assert branch.get_holder("salary")._memory_storage.entry_cache.entries is not (
+        simulation.get_holder("salary")._memory_storage.entry_cache.entries
     )

@@ -44,7 +44,7 @@ def test_reform_direct_parameter_mutation_does_not_leak_to_baseline(
 def test_reform_has_independent_parameters_at_instant_cache(tax_benefit_system):
     # Prime the baseline cache.
     tax_benefit_system.get_parameters_at_instant("2017-01-01")
-    cached_before = tax_benefit_system._parameters_at_instant_cache
+    cached_before = tax_benefit_system.parameter_cache
 
     class NoOp(Reform):
         def apply(self):
@@ -54,4 +54,4 @@ def test_reform_has_independent_parameters_at_instant_cache(tax_benefit_system):
     # The reform must NOT share the cache dict with the baseline;
     # otherwise parameter mutations under the reform would still be served
     # from cached baseline snapshots.
-    assert reform._parameters_at_instant_cache is not cached_before
+    assert reform.parameter_cache is not cached_before

@@ -413,7 +413,7 @@ def test_parameter_tree_revision_and_materializer_context(scenario: str) -> None
     elif scenario == "update-clears-ancestor":
         node("2026-01-01")
         node.group.rate.update(value=0.4, start=instant("2026-01-01"))
-        assert len(node._at_instant_cache) == 0
+        assert len(node.parameter_cache) == 0
     elif scenario == "update-refreshes-system":
         system = CountryTaxBenefitSystem()
         before = system.get_parameters_at_instant("2026-01-01")
@@ -443,8 +443,8 @@ def test_parameter_tree_revision_and_materializer_context(scenario: str) -> None
         elif scenario == "clone-strategy-preserved":
             assert cloned.parameter_materializer is node.parameter_materializer
         else:
-            assert cloned._at_instant_cache is not node._at_instant_cache
-            assert len(cloned._at_instant_cache) == 0
+            assert cloned.parameter_cache is not node.parameter_cache
+            assert len(cloned.parameter_cache) == 0
     elif scenario == "switch-to-lazy-advances":
         node.set_parameter_materializer(LazyParameterMaterializer())
         assert node.parameter_revision.current == initial_revision + 1
@@ -476,8 +476,8 @@ def test_parameter_tree_revision_and_materializer_context(scenario: str) -> None
         assert node.parameter_revision.current == initial_revision
     elif scenario == "mapping-cache-uses-revision":
         view = node("2026-01-01")
-        node._at_instant_cache = {instant("2026-01-01"): view}
-        assert node._at_instant_cache.revision_source is node.parameter_revision
+        node.parameter_cache.put("2026-01-01", view)
+        assert node.parameter_cache.revision_source is node.parameter_revision
     elif scenario == "system-sets-materializer":
         system = CountryTaxBenefitSystem()
         system.set_parameter_materializer(LazyParameterMaterializer())
@@ -485,11 +485,10 @@ def test_parameter_tree_revision_and_materializer_context(scenario: str) -> None
             LazyParameterNodeAtInstant
         )
     elif scenario == "clear-before-tree-assignment":
-        system = CountryTaxBenefitSystem.__new__(CountryTaxBenefitSystem)
-        system._parameters_at_instant_cache = ParameterAtInstantCache()
-        system._parameters_at_instant_cache.put("2026-01-01", object())
+        system = CountryTaxBenefitSystem()
+        system.replace_parameters(None)
         system.clear_parameter_caches()
-        assert len(system._parameters_at_instant_cache) == 0
+        assert len(system.parameter_cache) == 0
     elif scenario == "replace-accepts-none":
         system = CountryTaxBenefitSystem()
         system.replace_parameters(None)
@@ -503,29 +502,24 @@ def test_parameter_tree_revision_and_materializer_context(scenario: str) -> None
         system = CountryTaxBenefitSystem()
         system.get_parameters_at_instant("2026-01-01")
         system.replace_parameters(system.parameters.clone())
-        assert len(system._parameters_at_instant_cache) == 0
+        assert len(system.parameter_cache) == 0
     elif scenario == "replace-binds-revision":
         system = CountryTaxBenefitSystem()
         replacement = system.parameters.clone()
         system.replace_parameters(replacement)
-        assert (
-            system._parameters_at_instant_cache.revision_source
-            is replacement.parameter_revision
-        )
+        assert system.parameter_cache.revision_source is replacement.parameter_revision
     elif scenario == "replace-does-not-share-cache":
         first = CountryTaxBenefitSystem()
         second = CountryTaxBenefitSystem()
         first.get_parameters_at_instant("2026-01-01")
         second.replace_parameters(first.parameters)
-        assert second._parameters_at_instant_cache is not (
-            first._parameters_at_instant_cache
-        )
+        assert second.parameter_cache is not (first.parameter_cache)
     else:
         first = CountryTaxBenefitSystem()
         second = CountryTaxBenefitSystem()
         second.share_parameters_from(first)
         assert (
-            second._parameters_at_instant_cache.revision_source
+            second.parameter_cache.revision_source
             is first.parameters.parameter_revision
         )
 

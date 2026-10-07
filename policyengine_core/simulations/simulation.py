@@ -176,6 +176,9 @@ from policyengine_core.simulations.simulation_result_cache import (
 )
 
 
+from policyengine_core.caching.removed_attribute import RemovedCacheAttribute
+
+
 class Simulation:
     """
     Represents a simulation, and handles the calculation logic
@@ -233,30 +236,18 @@ class Simulation:
     # ``_data_storage_dir``).
     _storage_dir_keeper: TemporaryStorageDirectory = None
 
-    def _ensure_result_cache(self) -> SimulationResultCache[Period, ArrayLike]:
-        cache = self.__dict__.get("_result_cache")
-        if cache is None:
-            cache = SimulationResultCache()
-            legacy_results = self.__dict__.pop("_fast_cache", None)
-            legacy_invalidated = self.__dict__.pop("invalidated_caches", None)
-            legacy_inputs = self.__dict__.pop("_user_input_keys", None)
-            legacy_contexts = self.__dict__.pop("_user_input_contexts", None)
-            if legacy_results:
-                cache.replace_entries(legacy_results)
-            if legacy_invalidated:
-                cache.replace_invalidated(legacy_invalidated)
-            if legacy_inputs:
-                cache.replace_supplied_inputs(legacy_inputs)
-            if legacy_contexts:
-                cache.replace_input_contexts(legacy_contexts)
-            self.__dict__["_result_cache"] = cache
-        return cache
+    _fast_cache = RemovedCacheAttribute("result_cache")
+    invalidated_caches = RemovedCacheAttribute("result_cache.invalidate")
+    _user_input_keys = RemovedCacheAttribute("supplied_input_periods")
+    _user_input_contexts = RemovedCacheAttribute("result_cache.supplied_input_context")
+    _invalidate_all_caches = RemovedCacheAttribute("clear_calculated_results")
+    _bind_to_tax_benefit_system = RemovedCacheAttribute("rebind_tax_benefit_system")
 
     @property
     def result_cache(self) -> SimulationResultCache[Period, ArrayLike]:
         """The simulation-owned calculated-result and input-provenance cache."""
 
-        return self._ensure_result_cache()
+        return self._result_cache
 
     @property
     def input_revision(self) -> int:
@@ -267,46 +258,6 @@ class Simulation:
         result clearing, and rejected writes do not advance it.
         """
         return self.result_cache.input_revision
-
-    @property
-    def _fast_cache(self) -> dict:
-        """Compatibility view; use :attr:`result_cache` in new code."""
-
-        return self.result_cache.entries
-
-    @_fast_cache.setter
-    def _fast_cache(self, entries: dict) -> None:
-        self.result_cache.replace_entries(entries)
-
-    @property
-    def invalidated_caches(self) -> set:
-        """Compatibility view; use :attr:`result_cache` in new code."""
-
-        return self.result_cache.invalidated
-
-    @invalidated_caches.setter
-    def invalidated_caches(self, entries: set) -> None:
-        self.result_cache.replace_invalidated(entries)
-
-    @property
-    def _user_input_keys(self) -> set:
-        """Compatibility view; use supplied-input methods in new code."""
-
-        return self.result_cache.supplied_inputs
-
-    @_user_input_keys.setter
-    def _user_input_keys(self, entries: set) -> None:
-        self.result_cache.replace_supplied_inputs(entries)
-
-    @property
-    def _user_input_contexts(self) -> list[str]:
-        """Compatibility view for country subclasses with custom builders."""
-
-        return self.result_cache.input_contexts
-
-    @_user_input_contexts.setter
-    def _user_input_contexts(self, contexts: list[str]) -> None:
-        self.result_cache.replace_input_contexts(contexts)
 
     @property
     def _data_storage_dir(self) -> Optional[str]:
@@ -489,11 +440,6 @@ class Simulation:
         # ``calculate`` call returned stale values (bug H3).
         self.clear_calculated_results()
         self.rebind_tax_benefit_system()
-
-    def _invalidate_all_caches(self) -> None:
-        """Compatibility alias for :meth:`clear_calculated_results`."""
-
-        self.clear_calculated_results()
 
     def clear_calculated_results(self) -> None:
         """Remove this simulation's results, retaining exact supplied snapshots.
@@ -778,10 +724,6 @@ class Simulation:
         if getattr(self, "input_variables", None) is not None:
             self.input_variables = [name for name in self.input_variables if kept(name)]
         self._result_policy_token = token
-
-    def _bind_to_tax_benefit_system(self) -> None:
-        """Compatibility alias for :meth:`rebind_tax_benefit_system`."""
-        self.rebind_tax_benefit_system()
 
     def _check_result_policy(self) -> None:
         """Reject result reuse after a supported mutation of shared policy state."""

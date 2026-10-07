@@ -44,14 +44,5 @@ def stored_arrays(simulation):
     return {
         (name, key): array
         for name, storage in _storages(simulation).items()
-        for key, array in storage._arrays.items()
-    }
-
-
-def shared_keys(simulation):
-    """The (variable, storage key) entries a simulation has not copied yet."""
-    return {
-        (name, key)
-        for name, storage in _storages(simulation).items()
-        for key in storage._shared
+        for key, array in storage.entry_cache.entries.items()
     }

@@ -418,14 +418,14 @@ def test_parameters_holding_traced_nodes_can_be_deep_copied(
     parameters.trace = True
     parameters.tracer = FullTracer()
     parameters(INSTANT)
-    assert type(parameters._at_instant_cache[INSTANT]) is LazyParameterNodeAtInstant
+    assert type(parameters.parameter_cache[INSTANT]) is LazyParameterNodeAtInstant
 
     duplicated = copy.deepcopy(parameters)
 
     assert duplicated(INSTANT).taxes.income_tax_rate == (
         parameters(INSTANT).taxes.income_tax_rate
     )
-    assert type(duplicated._at_instant_cache[INSTANT]) is LazyParameterNodeAtInstant
+    assert type(duplicated.parameter_cache[INSTANT]) is LazyParameterNodeAtInstant
 
 
 class _SlottedParameterNode(ParameterNode):

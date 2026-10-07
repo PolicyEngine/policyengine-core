@@ -440,10 +440,12 @@ def test_carry_over_in_a_branch_copies_only_the_array_it_reads(system):
     built.calculate("carried", "2017")
     branch = built.get_branch("reform")
     storage = branch.get_holder("carried")._memory_storage
-    before = dict(storage._arrays)
+    before = dict(storage.entry_cache.entries)
     np.testing.assert_array_equal(branch.calculate("carried", "2020"), [3, 3])
-    assert not storage._shared
-    assert all(storage._arrays[key] is entry for key, entry in before.items())
+    assert not hasattr(storage, "_shared")
+    assert all(
+        storage.entry_cache.entries[key] is entry for key, entry in before.items()
+    )
 
 
 def _marks(storage):
@@ -534,7 +536,7 @@ def test_a_value_calculated_while_an_input_is_set_stays_on_its_own_branch(system
     assert holder.is_derived(periods.period("2012"), "default")
     assert not holder.is_derived(periods.period("2012"), "other")
     assert ("formula_until_2013", "default", periods.period("2012")) not in (
-        built._user_input_keys
+        built.result_cache.supplied_input_keys()
     )
     other = built.get_branch("other")
     np.testing.assert_array_equal(
@@ -670,6 +672,10 @@ def test_storages_pickled_without_marks_still_work(on_disk, tmp_path):
     for name in ("_derived", "_inputs", "_shared"):
         state.pop(name, None)
     old = type(storage).__new__(type(storage))
+    if not on_disk:
+        with pytest.raises(ValueError, match="schema"):
+            old.__setstate__(state)
+        return
     old.__setstate__(state)
     restored = pickle.loads(pickle.dumps(old))
     assert restored.has(year) and not restored.is_derived(year)

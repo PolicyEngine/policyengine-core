@@ -1,3 +1,4 @@
+from policyengine_core.caching.removed_attribute import RemovedCacheAttribute
 import copy
 import os
 import typing
@@ -95,7 +96,7 @@ class ParameterNode(AtInstantLike):
         self._parameter_materializer: ParameterMaterializer = (
             LazyParameterMaterializer()
         )
-        self._at_instant_cache = ParameterAtInstantCache(
+        self._at_instant_cache_store = ParameterAtInstantCache(
             revision=self._parameter_revision
         )
         self.parent = None
@@ -230,8 +231,8 @@ class ParameterNode(AtInstantLike):
     ) -> None:
         self._parameter_revision = revision
         self._parameter_materializer = materializer
-        self._at_instant_cache.bind_revision(revision)
-        self._at_instant_cache.clear()
+        self.parameter_cache.bind_revision(revision)
+        self.parameter_cache.clear()
         for child in self.children.values():
             self._bind_child_context(child)
 
@@ -281,37 +282,27 @@ class ParameterNode(AtInstantLike):
             setattr(clone, child_key, child)
             child.parent = clone
             clone._bind_child_context(child)
-        clone._at_instant_cache = ParameterAtInstantCache(
+        clone._at_instant_cache_store = ParameterAtInstantCache(
             revision=clone._parameter_revision
         )
         clone._initializing = False
 
         return clone
 
-    @property
-    def _at_instant_cache(self) -> ParameterAtInstantCache:
-        return self._at_instant_cache_store
+    _at_instant_cache = RemovedCacheAttribute(
+        "parameter_cache and public parameter methods"
+    )
 
-    @_at_instant_cache.setter
-    def _at_instant_cache(self, value) -> None:
-        if isinstance(value, ParameterAtInstantCache):
-            self._at_instant_cache_store = value
-            return
-        if not isinstance(value, typing.Mapping):
-            raise TypeError("_at_instant_cache must be a mapping")
-        revision = getattr(self, "_parameter_revision", ParameterTreeRevision())
-        cache = ParameterAtInstantCache(revision=revision)
-        for instant_key, dated_node in value.items():
-            if isinstance(dated_node, TracingParameterNodeAtInstant):
-                dated_node = dated_node.parameter_node_at_instant
-            cache.put(str(instant_key), dated_node)
-        self._at_instant_cache_store = cache
+    @property
+    def parameter_cache(self) -> ParameterAtInstantCache:
+        """The typed dated-view cache; install policy through public methods."""
+        return self._at_instant_cache_store
 
     def get_plain_at_instant(self, instant: Instant) -> ParameterNodeAtInstant:
         """Return the ordinary dated view retained by this node."""
 
-        self._at_instant_cache.bind_revision(self._parameter_revision)
-        return self._at_instant_cache.get_or_create(
+        self.parameter_cache.bind_revision(self._parameter_revision)
+        return self.parameter_cache.get_or_create(
             instant,
             lambda: self._parameter_materializer.materialize(
                 self,
@@ -331,7 +322,7 @@ class ParameterNode(AtInstantLike):
     def clear_at_instant_caches(self, *, recursive: bool = True) -> None:
         """Clear this node's dated views and optionally child-node views."""
 
-        self._at_instant_cache.clear()
+        self.parameter_cache.clear()
         if recursive:
             for child in self.children.values():
                 if isinstance(child, ParameterNode):
@@ -341,7 +332,7 @@ class ParameterNode(AtInstantLike):
         self.parent = parent
 
     def clear_parent_cache(self):
-        self._at_instant_cache.clear()
+        self.parameter_cache.clear()
         if self.parent is not None:
             self.parent.clear_parent_cache()
         else:

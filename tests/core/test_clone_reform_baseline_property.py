@@ -192,13 +192,15 @@ def _run_and_check_independence(reform, salary, steps_):
     family = Family(reform, salary)
     for index, step in enumerate(steps_):
         before = {id(s): (s, _stored(s)) for s in family.simulations()}
-        sets_before = {id(s): set(s.invalidated_caches) for s in family.simulations()}
+        sets_before = {
+            id(s): set(s.result_cache.invalidated) for s in family.simulations()
+        }
         acted_on = family.apply(step, index)
         for key, (simulation, stored) in before.items():
             if simulation is acted_on:
                 continue
             _assert_same_storage(stored, _stored(simulation), f"step {index} {step}")
-            assert simulation.invalidated_caches == sets_before[key]
+            assert simulation.result_cache.invalidated == sets_before[key]
     return family
 
 
@@ -254,7 +256,7 @@ def test_every_clone_has_a_baseline_of_its_own(reform, salary, steps_):
     simulations = family.simulations()
 
     # No two share a set of invalidations.
-    sets = [id(s.invalidated_caches) for s in simulations]
+    sets = [id(s.result_cache) for s in simulations]
     assert len(set(sets)) == len(sets)
 
     for member, parent, made_by in zip(family.members, family.parents, family.made_by):

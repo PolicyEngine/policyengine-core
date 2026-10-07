@@ -46,12 +46,12 @@ operation = st.one_of(
 def _snapshot(storage: InMemoryStorage) -> dict[str, tuple[np.ndarray, bool]]:
     return {
         key: (entry.read().copy(), key not in storage._inputs)
-        for key, entry in storage._arrays.items()
+        for key, entry in storage.entry_cache.entries.items()
     }
 
 
 def _assert_snapshot(storage: InMemoryStorage, expected) -> None:
-    assert storage._arrays.keys() == expected.keys()
+    assert storage.entry_cache.entries.keys() == expected.keys()
     for key, (value, derived) in expected.items():
         branch, input_period = key.split(":", 1)
         result = storage.get(input_period, branch)
@@ -96,8 +96,8 @@ def test_random_operations_preserve_snapshots_and_index_isolation(
             storages.append(clone)
             snapshots.append(_snapshot(clone))
         else:
-            storage._arrays.clear()
-            storage._unmark_dropped_keys()
+            for branch, _ in storage.get_known_branch_periods():
+                storage.delete(branch_name=branch)
             snapshots[index] = {}
 
         for candidate, expected in zip(storages, snapshots):

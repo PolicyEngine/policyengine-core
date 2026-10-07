@@ -490,4 +490,3 @@ def test_restored_branch_dump_calculates_what_the_branch_calculates(system):
     assert only(restored.calculate("uprated_income", 2021)) == pytest.approx(
         3_000 * growth(2019, 2021)
     )
-

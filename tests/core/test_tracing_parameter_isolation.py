@@ -358,23 +358,34 @@ def test_tracing_parameter_node_can_be_copied(isolated_tax_benefit_system, dupli
     )
 
 
-def test_parameters_holding_traced_nodes_can_be_deep_copied(
+def test_traced_parameters_can_be_deep_copied_without_caching_wrappers(
     isolated_tax_benefit_system,
 ):
-    """A tree whose ``trace`` flag is set caches traced nodes; copying it works."""
+    """A traced tree caches plain nodes and returns a wrapper for each read."""
     parameters = isolated_tax_benefit_system.parameters
     parameters.trace = True
     parameters.tracer = FullTracer()
-    parameters(INSTANT)
-    assert type(parameters._at_instant_cache[INSTANT]) is (
-        TracingParameterNodeAtInstant
-    )
+    traced = parameters(INSTANT)
+    cached = parameters._at_instant_cache[INSTANT]
+    assert type(cached) is ParameterNodeAtInstant
+    assert type(traced) is TracingParameterNodeAtInstant
+    assert traced.parameter_node_at_instant is cached
+    assert traced.tracer is parameters.tracer
+    assert parameters(INSTANT) is not traced
 
     duplicated = copy.deepcopy(parameters)
+    copied_read = duplicated(INSTANT)
 
-    assert duplicated(INSTANT).taxes.income_tax_rate == (
-        parameters(INSTANT).taxes.income_tax_rate
-    )
+    assert type(copied_read) is TracingParameterNodeAtInstant
+    assert copied_read.tracer is duplicated.tracer
+    assert copied_read.tracer is not parameters.tracer
+    assert copied_read.parameter_node_at_instant is not cached
+    assert copied_read.taxes.income_tax_rate == traced.taxes.income_tax_rate
+    for tree in (parameters, duplicated):
+        assert all(
+            type(node) is ParameterNodeAtInstant
+            for node in tree._at_instant_cache.values()
+        )
 
 
 class _SlottedParameterNode(ParameterNode):

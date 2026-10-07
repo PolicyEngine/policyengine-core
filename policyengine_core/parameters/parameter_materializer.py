@@ -126,6 +126,14 @@ class LazyParameterNodeAtInstant(ParameterNodeAtInstant):
         self._materialize_all_children()
         return self.__resolved_children
 
+    @property
+    def _vectorial_node(self) -> VectorialParameterNodeAtInstant | None:
+        """Return the cached vector adapter for compatibility and inspection."""
+
+        self._validate_revision()
+        with self.__lock:
+            return self.__vectorial_node
+
     def _validate_revision(self) -> None:
         self.__revision.validate(self.__captured_revision)
 

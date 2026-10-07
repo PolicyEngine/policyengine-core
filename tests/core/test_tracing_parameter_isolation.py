@@ -39,7 +39,7 @@ import pytest
 
 from policyengine_core.country_template import CountryTaxBenefitSystem
 from policyengine_core.country_template.entities import Person
-from policyengine_core.parameters import ParameterNode, ParameterNodeAtInstant
+from policyengine_core.parameters import LazyParameterNodeAtInstant, ParameterNode
 from policyengine_core.periods import MONTH
 from policyengine_core.reforms import Reform
 from policyengine_core.tracers import (
@@ -52,13 +52,21 @@ from tests.core.parameters_fancy_indexing.test_fancy_indexing import (
     parameters as fancy_indexing_parameters,
 )
 from tests.fixtures.tracing import (
-    assert_untraced,
     build_simulation,
     parameter_reads,
 )
 
 JANUARY = "2017-01"
 INSTANT = "2017-01-01"
+
+
+def assert_untraced(parameters, instant=INSTANT):
+    """The parameter tree stays untraced and uses the default lazy view."""
+
+    assert parameters.trace is False
+    assert parameters.tracer is None
+    assert parameters.branch_name is None
+    assert type(parameters(instant)) is LazyParameterNodeAtInstant
 
 
 # ----- The system is left as it was ----- #
@@ -74,7 +82,9 @@ def test_traced_calculation_leaves_the_system_untraced(isolated_tax_benefit_syst
     reads = parameter_reads(simulation.tracer.trees)
     assert reads.count(("taxes.income_tax_rate", "default")) == 2
     assert_untraced(system.parameters)
-    assert type(system.get_parameters_at_instant(INSTANT)) is ParameterNodeAtInstant
+    assert type(system.get_parameters_at_instant(INSTANT)) is (
+        LazyParameterNodeAtInstant
+    )
     assert_untraced(system.clone().parameters)
 
 
@@ -208,7 +218,7 @@ def test_formulas_of_an_untraced_simulation_get_untraced_parameters(
 
     traced, untraced = seen
     assert type(traced) is TracingParameterNodeAtInstant
-    assert type(untraced) is ParameterNodeAtInstant
+    assert type(untraced) is LazyParameterNodeAtInstant
 
 
 def test_traced_formula_can_read_parameters_by_attribute(isolated_tax_benefit_system):
@@ -344,7 +354,7 @@ def test_tracing_parameter_node_records_in_its_own_tracer_when_the_node_traces(
 
     assert at_instant.tracer is tracer
     assert at_instant.branch_name == "policy"
-    assert type(at_instant.parameter_node_at_instant) is ParameterNodeAtInstant
+    assert type(at_instant.parameter_node_at_instant) is (LazyParameterNodeAtInstant)
 
 
 def _round_trip_by_pickle(protocol):
@@ -408,14 +418,14 @@ def test_parameters_holding_traced_nodes_can_be_deep_copied(
     parameters.trace = True
     parameters.tracer = FullTracer()
     parameters(INSTANT)
-    assert type(parameters._at_instant_cache[INSTANT]) is ParameterNodeAtInstant
+    assert type(parameters._at_instant_cache[INSTANT]) is LazyParameterNodeAtInstant
 
     duplicated = copy.deepcopy(parameters)
 
     assert duplicated(INSTANT).taxes.income_tax_rate == (
         parameters(INSTANT).taxes.income_tax_rate
     )
-    assert type(duplicated._at_instant_cache[INSTANT]) is ParameterNodeAtInstant
+    assert type(duplicated._at_instant_cache[INSTANT]) is LazyParameterNodeAtInstant
 
 
 class _SlottedParameterNode(ParameterNode):

@@ -28,7 +28,7 @@ idempotent, and operations after closure fail explicitly.
 | --- | --- | --- | --- |
 | A: model definition | A tax-benefit system and Python's imported modules, normally process-lived | Variables, formulas, entities, and parameter sources | This remains combined with policy state until Phase 7. Do not expand its responsibilities in earlier phases. |
 | B: policy system and reform | One YAML runner invocation and one pytest worker | An ordered, typed policy configuration to a constructed tax-benefit system | Retention is bounded. Cached systems contain no case simulation or trace state. Fully uncached execution constructs every system again. |
-| C: parameter at date | A parameter node or tax-benefit system policy state | A policy revision and instant to an ordinary parameter-at-date view | Cached values contain no tracer. Eager materialization is the default. Lazy views bind to one revision and reject access after mutation. |
+| C: parameter at date | A parameter node or tax-benefit system policy state | A policy revision and instant to an ordinary parameter-at-date view | Cached values contain no tracer. Lazy materialization is the default. Lazy views bind to one revision and reject access after mutation; callers may explicitly select eager snapshots. |
 | D: simulation input and result | One simulation, including its branch-local index | Variable, period, and branch to an immutable array entry; it also owns supplied-input provenance | Input or policy mutation conservatively removes every derived result. Branches may share immutable entries but never indexes or writable arrays. |
 | E: YAML case execution reuse | One YAML case execution | Not a key/value cache; it controls how a case borrows a Type B system | Every case receives a new simulation and releases it after success or failure. Results must equal fully uncached execution and must not depend on case order. |
 
@@ -75,10 +75,11 @@ concurrent public operations.
 
 - Cached values are ordinary parameter-at-date nodes.
 - Tracing adapters are created for the current calculation and are not cached.
-- Policy mutation clears eager cache entries and advances the policy revision.
+- Policy mutation clears dated-view cache entries and advances the policy revision.
 - Deep copies receive independent revisions and caches unless parameter state
   is deliberately shared.
-- Eager materialization remains the production default.
+- Lazy materialization is the production default; eager construction remains
+  an explicit compatibility and profiling option.
 - A lazy view checks its captured revision on every observable access and
   raises `StaleParameterViewError` after source mutation.
 
@@ -90,13 +91,15 @@ identity `(revision, instant)`. `Parameter.update()` and structural
 cache clearing does not.
 
 `ParameterMaterializer[SourceT, InstantT, ViewT]` is the generic construction
-strategy contract. `EagerParameterMaterializer` remains the default and
-constructs the complete dated subtree. `LazyParameterMaterializer` is an
-explicit opt-in through `ParameterNode.set_parameter_materializer()` or
-`TaxBenefitSystem.set_parameter_materializer()`. It returns
-`LazyParameterNodeAtInstant`, which resolves one immediate child at a time.
-Changing strategies invalidates existing dated views by advancing the
-revision. Do not enable lazy construction by modifying private cache fields.
+strategy contract. `LazyParameterMaterializer` is the default. It returns
+`LazyParameterNodeAtInstant`, which resolves one immediate child at a time,
+supports traced and vector lookups, and checks its source revision before
+every observable access. Use `EagerParameterMaterializer` explicitly through
+`ParameterNode.set_parameter_materializer()` or
+`TaxBenefitSystem.set_parameter_materializer()` when a complete dated
+snapshot is required. Changing strategies invalidates existing dated views by
+advancing the revision. Do not change construction strategy by modifying
+private cache fields.
 
 An eager view already returned to a caller remains a snapshot of its prior
 policy values. A lazy view instead fails after mutation because continuing to

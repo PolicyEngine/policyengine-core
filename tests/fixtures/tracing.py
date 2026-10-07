@@ -4,6 +4,7 @@ import copy
 
 from policyengine_core.parameters import ParameterNodeAtInstant
 from policyengine_core.simulations import SimulationBuilder
+from policyengine_core.tracers import TracingParameterNodeAtInstant
 from tests.fixtures.branch_shared_arrays import SITUATION
 
 
@@ -34,6 +35,9 @@ def assert_untraced(parameters, instant="2017-01-01"):
     assert parameters.trace is False
     assert parameters.tracer is None
     assert parameters.branch_name is None
-    assert type(parameters(instant)) is ParameterNodeAtInstant
+    node_at_instant = parameters(instant)
+    assert isinstance(node_at_instant, ParameterNodeAtInstant)
+    assert not isinstance(node_at_instant, TracingParameterNodeAtInstant)
     for node_at_instant in parameters._at_instant_cache.values():
-        assert type(node_at_instant) is ParameterNodeAtInstant
+        assert isinstance(node_at_instant, ParameterNodeAtInstant)
+        assert not isinstance(node_at_instant, TracingParameterNodeAtInstant)

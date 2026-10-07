@@ -59,6 +59,27 @@ def make_parameter_tree() -> ParameterNode:
     )
 
 
+def test_parameter_nodes_use_lazy_materialization_by_default() -> None:
+    node = make_parameter_tree()
+
+    view = node("2026-01-01")
+
+    assert type(node.parameter_materializer) is LazyParameterMaterializer
+    assert type(view) is LazyParameterNodeAtInstant
+    assert view.is_materialized is False
+
+
+def test_explicit_eager_materialization_remains_available() -> None:
+    node = make_parameter_tree()
+    node.set_parameter_materializer(EagerParameterMaterializer())
+
+    view = node("2026-01-01")
+
+    assert type(node.parameter_materializer) is EagerParameterMaterializer
+    assert type(view) is ParameterNodeAtInstant
+    assert set(view._children) == {"amount", "group", "scale"}
+
+
 @pytest.mark.parametrize(
     "scenario",
     [
@@ -127,7 +148,7 @@ def test_parameter_tree_revision_rejects_invalid_values(value) -> None:
     [
         pytest.param("eager-name", id="eager-name"),
         pytest.param("lazy-name", id="lazy-name"),
-        pytest.param("eager-default-view", id="eager-default-view"),
+        pytest.param("eager-explicit-view", id="eager-explicit-view"),
         pytest.param("eager-children-built", id="eager-children-built"),
         pytest.param("lazy-view", id="lazy-view"),
         pytest.param("lazy-unmaterialized", id="lazy-unmaterialized"),
@@ -154,8 +175,9 @@ def test_parameter_materializer_standard_behavior(scenario: str) -> None:
         assert lazy.strategy_name == "lazy"
         return
     if scenario.startswith("eager"):
+        node.set_parameter_materializer(eager)
         view = node("2026-01-01")
-        if scenario == "eager-default-view":
+        if scenario == "eager-explicit-view":
             assert type(view) is ParameterNodeAtInstant
         else:
             assert set(view._children) == {"amount", "group", "scale"}
@@ -222,7 +244,6 @@ def test_parameter_materializer_standard_behavior(scenario: str) -> None:
 )
 def test_lazy_parameter_view_rejects_access_after_mutation(operation: str) -> None:
     node = make_parameter_tree()
-    node.set_parameter_materializer(LazyParameterMaterializer())
     view = node("2026-01-01")
     nested = view.group
     traced = TracingParameterNodeAtInstant(view, FullTracer(), "default")
@@ -445,6 +466,7 @@ def test_parameter_tree_revision_and_materializer_context(scenario: str) -> None
         node.amount.update(value=250, start=instant("2026-01-01"))
         assert node("2026-01-01").amount == 250
     elif scenario == "eager-view-keeps-snapshot":
+        node.set_parameter_materializer(EagerParameterMaterializer())
         view = node("2026-01-01")
         node.amount.update(value=250, start=instant("2026-01-01"))
         assert view.amount == 200
@@ -528,7 +550,6 @@ def test_parameter_materializer_is_an_abstract_generic_contract() -> None:
 )
 def test_lazy_view_copy_and_serialization_contract(scenario: str) -> None:
     node = make_parameter_tree()
-    node.set_parameter_materializer(LazyParameterMaterializer())
     view = node("2026-01-01")
     assert view.amount == 200
 

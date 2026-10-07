@@ -1,1 +1,1 @@
-Adds explicit cache contracts, bounded and isolated YAML test execution, tracer-neutral revision-aware parameter views, centralized simulation-result invalidation, immutable branch-shared arrays, and opt-in lazy parameter materialization.
+Adds explicit cache contracts, bounded and isolated YAML test execution, tracer-neutral revision-aware parameter views with lazy construction by default and an explicit eager option, conservative supplied-input result invalidation, and immutable branch-shared arrays.

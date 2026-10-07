@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from policyengine_core.country_template import situation_examples
+from policyengine_core.experimental import MemoryConfig
 from policyengine_core.periods import period
 from policyengine_core.simulations import SimulationBuilder
 from policyengine_core.simulations.simulation_result_cache import ResultCacheKey
@@ -60,6 +61,117 @@ def test_clear_calculated_results_keeps_supplied_values(tax_benefit_system) -> N
     assert ResultCacheKey("income_tax", period("2017-01")) not in (
         simulation.result_cache
     )
+
+
+def test_replacing_supplied_input_invalidates_dependent_result(
+    tax_benefit_system,
+) -> None:
+    simulation = _simulation(tax_benefit_system)
+    simulation.set_input("salary", "2017-01", np.array([4_000]))
+    np.testing.assert_array_equal(
+        simulation.calculate("income_tax", "2017-01"),
+        np.array([600], dtype=np.float32),
+    )
+
+    simulation.set_input("salary", "2017-01", np.array([8_000]))
+
+    np.testing.assert_array_equal(
+        simulation.calculate("income_tax", "2017-01"),
+        np.array([1_200], dtype=np.float32),
+    )
+
+
+def test_replacing_helper_period_input_invalidates_dependent_results(
+    tax_benefit_system,
+) -> None:
+    simulation = _simulation(tax_benefit_system)
+    simulation.set_input("salary", "2017", np.array([12_000]))
+    np.testing.assert_array_equal(
+        simulation.calculate("income_tax", "2017-01"),
+        np.array([150], dtype=np.float32),
+    )
+
+    # The annual helper populated all twelve monthly supplied inputs. Replace
+    # one of those helper-created periods through the public API.
+    simulation.set_input("salary", "2017-01", np.array([2_000]))
+
+    np.testing.assert_array_equal(
+        simulation.calculate("income_tax", "2017-01"),
+        np.array([300], dtype=np.float32),
+    )
+    assert simulation.supplied_input_periods("salary") == [
+        period(f"2017-{month:02d}") for month in range(1, 13)
+    ]
+
+
+def test_branch_input_replacement_preserves_inputs_and_parent_results(
+    tax_benefit_system,
+) -> None:
+    simulation = _simulation(tax_benefit_system)
+    simulation.set_input("salary", "2017-01", np.array([4_000]))
+    simulation.set_input("age", "2017-01", np.array([40]))
+    np.testing.assert_array_equal(
+        simulation.calculate("income_tax", "2017-01"),
+        np.array([600], dtype=np.float32),
+    )
+    branch = simulation.get_branch("reform")
+    np.testing.assert_array_equal(
+        branch.calculate("income_tax", "2017-01"),
+        np.array([600], dtype=np.float32),
+    )
+
+    branch.set_input("salary", "2017-01", np.array([8_000]))
+
+    np.testing.assert_array_equal(
+        branch.calculate("income_tax", "2017-01"),
+        np.array([1_200], dtype=np.float32),
+    )
+    np.testing.assert_array_equal(
+        simulation.calculate("income_tax", "2017-01"),
+        np.array([600], dtype=np.float32),
+    )
+    np.testing.assert_array_equal(
+        branch.get_supplied_input("salary", "2017-01"),
+        np.array([8_000], dtype=np.float32),
+    )
+    np.testing.assert_array_equal(
+        branch.get_supplied_input("age", "2017-01"),
+        np.array([40], dtype=np.int32),
+    )
+    np.testing.assert_array_equal(
+        simulation.get_supplied_input("salary", "2017-01"),
+        np.array([4_000], dtype=np.float32),
+    )
+
+
+def test_disk_input_replacement_clears_disk_results_without_moving_inputs(
+    tax_benefit_system,
+) -> None:
+    simulation = _simulation(tax_benefit_system)
+    simulation.memory_config = MemoryConfig(max_memory_occupation=0)
+    for variable_name in ("salary", "income_tax"):
+        holder = simulation.get_holder(variable_name)
+        holder._disk_storage = holder.create_disk_storage()
+        holder._on_disk_storable = True
+    simulation.set_input("salary", "2017-01", np.array([4_000]))
+    np.testing.assert_array_equal(
+        simulation.calculate("income_tax", "2017-01"),
+        np.array([600], dtype=np.float32),
+    )
+
+    simulation.set_input("salary", "2017-01", np.array([8_000]))
+
+    np.testing.assert_array_equal(
+        simulation.calculate("income_tax", "2017-01"),
+        np.array([1_200], dtype=np.float32),
+    )
+    salary_holder = simulation.get_holder("salary")
+    assert salary_holder._memory_storage.get(period("2017-01"), "default") is None
+    np.testing.assert_array_equal(
+        salary_holder._disk_storage.get(period("2017-01"), "default"),
+        np.array([8_000], dtype=np.float32),
+    )
+    assert simulation.supplied_input_periods("salary") == [period("2017-01")]
 
 
 def test_supplied_input_queries_follow_branch_ancestry(tax_benefit_system) -> None:

@@ -12,7 +12,7 @@ from .at_instant_like import AtInstantLike
 from .parameter import Parameter
 from .parameter_at_instant_cache import ParameterAtInstantCache
 from .parameter_materializer import (
-    EagerParameterMaterializer,
+    LazyParameterMaterializer,
     ParameterMaterializer,
 )
 from .parameter_node_at_instant import ParameterNodeAtInstant
@@ -93,7 +93,7 @@ class ParameterNode(AtInstantLike):
         self.branch_name = None
         self._parameter_revision = ParameterTreeRevision()
         self._parameter_materializer: ParameterMaterializer = (
-            EagerParameterMaterializer()
+            LazyParameterMaterializer()
         )
         self._at_instant_cache = ParameterAtInstantCache(
             revision=self._parameter_revision

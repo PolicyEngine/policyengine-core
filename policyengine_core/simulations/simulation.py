@@ -1807,26 +1807,19 @@ class Simulation:
         if (variable.end is not None) and (period.start.date > variable.end):
             return
         self.get_holder(variable_name).set_input(period, value, self.branch_name)
-        self.result_cache.discard(ResultCacheKey(variable_name, period))
-        if getattr(variable, "set_input", None) and period.unit != getattr(
-            variable,
-            "definition_period",
-            period.unit,
-        ):
-            # The helper wrote the input's sub-periods, replacing any
-            # value calculated there, so what ``calculate`` returned for
-            # them is stale too. (``_end_order``, not ``stop``: ``stop``
-            # raises for a period that ends after 9999-12-31.)
-            stale = [
-                key
-                for key in self.result_cache.entries
-                if key[0] == variable_name
-                and isinstance(key[1], Period)
-                and period.start <= key[1].start
-                and _end_order(key[1]) <= _end_order(period)
-            ]
-            for key in stale:
-                self.result_cache.discard(ResultCacheKey(*key))
+        # Formulas can depend on supplied inputs through arbitrary Python,
+        # so there is no complete dependency graph to invalidate precisely.
+        # Conservatively remove every calculated value after a successful
+        # input write. ``clear_calculated_results`` snapshots and restores
+        # all supplied values (including helper-created subperiods and their
+        # branch provenance) while clearing memory- and disk-backed results.
+        if hasattr(self, "populations"):
+            self.clear_calculated_results()
+        else:
+            # Compatibility for deliberately minimal Simulation test doubles:
+            # they have no holder graph to clear, but their result index must
+            # still obey the conservative invalidation contract.
+            self.result_cache.clear_calculated_results()
 
     def get_variable_population(self, variable_name: str) -> Population:
         variable = self.tax_benefit_system.get_variable(

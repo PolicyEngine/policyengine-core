@@ -5,7 +5,7 @@ import pytest
 
 from policyengine_core.country_template import CountryTaxBenefitSystem
 from policyengine_core.parameters import (
-    LazyParameterMaterializer,
+    EagerParameterMaterializer,
     LazyParameterNodeAtInstant,
     StaleParameterViewError,
 )
@@ -36,9 +36,9 @@ def test_eager_and_lazy_strategies_produce_equal_formula_results(
     variable_name: str,
     period: str,
 ) -> None:
-    eager_system = isolated_tax_benefit_system
-    lazy_system = eager_system.clone()
-    lazy_system.set_parameter_materializer(LazyParameterMaterializer())
+    lazy_system = isolated_tax_benefit_system
+    eager_system = lazy_system.clone()
+    eager_system.set_parameter_materializer(EagerParameterMaterializer())
 
     eager = build_simulation(eager_system).calculate(variable_name, period)
     lazy = build_simulation(lazy_system).calculate(variable_name, period)
@@ -49,7 +49,6 @@ def test_eager_and_lazy_strategies_produce_equal_formula_results(
 def test_lazy_strategy_preserves_parameter_tracing(
     isolated_tax_benefit_system,
 ) -> None:
-    isolated_tax_benefit_system.set_parameter_materializer(LazyParameterMaterializer())
     simulation = build_simulation(isolated_tax_benefit_system, trace=True)
 
     simulation.calculate("income_tax", "2017-01")
@@ -64,9 +63,9 @@ def test_lazy_strategy_preserves_parameter_tracing(
 
 
 def test_lazy_strategy_preserves_vectorial_parameter_indexing() -> None:
-    eager = fancy_indexing_parameters.clone()
     lazy = fancy_indexing_parameters.clone()
-    lazy.set_parameter_materializer(LazyParameterMaterializer())
+    eager = fancy_indexing_parameters.clone()
+    eager.set_parameter_materializer(EagerParameterMaterializer())
     families = np.array(["single", "couple", "single", "couple"])
     housing = np.array(["owner", "owner", "tenant", "tenant"])
 
@@ -78,7 +77,6 @@ def test_lazy_strategy_preserves_vectorial_parameter_indexing() -> None:
 
 def test_lazy_baseline_and_reform_keep_independent_revisions() -> None:
     baseline = CountryTaxBenefitSystem()
-    baseline.set_parameter_materializer(LazyParameterMaterializer())
     baseline_view = baseline.get_parameters_at_instant("2026-01-01")
     baseline_rate = baseline_view.taxes.income_tax_rate
 
@@ -97,7 +95,6 @@ def test_lazy_baseline_and_reform_keep_independent_revisions() -> None:
 
 def test_shared_lazy_policy_state_invalidates_both_system_lookups() -> None:
     first = CountryTaxBenefitSystem()
-    first.set_parameter_materializer(LazyParameterMaterializer())
     second = CountryTaxBenefitSystem()
     second.share_parameters_from(first)
     old_view = first.get_parameters_at_instant("2026-01-01")

@@ -12,7 +12,7 @@ from policyengine_core.caching import (
     InvalidCacheValueError,
 )
 from policyengine_core.country_template import CountryTaxBenefitSystem
-from policyengine_core.parameters import ParameterNode, ParameterNodeAtInstant
+from policyengine_core.parameters import LazyParameterNodeAtInstant, ParameterNode
 from policyengine_core.parameters.parameter_at_instant_cache import (
     ParameterAtInstantCache,
 )
@@ -229,14 +229,14 @@ def test_parameter_node_cache_is_tracer_neutral(scenario: str) -> None:
     node.trace = False
     untraced_again = node("2026-01-01")
 
-    assert type(plain) is ParameterNodeAtInstant
+    assert type(plain) is LazyParameterNodeAtInstant
     assert type(traced) is TracingParameterNodeAtInstant
     assert type(traced_again) is TracingParameterNodeAtInstant
-    assert type(untraced_again) is ParameterNodeAtInstant
+    assert type(untraced_again) is LazyParameterNodeAtInstant
     assert traced.parameter_node_at_instant is plain
     assert traced_again.parameter_node_at_instant is plain
     assert all(
-        type(value) is ParameterNodeAtInstant
+        type(value) is LazyParameterNodeAtInstant
         for value in node._at_instant_cache.values()
     )
     if scenario == "wrapper-current-tracer":
@@ -370,6 +370,6 @@ def test_tax_benefit_system_parameter_cache_operations(scenario: str) -> None:
         assert system.get_parameters_at_instant("2026-01-01") is dated
     else:
         assert all(
-            type(value) is ParameterNodeAtInstant
+            type(value) is LazyParameterNodeAtInstant
             for value in system._parameters_at_instant_cache.values()
         )

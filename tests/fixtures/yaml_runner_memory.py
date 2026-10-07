@@ -20,7 +20,20 @@ from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 from policyengine_core.tracers import FullTracer
 from policyengine_core.tools.test_runner import OpenFiscaPlugin
 
-RUNNER_ARGV = ["--capture", "no", "--maxfail", "0", "--tb", "short"]
+# pytest-rerunfailures 16.7 stores failed ExceptionInfo objects on collected
+# items even when no reruns are requested, retaining the builder's simulation
+# through traceback locals. Measure the runner's ownership without this dev
+# plugin; the outer test session can still rerun these tests normally.
+RUNNER_ARGV = [
+    "--capture",
+    "no",
+    "--maxfail",
+    "0",
+    "--tb",
+    "short",
+    "-p",
+    "no:rerunfailures",
+]
 
 
 def write_cases(path: Path, count: int, reform_every: int = 3) -> Path:
@@ -138,6 +151,7 @@ class MemoryProbe:
 
     def __init__(self, sample_every: int = 10):
         self.sample_every = sample_every
+        self.items = []
         self.traced = []
         self.outcomes = []
         self.live_simulations = None
@@ -161,6 +175,9 @@ class MemoryProbe:
 
     def pytest_sessionfinish(self, session, exitstatus):
         tracemalloc.stop()
+        # Keep the collected items alive even after pytest.main returns, so
+        # collecting the session itself cannot hide a runner-owned reference.
+        self.items = list(session.items)
         # pytest keeps the last failure's traceback in ``sys.last_*``; that one
         # root is pytest's, not the runner's.
         for name in ("last_type", "last_value", "last_traceback", "last_exc"):

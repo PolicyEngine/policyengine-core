@@ -84,7 +84,7 @@ def test_delete_arrays_purges_only_visible_branch_names():
 
 
 def test_on_disk_storage_clone_copies_metadata_and_writes_elsewhere(tmp_path):
-    """A cloned disk view owns its metadata and writes into its own directory."""
+    """A cloned disk view owns its metadata and writes a separate file."""
     storage_dir = tmp_path / "storage"
     storage_dir.mkdir()
     storage = OnDiskStorage(str(storage_dir), is_eternal=True)
@@ -102,9 +102,10 @@ def test_on_disk_storage_clone_copies_metadata_and_writes_elsewhere(tmp_path):
 
     clone.put(np.asarray([13.0]), PERIOD, "default")
 
-    assert clone.storage_dir != storage.storage_dir
     (clone_file,) = clone._files.values()
-    assert os.path.dirname(clone_file) == clone.storage_dir
+    (source_file,) = storage._files.values()
+    assert clone_file != source_file
+    assert os.path.isfile(clone_file)
     np.testing.assert_array_equal(storage.get(PERIOD, "default"), [12.0])
     np.testing.assert_array_equal(clone.get(PERIOD, "default"), [13.0])
 

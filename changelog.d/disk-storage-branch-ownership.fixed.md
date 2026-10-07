@@ -1,1 +1,1 @@
-Disk-backed holder storage (`MemoryConfig`) now gives every storage its own directory, keeps a directory while any clone reads its files and never overwrites a file a clone reads, so garbage-collecting a branch no longer deletes its parent's stored values and clones or same-named branches no longer overwrite each other's values.
+Give independently created temporary holder storages distinct directories, create caller-supplied storage directories on first use, and clear stale enum metadata when replacing enum values with plain arrays.

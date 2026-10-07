@@ -170,6 +170,22 @@ _operations = st.lists(
     deadline=None,
     suppress_health_check=[hypothesis.HealthCheck.too_slow],
 )
+@hypothesis.example(
+    operations=[
+        ("set", 0, "salary", "2017-01", 1000),
+        ("clone", 0),
+        ("new_holders", 0),
+    ]
+)
+@hypothesis.example(
+    operations=[
+        ("set", 0, "salary", "2017-01", 1000),
+        ("clone", 0),
+        ("new_holders", 0),
+        ("set", 0, "salary", "2017-01", 2000),
+        ("calculate", 1, "salary", "2017-01"),
+    ]
+)
 @hypothesis.given(operations=_operations)
 def test_disk_storage_gives_the_results_memory_storage_gives(operations):
     """For any sequence of branching, cloning, inputs, calculations,
@@ -177,7 +193,7 @@ def test_disk_storage_gives_the_results_memory_storage_gives(operations):
 
     - every calculation returns what it returns with values held in memory;
     - every file a live storage maps is on disk;
-    - once the simulations are gone, their directory is removed, and no
+    - once the simulations are gone, their directories are removed, and no
       finalizer raised.
     """
     with unraisable_exceptions() as errors:
@@ -197,9 +213,13 @@ def test_disk_storage_gives_the_results_memory_storage_gives(operations):
                         lambda: member_in_memory.simulation.calculate(variable, period)
                     ), (variable, period)
 
-        directory = on_disk.members[0].simulation._data_storage_dir
+        directories = {
+            member.simulation._data_storage_dir
+            for member in on_disk.members
+            if member.simulation._data_storage_dir is not None
+        }
         del in_memory, on_disk, member_in_memory, member_on_disk
         gc.collect()
 
     assert errors == []
-    assert directory is None or not os.path.exists(directory)
+    assert [directory for directory in directories if os.path.exists(directory)] == []

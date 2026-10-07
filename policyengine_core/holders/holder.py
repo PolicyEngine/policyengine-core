@@ -1,4 +1,5 @@
 import os
+import tempfile
 import warnings
 from typing import TYPE_CHECKING, Any, List, Tuple
 
@@ -82,11 +83,22 @@ class Holder:
     def create_disk_storage(
         self, directory: str = None, preserve: bool = False
     ) -> OnDiskStorage:
-        if directory is None:
-            directory = self.simulation.data_storage_dir
-        storage_dir = os.path.join(directory, self.variable.name)
-        if not os.path.isdir(storage_dir):
-            os.mkdir(storage_dir)
+        """Create storage for this holder, or a named directory for a dump.
+
+        Independently created temporary storages have distinct directories,
+        even when a clone still reads an earlier holder for this variable.
+        Explicit or preserved storages keep the ``directory/variable`` layout.
+        """
+        if directory is None and not preserve:
+            storage_dir = tempfile.mkdtemp(
+                prefix=f"{self.variable.name}_",
+                dir=self.simulation.data_storage_dir,
+            )
+        else:
+            if directory is None:
+                directory = self.simulation.data_storage_dir
+            storage_dir = os.path.join(directory, self.variable.name)
+            os.makedirs(storage_dir, exist_ok=True)
         # In the temporary folder the simulation made, the storage (and every
         # clone or copy of it) keeps the folder until it is collected, so the
         # folder outlives the simulation while a clone still reads it (see

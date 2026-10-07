@@ -1364,9 +1364,17 @@ class Simulation:
         option ran first. Nor is an option result cached when storing it would
         change it (the twelfth of an integer or a count of true months is
         stored as the variable's own type, so a later read would return the
-        truncated value where the first returned the exact one), or over an
-        input a plain read finds at ``period``. It does replace a value
+        truncated value where the first returned the exact one).
+
+        The result is cached as derived, so auto-carry-over and uprating
+        never take it for an input, and ``put_in_cache`` keeps an input a
+        plain read finds at ``period`` (in this branch, an ancestor or
+        ``default``) instead of storing it. It does replace a value
         calculated there before, which may predate a change to the inputs.
+        Whether the value read is an input comes from the storage's mark for
+        that key, which every write sets, not from the simulation's record of
+        ``set_input`` calls: that record keeps a key after its value is
+        deleted, and has no key for an input restored from a dump.
         """
         if variable.quantity_type == QuantityType.STOCK:
             return
@@ -1375,25 +1383,9 @@ class Simulation:
         )
         if not routed or np.asarray(result).dtype != variable.dtype:
             return
-        if self._reads_input_at(variable.name, period):
-            return
         self.get_holder(variable.name).put_in_cache(
             result, period, self.branch_name, derived=True
         )
-
-    def _reads_input_at(self, variable_name: str, period: Period) -> bool:
-        """Whether a plain read of the variable at ``period`` finds an input.
-
-        The read takes the value stored under the first of this branch, its
-        ancestors and ``default`` that has one; it is an input if that branch
-        stored it with ``set_input`` (or loaded it from the dataset).
-        """
-        holder = self.get_holder(variable_name)
-        input_keys = getattr(self, "_user_input_keys", None) or ()
-        for branch_name in self._get_visible_branch_names():
-            if holder._get_array_from_storage(period, branch_name) is not None:
-                return (variable_name, branch_name, period) in input_keys
-        return False
 
     def calculate_output(self, variable_name: str, period: Period = None) -> ArrayLike:
         """

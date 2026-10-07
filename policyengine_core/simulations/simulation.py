@@ -220,6 +220,15 @@ class Simulation:
     is_over_dataset: bool = False
     """Whether this simulation is built over a dataset."""
 
+    input_group_entities: frozenset[str] = frozenset()
+    """Singular keys of group entities explicitly supplied by the caller.
+
+    Entity-form situations record groups before country preprocessing;
+    datasets record groups with person membership columns before defaults
+    are inserted. Variable-only and population-only construction do not
+    declare input groups. This immutable provenance survives cloning.
+    """
+
     macro_cache_read: bool = False
     """Whether to read from the macro cache."""
 
@@ -577,6 +586,12 @@ class Simulation:
         entity_ids = get_eternity_array(entity_id_field)
         builder.declare_person_entity(person_entity.key, entity_ids)
 
+        membership_columns = {column.split("__")[0] for column in data}
+        self.input_group_entities = frozenset(
+            group_entity.key
+            for group_entity in self.tax_benefit_system.group_entities
+            if f"{person_entity.key}_{group_entity.key}_id" in membership_columns
+        )
         for group_entity in self.tax_benefit_system.group_entities:
             entity_id_field = f"{group_entity.key}_id"
             if self.dataset.data_format != Dataset.FLAT_FILE:

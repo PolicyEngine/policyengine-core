@@ -121,12 +121,14 @@ class _DeeperPeriodFirst(BaseException):
 class _SpiralDeferrals:
     """The deeper periods one outermost calculation finishes first.
 
-    Each deeper period's calculation starts at most once (``started``), and
-    only on the simulation the calculation was requested on or one of its
-    registered branches (``root``). For a fixed branch graph and a finite
-    set of reachable calculation keys, every round starts a new period,
-    finishes one, or returns the request. No count of rounds cuts a long
-    chain, since where such a count fell would depend on earlier caching.
+    Once a deferred key starts evaluation (``started``), recursion cannot
+    defer it again. Its pending calculation can still be retried after its
+    deeper dependencies finish. Deferrals run only on the simulation the
+    calculation was requested on or its registered branches (``root``).
+    For a fixed branch graph and finite reachable calculation keys, every
+    round schedules a new key, finishes pending work, or returns the request.
+    No count of rounds cuts a long chain, since where such a count fell
+    would depend on earlier caching.
     """
 
     # The simulation the outermost calculation was requested on, or the
@@ -1865,7 +1867,7 @@ class Simulation:
         has been calculated, so whether a chain is cut does not depend on
         calculation order either.
 
-        Each period's calculation starts once per outermost calculation:
+        A period cannot be deferred again after its evaluation has started:
         one reached again after that (a cycle through the deferrals, or a
         period calculated with a recursion cut on the way) is cut. And only
         on the simulation the calculation was requested on and its branches:
@@ -1909,8 +1911,6 @@ class Simulation:
         else:
             return False
         turn = stack[previous + 1 :]
-        input_keys = getattr(self, "_user_input_keys", ())
-        visible_branches = self._get_visible_branch_names()
         for frame in turn:
             variable = tax_benefit_system.get_variable(frame["name"])
             frame_period = frame["period"]
@@ -1918,16 +1918,15 @@ class Simulation:
                 continue
             if self._has_formula_boundary_ahead(variable, frame_period, backward):
                 return True
-            for input_name, branch_name, input_period in input_keys:
-                if (
-                    input_name == variable.name
-                    and branch_name in visible_branches
-                    and input_period.unit == variable.definition_period
-                    and (
-                        input_period.start < frame_period.start
-                        if backward
-                        else input_period.start > frame_period.start
-                    )
+            # The set_input registry can outlive deleted inputs. Use the
+            # provenance of the value this branch actually reads, including
+            # ancestor fallback and replacements by calculated values.
+            holder = self.get_holder(variable.name)
+            for input_period in holder.get_input_periods(self.branch_name):
+                if input_period.unit == variable.definition_period and (
+                    input_period.start < frame_period.start
+                    if backward
+                    else input_period.start > frame_period.start
                 ):
                     return True
         return False

@@ -66,6 +66,53 @@ def test_recursion_is_evaluated_down_to_an_input():
     assert fresh == after == [36.0]
 
 
+@pytest.mark.parametrize(
+    "removal", ["period", "all", "invalidate", "derived_replacement"]
+)
+@pytest.mark.parametrize("traced", [False, True])
+def test_deleted_input_does_not_keep_authorizing_deeper_periods(removal, traced):
+    from policyengine_core.country_template.entities import Person
+    from policyengine_core.periods import YEAR, period
+    from policyengine_core.variables import Variable
+
+    class recursive(Variable):
+        value_type = float
+        entity = Person
+        definition_period = YEAR
+        label = "Undated recursion with an error before a former input"
+
+        def formula(person, period):
+            if period.start.year == 2011:
+                raise ValueError("This period is beyond the unanchored depth limit")
+            return person("recursive", period.last_year) + 1
+
+    simulation = build([recursive], {("recursive", 2010): 40}, 1)
+    simulation.trace = traced
+    input_period = period("2010")
+    if removal == "all":
+        simulation.delete_arrays("recursive")
+    elif removal == "invalidate":
+        simulation.invalidate_cache_entry("recursive", input_period)
+        simulation.purge_cache_of_invalid_values()
+    else:
+        simulation.delete_arrays("recursive", input_period)
+        if removal == "derived_replacement":
+            # A calculated value at the old input's key has no input
+            # provenance and cannot authorize the scheduler to go deeper.
+            simulation.get_holder("recursive").put_in_cache(
+                [7], input_period, derived=True
+            )
+    assert simulation.get_holder("recursive").get_input_periods() == []
+
+    fresh = build([recursive], max_spiral_loops=1)
+    fresh.trace = traced
+    assert fresh.calculate("recursive", "2020").tolist() == [1.0]
+    # With no actual input left, the recursion is cut before 2011. A stale
+    # set_input registry entry must not expose that unreachable error.
+    assert simulation.calculate("recursive", "2020").tolist() == [1.0]
+    assert simulation.tracer.stack == []
+
+
 def test_forward_recursion_is_evaluated_up_to_the_end():
     ahead = make_recurrence("ahead", [("ahead", -1)], end=2030)
     fresh, after = fresh_and_after([ahead], {}, ("ahead", 2000), [("ahead", 2020)])

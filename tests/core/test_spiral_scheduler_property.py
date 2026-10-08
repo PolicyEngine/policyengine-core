@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 
 from policyengine_core.country_template.entities import Person
-from policyengine_core.periods import YEAR
+from policyengine_core.periods import YEAR, period
 from policyengine_core.variables import Variable
 from tests.fixtures.spirals import build, make_recurrence
 
@@ -239,6 +239,55 @@ def test_deferred_periods_keep_caller_authorization(scenario, traced, storage):
     assert_request(used, "caller", year, expected[("r0", year)], traced)
     fresh = new_simulation(scenario, not traced, storage, requires_caller=True)
     assert_request(fresh, "caller", year, expected[("r0", year)], not traced)
+
+
+@hypothesis.settings(max_examples=24, deadline=None, derandomize=True)
+@hypothesis.given(
+    input_year=st.integers(2010, 2014),
+    loops=st.sampled_from((1, 2, 3, 10)),
+    distance=st.integers(1, 5),
+    traced=st.booleans(),
+    removal=st.sampled_from(("period", "all", "invalidate", "derived_replacement")),
+)
+def test_scheduler_uses_current_input_provenance(
+    input_year, loops, distance, traced, removal
+):
+    error_year = input_year + 1
+
+    class recursive(Variable):
+        value_type = float
+        entity = Person
+        definition_period = YEAR
+        label = "Undated recurrence with an unreachable error"
+
+        def formula(person, period):
+            if period.start.year == error_year:
+                raise ValueError("This period is beyond the unanchored depth limit")
+            return person("recursive", period.last_year) + 1
+
+    used = build([recursive], {("recursive", input_year): 40}, loops)
+    used.trace = traced
+    input_period = period(str(input_year))
+    if removal == "all":
+        used.delete_arrays("recursive")
+    elif removal == "invalidate":
+        used.invalidate_cache_entry("recursive", input_period)
+        used.purge_cache_of_invalid_values()
+    else:
+        used.delete_arrays("recursive", input_period)
+        if removal == "derived_replacement":
+            used.get_holder("recursive").put_in_cache([7], input_period, derived=True)
+    assert used.get_holder("recursive").get_input_periods() == []
+
+    # Every generated request stops above the error in an unanchored
+    # simulation. Neither deleted input history nor a derived replacement
+    # may authorize the scheduler to reach it.
+    target = error_year + loops + distance
+    fresh = build([recursive], max_spiral_loops=loops)
+    fresh.trace = not traced
+    expected = fresh.calculate("recursive", str(target))
+    np.testing.assert_array_equal(expected, np.array([loops], dtype=np.float32))
+    assert_request(used, "recursive", target, expected, traced)
 
 
 @hypothesis.settings(max_examples=24, deadline=None, derandomize=True)

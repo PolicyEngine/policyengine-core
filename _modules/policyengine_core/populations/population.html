@@ -290,6 +290,28 @@
         <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">count</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">dtype</span><span class="p">)</span></div>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="c1"># The shortcut lookup reads ``self.entity`` and ``self.simulation``.</span>
+        <span class="c1"># They are missing while copy or pickle rebuilds a population (both</span>
+        <span class="c1"># probe the new, empty instance for ``__setstate__`` before restoring</span>
+        <span class="c1"># its ``__dict__``), and looking them up would recurse here.</span>
+        <span class="c1"># Reject protocol probes before shortcut lookup, including when a</span>
+        <span class="c1"># subclass's entity property reads state that has not been restored.</span>
+        <span class="k">if</span> <span class="n">attribute</span> <span class="ow">in</span> <span class="p">(</span>
+            <span class="s2">"entity"</span><span class="p">,</span>
+            <span class="s2">"simulation"</span><span class="p">,</span>
+            <span class="s2">"__slots__"</span><span class="p">,</span>
+            <span class="s2">"__copy__"</span><span class="p">,</span>
+            <span class="s2">"__deepcopy__"</span><span class="p">,</span>
+            <span class="s2">"__getstate__"</span><span class="p">,</span>
+            <span class="s2">"__setstate__"</span><span class="p">,</span>
+            <span class="s2">"__reduce__"</span><span class="p">,</span>
+            <span class="s2">"__reduce_ex__"</span><span class="p">,</span>
+            <span class="s2">"__getnewargs__"</span><span class="p">,</span>
+            <span class="s2">"__getnewargs_ex__"</span><span class="p">,</span>
+        <span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">!s}</span><span class="s2"> has no attribute </span><span class="si">{</span><span class="n">attribute</span><span class="si">!r}</span><span class="s2">"</span>
+            <span class="p">)</span>
         <span class="n">projector</span> <span class="o">=</span> <span class="n">projectors</span><span class="o">.</span><span class="n">get_projector_from_shortcut</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">projector</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>

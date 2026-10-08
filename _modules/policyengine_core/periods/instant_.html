@@ -4,10 +4,10 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
-    <!-- Generated with Sphinx 5.0.0 and Furo 2022.12.07 -->
+    <!-- Generated with Sphinx 5.0.0 and Furo 2023.03.27 -->
         <title>policyengine_core.periods.instant_ - PolicyEngine Core</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
@@ -235,219 +235,213 @@
         </div>
         <article role="main">
           <h1>Source code for policyengine_core.periods.instant_</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">calendar</span>
-<span class="kn">import</span> <span class="nn">datetime</span>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">calendar</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span>
 
-<span class="kn">from</span> <span class="nn">policyengine_core</span> <span class="kn">import</span> <span class="n">periods</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.periods</span> <span class="kn">import</span> <span class="n">config</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core</span><span class="w"> </span><span class="kn">import</span> <span class="n">periods</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.periods</span><span class="w"> </span><span class="kn">import</span> <span class="n">config</span>
 
 
-<div class="viewcode-block" id="Instant"><a class="viewcode-back" href="../../../python_api/periods.html#policyengine_core.periods.instant_.Instant">[docs]</a><span class="k">class</span> <span class="nc">Instant</span><span class="p">(</span><span class="nb">tuple</span><span class="p">):</span>
-    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="Instant"><a class="viewcode-back" href="../../../python_api/periods.html#policyengine_core.periods.instant_.Instant">[docs]</a><span class="k">class</span><span class="w"> </span><span class="nc">Instant</span><span class="p">(</span><span class="nb">tuple</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Transform instant to to its Python representation as a string.</span>
 
 <span class="sd">        &gt;&gt;&gt; repr(instant(2014))</span>
-<span class="sd">        &#39;Instant((2014, 1, 1))&#39;</span>
-<span class="sd">        &gt;&gt;&gt; repr(instant(&#39;2014-2&#39;))</span>
-<span class="sd">        &#39;Instant((2014, 2, 1))&#39;</span>
-<span class="sd">        &gt;&gt;&gt; repr(instant(&#39;2014-2-3&#39;))</span>
-<span class="sd">        &#39;Instant((2014, 2, 3))&#39;</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">(</span><span class="si">{}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="nb">super</span><span class="p">(</span><span class="n">Instant</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__repr__</span><span class="p">()</span>
-        <span class="p">)</span>
+<span class="sd">        'Instant((2014, 1, 1))'</span>
+<span class="sd">        &gt;&gt;&gt; repr(instant('2014-2'))</span>
+<span class="sd">        'Instant((2014, 2, 1))'</span>
+<span class="sd">        &gt;&gt;&gt; repr(instant('2014-2-3'))</span>
+<span class="sd">        'Instant((2014, 2, 3))'</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="s2">"</span><span class="si">{}</span><span class="s2">(</span><span class="si">{}</span><span class="s2">)"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="nb">super</span><span class="p">(</span><span class="n">Instant</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__repr__</span><span class="p">())</span>
 
-    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Transform instant to a string.</span>
 
 <span class="sd">        &gt;&gt;&gt; str(instant(2014))</span>
-<span class="sd">        &#39;2014-01-01&#39;</span>
-<span class="sd">        &gt;&gt;&gt; str(instant(&#39;2014-2&#39;))</span>
-<span class="sd">        &#39;2014-02-01&#39;</span>
-<span class="sd">        &gt;&gt;&gt; str(instant(&#39;2014-2-3&#39;))</span>
-<span class="sd">        &#39;2014-02-03&#39;</span>
+<span class="sd">        '2014-01-01'</span>
+<span class="sd">        &gt;&gt;&gt; str(instant('2014-2'))</span>
+<span class="sd">        '2014-02-01'</span>
+<span class="sd">        &gt;&gt;&gt; str(instant('2014-2-3'))</span>
+<span class="sd">        '2014-02-03'</span>
 
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">instant_str</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">str_by_instant_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">instant_str</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">config</span><span class="o">.</span><span class="n">str_by_instant_cache</span><span class="p">[</span><span class="bp">self</span><span class="p">]</span> <span class="o">=</span> <span class="n">instant_str</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">date</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
-            <span class="p">)</span>
+            <span class="n">config</span><span class="o">.</span><span class="n">str_by_instant_cache</span><span class="p">[</span><span class="bp">self</span><span class="p">]</span> <span class="o">=</span> <span class="n">instant_str</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">date</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">instant_str</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">date</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">date</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Convert instant to a date.</span>
 
 <span class="sd">        &gt;&gt;&gt; instant(2014).date</span>
 <span class="sd">        datetime.date(2014, 1, 1)</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-2&#39;).date</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-2').date</span>
 <span class="sd">        datetime.date(2014, 2, 1)</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-2-3&#39;).date</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-2-3').date</span>
 <span class="sd">        datetime.date(2014, 2, 3)</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">instant_date</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">date_by_instant_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">instant_date</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">config</span><span class="o">.</span><span class="n">date_by_instant_cache</span><span class="p">[</span><span class="bp">self</span><span class="p">]</span> <span class="o">=</span> <span class="n">instant_date</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">(</span>
-                <span class="o">*</span><span class="bp">self</span>
-            <span class="p">)</span>
+            <span class="n">config</span><span class="o">.</span><span class="n">date_by_instant_cache</span><span class="p">[</span><span class="bp">self</span><span class="p">]</span> <span class="o">=</span> <span class="n">instant_date</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">instant_date</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">day</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">day</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Extract day from instant.</span>
 
 <span class="sd">        &gt;&gt;&gt; instant(2014).day</span>
 <span class="sd">        1</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-2&#39;).day</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-2').day</span>
 <span class="sd">        1</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-2-3&#39;).day</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-2-3').day</span>
 <span class="sd">        3</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">month</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">month</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Extract month from instant.</span>
 
 <span class="sd">        &gt;&gt;&gt; instant(2014).month</span>
 <span class="sd">        1</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-2&#39;).month</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-2').month</span>
 <span class="sd">        2</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-2-3&#39;).month</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-2-3').month</span>
 <span class="sd">        2</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
 
-<div class="viewcode-block" id="Instant.period"><a class="viewcode-back" href="../../../python_api/periods.html#policyengine_core.periods.instant_.Instant.period">[docs]</a>    <span class="k">def</span> <span class="nf">period</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unit</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="Instant.period"><a class="viewcode-back" href="../../../python_api/periods.html#policyengine_core.periods.instant_.Instant.period">[docs]</a>    <span class="k">def</span><span class="w"> </span><span class="nf">period</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unit</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Create a new period starting at instant.</span>
 
-<span class="sd">        &gt;&gt;&gt; instant(2014).period(&#39;month&#39;)</span>
-<span class="sd">        Period((&#39;month&#39;, Instant((2014, 1, 1)), 1))</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-2&#39;).period(&#39;year&#39;, 2)</span>
-<span class="sd">        Period((&#39;year&#39;, Instant((2014, 2, 1)), 2))</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-2-3&#39;).period(&#39;day&#39;, size = 2)</span>
-<span class="sd">        Period((&#39;day&#39;, Instant((2014, 2, 3)), 2))</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        &gt;&gt;&gt; instant(2014).period('month')</span>
+<span class="sd">        Period(('month', Instant((2014, 1, 1)), 1))</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-2').period('year', 2)</span>
+<span class="sd">        Period(('year', Instant((2014, 2, 1)), 2))</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-2-3').period('day', size = 2)</span>
+<span class="sd">        Period(('day', Instant((2014, 2, 3)), 2))</span>
+<span class="sd">        """</span>
         <span class="k">assert</span> <span class="n">unit</span> <span class="ow">in</span> <span class="p">(</span>
             <span class="n">config</span><span class="o">.</span><span class="n">DAY</span><span class="p">,</span>
             <span class="n">config</span><span class="o">.</span><span class="n">MONTH</span><span class="p">,</span>
             <span class="n">config</span><span class="o">.</span><span class="n">YEAR</span><span class="p">,</span>
-        <span class="p">),</span> <span class="s2">&quot;Invalid unit: </span><span class="si">{}</span><span class="s2"> of type </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">unit</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">unit</span><span class="p">))</span>
-        <span class="k">assert</span> <span class="p">(</span>
-            <span class="nb">isinstance</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="n">size</span> <span class="o">&gt;=</span> <span class="mi">1</span>
-        <span class="p">),</span> <span class="s2">&quot;Invalid size: </span><span class="si">{}</span><span class="s2"> of type </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">size</span><span class="p">))</span>
+        <span class="p">),</span> <span class="s2">"Invalid unit: </span><span class="si">{}</span><span class="s2"> of type </span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">unit</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">unit</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="n">size</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">,</span> <span class="p">(</span>
+            <span class="s2">"Invalid size: </span><span class="si">{}</span><span class="s2"> of type </span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">size</span><span class="p">))</span>
+        <span class="p">)</span>
         <span class="k">return</span> <span class="n">periods</span><span class="o">.</span><span class="n">Period</span><span class="p">((</span><span class="n">unit</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="p">))</span></div>
 
-<div class="viewcode-block" id="Instant.offset"><a class="viewcode-back" href="../../../python_api/periods.html#policyengine_core.periods.instant_.Instant.offset">[docs]</a>    <span class="k">def</span> <span class="nf">offset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">unit</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Instant&quot;</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="Instant.offset"><a class="viewcode-back" href="../../../python_api/periods.html#policyengine_core.periods.instant_.Instant.offset">[docs]</a>    <span class="k">def</span><span class="w"> </span><span class="nf">offset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">unit</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"Instant"</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Increment (or decrement) the given instant with offset units.</span>
 
-<span class="sd">        &gt;&gt;&gt; instant(2014).offset(1, &#39;day&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant(2014).offset(1, 'day')</span>
 <span class="sd">        Instant((2014, 1, 2))</span>
-<span class="sd">        &gt;&gt;&gt; instant(2014).offset(1, &#39;month&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant(2014).offset(1, 'month')</span>
 <span class="sd">        Instant((2014, 2, 1))</span>
-<span class="sd">        &gt;&gt;&gt; instant(2014).offset(1, &#39;year&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant(2014).offset(1, 'year')</span>
 <span class="sd">        Instant((2015, 1, 1))</span>
 
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-1-31&#39;).offset(1, &#39;day&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-1-31').offset(1, 'day')</span>
 <span class="sd">        Instant((2014, 2, 1))</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-1-31&#39;).offset(1, &#39;month&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-1-31').offset(1, 'month')</span>
 <span class="sd">        Instant((2014, 2, 28))</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-1-31&#39;).offset(1, &#39;year&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-1-31').offset(1, 'year')</span>
 <span class="sd">        Instant((2015, 1, 31))</span>
 
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2011-2-28&#39;).offset(1, &#39;day&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant('2011-2-28').offset(1, 'day')</span>
 <span class="sd">        Instant((2011, 3, 1))</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2011-2-28&#39;).offset(1, &#39;month&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant('2011-2-28').offset(1, 'month')</span>
 <span class="sd">        Instant((2011, 3, 28))</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2012-2-29&#39;).offset(1, &#39;year&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant('2012-2-29').offset(1, 'year')</span>
 <span class="sd">        Instant((2013, 2, 28))</span>
 
-<span class="sd">        &gt;&gt;&gt; instant(2014).offset(-1, &#39;day&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant(2014).offset(-1, 'day')</span>
 <span class="sd">        Instant((2013, 12, 31))</span>
-<span class="sd">        &gt;&gt;&gt; instant(2014).offset(-1, &#39;month&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant(2014).offset(-1, 'month')</span>
 <span class="sd">        Instant((2013, 12, 1))</span>
-<span class="sd">        &gt;&gt;&gt; instant(2014).offset(-1, &#39;year&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant(2014).offset(-1, 'year')</span>
 <span class="sd">        Instant((2013, 1, 1))</span>
 
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2011-3-1&#39;).offset(-1, &#39;day&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant('2011-3-1').offset(-1, 'day')</span>
 <span class="sd">        Instant((2011, 2, 28))</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2011-3-31&#39;).offset(-1, &#39;month&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant('2011-3-31').offset(-1, 'month')</span>
 <span class="sd">        Instant((2011, 2, 28))</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2012-2-29&#39;).offset(-1, &#39;year&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant('2012-2-29').offset(-1, 'year')</span>
 <span class="sd">        Instant((2011, 2, 28))</span>
 
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-1-30&#39;).offset(3, &#39;day&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-1-30').offset(3, 'day')</span>
 <span class="sd">        Instant((2014, 2, 2))</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-10-2&#39;).offset(3, &#39;month&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-10-2').offset(3, 'month')</span>
 <span class="sd">        Instant((2015, 1, 2))</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-1-1&#39;).offset(3, &#39;year&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-1-1').offset(3, 'year')</span>
 <span class="sd">        Instant((2017, 1, 1))</span>
 
-<span class="sd">        &gt;&gt;&gt; instant(2014).offset(-3, &#39;day&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant(2014).offset(-3, 'day')</span>
 <span class="sd">        Instant((2013, 12, 29))</span>
-<span class="sd">        &gt;&gt;&gt; instant(2014).offset(-3, &#39;month&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant(2014).offset(-3, 'month')</span>
 <span class="sd">        Instant((2013, 10, 1))</span>
-<span class="sd">        &gt;&gt;&gt; instant(2014).offset(-3, &#39;year&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant(2014).offset(-3, 'year')</span>
 <span class="sd">        Instant((2011, 1, 1))</span>
 
-<span class="sd">        &gt;&gt;&gt; instant(2014).offset(&#39;first-of&#39;, &#39;month&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant(2014).offset('first-of', 'month')</span>
 <span class="sd">        Instant((2014, 1, 1))</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-2&#39;).offset(&#39;first-of&#39;, &#39;month&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-2').offset('first-of', 'month')</span>
 <span class="sd">        Instant((2014, 2, 1))</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-2-3&#39;).offset(&#39;first-of&#39;, &#39;month&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-2-3').offset('first-of', 'month')</span>
 <span class="sd">        Instant((2014, 2, 1))</span>
 
-<span class="sd">        &gt;&gt;&gt; instant(2014).offset(&#39;first-of&#39;, &#39;year&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant(2014).offset('first-of', 'year')</span>
 <span class="sd">        Instant((2014, 1, 1))</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-2&#39;).offset(&#39;first-of&#39;, &#39;year&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-2').offset('first-of', 'year')</span>
 <span class="sd">        Instant((2014, 1, 1))</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-2-3&#39;).offset(&#39;first-of&#39;, &#39;year&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-2-3').offset('first-of', 'year')</span>
 <span class="sd">        Instant((2014, 1, 1))</span>
 
-<span class="sd">        &gt;&gt;&gt; instant(2014).offset(&#39;last-of&#39;, &#39;month&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant(2014).offset('last-of', 'month')</span>
 <span class="sd">        Instant((2014, 1, 31))</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-2&#39;).offset(&#39;last-of&#39;, &#39;month&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-2').offset('last-of', 'month')</span>
 <span class="sd">        Instant((2014, 2, 28))</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2012-2-3&#39;).offset(&#39;last-of&#39;, &#39;month&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant('2012-2-3').offset('last-of', 'month')</span>
 <span class="sd">        Instant((2012, 2, 29))</span>
 
-<span class="sd">        &gt;&gt;&gt; instant(2014).offset(&#39;last-of&#39;, &#39;year&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant(2014).offset('last-of', 'year')</span>
 <span class="sd">        Instant((2014, 12, 31))</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-2&#39;).offset(&#39;last-of&#39;, &#39;year&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-2').offset('last-of', 'year')</span>
 <span class="sd">        Instant((2014, 12, 31))</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-2-3&#39;).offset(&#39;last-of&#39;, &#39;year&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-2-3').offset('last-of', 'year')</span>
 <span class="sd">        Instant((2014, 12, 31))</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="p">,</span> <span class="n">day</span> <span class="o">=</span> <span class="bp">self</span>
         <span class="k">assert</span> <span class="n">unit</span> <span class="ow">in</span> <span class="p">(</span>
             <span class="n">config</span><span class="o">.</span><span class="n">DAY</span><span class="p">,</span>
             <span class="n">config</span><span class="o">.</span><span class="n">MONTH</span><span class="p">,</span>
             <span class="n">config</span><span class="o">.</span><span class="n">YEAR</span><span class="p">,</span>
-        <span class="p">),</span> <span class="s2">&quot;Invalid unit: </span><span class="si">{}</span><span class="s2"> of type </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">unit</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">unit</span><span class="p">))</span>
-        <span class="k">if</span> <span class="n">offset</span> <span class="o">==</span> <span class="s2">&quot;first-of&quot;</span><span class="p">:</span>
+        <span class="p">),</span> <span class="s2">"Invalid unit: </span><span class="si">{}</span><span class="s2"> of type </span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">unit</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">unit</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">offset</span> <span class="o">==</span> <span class="s2">"first-of"</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">unit</span> <span class="o">==</span> <span class="n">config</span><span class="o">.</span><span class="n">MONTH</span><span class="p">:</span>
                 <span class="n">day</span> <span class="o">=</span> <span class="mi">1</span>
             <span class="k">elif</span> <span class="n">unit</span> <span class="o">==</span> <span class="n">config</span><span class="o">.</span><span class="n">YEAR</span><span class="p">:</span>
                 <span class="n">month</span> <span class="o">=</span> <span class="mi">1</span>
                 <span class="n">day</span> <span class="o">=</span> <span class="mi">1</span>
-        <span class="k">elif</span> <span class="n">offset</span> <span class="o">==</span> <span class="s2">&quot;last-of&quot;</span><span class="p">:</span>
+        <span class="k">elif</span> <span class="n">offset</span> <span class="o">==</span> <span class="s2">"last-of"</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">unit</span> <span class="o">==</span> <span class="n">config</span><span class="o">.</span><span class="n">MONTH</span><span class="p">:</span>
                 <span class="n">day</span> <span class="o">=</span> <span class="n">calendar</span><span class="o">.</span><span class="n">monthrange</span><span class="p">(</span><span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
             <span class="k">elif</span> <span class="n">unit</span> <span class="o">==</span> <span class="n">config</span><span class="o">.</span><span class="n">YEAR</span><span class="p">:</span>
                 <span class="n">month</span> <span class="o">=</span> <span class="mi">12</span>
                 <span class="n">day</span> <span class="o">=</span> <span class="mi">31</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span>
-                <span class="n">offset</span><span class="p">,</span> <span class="nb">int</span>
-            <span class="p">),</span> <span class="s2">&quot;Invalid offset: </span><span class="si">{}</span><span class="s2"> of type </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">offset</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">offset</span><span class="p">))</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">offset</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span> <span class="s2">"Invalid offset: </span><span class="si">{}</span><span class="s2"> of type </span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">offset</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">offset</span><span class="p">)</span>
+            <span class="p">)</span>
             <span class="k">if</span> <span class="n">unit</span> <span class="o">==</span> <span class="n">config</span><span class="o">.</span><span class="n">DAY</span><span class="p">:</span>
                 <span class="n">day</span> <span class="o">+=</span> <span class="n">offset</span>
                 <span class="k">if</span> <span class="n">offset</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
@@ -489,17 +483,17 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">((</span><span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="p">,</span> <span class="n">day</span><span class="p">))</span></div>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">year</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">year</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Extract year from instant.</span>
 
 <span class="sd">        &gt;&gt;&gt; instant(2014).year</span>
 <span class="sd">        2014</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-2&#39;).year</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-2').year</span>
 <span class="sd">        2014</span>
-<span class="sd">        &gt;&gt;&gt; instant(&#39;2014-2-3&#39;).year</span>
+<span class="sd">        &gt;&gt;&gt; instant('2014-2-3').year</span>
 <span class="sd">        2014</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
 </pre></div>
         </article>

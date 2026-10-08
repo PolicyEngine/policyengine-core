@@ -5,10 +5,10 @@
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Reforms" href="reforms.html" /><link rel="prev" title="Writing parameters" href="parameters.html" />
 
-    <!-- Generated with Sphinx 5.0.0 and Furo 2022.12.07 -->
+    <!-- Generated with Sphinx 5.0.0 and Furo 2023.03.27 -->
         <title>Writing datasets - PolicyEngine Core</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
@@ -244,49 +244,47 @@
 <p>Here’s the Country Template’s default example for a dataset.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">policyengine_core.country_template.constants</span> <span class="kn">import</span> <span class="n">COUNTRY_DIR</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.data</span> <span class="kn">import</span> <span class="n">Dataset</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.periods</span> <span class="kn">import</span> <span class="n">ETERNITY</span><span class="p">,</span> <span class="n">MONTH</span><span class="p">,</span> <span class="n">period</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.country_template.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">COUNTRY_DIR</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.periods</span><span class="w"> </span><span class="kn">import</span> <span class="n">ETERNITY</span><span class="p">,</span> <span class="n">MONTH</span><span class="p">,</span> <span class="n">period</span>
 
 
-<span class="k">class</span> <span class="nc">CountryTemplateDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CountryTemplateDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
     <span class="c1"># Specify metadata used to describe and store the dataset.</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;country_template_dataset&quot;</span>
-    <span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;Country template dataset&quot;</span>
-    <span class="n">file_path</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">COUNTRY_DIR</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;storage&quot;</span> <span class="o">/</span> <span class="s2">&quot;country_template_dataset.h5&quot;</span>
-    <span class="p">)</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">"country_template_dataset"</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="s2">"Country template dataset"</span>
+    <span class="n">file_path</span> <span class="o">=</span> <span class="n">COUNTRY_DIR</span> <span class="o">/</span> <span class="s2">"data"</span> <span class="o">/</span> <span class="s2">"storage"</span> <span class="o">/</span> <span class="s2">"country_template_dataset.h5"</span>
     <span class="n">data_format</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">TIME_PERIOD_ARRAYS</span>
 
     <span class="c1"># The generation function is the most important part: it defines</span>
     <span class="c1"># how the dataset is generated from the raw data.</span>
-    <span class="k">def</span> <span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">person_id</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
         <span class="n">household_id</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
         <span class="n">person_household_id</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
-        <span class="n">person_household_role</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;parent&quot;</span><span class="p">,</span> <span class="s2">&quot;child&quot;</span><span class="p">,</span> <span class="s2">&quot;parent&quot;</span><span class="p">]</span>
+        <span class="n">person_household_role</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"parent"</span><span class="p">,</span> <span class="s2">"child"</span><span class="p">,</span> <span class="s2">"parent"</span><span class="p">]</span>
         <span class="n">salary</span> <span class="o">=</span> <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">200</span><span class="p">]</span>
-        <span class="n">salary_time_period</span> <span class="o">=</span> <span class="n">period</span><span class="p">(</span><span class="s2">&quot;2022-01&quot;</span><span class="p">)</span>
+        <span class="n">salary_time_period</span> <span class="o">=</span> <span class="n">period</span><span class="p">(</span><span class="s2">"2022-01"</span><span class="p">)</span>
         <span class="n">weight</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1e6</span><span class="p">,</span> <span class="mf">1.2e6</span><span class="p">]</span>
-        <span class="n">weight_time_period</span> <span class="o">=</span> <span class="n">period</span><span class="p">(</span><span class="s2">&quot;2022&quot;</span><span class="p">)</span>
+        <span class="n">weight_time_period</span> <span class="o">=</span> <span class="n">period</span><span class="p">(</span><span class="s2">"2022"</span><span class="p">)</span>
         <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;person_id&quot;</span><span class="p">:</span> <span class="p">{</span><span class="n">ETERNITY</span><span class="p">:</span> <span class="n">person_id</span><span class="p">},</span>
-            <span class="s2">&quot;household_id&quot;</span><span class="p">:</span> <span class="p">{</span><span class="n">ETERNITY</span><span class="p">:</span> <span class="n">household_id</span><span class="p">},</span>
-            <span class="s2">&quot;person_household_id&quot;</span><span class="p">:</span> <span class="p">{</span><span class="n">ETERNITY</span><span class="p">:</span> <span class="n">person_household_id</span><span class="p">},</span>
-            <span class="s2">&quot;person_household_role&quot;</span><span class="p">:</span> <span class="p">{</span><span class="n">ETERNITY</span><span class="p">:</span> <span class="n">person_household_role</span><span class="p">},</span>
-            <span class="s2">&quot;salary&quot;</span><span class="p">:</span> <span class="p">{</span><span class="n">salary_time_period</span><span class="p">:</span> <span class="n">salary</span><span class="p">},</span>
-            <span class="s2">&quot;household_weight&quot;</span><span class="p">:</span> <span class="p">{</span><span class="n">weight_time_period</span><span class="p">:</span> <span class="n">weight</span><span class="p">},</span>
+            <span class="s2">"person_id"</span><span class="p">:</span> <span class="p">{</span><span class="n">ETERNITY</span><span class="p">:</span> <span class="n">person_id</span><span class="p">},</span>
+            <span class="s2">"household_id"</span><span class="p">:</span> <span class="p">{</span><span class="n">ETERNITY</span><span class="p">:</span> <span class="n">household_id</span><span class="p">},</span>
+            <span class="s2">"person_household_id"</span><span class="p">:</span> <span class="p">{</span><span class="n">ETERNITY</span><span class="p">:</span> <span class="n">person_household_id</span><span class="p">},</span>
+            <span class="s2">"person_household_role"</span><span class="p">:</span> <span class="p">{</span><span class="n">ETERNITY</span><span class="p">:</span> <span class="n">person_household_role</span><span class="p">},</span>
+            <span class="s2">"salary"</span><span class="p">:</span> <span class="p">{</span><span class="n">salary_time_period</span><span class="p">:</span> <span class="n">salary</span><span class="p">},</span>
+            <span class="s2">"household_weight"</span><span class="p">:</span> <span class="p">{</span><span class="n">weight_time_period</span><span class="p">:</span> <span class="n">weight</span><span class="p">},</span>
         <span class="p">}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">save_dataset</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 
 
-<span class="kn">from</span> <span class="nn">policyengine_core.country_template</span> <span class="kn">import</span> <span class="n">Simulation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.country_template</span><span class="w"> </span><span class="kn">import</span> <span class="n">Simulation</span>
 
 <span class="n">CountryTemplateDataset</span><span class="p">()</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span>
 
 <span class="n">simulation</span> <span class="o">=</span> <span class="n">Simulation</span><span class="p">(</span><span class="n">dataset</span><span class="o">=</span><span class="n">CountryTemplateDataset</span><span class="p">)</span>
 
-<span class="n">simulation</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;salary&quot;</span><span class="p">,</span> <span class="s2">&quot;2022-01&quot;</span><span class="p">)</span>
+<span class="n">simulation</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">"salary"</span><span class="p">,</span> <span class="s2">"2022-01"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>

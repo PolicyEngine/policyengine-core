@@ -5,10 +5,10 @@
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Creating a country package" href="country.html" /><link rel="prev" title="How to contribute" href="../contributing/intro.html" />
 
-    <!-- Generated with Sphinx 5.0.0 and Furo 2022.12.07 -->
+    <!-- Generated with Sphinx 5.0.0 and Furo 2023.03.27 -->
         <title>Simulating policy - PolicyEngine Core</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
@@ -272,7 +272,7 @@
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">policyengine_core.country_template</span> <span class="kn">import</span> <span class="n">Simulation</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.country_template</span><span class="w"> </span><span class="kn">import</span> <span class="n">Simulation</span>
 
 <span class="n">EXAMPLE</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
     <span class="n">persons</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
@@ -284,7 +284,7 @@
 <span class="p">)</span>
 
 <span class="n">simulation</span> <span class="o">=</span> <span class="n">Simulation</span><span class="p">(</span><span class="n">situation</span><span class="o">=</span><span class="n">EXAMPLE</span><span class="p">)</span>
-<span class="n">simulation</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;income_tax&quot;</span><span class="p">,</span> <span class="s2">&quot;2022-01&quot;</span><span class="p">)</span>
+<span class="n">simulation</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">"income_tax"</span><span class="p">,</span> <span class="s2">"2022-01"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -317,11 +317,11 @@
             <span class="n">age</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
         <span class="p">),</span>
     <span class="p">),</span>
-    <span class="n">axes</span><span class="o">=</span><span class="p">[[</span><span class="nb">dict</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;salary&quot;</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">100_000</span><span class="p">)]],</span>
+    <span class="n">axes</span><span class="o">=</span><span class="p">[[</span><span class="nb">dict</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">"salary"</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">100_000</span><span class="p">)]],</span>
 <span class="p">)</span>
 
 <span class="n">simulation</span> <span class="o">=</span> <span class="n">Simulation</span><span class="p">(</span><span class="n">situation</span><span class="o">=</span><span class="n">EXAMPLE</span><span class="p">)</span>
-<span class="n">simulation</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;income_tax&quot;</span><span class="p">,</span> <span class="s2">&quot;2022-01&quot;</span><span class="p">)</span>
+<span class="n">simulation</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">"income_tax"</span><span class="p">,</span> <span class="s2">"2022-01"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -335,26 +335,26 @@
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">plotly.express</span> <span class="k">as</span> <span class="nn">px</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.charts</span> <span class="kn">import</span> <span class="n">format_fig</span><span class="p">,</span> <span class="n">display_fig</span><span class="p">,</span> <span class="n">BLUE</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">plotly.express</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">px</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.charts</span><span class="w"> </span><span class="kn">import</span> <span class="n">format_fig</span><span class="p">,</span> <span class="n">display_fig</span><span class="p">,</span> <span class="n">BLUE</span>
 
 <span class="n">fig</span> <span class="o">=</span> <span class="p">(</span>
     <span class="n">px</span><span class="o">.</span><span class="n">line</span><span class="p">(</span>
-        <span class="n">x</span><span class="o">=</span><span class="n">simulation</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;salary&quot;</span><span class="p">),</span>
-        <span class="n">y</span><span class="o">=</span><span class="n">simulation</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;income_tax&quot;</span><span class="p">),</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">simulation</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">"salary"</span><span class="p">),</span>
+        <span class="n">y</span><span class="o">=</span><span class="n">simulation</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">"income_tax"</span><span class="p">),</span>
         <span class="n">color_discrete_sequence</span><span class="o">=</span><span class="p">[</span><span class="n">BLUE</span><span class="p">],</span>
     <span class="p">)</span>
     <span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
-        <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Salary&quot;</span><span class="p">,</span>
-        <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Income tax&quot;</span><span class="p">,</span>
-        <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Income tax by salary&quot;</span><span class="p">,</span>
-        <span class="n">xaxis_tickformat</span><span class="o">=</span><span class="s2">&quot;,.0f&quot;</span><span class="p">,</span>
-        <span class="n">yaxis_tickformat</span><span class="o">=</span><span class="s2">&quot;,.0f&quot;</span><span class="p">,</span>
-        <span class="n">xaxis_tickprefix</span><span class="o">=</span><span class="s2">&quot;£&quot;</span><span class="p">,</span>
-        <span class="n">yaxis_tickprefix</span><span class="o">=</span><span class="s2">&quot;£&quot;</span><span class="p">,</span>
+        <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">"Salary"</span><span class="p">,</span>
+        <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">"Income tax"</span><span class="p">,</span>
+        <span class="n">title</span><span class="o">=</span><span class="s2">"Income tax by salary"</span><span class="p">,</span>
+        <span class="n">xaxis_tickformat</span><span class="o">=</span><span class="s2">",.0f"</span><span class="p">,</span>
+        <span class="n">yaxis_tickformat</span><span class="o">=</span><span class="s2">",.0f"</span><span class="p">,</span>
+        <span class="n">xaxis_tickprefix</span><span class="o">=</span><span class="s2">"£"</span><span class="p">,</span>
+        <span class="n">yaxis_tickprefix</span><span class="o">=</span><span class="s2">"£"</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="o">.</span><span class="n">update_traces</span><span class="p">(</span>
-        <span class="n">hovertemplate</span><span class="o">=</span><span class="s2">&quot;&lt;b&gt;Salary&lt;/b&gt;: £%</span><span class="si">{x:,.0f}</span><span class="s2">&lt;br&gt;&lt;b&gt;Income tax&lt;/b&gt;: £%</span><span class="si">{y:,.0f}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">hovertemplate</span><span class="o">=</span><span class="s2">"&lt;b&gt;Salary&lt;/b&gt;: £%</span><span class="si">{x:,.0f}</span><span class="s2">&lt;br&gt;&lt;b&gt;Income tax&lt;/b&gt;: £%</span><span class="si">{y:,.0f}</span><span class="s2">"</span><span class="p">,</span>
     <span class="p">)</span>
 <span class="p">)</span>
 
@@ -372,11 +372,11 @@
 <p>As well as a general-purpose <code class="docutils literal notranslate"><span class="pre">Simulation</span></code> interface, each country package also includes a <code class="docutils literal notranslate"><span class="pre">Microsimulation</span></code> interface. This inherits from <code class="docutils literal notranslate"><span class="pre">WeightedSimulation</span></code> (so everything that works on the former will work on the latter), handling survey weights and dataset loading.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">policyengine_core.country_template</span> <span class="kn">import</span> <span class="n">Microsimulation</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.country_template</span><span class="w"> </span><span class="kn">import</span> <span class="n">Microsimulation</span>
 
 <span class="n">sim</span> <span class="o">=</span> <span class="n">Microsimulation</span><span class="p">()</span>
 
-<span class="n">sim</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;income_tax&quot;</span><span class="p">,</span> <span class="s2">&quot;2022-01&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="mf">1e6</span>
+<span class="n">sim</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">"income_tax"</span><span class="p">,</span> <span class="s2">"2022-01"</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="mf">1e6</span>
 </pre></div>
 </div>
 </div>
@@ -392,11 +392,11 @@
 <p>Often, we’re running simulations over very large (100,000+) datasets. This can be slow, so we might want to subsample the dataset to speed up the simulation. This can be done by using <code class="docutils literal notranslate"><span class="pre">Simulation.subsample</span></code> or <code class="docutils literal notranslate"><span class="pre">Microsimulation.subsample</span></code>, which will return a new <code class="docutils literal notranslate"><span class="pre">Simulation</span></code> or <code class="docutils literal notranslate"><span class="pre">Microsimulation</span></code> object with a smaller dataset.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">policyengine_us</span> <span class="kn">import</span> <span class="n">Microsimulation</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_us</span><span class="w"> </span><span class="kn">import</span> <span class="n">Microsimulation</span>
 
 <span class="n">sim</span> <span class="o">=</span> <span class="n">Microsimulation</span><span class="p">()</span>
 
-<span class="n">sim</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;adjusted_gross_income&quot;</span><span class="p">,</span> <span class="mi">2024</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="mf">1e9</span>
+<span class="n">sim</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">"adjusted_gross_income"</span><span class="p">,</span> <span class="mi">2024</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="mf">1e9</span>
 </pre></div>
 </div>
 </div>
@@ -409,7 +409,7 @@
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">sim</span> <span class="o">=</span> <span class="n">Microsimulation</span><span class="p">()</span><span class="o">.</span><span class="n">subsample</span><span class="p">(</span><span class="n">frac</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
-<span class="n">sim</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">&quot;adjusted_gross_income&quot;</span><span class="p">,</span> <span class="mi">2024</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="mf">1e9</span>
+<span class="n">sim</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">"adjusted_gross_income"</span><span class="p">,</span> <span class="mi">2024</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="mf">1e9</span>
 </pre></div>
 </div>
 </div>

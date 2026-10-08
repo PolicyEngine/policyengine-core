@@ -4,10 +4,10 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
-    <!-- Generated with Sphinx 5.0.0 and Furo 2022.12.07 -->
+    <!-- Generated with Sphinx 5.0.0 and Furo 2023.03.27 -->
         <title>policyengine_core.simulations.microsimulation - PolicyEngine Core</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
@@ -235,48 +235,72 @@
         </div>
         <article role="main">
           <h1>Source code for policyengine_core.simulations.microsimulation</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Type</span>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Type</span>
 
-<span class="kn">from</span> <span class="nn">policyengine_core.weighting</span> <span class="kn">import</span> <span class="n">MicroDataFrame</span><span class="p">,</span> <span class="n">MicroSeries</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.data.dataset</span> <span class="kn">import</span> <span class="n">Dataset</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.periods</span> <span class="kn">import</span> <span class="n">Period</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.periods</span> <span class="kn">import</span> <span class="n">period</span> <span class="k">as</span> <span class="n">get_period</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.periods.config</span> <span class="kn">import</span> <span class="n">MONTH</span><span class="p">,</span> <span class="n">YEAR</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.simulations.simulation</span> <span class="kn">import</span> <span class="n">Simulation</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.types</span> <span class="kn">import</span> <span class="n">ArrayLike</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">microdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">MicroDataFrame</span><span class="p">,</span> <span class="n">MicroSeries</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.data.dataset</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.periods</span><span class="w"> </span><span class="kn">import</span> <span class="n">Period</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.periods</span><span class="w"> </span><span class="kn">import</span> <span class="n">period</span> <span class="k">as</span> <span class="n">get_period</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.periods.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">MONTH</span><span class="p">,</span> <span class="n">YEAR</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.simulations.simulation</span><span class="w"> </span><span class="kn">import</span> <span class="n">Simulation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">ArrayLike</span>
 
 
-<div class="viewcode-block" id="Microsimulation"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.microsimulation.Microsimulation">[docs]</a><span class="k">class</span> <span class="nc">Microsimulation</span><span class="p">(</span><span class="n">Simulation</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;A `Simulation` whose entities use weights to represent larger populations.&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="Microsimulation"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.microsimulation.Microsimulation">[docs]</a><span class="k">class</span><span class="w"> </span><span class="nc">Microsimulation</span><span class="p">(</span><span class="n">Simulation</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""A `Simulation` whose entities use weights to represent larger populations."""</span>
 
-<div class="viewcode-block" id="Microsimulation.get_weights"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.microsimulation.Microsimulation.get_weights">[docs]</a>    <span class="k">def</span> <span class="nf">get_weights</span><span class="p">(</span>
+<div class="viewcode-block" id="Microsimulation.get_weights"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.microsimulation.Microsimulation.get_weights">[docs]</a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_weights</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Period</span><span class="p">,</span> <span class="n">map_to</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Return weights for a variable's entity from ``household_weight``."""</span>
         <span class="n">time_period</span> <span class="o">=</span> <span class="n">get_period</span><span class="p">(</span><span class="n">period</span><span class="p">)</span>
-        <span class="n">variable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span>
-        <span class="n">entity_key</span> <span class="o">=</span> <span class="n">map_to</span> <span class="ow">or</span> <span class="n">variable</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span>
-        <span class="n">weight_variable_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">entity_key</span><span class="si">}</span><span class="s2">_weight&quot;</span>
-        <span class="n">weight_variable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
-            <span class="n">weight_variable_name</span>
+        <span class="n">variable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
+            <span class="n">variable_name</span><span class="p">,</span> <span class="n">check_existence</span><span class="o">=</span><span class="kc">True</span>
         <span class="p">)</span>
-        <span class="n">weights</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">entity_key</span> <span class="o">=</span> <span class="n">map_to</span> <span class="ow">or</span> <span class="n">variable</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span>
+        <span class="n">weight_variable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
+            <span class="s2">"household_weight"</span><span class="p">,</span> <span class="n">check_existence</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+        <span class="n">weight_period</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="k">if</span> <span class="n">time_period</span><span class="o">.</span><span class="n">unit</span> <span class="o">==</span> <span class="n">weight_variable</span><span class="o">.</span><span class="n">definition_period</span><span class="p">:</span>
-            <span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span>
-                <span class="n">weight_variable_name</span><span class="p">,</span> <span class="n">time_period</span><span class="p">,</span> <span class="n">use_weights</span><span class="o">=</span><span class="kc">False</span>
-            <span class="p">)</span>
+            <span class="n">weight_period</span> <span class="o">=</span> <span class="n">time_period</span>
         <span class="k">elif</span> <span class="p">(</span><span class="n">time_period</span><span class="o">.</span><span class="n">unit</span> <span class="o">==</span> <span class="n">MONTH</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span>
             <span class="n">weight_variable</span><span class="o">.</span><span class="n">definition_period</span> <span class="o">==</span> <span class="n">YEAR</span>
         <span class="p">):</span>
             <span class="c1"># Common use-case. To-do: implement others if needed.</span>
-            <span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span>
-                <span class="n">weight_variable_name</span><span class="p">,</span> <span class="n">time_period</span><span class="o">.</span><span class="n">this_year</span><span class="p">,</span> <span class="n">use_weights</span><span class="o">=</span><span class="kc">False</span>
-            <span class="p">)</span>
+            <span class="n">weight_period</span> <span class="o">=</span> <span class="n">time_period</span><span class="o">.</span><span class="n">this_year</span>
 
-        <span class="k">return</span> <span class="n">weights</span></div>
+        <span class="k">if</span> <span class="n">weight_period</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
 
-<div class="viewcode-block" id="Microsimulation.calculate"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.microsimulation.Microsimulation.calculate">[docs]</a>    <span class="k">def</span> <span class="nf">calculate</span><span class="p">(</span>
+        <span class="n">household_weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span>
+            <span class="s2">"household_weight"</span><span class="p">,</span>
+            <span class="n">weight_period</span><span class="p">,</span>
+            <span class="n">use_weights</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_project_household_weights</span><span class="p">(</span><span class="n">household_weights</span><span class="p">,</span> <span class="n">entity_key</span><span class="p">)</span></div>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_project_household_weights</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">household_weights</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
+        <span class="n">entity_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ArrayLike</span><span class="p">:</span>
+        <span class="n">household_entity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
+            <span class="s2">"household_weight"</span><span class="p">,</span> <span class="n">check_existence</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span>
+        <span class="k">if</span> <span class="n">entity_key</span> <span class="o">==</span> <span class="n">household_entity</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">household_weights</span>
+
+        <span class="n">household_population</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">household_entity</span><span class="p">]</span>
+        <span class="n">person_weights</span> <span class="o">=</span> <span class="n">household_population</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">household_weights</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">entity_key</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">person_entity</span><span class="o">.</span><span class="n">key</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">person_weights</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">entity_key</span><span class="p">]</span><span class="o">.</span><span class="n">value_from_first_person</span><span class="p">(</span><span class="n">person_weights</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Microsimulation.calculate"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.microsimulation.Microsimulation.calculate">[docs]</a>    <span class="k">def</span><span class="w"> </span><span class="nf">calculate</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -294,33 +318,43 @@
         <span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_weights</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">map_to</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">MicroSeries</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">values</span><span class="p">),</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Microsimulation.calculate_add"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.microsimulation.Microsimulation.calculate_add">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_add</span><span class="p">(</span>
+<div class="viewcode-block" id="Microsimulation.calculate_add"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.microsimulation.Microsimulation.calculate_add">[docs]</a>    <span class="k">def</span><span class="w"> </span><span class="nf">calculate_add</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">map_to</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">use_weights</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MicroSeries</span><span class="p">:</span>
-        <span class="n">values</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">calculate_add</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">map_to</span><span class="p">)</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">calculate_add</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">map_to</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">source_entity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
+                <span class="n">variable_name</span><span class="p">,</span> <span class="n">check_existence</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_result</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">values</span><span class="p">),</span> <span class="n">source_entity</span><span class="p">,</span> <span class="n">map_to</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">use_weights</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">values</span>
-        <span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_weights</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_weights</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">map_to</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">MicroSeries</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">values</span><span class="p">),</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Microsimulation.calculate_divide"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.microsimulation.Microsimulation.calculate_divide">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_divide</span><span class="p">(</span>
+<div class="viewcode-block" id="Microsimulation.calculate_divide"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.microsimulation.Microsimulation.calculate_divide">[docs]</a>    <span class="k">def</span><span class="w"> </span><span class="nf">calculate_divide</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">map_to</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">use_weights</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MicroSeries</span><span class="p">:</span>
-        <span class="n">values</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">calculate_divide</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">map_to</span><span class="p">)</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">calculate_divide</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">map_to</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">source_entity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
+                <span class="n">variable_name</span><span class="p">,</span> <span class="n">check_existence</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">key</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_result</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">values</span><span class="p">),</span> <span class="n">source_entity</span><span class="p">,</span> <span class="n">map_to</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">use_weights</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">values</span>
-        <span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_weights</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_weights</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">map_to</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">MicroSeries</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">values</span><span class="p">),</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Microsimulation.calculate_dataframe"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.microsimulation.Microsimulation.calculate_dataframe">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_dataframe</span><span class="p">(</span>
+<div class="viewcode-block" id="Microsimulation.calculate_dataframe"><a class="viewcode-back" href="../../../python_api/simulations.html#policyengine_core.simulations.microsimulation.Microsimulation.calculate_dataframe">[docs]</a>    <span class="k">def</span><span class="w"> </span><span class="nf">calculate_dataframe</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">variable_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span>
         <span class="n">period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -334,7 +368,7 @@
         <span class="n">values</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">calculate_dataframe</span><span class="p">(</span><span class="n">variable_names</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">map_to</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">use_weights</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">values</span>
-        <span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_weights</span><span class="p">(</span><span class="n">variable_names</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">period</span><span class="p">)</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_weights</span><span class="p">(</span><span class="n">variable_names</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">period</span><span class="p">,</span> <span class="n">map_to</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">MicroDataFrame</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">)</span></div></div>
 </pre></div>
         </article>

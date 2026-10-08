@@ -5,10 +5,10 @@
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Types" href="types.html" /><link rel="prev" title="Tools" href="tools.html" />
 
-    <!-- Generated with Sphinx 5.0.0 and Furo 2022.12.07 -->
+    <!-- Generated with Sphinx 5.0.0 and Furo 2023.03.27 -->
         <title>Tracers - PolicyEngine Core</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
@@ -284,7 +284,7 @@ vectors up to a depth of <code class="docutils literal notranslate"><span class=
 <h2>PerformanceLog<a class="headerlink" href="#performancelog" title="Permalink to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.tracers.performance_log.PerformanceLog">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.tracers.performance_log.</span></span><span class="sig-name descname"><span class="pre">PerformanceLog</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">full_tracer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.tracers.full_tracer.FullTracer" title="policyengine_core.tracers.full_tracer.FullTracer"><span class="pre">FullTracer</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/tracers/performance_log.html#PerformanceLog"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.tracers.performance_log.PerformanceLog" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.tracers.performance_log.</span></span><span class="sig-name descname"><span class="pre">PerformanceLog</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">full_tracer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.tracers.full_tracer.FullTracer" title="policyengine_core.tracers.full_tracer.FullTracer"><span class="pre">FullTracer</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.tracers.performance_log.PerformanceLog" title="Permalink to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 </dd></dl>
 
@@ -307,11 +307,28 @@ vectors up to a depth of <code class="docutils literal notranslate"><span class=
 </dd></dl>
 
 </section>
+<section id="tracingparameternode">
+<h2>TracingParameterNode<a class="headerlink" href="#tracingparameternode" title="Permalink to this heading">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="policyengine_core.tracers.tracing_parameter_node_at_instant.TracingParameterNode">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.tracers.tracing_parameter_node_at_instant.</span></span><span class="sig-name descname"><span class="pre">TracingParameterNode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="parameters.html#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">ParameterNode</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">tracer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.tracers.full_tracer.FullTracer" title="policyengine_core.tracers.full_tracer.FullTracer"><span class="pre">FullTracer</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">branch_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.tracers.tracing_parameter_node_at_instant.TracingParameterNode" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>The parameter tree as the formulas of one traced simulation see it.</p>
+<p>Calling it at an instant returns a <a class="reference internal" href="#policyengine_core.tracers.tracing_parameter_node_at_instant.TracingParameterNodeAtInstant" title="policyengine_core.tracers.tracing_parameter_node_at_instant.TracingParameterNodeAtInstant"><code class="xref py py-class docutils literal notranslate"><span class="pre">TracingParameterNodeAtInstant</span></code></a>
+that records every parameter a formula reads in <code class="docutils literal notranslate"><span class="pre">tracer</span></code>, under
+<code class="docutils literal notranslate"><span class="pre">branch_name</span></code>. Any other attribute is read from the wrapped node.</p>
+<p>The wrapped node is never modified, so tracing one simulation does not
+trace the tax-benefit system it shares with other simulations, branches
+and clones. Like <a class="reference internal" href="#policyengine_core.tracers.tracing_parameter_node_at_instant.TracingParameterNodeAtInstant" title="policyengine_core.tracers.tracing_parameter_node_at_instant.TracingParameterNodeAtInstant"><code class="xref py py-class docutils literal notranslate"><span class="pre">TracingParameterNodeAtInstant</span></code></a>, it is not an
+instance of the class it wraps.</p>
+</dd></dl>
+
+</section>
 <section id="tracingparameternodeatinstant">
 <h2>TracingParameterNodeAtInstant<a class="headerlink" href="#tracingparameternodeatinstant" title="Permalink to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.tracers.tracing_parameter_node_at_instant.TracingParameterNodeAtInstant">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.tracers.tracing_parameter_node_at_instant.</span></span><span class="sig-name descname"><span class="pre">TracingParameterNodeAtInstant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_node_at_instant</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="parameters.html#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">ParameterNode</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">tracer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tracers.FullTracer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">branch_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/tracers/tracing_parameter_node_at_instant.html#TracingParameterNodeAtInstant"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.tracers.tracing_parameter_node_at_instant.TracingParameterNodeAtInstant" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.tracers.tracing_parameter_node_at_instant.</span></span><span class="sig-name descname"><span class="pre">TracingParameterNodeAtInstant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_node_at_instant</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="parameters.html#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">ParameterNode</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">tracer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tracers.FullTracer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">branch_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.tracers.tracing_parameter_node_at_instant.TracingParameterNodeAtInstant" title="Permalink to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 </dd></dl>
 
@@ -399,6 +416,7 @@ vectors up to a depth of <code class="docutils literal notranslate"><span class=
 <li><a class="reference internal" href="#performancelog">PerformanceLog</a></li>
 <li><a class="reference internal" href="#simpletracer">SimpleTracer</a></li>
 <li><a class="reference internal" href="#tracenode">TraceNode</a></li>
+<li><a class="reference internal" href="#tracingparameternode">TracingParameterNode</a></li>
 <li><a class="reference internal" href="#tracingparameternodeatinstant">TracingParameterNodeAtInstant</a></li>
 </ul>
 </li>

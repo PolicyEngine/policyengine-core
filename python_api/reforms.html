@@ -5,10 +5,10 @@
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Scripts" href="scripts.html" /><link rel="prev" title="Projectors" href="projectors.html" />
 
-    <!-- Generated with Sphinx 5.0.0 and Furo 2022.12.07 -->
+    <!-- Generated with Sphinx 5.0.0 and Furo 2023.03.27 -->
         <title>Reforms - PolicyEngine Core</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
@@ -243,42 +243,36 @@
 <h2>Reform<a class="headerlink" href="#reform" title="Permalink to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.reforms.Reform">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.reforms.</span></span><span class="sig-name descname"><span class="pre">Reform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">baseline</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem" title="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem"><span class="pre">TaxBenefitSystem</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/policyengine_core/reforms/reform.html#Reform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.reforms.Reform" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.reforms.</span></span><span class="sig-name descname"><span class="pre">Reform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">baseline</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="taxbenefitsystems.html#policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem" title="policyengine_core.taxbenefitsystems.tax_benefit_system.TaxBenefitSystem"><span class="pre">TaxBenefitSystem</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.reforms.Reform" title="Permalink to this definition">#</a></dt>
 <dd><p>A modified TaxBenefitSystem</p>
 <p>All reforms must subclass <cite>Reform</cite> and implement a method <cite>apply()</cite>.</p>
 <p>In this method, the reform can add or replace variables and call <cite>modify_parameters</cite> to modify the parameters of the legislation.</p>
 <blockquote>
 <div><p>Example:</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">policyengine_core</span> <span class="kn">import</span> <span class="n">reforms</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">policyengine_core.parameters</span> <span class="kn">import</span> <span class="n">load_parameter_file</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core</span><span class="w"> </span><span class="kn">import</span> <span class="n">reforms</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.parameters</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_parameter_file</span>
 <span class="gp">&gt;&gt;&gt;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">modify_my_parameters</span><span class="p">(</span><span class="n">parameters</span><span class="p">):</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">def</span><span class="w"> </span><span class="nf">modify_my_parameters</span><span class="p">(</span><span class="n">parameters</span><span class="p">):</span>
 <span class="gp">&gt;&gt;&gt; </span>    <span class="c1"># Add new parameters</span>
-<span class="gp">&gt;&gt;&gt; </span>    <span class="n">new_parameters</span> <span class="o">=</span> <span class="n">load_parameter_file</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;reform_name&#39;</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="s1">&#39;path_to_yaml_file.yaml&#39;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span>    <span class="n">parameters</span><span class="o">.</span><span class="n">add_child</span><span class="p">(</span><span class="s1">&#39;reform_name&#39;</span><span class="p">,</span> <span class="n">new_parameters</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span>    <span class="n">new_parameters</span> <span class="o">=</span> <span class="n">load_parameter_file</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">'reform_name'</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="s1">'path_to_yaml_file.yaml'</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span>    <span class="n">parameters</span><span class="o">.</span><span class="n">add_child</span><span class="p">(</span><span class="s1">'reform_name'</span><span class="p">,</span> <span class="n">new_parameters</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt;</span>
 <span class="gp">&gt;&gt;&gt; </span>    <span class="c1"># Update a value</span>
 <span class="gp">&gt;&gt;&gt; </span>    <span class="n">parameters</span><span class="o">.</span><span class="n">taxes</span><span class="o">.</span><span class="n">some_tax</span><span class="o">.</span><span class="n">some_param</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">period</span><span class="o">=</span><span class="n">some_period</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">1000.0</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt;</span>
 <span class="gp">&gt;&gt;&gt; </span>   <span class="k">return</span> <span class="n">parameters</span>
 <span class="gp">&gt;&gt;&gt;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="k">class</span> <span class="nc">MyReform</span><span class="p">(</span><span class="n">reforms</span><span class="o">.</span><span class="n">Reform</span><span class="p">):</span>
-<span class="gp">&gt;&gt;&gt; </span>   <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">class</span><span class="w"> </span><span class="nc">MyReform</span><span class="p">(</span><span class="n">reforms</span><span class="o">.</span><span class="n">Reform</span><span class="p">):</span>
+<span class="gp">&gt;&gt;&gt; </span>   <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="gp">&gt;&gt;&gt; </span>       <span class="bp">self</span><span class="o">.</span><span class="n">add_variable</span><span class="p">(</span><span class="n">some_variable</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span>       <span class="bp">self</span><span class="o">.</span><span class="n">update_variable</span><span class="p">(</span><span class="n">some_other_variable</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span>       <span class="bp">self</span><span class="o">.</span><span class="n">modify_parameters</span><span class="p">(</span><span class="n">modifier_function</span> <span class="o">=</span> <span class="n">modify_my_parameters</span><span class="p">)</span>
 </pre></div>
 </div>
 </div></blockquote>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.reforms.Reform.country_id">
-<span class="sig-name descname"><span class="pre">country_id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#policyengine_core.reforms.Reform.country_id" title="Permalink to this definition">#</a></dt>
-<dd><p>The country id of the reform. This is used to inform any calls to the PolicyEngine API.</p>
-</dd></dl>
-
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.reforms.Reform.from_api">
-<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_api</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">api_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">country_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.reforms.Reform" title="policyengine_core.reforms.reform.Reform"><span class="pre">Reform</span></a></span></span><a class="reference internal" href="../_modules/policyengine_core/reforms/reform.html#Reform.from_api"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.reforms.Reform.from_api" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_api</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">api_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">country_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.reforms.Reform" title="policyengine_core.reforms.reform.Reform"><span class="pre">Reform</span></a></span></span><a class="headerlink" href="#policyengine_core.reforms.Reform.from_api" title="Permalink to this definition">#</a></dt>
 <dd><p>Create a reform from a dictionary of parameters.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -292,21 +286,52 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.reforms.Reform.from_dict">
-<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">country_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.reforms.Reform" title="policyengine_core.reforms.reform.Reform"><span class="pre">Reform</span></a></span></span><a class="reference internal" href="../_modules/policyengine_core/reforms/reform.html#Reform.from_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.reforms.Reform.from_dict" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">country_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.reforms.Reform" title="policyengine_core.reforms.reform.Reform"><span class="pre">Reform</span></a></span></span><a class="headerlink" href="#policyengine_core.reforms.Reform.from_dict" title="Permalink to this definition">#</a></dt>
 <dd><p>Create a reform from a dictionary of parameters.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>parameters</strong> – A dictionary of parameter -&gt; { period -&gt; value } pairs.</p>
+<dd class="field-odd"><p><strong>parameter_values</strong> – A mapping of <code class="docutils literal notranslate"><span class="pre">path</span> <span class="pre">-&gt;</span> <span class="pre">{period_key:</span> <span class="pre">value}</span></code>
+(or the <code class="docutils literal notranslate"><span class="pre">path</span> <span class="pre">-&gt;</span> <span class="pre">scalar</span></code> shorthand, applied across
+<code class="docutils literal notranslate"><span class="pre">year:2000:100</span></code>).</p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A reform.</p>
+</dl>
+<p>Period-key formats, interpreted per parameter (see the module-level
+<code class="docutils literal notranslate"><span class="pre">_*_update_kwargs</span></code> helpers):</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Bare ISO instant (<code class="docutils literal notranslate"><span class="pre">&quot;2026&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;2026-01&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;2026-01-01&quot;</span></code>):
+the value applies <strong>from that instant onward</strong>, flattening any
+later scheduled breakpoints (e.g. uprating). The instant is
+literal: <code class="docutils literal notranslate"><span class="pre">{&quot;2026-06-01&quot;:</span> <span class="pre">v}</span></code> applies from 1 June 2026, so an
+annual value read at 1 January 2026 is still the baseline — use
+<code class="docutils literal notranslate"><span class="pre">&quot;2026-01-01&quot;</span></code> for a full-year-onward change. To keep later
+breakpoints, bound the change with a range instead.</p></li>
+<li><p>Range <code class="docutils literal notranslate"><span class="pre">&quot;start.stop&quot;</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">&quot;2026-01-01.2027-12-31&quot;</span></code>): the
+value applies over the bounded interval <code class="docutils literal notranslate"><span class="pre">[start,</span> <span class="pre">stop]</span></code>; the
+prior value is restored afterwards.</p></li>
+<li><p>Compound bounded period (<code class="docutils literal notranslate"><span class="pre">&quot;year:2026:5&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;month:2026-01:3&quot;</span></code>):
+the value applies over that bounded period only.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;ETERNITY&quot;</span></code>: the value applies for all time.</p></li>
+</ul>
+</div></blockquote>
+<p>Entries are applied in ascending start-instant order, so a
+later-starting key never clobbers an earlier one. Entries sharing a
+start instant are applied in their given order (the last wins for any
+overlap). Non-string keys are coerced to <code class="docutils literal notranslate"><span class="pre">str</span></code>.</p>
+<p>Invalid input raises during construction <strong>before any parameter is
+modified</strong>: a malformed period key or bad value yields no partial
+reform, and errors from <code class="docutils literal notranslate"><span class="pre">Parameter.update</span></code> propagate rather than
+being silently swallowed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A reform.</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.reforms.Reform.modify_parameters">
-<span class="sig-name descname"><span class="pre">modify_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">modifier_function</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="parameters.html#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">ParameterNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="parameters.html#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">ParameterNode</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../_modules/policyengine_core/reforms/reform.html#Reform.modify_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.reforms.Reform.modify_parameters" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">modify_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">modifier_function</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="parameters.html#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">ParameterNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="parameters.html#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">ParameterNode</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#policyengine_core.reforms.Reform.modify_parameters" title="Permalink to this definition">#</a></dt>
 <dd><p>Make modifications on the parameters of the legislation.</p>
 <p>Call this function in <cite>apply()</cite> if the reform asks for legislation parameter modifications.</p>
 <dl class="field-list simple">
@@ -314,18 +339,6 @@
 <dd class="field-odd"><p><strong>modifier_function</strong> – A function that takes a <a class="reference internal" href="parameters.html#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ParameterNode</span></code></a> and should return an object of the same type.</p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.reforms.Reform.name">
-<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#policyengine_core.reforms.Reform.name" title="Permalink to this definition">#</a></dt>
-<dd><p>The name of the reform. This is used to identify the reform in the UI.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="policyengine_core.reforms.Reform.parameter_values">
-<span class="sig-name descname"><span class="pre">parameter_values</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#policyengine_core.reforms.Reform.parameter_values" title="Permalink to this definition">#</a></dt>
-<dd><p>The parameter values of the reform. This is used to inform any calls to the PolicyEngine API.</p>
 </dd></dl>
 
 </dd></dl>

@@ -4,10 +4,10 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
-    <!-- Generated with Sphinx 5.0.0 and Furo 2022.12.07 -->
+    <!-- Generated with Sphinx 5.0.0 and Furo 2023.03.27 -->
         <title>policyengine_core.entities.entity - PolicyEngine Core</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
@@ -235,19 +235,19 @@
         </div>
         <article role="main">
           <h1>Source code for policyengine_core.entities.entity</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">textwrap</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">textwrap</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
 
-<span class="kn">from</span> <span class="nn">policyengine_core.entities.role</span> <span class="kn">import</span> <span class="n">Role</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.entities.role</span><span class="w"> </span><span class="kn">import</span> <span class="n">Role</span>
 
 
-<div class="viewcode-block" id="Entity"><a class="viewcode-back" href="../../../python_api/entities.html#policyengine_core.entities.entity.Entity">[docs]</a><span class="k">class</span> <span class="nc">Entity</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="Entity"><a class="viewcode-back" href="../../../python_api/entities.html#policyengine_core.entities.entity.Entity">[docs]</a><span class="k">class</span><span class="w"> </span><span class="nc">Entity</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Represents an entity (e.g. a person, a household, etc.) on which calculations can be run.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">plural</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">doc</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">plural</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">doc</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">key</span> <span class="o">=</span> <span class="n">key</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="n">label</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">plural</span> <span class="o">=</span> <span class="n">plural</span>
@@ -255,35 +255,31 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">is_person</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_tax_benefit_system</span> <span class="o">=</span> <span class="kc">None</span>
 
-<div class="viewcode-block" id="Entity.set_tax_benefit_system"><a class="viewcode-back" href="../../../python_api/entities.html#policyengine_core.entities.entity.Entity.set_tax_benefit_system">[docs]</a>    <span class="k">def</span> <span class="nf">set_tax_benefit_system</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tax_benefit_system</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<div class="viewcode-block" id="Entity.set_tax_benefit_system"><a class="viewcode-back" href="../../../python_api/entities.html#policyengine_core.entities.entity.Entity.set_tax_benefit_system">[docs]</a>    <span class="k">def</span><span class="w"> </span><span class="nf">set_tax_benefit_system</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tax_benefit_system</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_tax_benefit_system</span> <span class="o">=</span> <span class="n">tax_benefit_system</span></div>
 
-<div class="viewcode-block" id="Entity.check_role_validity"><a class="viewcode-back" href="../../../python_api/entities.html#policyengine_core.entities.entity.Entity.check_role_validity">[docs]</a>    <span class="k">def</span> <span class="nf">check_role_validity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">role</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<div class="viewcode-block" id="Entity.check_role_validity"><a class="viewcode-back" href="../../../python_api/entities.html#policyengine_core.entities.entity.Entity.check_role_validity">[docs]</a>    <span class="k">def</span><span class="w"> </span><span class="nf">check_role_validity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">role</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">role</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">type</span><span class="p">(</span><span class="n">role</span><span class="p">)</span> <span class="o">==</span> <span class="n">Role</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> is not a valid role&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">role</span><span class="p">))</span></div>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"</span><span class="si">{}</span><span class="s2"> is not a valid role"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">role</span><span class="p">))</span></div>
 
-<div class="viewcode-block" id="Entity.get_variable"><a class="viewcode-back" href="../../../python_api/entities.html#policyengine_core.entities.entity.Entity.get_variable">[docs]</a>    <span class="k">def</span> <span class="nf">get_variable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">check_existence</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
-            <span class="n">variable_name</span><span class="p">,</span> <span class="n">check_existence</span>
-        <span class="p">)</span></div>
+<div class="viewcode-block" id="Entity.get_variable"><a class="viewcode-back" href="../../../python_api/entities.html#policyengine_core.entities.entity.Entity.get_variable">[docs]</a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_variable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">check_existence</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">check_existence</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Entity.check_variable_defined_for_entity"><a class="viewcode-back" href="../../../python_api/entities.html#policyengine_core.entities.entity.Entity.check_variable_defined_for_entity">[docs]</a>    <span class="k">def</span> <span class="nf">check_variable_defined_for_entity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">variable_entity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
-            <span class="n">variable_name</span><span class="p">,</span> <span class="n">check_existence</span><span class="o">=</span><span class="kc">True</span>
-        <span class="p">)</span><span class="o">.</span><span class="n">entity</span>
+<div class="viewcode-block" id="Entity.check_variable_defined_for_entity"><a class="viewcode-back" href="../../../python_api/entities.html#policyengine_core.entities.entity.Entity.check_variable_defined_for_entity">[docs]</a>    <span class="k">def</span><span class="w"> </span><span class="nf">check_variable_defined_for_entity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">variable_entity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">check_existence</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">entity</span>
         <span class="c1"># Should be this:</span>
         <span class="c1"># if variable_entity is not self:</span>
         <span class="k">if</span> <span class="n">variable_entity</span><span class="o">.</span><span class="n">key</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">:</span>
             <span class="n">message</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">linesep</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
                 <span class="p">[</span>
-                    <span class="s2">&quot;You tried to compute the variable &#39;</span><span class="si">{0}</span><span class="s2">&#39; for the entity &#39;</span><span class="si">{1}</span><span class="s2">&#39;;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="s2">"You tried to compute the variable '</span><span class="si">{0}</span><span class="s2">' for the entity '</span><span class="si">{1}</span><span class="s2">';"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                         <span class="n">variable_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">plural</span>
                     <span class="p">),</span>
-                    <span class="s2">&quot;however the variable &#39;</span><span class="si">{0}</span><span class="s2">&#39; is defined for &#39;</span><span class="si">{1}</span><span class="s2">&#39;.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="s2">"however the variable '</span><span class="si">{0}</span><span class="s2">' is defined for '</span><span class="si">{1}</span><span class="s2">'."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                         <span class="n">variable_name</span><span class="p">,</span> <span class="n">variable_entity</span><span class="o">.</span><span class="n">plural</span>
                     <span class="p">),</span>
-                    <span class="s2">&quot;Learn more about entities in our documentation:&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;&lt;https://openfisca.org/doc/coding-the-legislation/50_entities.html&gt;.&quot;</span><span class="p">,</span>
+                    <span class="s2">"Learn more about entities in our documentation:"</span><span class="p">,</span>
+                    <span class="s2">"&lt;https://openfisca.org/doc/coding-the-legislation/50_entities.html&gt;."</span><span class="p">,</span>
                 <span class="p">]</span>
             <span class="p">)</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">message</span><span class="p">)</span></div></div>

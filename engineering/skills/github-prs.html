@@ -2,10 +2,11 @@
 <html class="no-js" lang="en">
   <head><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" />
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" />
 
     <!-- Generated with Sphinx 5.0.0 and Furo 2023.03.27 -->
-        <title>policyengine_core.country_template - PolicyEngine Core</title>
+        <title>GitHub PRs - PolicyEngine Core</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css" />
@@ -140,7 +141,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -220,7 +221,8 @@
           <span>Back to top</span>
         </a>
         <div class="content-icon-container">
-          <div class="theme-toggle-container theme-toggle-content">
+          
+<div class="theme-toggle-container theme-toggle-content">
             <button class="theme-toggle">
               <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
               <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
@@ -228,65 +230,98 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main">
-          <h1>Source code for policyengine_core.country_template</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Type</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.country_template</span><span class="w"> </span><span class="kn">import</span> <span class="n">entities</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.country_template.data.datasets.country_template_dataset</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">CountryTemplateDataset</span><span class="p">,</span>
-<span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.country_template.situation_examples</span><span class="w"> </span><span class="kn">import</span> <span class="n">couple</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.data.dataset</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.populations.population</span><span class="w"> </span><span class="kn">import</span> <span class="n">Population</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.simulations</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">Microsimulation</span> <span class="k">as</span> <span class="n">CoreMicrosimulation</span><span class="p">,</span>
-<span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.simulations</span><span class="w"> </span><span class="kn">import</span> <span class="n">Simulation</span> <span class="k">as</span> <span class="n">CoreSimulation</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.taxbenefitsystems</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaxBenefitSystem</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">COUNTRY_DIR</span>
-
-<span class="n">DATASETS</span> <span class="o">=</span> <span class="p">[</span><span class="n">CountryTemplateDataset</span><span class="p">]</span>  <span class="c1"># Important: must be instantiated</span>
-
-
-<div class="viewcode-block" id="CountryTaxBenefitSystem"><a class="viewcode-back" href="../../python_api/country_template.html#policyengine_core.country_template.CountryTaxBenefitSystem">[docs]</a><span class="k">class</span><span class="w"> </span><span class="nc">CountryTaxBenefitSystem</span><span class="p">(</span><span class="n">TaxBenefitSystem</span><span class="p">):</span>
-    <span class="n">entities</span> <span class="o">=</span> <span class="n">entities</span><span class="o">.</span><span class="n">entities</span>
-    <span class="n">variables_dir</span> <span class="o">=</span> <span class="n">COUNTRY_DIR</span> <span class="o">/</span> <span class="s2">"variables"</span>
-    <span class="n">parameters_dir</span> <span class="o">=</span> <span class="n">COUNTRY_DIR</span> <span class="o">/</span> <span class="s2">"parameters"</span>
-    <span class="n">auto_carry_over_input_variables</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">modelled_policies</span> <span class="o">=</span> <span class="n">COUNTRY_DIR</span> <span class="o">/</span> <span class="s2">"modelled_policies.yaml"</span></div>
-
-
-<span class="n">system</span> <span class="o">=</span> <span class="n">CountryTaxBenefitSystem</span><span class="p">()</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">Simulation</span><span class="p">(</span><span class="n">CoreSimulation</span><span class="p">):</span>
-    <span class="n">default_tax_benefit_system</span> <span class="o">=</span> <span class="n">CountryTaxBenefitSystem</span>
-    <span class="n">default_tax_benefit_system_instance</span> <span class="o">=</span> <span class="n">system</span>
-    <span class="n">default_role</span> <span class="o">=</span> <span class="s2">"parent"</span>
-    <span class="n">default_calculation_period</span> <span class="o">=</span> <span class="s2">"2022-01"</span>
-    <span class="n">default_input_period</span> <span class="o">=</span> <span class="s2">"2022-01"</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">Microsimulation</span><span class="p">(</span><span class="n">CoreMicrosimulation</span><span class="p">):</span>
-    <span class="n">default_tax_benefit_system</span> <span class="o">=</span> <span class="n">CountryTaxBenefitSystem</span>
-    <span class="n">default_dataset</span> <span class="o">=</span> <span class="n">CountryTemplateDataset</span>
-    <span class="n">default_tax_benefit_system_instance</span> <span class="o">=</span> <span class="n">system</span>
-    <span class="n">default_calculation_period</span> <span class="o">=</span> <span class="s2">"2022-01"</span>
-
-
-<span class="c1"># Ensure that the default dataset exists</span>
-<span class="n">CountryTemplateDataset</span><span class="p">()</span>
+          <section class="tex2jax_ignore mathjax_ignore" id="github-prs">
+<h1>GitHub PRs<a class="headerlink" href="#github-prs" title="Permalink to this heading">#</a></h1>
+<p>These rules apply to every developer and AI agent opening pull requests in this
+repository.</p>
+<section id="repository-and-branch">
+<h2>Repository and branch<a class="headerlink" href="#repository-and-branch" title="Permalink to this heading">#</a></h2>
+<p>Open PRs against <code class="docutils literal notranslate"><span class="pre">master</span></code> in <code class="docutils literal notranslate"><span class="pre">PolicyEngine/policyengine-core</span></code>.</p>
+<p>Before creating or sharing a PR:</p>
+<ol class="arabic simple">
+<li><p>Confirm the canonical repository is reachable:
+<code class="docutils literal notranslate"><span class="pre">gh</span> <span class="pre">repo</span> <span class="pre">view</span> <span class="pre">PolicyEngine/policyengine-core</span> <span class="pre">--json</span> <span class="pre">nameWithOwner</span></code>.</p></li>
+<li><p>Add the required towncrier changelog fragment under <code class="docutils literal notranslate"><span class="pre">changelog.d/</span></code>.</p></li>
+<li><p>Push the current branch to <code class="docutils literal notranslate"><span class="pre">PolicyEngine/policyengine-core</span></code>.</p></li>
+<li><p>Create the PR against <code class="docutils literal notranslate"><span class="pre">master</span></code>.</p></li>
+<li><p>Verify the PR head repository before reporting it:
+<code class="docutils literal notranslate"><span class="pre">gh</span> <span class="pre">pr</span> <span class="pre">view</span> <span class="pre">&lt;PR&gt;</span> <span class="pre">--repo</span> <span class="pre">PolicyEngine/policyengine-core</span> <span class="pre">--json</span> <span class="pre">headRepositoryOwner,headRepository</span></code>.</p></li>
+</ol>
+<p>If you cannot push to the canonical repository, stop and ask for access. Do not
+open a fork PR as a fallback unless the user explicitly asks for one.</p>
+</section>
+<section id="changelog-fragment">
+<h2>Changelog fragment<a class="headerlink" href="#changelog-fragment" title="Permalink to this heading">#</a></h2>
+<p>A changelog entry is required before opening, replacing, or sharing a PR. When a
+user asks an AI agent to open a PR, the agent must check for an appropriate
+fragment and add one if it is missing before running <code class="docutils literal notranslate"><span class="pre">gh</span> <span class="pre">pr</span> <span class="pre">create</span></code>.</p>
+<p>Use towncrier fragments in this format:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>changelog.d/&lt;short-slug&gt;.&lt;type&gt;.md
 </pre></div>
+</div>
+<p>Allowed <code class="docutils literal notranslate"><span class="pre">&lt;type&gt;</span></code> values are configured in <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">breaking</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">added</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">changed</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fixed</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">removed</span></code></p></li>
+</ul>
+<p>Examples:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>changelog.d/fix-enum-utf8-bytes.fixed.md
+changelog.d/add-agent-pr-guidance.changed.md
+</pre></div>
+</div>
+<p>Write one concise Markdown sentence in the fragment. Use <code class="docutils literal notranslate"><span class="pre">fixed</span></code> for bug fixes,
+<code class="docutils literal notranslate"><span class="pre">added</span></code> for new user-facing capabilities, <code class="docutils literal notranslate"><span class="pre">changed</span></code> for behavior, documentation,
+tooling, or refactors, <code class="docutils literal notranslate"><span class="pre">removed</span></code> for removals, and <code class="docutils literal notranslate"><span class="pre">breaking</span></code> only for changes
+that intentionally break compatibility. Prefer updating an existing branch
+fragment over adding duplicate fragments for the same PR.</p>
+<p>Do not run <code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">changelog</span></code> for a PR. The release workflow builds
+<code class="docutils literal notranslate"><span class="pre">CHANGELOG.md</span></code> from fragments after merge.</p>
+</section>
+<section id="pr-title">
+<h2>PR title<a class="headerlink" href="#pr-title" title="Permalink to this heading">#</a></h2>
+<p>Do not add <code class="docutils literal notranslate"><span class="pre">[codex]</span></code>, <code class="docutils literal notranslate"><span class="pre">[claude]</span></code>, <code class="docutils literal notranslate"><span class="pre">[copilot]</span></code>, or other agent labels to PR
+titles. Use a plain descriptive title.</p>
+</section>
+<section id="pr-body">
+<h2>PR body<a class="headerlink" href="#pr-body" title="Permalink to this heading">#</a></h2>
+<p>Keep the description concrete:</p>
+<ul class="simple">
+<li><p>Link the issue the PR fixes.</p></li>
+<li><p>Summarize the user-visible behavior change.</p></li>
+<li><p>List the tests or checks run.</p></li>
+<li><p>Call out any commands that were not run and why.</p></li>
+</ul>
+</section>
+</section>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "binder-examples/jupyter-stacks-datascience",
+            ref: "master",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            name: "python3",
+            path: "./engineering/skills"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
         </article>
       </div>
       <footer>
@@ -312,8 +347,30 @@
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">GitHub PRs</a><ul>
+<li><a class="reference internal" href="#repository-and-branch">Repository and branch</a></li>
+<li><a class="reference internal" href="#changelog-fragment">Changelog fragment</a></li>
+<li><a class="reference internal" href="#pr-title">PR title</a></li>
+<li><a class="reference internal" href="#pr-body">PR body</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>

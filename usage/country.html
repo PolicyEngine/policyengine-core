@@ -5,10 +5,10 @@
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Writing parameters" href="parameters.html" /><link rel="prev" title="Simulating policy" href="simulation.html" />
 
-    <!-- Generated with Sphinx 5.0.0 and Furo 2022.12.07 -->
+    <!-- Generated with Sphinx 5.0.0 and Furo 2023.03.27 -->
         <title>Creating a country package - PolicyEngine Core</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
@@ -241,7 +241,7 @@
 <p>Most use cases won’t interact with this package directly, but will instead use a country package, which is a Python package that contains a country’s policy logic and parameters. The country package is responsible for defining the variables that are available in the simulation, and for defining the logic that calculates the values of those variables. The country package also defines the parameters that are used in the logic, and the default values of those parameters. Each country package has the same API:</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">policyengine_core.country_template</span> <span class="kn">import</span> <span class="p">(</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.country_template</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">CountryTaxBenefitSystem</span><span class="p">,</span>  <span class="c1"># Holds all policy-related data.</span>
     <span class="n">Simulation</span><span class="p">,</span>  <span class="c1"># General purpose: enables users to simulate policy on new data.</span>
     <span class="n">Microsimulation</span><span class="p">,</span>  <span class="c1"># Specific purpose: enables users to simulate policy on large datasets.</span>
@@ -271,39 +271,39 @@
 <p>The country package should define each of the main interfaces in the code block above, inheriting from Core classes and adding metadata. Here’s how the example country package does it:</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Type</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.data.dataset</span> <span class="kn">import</span> <span class="n">Dataset</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.populations.population</span> <span class="kn">import</span> <span class="n">Population</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.taxbenefitsystems</span> <span class="kn">import</span> <span class="n">TaxBenefitSystem</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.country_template</span> <span class="kn">import</span> <span class="n">entities</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.country_template.situation_examples</span> <span class="kn">import</span> <span class="n">couple</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.simulations</span> <span class="kn">import</span> <span class="n">Simulation</span> <span class="k">as</span> <span class="n">CoreSimulation</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.simulations</span> <span class="kn">import</span> <span class="p">(</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Type</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.data.dataset</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.populations.population</span><span class="w"> </span><span class="kn">import</span> <span class="n">Population</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.taxbenefitsystems</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaxBenefitSystem</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.country_template</span><span class="w"> </span><span class="kn">import</span> <span class="n">entities</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.country_template.situation_examples</span><span class="w"> </span><span class="kn">import</span> <span class="n">couple</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.simulations</span><span class="w"> </span><span class="kn">import</span> <span class="n">Simulation</span> <span class="k">as</span> <span class="n">CoreSimulation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.simulations</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">Microsimulation</span> <span class="k">as</span> <span class="n">CoreMicrosimulation</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.country_template.data.datasets.country_template_dataset</span> <span class="kn">import</span> <span class="p">(</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.country_template.data.datasets.country_template_dataset</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">CountryTemplateDataset</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">import</span> <span class="nn">logging</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.country_template.constants</span> <span class="kn">import</span> <span class="n">COUNTRY_DIR</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.country_template.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">COUNTRY_DIR</span>
 
 <span class="n">DATASETS</span> <span class="o">=</span> <span class="p">[</span><span class="n">CountryTemplateDataset</span><span class="p">]</span>  <span class="c1"># Important: must be instantiated</span>
 
 
-<span class="k">class</span> <span class="nc">CountryTaxBenefitSystem</span><span class="p">(</span><span class="n">TaxBenefitSystem</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CountryTaxBenefitSystem</span><span class="p">(</span><span class="n">TaxBenefitSystem</span><span class="p">):</span>
     <span class="n">entities</span> <span class="o">=</span> <span class="n">entities</span><span class="o">.</span><span class="n">entities</span>
-    <span class="n">variables_dir</span> <span class="o">=</span> <span class="n">COUNTRY_DIR</span> <span class="o">/</span> <span class="s2">&quot;variables&quot;</span>
-    <span class="n">parameters_dir</span> <span class="o">=</span> <span class="n">COUNTRY_DIR</span> <span class="o">/</span> <span class="s2">&quot;parameters&quot;</span>
+    <span class="n">variables_dir</span> <span class="o">=</span> <span class="n">COUNTRY_DIR</span> <span class="o">/</span> <span class="s2">"variables"</span>
+    <span class="n">parameters_dir</span> <span class="o">=</span> <span class="n">COUNTRY_DIR</span> <span class="o">/</span> <span class="s2">"parameters"</span>
     <span class="n">auto_carry_over_input_variables</span> <span class="o">=</span> <span class="kc">False</span>
 
 
-<span class="k">class</span> <span class="nc">Simulation</span><span class="p">(</span><span class="n">CoreSimulation</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Simulation</span><span class="p">(</span><span class="n">CoreSimulation</span><span class="p">):</span>
     <span class="n">default_tax_benefit_system</span> <span class="o">=</span> <span class="n">CountryTaxBenefitSystem</span>
 
 
-<span class="k">class</span> <span class="nc">Microsimulation</span><span class="p">(</span><span class="n">CoreMicrosimulation</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Microsimulation</span><span class="p">(</span><span class="n">CoreMicrosimulation</span><span class="p">):</span>
     <span class="n">default_tax_benefit_system</span> <span class="o">=</span> <span class="n">CountryTaxBenefitSystem</span>
     <span class="n">default_dataset</span> <span class="o">=</span> <span class="n">CountryTemplateDataset</span>
 </pre></div>

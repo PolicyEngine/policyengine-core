@@ -4,10 +4,10 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
-    <!-- Generated with Sphinx 5.0.0 and Furo 2022.12.07 -->
+    <!-- Generated with Sphinx 5.0.0 and Furo 2023.03.27 -->
         <title>policyengine_core.parameters.at_instant_like - PolicyEngine Core</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
@@ -235,27 +235,56 @@
         </div>
         <article role="main">
           <h1>Source code for policyengine_core.parameters.at_instant_like</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">abc</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">abc</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
 
-<span class="kn">from</span> <span class="nn">policyengine_core</span> <span class="kn">import</span> <span class="n">periods</span>
-<span class="kn">from</span> <span class="nn">policyengine_core.periods</span> <span class="kn">import</span> <span class="n">Instant</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core</span><span class="w"> </span><span class="kn">import</span> <span class="n">periods</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.periods</span><span class="w"> </span><span class="kn">import</span> <span class="n">Instant</span>
+
+<span class="c1"># Cache for instant -&gt; string conversions used in get_at_instant</span>
+<span class="n">_instant_str_cache</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
 
 
-<div class="viewcode-block" id="AtInstantLike"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.at_instant_like.AtInstantLike">[docs]</a><span class="k">class</span> <span class="nc">AtInstantLike</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="AtInstantLike"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.at_instant_like.AtInstantLike">[docs]</a><span class="k">class</span><span class="w"> </span><span class="nc">AtInstantLike</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Base class for various types of parameters implementing the at instant protocol.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
-    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instant</span><span class="p">:</span> <span class="n">Instant</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instant</span><span class="p">:</span> <span class="n">Instant</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_at_instant</span><span class="p">(</span><span class="n">instant</span><span class="p">)</span>
 
-<div class="viewcode-block" id="AtInstantLike.get_at_instant"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.at_instant_like.AtInstantLike.get_at_instant">[docs]</a>    <span class="k">def</span> <span class="nf">get_at_instant</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instant</span><span class="p">:</span> <span class="n">Instant</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-        <span class="n">instant</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">periods</span><span class="o">.</span><span class="n">instant</span><span class="p">(</span><span class="n">instant</span><span class="p">))</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_at_instant</span><span class="p">(</span><span class="n">instant</span><span class="p">)</span></div>
+<div class="viewcode-block" id="AtInstantLike.get_at_instant"><a class="viewcode-back" href="../../../python_api/parameters.html#policyengine_core.parameters.at_instant_like.AtInstantLike.get_at_instant">[docs]</a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_at_instant</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instant</span><span class="p">:</span> <span class="n">Instant</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="c1"># Fast path for Instant objects - use their __str__ which is cached</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">instant</span><span class="p">,</span> <span class="n">Instant</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_at_instant</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">instant</span><span class="p">))</span>
+
+        <span class="c1"># For other types, use a cache to avoid repeated conversions</span>
+        <span class="c1"># Create a hashable cache key</span>
+        <span class="n">cache_key</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">instant</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">cache_key</span> <span class="o">=</span> <span class="n">instant</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">instant</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="n">cache_key</span> <span class="o">=</span> <span class="n">instant</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">instant</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">cache_key</span> <span class="o">=</span> <span class="p">(</span><span class="n">instant</span><span class="p">,)</span>
+        <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">instant</span><span class="p">,</span> <span class="s2">"year"</span><span class="p">):</span>  <span class="c1"># datetime.date</span>
+            <span class="n">cache_key</span> <span class="o">=</span> <span class="p">(</span><span class="n">instant</span><span class="o">.</span><span class="n">year</span><span class="p">,</span> <span class="n">instant</span><span class="o">.</span><span class="n">month</span><span class="p">,</span> <span class="n">instant</span><span class="o">.</span><span class="n">day</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">cache_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cached_str</span> <span class="o">=</span> <span class="n">_instant_str_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cached_str</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_at_instant</span><span class="p">(</span><span class="n">cached_str</span><span class="p">)</span>
+            <span class="n">instant_obj</span> <span class="o">=</span> <span class="n">periods</span><span class="o">.</span><span class="n">instant</span><span class="p">(</span><span class="n">instant</span><span class="p">)</span>
+            <span class="n">instant_str</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">instant_obj</span><span class="p">)</span>
+            <span class="n">_instant_str_cache</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">instant_str</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_at_instant</span><span class="p">(</span><span class="n">instant_str</span><span class="p">)</span>
+
+        <span class="c1"># Fallback for other types (Period, list, etc.)</span>
+        <span class="n">instant_str</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">periods</span><span class="o">.</span><span class="n">instant</span><span class="p">(</span><span class="n">instant</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_at_instant</span><span class="p">(</span><span class="n">instant_str</span><span class="p">)</span></div>
 
     <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">def</span> <span class="nf">_get_at_instant</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instant</span><span class="p">):</span> <span class="o">...</span></div>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_at_instant</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instant</span><span class="p">):</span> <span class="o">...</span></div>
 </pre></div>
         </article>
       </div>

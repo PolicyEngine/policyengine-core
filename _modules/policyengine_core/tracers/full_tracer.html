@@ -4,10 +4,10 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
-    <!-- Generated with Sphinx 5.0.0 and Furo 2022.12.07 -->
+    <!-- Generated with Sphinx 5.0.0 and Furo 2023.03.27 -->
         <title>policyengine_core.tracers.full_tracer - PolicyEngine Core</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
@@ -235,49 +235,47 @@
         </div>
         <article role="main">
           <h1>Source code for policyengine_core.tracers.full_tracer</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">import</span> <span class="nn">time</span>
-<span class="kn">import</span> <span class="nn">typing</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Iterator</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">typing</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Iterator</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
 
-<span class="kn">from</span> <span class="nn">..</span> <span class="kn">import</span> <span class="n">tracers</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..</span><span class="w"> </span><span class="kn">import</span> <span class="n">tracers</span>
 
 <span class="k">if</span> <span class="n">typing</span><span class="o">.</span><span class="n">TYPE_CHECKING</span><span class="p">:</span>
-    <span class="kn">from</span> <span class="nn">numpy.typing</span> <span class="kn">import</span> <span class="n">ArrayLike</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">numpy.typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ArrayLike</span>
 
-    <span class="kn">from</span> <span class="nn">policyengine_core.periods</span> <span class="kn">import</span> <span class="n">Period</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">policyengine_core.periods</span><span class="w"> </span><span class="kn">import</span> <span class="n">Period</span>
 
     <span class="n">Stack</span> <span class="o">=</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Period</span><span class="p">]]]</span>
 
 
-<div class="viewcode-block" id="FullTracer"><a class="viewcode-back" href="../../../python_api/tracers.html#policyengine_core.tracers.full_tracer.FullTracer">[docs]</a><span class="k">class</span> <span class="nc">FullTracer</span><span class="p">:</span>
+<div class="viewcode-block" id="FullTracer"><a class="viewcode-back" href="../../../python_api/tracers.html#policyengine_core.tracers.full_tracer.FullTracer">[docs]</a><span class="k">class</span><span class="w"> </span><span class="nc">FullTracer</span><span class="p">:</span>
     <span class="n">_simple_tracer</span><span class="p">:</span> <span class="n">tracers</span><span class="o">.</span><span class="n">SimpleTracer</span>
     <span class="n">_trees</span><span class="p">:</span> <span class="nb">list</span>
     <span class="n">_current_node</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">tracers</span><span class="o">.</span><span class="n">TraceNode</span><span class="p">]</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_simple_tracer</span> <span class="o">=</span> <span class="n">tracers</span><span class="o">.</span><span class="n">SimpleTracer</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_trees</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_current_node</span> <span class="o">=</span> <span class="kc">None</span>
 
-    <span class="k">def</span> <span class="nf">record_calculation_start</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">record_calculation_start</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">period</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-        <span class="n">branch_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;default&quot;</span><span class="p">,</span>
+        <span class="n">branch_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"default"</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_simple_tracer</span><span class="o">.</span><span class="n">record_calculation_start</span><span class="p">(</span>
-            <span class="n">variable</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">branch_name</span>
-        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_simple_tracer</span><span class="o">.</span><span class="n">record_calculation_start</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">branch_name</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_enter_calculation</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">branch_name</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_record_start_time</span><span class="p">()</span>
 
-    <span class="k">def</span> <span class="nf">_enter_calculation</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_enter_calculation</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">period</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-        <span class="n">branch_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;default&quot;</span><span class="p">,</span>
+        <span class="n">branch_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"default"</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">new_node</span> <span class="o">=</span> <span class="n">tracers</span><span class="o">.</span><span class="n">TraceNode</span><span class="p">(</span>
             <span class="n">name</span><span class="o">=</span><span class="n">variable</span><span class="p">,</span>
@@ -294,7 +292,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_current_node</span> <span class="o">=</span> <span class="n">new_node</span>
 
-    <span class="k">def</span> <span class="nf">record_parameter_access</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">record_parameter_access</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">parameter</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">period</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -311,7 +309,7 @@
                 <span class="p">),</span>
             <span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">_record_start_time</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_record_start_time</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">time_in_s</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -321,16 +319,16 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_node</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_current_node</span><span class="o">.</span><span class="n">start</span> <span class="o">=</span> <span class="n">time_in_s</span>
 
-    <span class="k">def</span> <span class="nf">record_calculation_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">record_calculation_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_node</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_current_node</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
 
-    <span class="k">def</span> <span class="nf">record_calculation_end</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">record_calculation_end</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_simple_tracer</span><span class="o">.</span><span class="n">record_calculation_end</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_record_end_time</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_exit_calculation</span><span class="p">()</span>
 
-    <span class="k">def</span> <span class="nf">_record_end_time</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_record_end_time</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">time_in_s</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -340,54 +338,52 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_node</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_current_node</span><span class="o">.</span><span class="n">end</span> <span class="o">=</span> <span class="n">time_in_s</span>
 
-    <span class="k">def</span> <span class="nf">_exit_calculation</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_exit_calculation</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_node</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_current_node</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_node</span><span class="o">.</span><span class="n">parent</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">stack</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Stack</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stack</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Stack</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_simple_tracer</span><span class="o">.</span><span class="n">stack</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">trees</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">tracers</span><span class="o">.</span><span class="n">TraceNode</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">trees</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">tracers</span><span class="o">.</span><span class="n">TraceNode</span><span class="p">]:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trees</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">computation_log</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tracers</span><span class="o">.</span><span class="n">ComputationLog</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">computation_log</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tracers</span><span class="o">.</span><span class="n">ComputationLog</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">tracers</span><span class="o">.</span><span class="n">ComputationLog</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">performance_log</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tracers</span><span class="o">.</span><span class="n">PerformanceLog</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">performance_log</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tracers</span><span class="o">.</span><span class="n">PerformanceLog</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">tracers</span><span class="o">.</span><span class="n">PerformanceLog</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">variable_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tracers</span><span class="o">.</span><span class="n">VariableGraph</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">variable_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tracers</span><span class="o">.</span><span class="n">VariableGraph</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">tracers</span><span class="o">.</span><span class="n">VariableGraph</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">flat_trace</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tracers</span><span class="o">.</span><span class="n">FlatTrace</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">flat_trace</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tracers</span><span class="o">.</span><span class="n">FlatTrace</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">tracers</span><span class="o">.</span><span class="n">FlatTrace</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">_get_time_in_sec</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_time_in_sec</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">time</span><span class="o">.</span><span class="n">time_ns</span><span class="p">()</span> <span class="o">/</span> <span class="p">(</span><span class="mi">10</span><span class="o">**</span><span class="mi">9</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">print_computation_log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">aggregate</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">max_depth</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">print_computation_log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">aggregate</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">max_depth</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">computation_log</span><span class="o">.</span><span class="n">print_log</span><span class="p">(</span><span class="n">aggregate</span><span class="p">,</span> <span class="n">max_depth</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">generate_performance_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dir_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_performance_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dir_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">performance_log</span><span class="o">.</span><span class="n">generate_graph</span><span class="p">(</span><span class="n">dir_path</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">generate_performance_tables</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dir_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_performance_tables</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dir_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">performance_log</span><span class="o">.</span><span class="n">generate_performance_tables</span><span class="p">(</span><span class="n">dir_path</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">generate_variable_graph</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">output_vars</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_variable_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">output_vars</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">variable_graph</span><span class="o">.</span><span class="n">visualize</span><span class="p">(</span>
             <span class="n">name</span><span class="p">,</span> <span class="n">aggregate</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">max_depth</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">output_vars</span><span class="o">=</span><span class="n">output_vars</span>
         <span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">_get_nb_requests</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tree</span><span class="p">:</span> <span class="n">tracers</span><span class="o">.</span><span class="n">TraceNode</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_nb_requests</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tree</span><span class="p">:</span> <span class="n">tracers</span><span class="o">.</span><span class="n">TraceNode</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
         <span class="n">tree_call</span> <span class="o">=</span> <span class="n">tree</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">variable</span>
         <span class="n">children_calls</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_get_nb_requests</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="n">variable</span><span class="p">)</span> <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">tree</span><span class="o">.</span><span class="n">children</span>
@@ -395,19 +391,17 @@
 
         <span class="k">return</span> <span class="n">tree_call</span> <span class="o">+</span> <span class="n">children_calls</span>
 
-    <span class="k">def</span> <span class="nf">get_nb_requests</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_get_nb_requests</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="n">variable</span><span class="p">)</span> <span class="k">for</span> <span class="n">tree</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">trees</span>
-        <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_nb_requests</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_nb_requests</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="n">variable</span><span class="p">)</span> <span class="k">for</span> <span class="n">tree</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">trees</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">get_flat_trace</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_flat_trace</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">flat_trace</span><span class="o">.</span><span class="n">get_trace</span><span class="p">()</span>
 
-    <span class="k">def</span> <span class="nf">get_serialized_flat_trace</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_serialized_flat_trace</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">flat_trace</span><span class="o">.</span><span class="n">get_serialized_trace</span><span class="p">()</span>
 
-    <span class="k">def</span> <span class="nf">browse_trace</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">tracers</span><span class="o">.</span><span class="n">TraceNode</span><span class="p">]:</span>
-        <span class="k">def</span> <span class="nf">_browse_node</span><span class="p">(</span><span class="n">node</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">browse_trace</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">tracers</span><span class="o">.</span><span class="n">TraceNode</span><span class="p">]:</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">_browse_node</span><span class="p">(</span><span class="n">node</span><span class="p">):</span>
             <span class="k">yield</span> <span class="n">node</span>
 
             <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">children</span><span class="p">:</span>

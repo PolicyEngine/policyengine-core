@@ -1,7 +1,7 @@
 import hashlib
 import os
-import types
 from contextlib import nullcontext
+import types
 from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 
@@ -219,7 +219,19 @@ class _Frame:
     not a generator or a dict: one runs for every calculation.
     """
 
-    __slots__ = ("simulation", "start", "reads", "outer", "token", "registry")
+    __slots__ = (
+        "simulation",
+        "start",
+        "reads",
+        "outer",
+        "token",
+        "registry",
+        "changes",
+        "drop_epochs",
+        "untracked_changes",
+        "inputs_set",
+        "branch_identities",
+    )
 
     def __init__(self, simulation: "Simulation"):
         self.simulation = simulation
@@ -227,7 +239,59 @@ class _Frame:
     def restart(self) -> None:
         """Begin again, as when the calculation runs again."""
         self.start = self.simulation._input_epoch
+        self.inputs_set = self.simulation._inputs_set
         self.reads = {}
+        self.changes = []
+        self.drop_epochs = {}
+        self.untracked_changes = False
+        self.branch_identities = {}
+
+    def note_branch(self, simulation: "Simulation") -> None:
+        """A name path must refer to just one simulation within an attempt.
+
+        A direct clone retains the branch's name and ancestors. Distinct
+        clones at that path can take turns making identical stores without
+        having reached the same state. Recreating one branch between attempts
+        is still comparable, since this map resets on each restart.
+        """
+        path = _branch_path(simulation)
+        previous = self.branch_identities.setdefault(path, simulation)
+        if previous is not simulation:
+            self.untracked_changes = True
+
+    def transition_signature(self, result: ArrayLike) -> Optional[tuple]:
+        """A complete, comparable branch transition, or no convergence proof.
+
+        Two identical transitions returning identical values reach a fixed
+        point for deterministic formulas. Only foreign branches qualify:
+        own-simulation changes still require the existing input-first rerun.
+        Every stale read's intervening drops must have been observed in this
+        context; a thread's unobserved writes cannot prove convergence.
+        """
+        # Include read-only clones too: the same logged mutation can target
+        # a different clone on each attempt after inspecting several clones.
+        for other in tuple(self.reads):
+            self.note_branch(other)
+        if (
+            self.untracked_changes
+            or not self.changes
+            or self.start != self.simulation._input_epoch
+            or self.inputs_set != self.simulation._inputs_set
+        ):
+            return None
+        for other, epoch in tuple(self.reads.items()):
+            changed = other._input_epoch - epoch
+            observed = self.drop_epochs.get(other, ())
+            if changed < 0 or sum(number > epoch for number in observed) != changed:
+                return None
+        value = _value_signature(result)
+        if value is None:
+            return None
+        return tuple(self.changes), value
+
+    def settle_reads(self) -> None:
+        """Keep dependencies, at their settled epochs, after a proven fixed point."""
+        self.reads = {other: other._input_epoch for other in self.reads}
 
     def is_stale(self) -> bool:
         """Whether what the frame calculates may come from a value since replaced."""
@@ -241,8 +305,7 @@ class _Frame:
 
     def __enter__(self) -> "_Frame":
         simulation = self.simulation
-        self.start = simulation._input_epoch
-        self.reads = {}
+        self.restart()
         self.outer = outer = _calculation_frames.get()
         self.token = _calculation_frames.set(outer + (self,))
         registry = simulation._open_frames
@@ -294,6 +357,7 @@ def _hand_to_caller(outer: tuple, frame: _Frame) -> None:
         _hand_to_waiting_ancestors(simulation, frame.start, reads)
         return
     caller = outer[-1]
+    caller.untracked_changes |= frame.untracked_changes
     caller_simulation = caller.simulation
     caller_reads = caller.reads
     for other, epoch in reads:
@@ -319,12 +383,93 @@ def _hand_to_waiting_ancestors(
     ancestor = getattr(simulation, "parent_branch", None)
     while ancestor is not None:
         for open_frame in tuple(getattr(ancestor, "_open_frames", None) or ()):
+            open_frame.untracked_changes = True
             open_reads = open_frame.reads
             for other, epoch in reads:
                 if other is not ancestor:
                     open_reads.setdefault(other, epoch)
             open_reads.setdefault(simulation, start)
         ancestor = getattr(ancestor, "parent_branch", None)
+
+
+def _value_signature(value: ArrayLike) -> Optional[tuple]:
+    """An immutable exact value comparison, including float signs and enum type.
+
+    Object and string arrays have no supported convergence comparison. Bytes
+    avoid both hash collisions and later mutation of a retained array view.
+    """
+    if np.ma.isMaskedArray(value):
+        return None
+    enum = value.possible_values if isinstance(value, EnumArray) else None
+    array = np.asarray(value)
+    if array.dtype.kind not in "biufcmM":
+        return None
+    return array.dtype.str, array.shape, enum, array.tobytes()
+
+
+def _branch_path(simulation: "Simulation") -> tuple:
+    """Identify recreated ``get_branch`` branches, keeping direct clones distinct.
+
+    A direct clone retains its source's name and parent but has independent
+    inputs. It anchors a new path by identity, even if later registered under
+    the source's name; only branches made by ``get_branch`` compare by name.
+    """
+    names = []
+    while getattr(simulation, "parent_branch", None) is not None and getattr(
+        simulation, "_fixed_point_branch", False
+    ):
+        names.append(simulation.branch_name)
+        simulation = simulation.parent_branch
+    return simulation, tuple(reversed(names))
+
+
+def _note_input_change(
+    simulation: "Simulation",
+    operation: str,
+    variable: str,
+    period: Optional[Period],
+    branch_name: str,
+    value: Optional[ArrayLike] = None,
+) -> None:
+    """Record actual stores and deletes in each frame observing this context."""
+    frames = _calculation_frames.get()
+    if not frames:
+        _taint_waiting_frames(simulation)
+        return
+    signature = _value_signature(value) if operation == "set" else None
+    if operation == "set" and signature is None:
+        for frame in frames:
+            frame.untracked_changes = True
+        return
+    change = (
+        operation,
+        _branch_path(simulation),
+        branch_name,
+        variable,
+        period,
+        signature,
+    )
+    for frame in frames:
+        frame.note_branch(simulation)
+        if (
+            simulation is frame.simulation
+            or getattr(simulation, "parent_branch", None) is None
+        ):
+            frame.untracked_changes = True
+        frame.changes.append(change)
+
+
+def _taint_waiting_frames(simulation: "Simulation") -> None:
+    """An unobserved mutation cannot certify a waiting calculation's fixed point.
+
+    A thread without a formula context can write before the first read, so
+    counting only drops since that read would miss its mutation entirely.
+    The simulation and its ancestors may have frames waiting on that thread.
+    """
+    while simulation is not None:
+        for frame in tuple(getattr(simulation, "_open_frames", None) or ()):
+            frame.untracked_changes = True
+        simulation = getattr(simulation, "parent_branch", None)
 
 
 class Simulation:
@@ -611,6 +756,8 @@ class Simulation:
         for population in self.populations.values():
             for holder in population._holders.values():
                 holder._mark_derived_except(user_inputs.get(holder.variable.name, ()))
+        for frame in _calculation_frames.get():
+            frame.untracked_changes = True
         self._drop_computed()
         for branch in self.branches.values():
             branch._invalidate_all_caches()
@@ -977,9 +1124,37 @@ class Simulation:
             frame.__enter__()
         try:
             result = self._calculate(variable_name, period)
+            previous_transition = None
             for _ in range(_RERUNS_AFTER_INPUT_CHANGE if outermost else 0):
                 if not frame.is_stale():
                     break
+                transition = frame.transition_signature(result)
+                if transition is not None and transition == previous_transition:
+                    frame.settle_reads()
+                    # This run repeated the complete input transition and its
+                    # result. Preserve holder input/blacklist rules and the
+                    # existing fast-cache guard when keeping the fixed point.
+                    keep_state = self._calculation_start()
+                    result = self._cache_result(
+                        self.get_holder(variable_name),
+                        result,
+                        period,
+                        keep_state,
+                    )
+                    if self._may_keep(keep_state):
+                        self._fast_cache[(variable_name, period)] = result
+                        if self.check_macro_cache(variable_name, str(period)):
+                            macro = SimulationMacroCache(self.tax_benefit_system)
+                            macro.set_cache_path(
+                                self.dataset.file_path.parent,
+                                self.dataset.name,
+                                variable_name,
+                                str(period),
+                                self.branch_name,
+                            )
+                            macro.set_cache_value(macro.get_cache_path(), result)
+                    break
+                previous_transition = transition
                 # An input set while it ran (by a formula, say), here or in a
                 # simulation it read from, dropped values, so the result was
                 # not kept (``_cache_result``). Calculate it again from the new
@@ -1546,9 +1721,15 @@ class Simulation:
             with frame if frame is not None else nullcontext():
                 input_state = self._calculation_start()
                 result = total()
+                previous_transition = None
                 for _ in range(_RERUNS_AFTER_INPUT_CHANGE if outermost else 0):
                     if not frame.is_stale():
                         break
+                    transition = frame.transition_signature(result)
+                    if transition is not None and transition == previous_transition:
+                        frame.settle_reads()
+                        break
+                    previous_transition = transition
                     # An input changed while summing: earlier terms may be
                     # obsolete (see ``calculate``). Sum again.
                     frame.restart()
@@ -1929,6 +2110,8 @@ class Simulation:
         """
         # Recalculate rather than read macro-cache files written before.
         self.macro_cache_read = False
+        for frame in _calculation_frames.get():
+            frame.untracked_changes = True
         return self._drop_computed()
 
     def get_known_periods(self, variable: str) -> List[Period]:
@@ -2106,6 +2289,11 @@ class Simulation:
         # from it: none of them keeps its result (``_Frame.is_stale``), and
         # the outermost one in each simulation runs again (``calculate``).
         self._input_epoch = self._input_epoch + 1
+        frames = _calculation_frames.get()
+        if not frames:
+            _taint_waiting_frames(self)
+        for frame in frames:
+            frame.drop_epochs.setdefault(self, set()).add(self._input_epoch)
         if self._calculations_in_flight:
             # A formula running here may still hold values calculated from
             # what the records describe: keep the records.
@@ -2281,6 +2469,10 @@ class Simulation:
         # Calculations running in this simulation are not running in the copy.
         new._calculations_in_flight = 0
         new._open_frames = set()
+        # A direct clone can retain its source's branch name and parent while
+        # taking different inputs. ``get_branch`` marks the returned branch
+        # after assigning its ancestry, for comparable recreated branches.
+        new._fixed_point_branch = False
 
         # A branch shares its parent's baseline: formulas that run in a
         # branch read the parent's baseline values through it. That holds for
@@ -2374,6 +2566,7 @@ class Simulation:
         self.branches[name] = branch
         branch.branch_name = name
         branch.parent_branch = self
+        branch._fixed_point_branch = True
         if self.trace:
             branch.trace = True
             branch.tracer = self.tracer

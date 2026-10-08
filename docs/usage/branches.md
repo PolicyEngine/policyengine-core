@@ -65,7 +65,8 @@ simulation: each calculation notes, for every other simulation it got a value
 from (directly or through the calculations it called), that simulation's count
 of input changes when the value's calculation began, and keeps its own result
 only if none has changed since. (A calculation nested in another in the same
-simulation shares that one's record, which can only make it keep less.) So a
+simulation shares that one's record, which can only make it keep less and can
+cause extra inner recalculations when formulas call between simulations.) So a
 parent formula calculating in a branch whose formula calls back into the parent
 and then changes the branch's input does not keep what it got, nor does a
 formula that read a branch and then calculated there something that changed the
@@ -82,7 +83,32 @@ nothing that has changed since, and keeps that result, as a simulation given
 the new inputs first would. After ten reruns it stops: a formula that keeps
 changing inputs returns its last result without keeping it. The budget is per
 simulation, so calculations nested across several such simulations can rerun
-more. An input set again with the value the branch already reads for that very
+more.
+
+An outermost `calculate` or `calculate_add` can also settle a repeated input
+transition in branches other than the simulation doing the calculation. Two
+consecutive stale attempts must make exactly the same ordered input stores and
+deletions and return exactly the same numeric result. Each store is compared
+after conversion to the variable's stored dtype; comparisons include dtype,
+shape, enum type and floating-point sign bits. Mutations identify the variable,
+period and branch by its path of names from the same root simulation, so a
+branch recreated by `get_branch` under the same name on each attempt can settle
+too. Direct clones retain separate identities even when their names match. Using
+multiple distinct branches at the same path within one attempt prevents this
+shortcut.
+
+Every intervening drop in a simulation whose values were read must have been
+observed in the calculation's context. A read from a thread without that
+context, an unexplained drop, an explicit cache reset for a policy change, an
+object, string or masked stored input or result, or an input change in the simulation
+doing the calculation prevents this shortcut. After a fixed point is proved,
+the calculation retains its dependencies at their settled input-change counts
+and keeps the result using the usual rules that preserve inputs and respect
+cache restrictions. A persistent branch that deletes an input, reads another
+value and sets the deleted input to the same value on each attempt can
+therefore settle without exhausting the retry budget.
+
+An input set again with the value the branch already reads for that very
 period, as an input (not through a `set_input` helper that spreads it over
 other periods, and not `-0.0` for `0.0`), changes nothing, so it drops nothing
 and is no input change. An input stored for the very period being calculated
@@ -151,12 +177,17 @@ depend on the input is calculated again) but not less, within these limits:
   does), does not take in that simulation's history, nor note what it read
   there. Its own branches are covered: their history, and what was read in
   them, go to every ancestor with a calculation running.
+- **Concurrent use of one simulation is not supported.** A formula can wait for
+  a calculation in a branch from a worker thread, but simultaneous calculations
+  or mutations in the same simulation or branch are not covered by these
+  guarantees.
 - **A branch a formula keeps between calls is a snapshot.** It holds what its
   parent held when it was created, so inputs set on the parent afterwards do
   not reach what the formula reads from it.
 - **Inputs on the root simulation drop nothing.** `set_input` on a simulation
-  that is not a branch keeps its earlier behaviour: values it already
-  calculated stay.
+  that is not a branch keeps values it already calculated. A formula's input
+  for its own period is still returned as described above, and results
+  calculated while an input is being set do not enter the fast cache.
 - **Existing child branches keep their values.** An input set on a branch does
   not reach branches already created from it.
 - **Values kept elsewhere stay.** A value one simulation calculated from
@@ -166,15 +197,26 @@ depend on the input is calculated again) but not less, within these limits:
   such a kept value as it is. Variables in `cache_blacklist` or
   `variables_to_drop` are still kept in the simulation's fast cache, as
   before, so this applies to them too.
-- **Formulas that create a branch each run.** A formula that creates a branch,
-  reads it, and then changes its input runs again until the budget is spent
-  (each run reads a new branch from before the change), then returns its last
-  result without keeping it.
+- **Branch resets that do not settle.** A formula that reads a branch and then
+  sets an input the branch does not hold can trigger a rerun, whether the branch
+  is new or the formula deleted that input. If its transition and result do not
+  settle under the rules above, it uses the full retry budget and returns its
+  last result without keeping it. Each later `calculate` or `calculate_add`
+  pays those reruns again; the result is also absent from dumps and the macro
+  cache.
 
-With disk storage (`MemoryConfig`), a value dropped from a branch only leaves
-its storage's index: the file stays until the storage directory is removed,
-since a clone of the storage may still read it, and storing the key again
-writes a file of the branch's own (see `OnDiskStorage._path_to_write`).
+With disk storage (`MemoryConfig`), dropping a value removes it from the
+storage's index and leaves its file on disk, since a clone may still read it.
+Cloned and copied storages in the same process keep the storage that owns
+cleanup, and the containing temporary directory, alive. Unpreserved storage
+directories are removed when their cleanup owners are collected; a simulation's
+temporary directory is removed when nothing in that process keeps it alive, or
+at interpreter exit, except explicitly preserved storage subdirectories and
+the folders leading to them. Readers in another process do not extend that
+lifetime.
+Storing a dropped key again reuses a file only if that storage wrote it and has
+not shared it since; cloning, copying or forking can require a new file instead
+(see `OnDiskStorage._path_to_write`).
 
 A simulation dump (`dump_simulation`) holds the values the simulation reads
 (on a branch, its own and those it inherited) and records which were
@@ -194,8 +236,12 @@ period but not by inputs (a file for its name may have been written by this
 branch before the input, or by another simulation's branch of the same name),
 and a branch that read one drops, on any input that changes what it reads,
 everything calculated from the first read on; and
-`requires_computation_after` is satisfied by a prerequisite requested before a
-drop removed its values.
+`requires_computation_after` is satisfied by a prerequisite successfully
+requested earlier, even if its values were deleted, dropped, or not kept.
+
+A formula that reads a branch and then changes an input may return the value
+from a rerun with the new input, as if the input had been set first. Use two
+branches for comparisons that need both the earlier and the later values.
 
 ## Dropping calculated values
 

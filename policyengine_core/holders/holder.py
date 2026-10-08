@@ -107,6 +107,12 @@ class Holder:
         If ``period`` is not ``None``, only remove all values for any period included in period (e.g. if period is "2017", values for "2017-01", "2017-07", etc. would be removed)
         """
 
+        if self.simulation is not None:
+            from policyengine_core.simulations.simulation import _note_input_change
+
+            _note_input_change(
+                self.simulation, "delete", self.variable.name, period, branch_name
+            )
         self._memory_storage.delete(period, branch_name)
         if self._disk_storage:
             self._disk_storage.delete(period, branch_name)
@@ -508,6 +514,17 @@ class Holder:
             sequence_number=sequence_number,
         )
         self._record_store(period, sequence_number)
+        if not derived and simulation is not None:
+            from policyengine_core.simulations.simulation import _note_input_change
+
+            stored_period = (
+                periods.period(periods.ETERNITY)
+                if self.variable.definition_period == periods.ETERNITY
+                else periods.period(period)
+            )
+            _note_input_change(
+                simulation, "set", self.variable.name, stored_period, branch_name, value
+            )
         if user_input_contexts:
             if not hasattr(simulation, "_user_input_keys"):
                 simulation._user_input_keys = set()

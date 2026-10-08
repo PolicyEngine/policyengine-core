@@ -2,7 +2,7 @@ import hashlib
 import os
 import types
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
 import numpy as np
@@ -64,6 +64,119 @@ class _BranchClone:
 # ``clone`` through them.
 _branch_clone: ContextVar[Optional[_BranchClone]] = ContextVar(
     "_branch_clone", default=None
+)
+
+
+class _DeeperPeriodFirst(BaseException):
+    """A recursion over periods reached ``max_spiral_loops`` and can end.
+
+    ``_check_for_cycle`` raises this, instead of cutting the recursion with a
+    ``SpiralError``, when the chain of uncached periods is anchored: a
+    stored input, or a period with no formula, lies further along it (see
+    ``Simulation._can_finish_deeper_period_first``). The outermost
+    ``calculate`` catches it once every frame above has unwound, calculates
+    ``variable`` for ``period`` on ``simulation`` first, as an outermost
+    calculation with an empty stack, and then starts its own request again,
+    which now reaches that value.
+
+    Where the recursion is cut therefore no longer depends on which periods
+    happen to be cached: an anchored chain is evaluated all the way down,
+    however long it is, in at most ``max_spiral_loops`` frames at a time.
+
+    It derives from ``BaseException`` so that a formula that catches
+    ``Exception`` around a calculation does not swallow it. One that catches
+    everything (a bare ``except``) can, so each request is recorded as
+    outstanding when raised (``_SpiralDeferrals.outstanding``), and a formula
+    that returns while one is outstanding has its value dropped and the
+    request raised again (see ``Simulation._calculate``).
+    """
+
+    def __init__(
+        self,
+        simulation: "Simulation",
+        variable: str,
+        period: Period,
+        callers: frozenset = frozenset(),
+    ):
+        super().__init__(variable, period)
+        self.simulation = simulation
+        self.variable = variable
+        self.period = period
+        # The names of the variables whose calculation needed this one: the
+        # callers of the deeper period being calculated first when it was
+        # raised, if any, and the frames on the stack. Calculated first with
+        # an empty stack, the period still has them as callers, as
+        # ``requires_computation_after`` requires.
+        self.callers = callers
+
+    @property
+    def key(self) -> tuple:
+        return (id(self.simulation), self.variable, self.period)
+
+    def calculate(self) -> ArrayLike:
+        return self.simulation._calculate_traced(self.variable, self.period)
+
+
+@dataclass
+class _SpiralDeferrals:
+    """The deeper periods one outermost calculation finishes first.
+
+    Once a deferred key starts evaluation (``started``), recursion cannot
+    defer it again. Its pending calculation can still be retried after its
+    deeper dependencies finish. Deferrals run only on the simulation the
+    calculation was requested on or its registered branches (``root``).
+    For a fixed branch graph and finite reachable calculation keys, every
+    round schedules a new key, finishes pending work, or returns the request.
+    No count of rounds cuts a long chain, since where such a count fell
+    would depend on earlier caching.
+    """
+
+    # The simulation the outermost calculation was requested on, or the
+    # simulation it is a branch of (see ``Simulation._branch_root``).
+    root: Any = None
+    # ``_DeeperPeriodFirst.key`` of each period whose calculation has
+    # started. A recursion reaching one again is cut there: it is under way
+    # (a cycle through the deferrals), or it was calculated with a recursion
+    # cut on the way, or it is finished, and then never reached.
+    started: set = field(default_factory=set)
+    # Of those, the ones whose calculation has ended.
+    done: set = field(default_factory=set)
+    # The value of each period calculated first without a recursion cut on
+    # the way, by simulation: ``(simulation, {(variable, period): value})``
+    # under ``id(simulation)``. ``_calculate`` reads it as a stored value,
+    # so starting again reaches it however the holder stores values
+    # (``_do_not_store``, ``opt_out_cache``) and whether or not the
+    # calculation is traced. It goes when the calculation ends.
+    finished: dict = field(default_factory=dict)
+    # How many recursions have been cut so far.
+    cuts: int = 0
+    # Requests raised and not yet back in the outermost ``calculate``: a
+    # formula caught them, or they are on their way up.
+    outstanding: list = field(default_factory=list)
+    # The callers of the deeper period being calculated first, if any (see
+    # ``_DeeperPeriodFirst.callers``).
+    callers: frozenset = frozenset()
+    # Tracers whose stack was active when a recursion was cut and has not
+    # emptied since: until it does, what is cached may depend on the cut.
+    cut_tracers: list = field(default_factory=list)
+
+    def finish(self, deferral: _DeeperPeriodFirst, value: ArrayLike) -> None:
+        """Record ``value``, calculated for ``deferral`` with no cut."""
+        simulation = deferral.simulation
+        entry = self.finished.get(id(simulation))
+        if entry is None:
+            entry = self.finished[id(simulation)] = (simulation, {})
+        entry[1][(deferral.variable, deferral.period)] = value
+
+    def finished_value(
+        self, simulation: "Simulation", variable: str, period: Period
+    ) -> Optional[ArrayLike]:
+        entry = self.finished.get(id(simulation))
+        return None if entry is None else entry[1].get((variable, period))
+
+
+_spiral_deferrals: ContextVar[Optional[_SpiralDeferrals]] = ContextVar(
+    "_spiral_deferrals", default=None
 )
 
 
@@ -296,6 +409,7 @@ class Simulation:
         self.is_over_dataset = dataset is not None
 
         self.invalidated_caches = set()
+        self._spiral_invalidated_caches = set()
         self._fast_cache: dict = {}
         # ``set_input`` records each (variable_name, branch_name, period) it
         # populates so ``_invalidate_all_caches`` can tell user-provided
@@ -443,6 +557,7 @@ class Simulation:
         """
         self._fast_cache = {}
         self.invalidated_caches = set()
+        self._spiral_invalidated_caches = set()
         # Snapshot user-provided inputs before wiping so they can be
         # replayed into the fresh storage. Use the storage API instead of
         # hand-building keys, since ETERNITY variables canonicalize every
@@ -852,7 +967,104 @@ class Simulation:
                 if _cached is not None:
                     return _cached
 
+        if getattr(self.tracer, "stack", None) or _spiral_deferrals.get() is not None:
+            # Inside another calculation: a recursion that reaches
+            # ``max_spiral_loops`` unwinds to the outermost one.
+            return self._calculate_traced(variable_name, period, map_to, decode_enums)
+
+        state = _SpiralDeferrals(root=self._branch_root())
+        token = _spiral_deferrals.set(state)
+        try:
+            # Deeper periods to calculate before the request, deepest last.
+            pending = []
+            while True:
+                deferral = pending[-1] if pending else None
+                if deferral is not None:
+                    if deferral.key in state.done:
+                        # Requested twice before it started (see ``_defer``).
+                        pending.pop()
+                        continue
+                    state.started.add(deferral.key)
+                state.callers = frozenset() if deferral is None else deferral.callers
+                cuts = state.cuts
+                attempt_tracer = (
+                    self.tracer if deferral is None else deferral.simulation.tracer
+                )
+                attempt_index = (
+                    len(attempt_tracer.trees)
+                    if isinstance(attempt_tracer, FullTracer)
+                    else None
+                )
+                try:
+                    if deferral is None:
+                        result = self._calculate_traced(
+                            variable_name, period, map_to, decode_enums
+                        )
+                    else:
+                        result = deferral.calculate()
+                except _DeeperPeriodFirst as deeper:
+                    pending.extend(self._take_outstanding(state, deeper))
+                    continue
+                except Exception:
+                    # A formula caught a request to finish a deeper period
+                    # first and raised an error of its own instead: the error
+                    # comes from the request, so carry it out. If the error
+                    # does not, it comes back once that period is done.
+                    if not state.outstanding:
+                        raise
+                    pending.extend(self._take_outstanding(state))
+                    continue
+                if state.outstanding:
+                    # Caught on the way and never raised again, which
+                    # ``_calculate`` prevents for formulas: still carry it out.
+                    pending.extend(self._take_outstanding(state))
+                    continue
+                if deferral is None:
+                    # This root is the value actually returned to the
+                    # caller, ahead of cut results from abandoned retries.
+                    if (
+                        attempt_index is not None
+                        and len(attempt_tracer.trees) > attempt_index
+                    ):
+                        attempt_tracer.trees[attempt_index]._spiral_provisional = False
+                    return result
+                pending.pop()
+                state.done.add(deferral.key)
+                if state.cuts == cuts:
+                    state.finish(deferral, result)
+                # Otherwise a recursion was cut on the way, so the value
+                # depends on where. Starting again reaches this period again,
+                # and, started once already, it is cut there.
+        finally:
+            _spiral_deferrals.reset(token)
+
+    @staticmethod
+    def _take_outstanding(
+        state: _SpiralDeferrals, raised: Optional[_DeeperPeriodFirst] = None
+    ) -> List[_DeeperPeriodFirst]:
+        """The requests to finish a deeper period first that the outermost
+        ``calculate`` is to carry out: those raised since it last took them,
+        in the order raised, whether they came back up or a formula caught
+        them, and ``raised``, the one that came back."""
+        taken = list(state.outstanding)
+        state.outstanding.clear()
+        if raised is not None and not any(raised is other for other in taken):
+            taken.append(raised)
+        for deferral in taken:
+            # Keep no frame of the abandoned attempt alive while it waits.
+            deferral.__traceback__ = deferral.__context__ = None
+        return taken
+
+    def _calculate_traced(
+        self,
+        variable_name: str,
+        period: Period,
+        map_to: str = None,
+        decode_enums: bool = False,
+    ) -> ArrayLike:
         self.tracer.record_calculation_start(variable_name, period, self.branch_name)
+        state = _spiral_deferrals.get()
+        cuts = 0 if state is None else state.cuts
 
         # No per-variable RNG seeding: formulas may not use randomness at all
         # (enforced statically at variable registration by
@@ -863,6 +1075,12 @@ class Simulation:
             result = self._calculate(variable_name, period)
             if isinstance(result, EnumArray) and decode_enums:
                 result = result.decode_to_str()
+            if isinstance(self.tracer, FullTracer) and state is not None:
+                node = self.tracer._current_node
+                if node is not None:
+                    node._spiral_provisional = state.cuts != cuts or bool(
+                        state.cut_tracers
+                    )
             self.tracer.record_calculation_result(result)
             if map_to is not None:
                 source_entity = self.tax_benefit_system.get_variable(
@@ -872,6 +1090,7 @@ class Simulation:
             return result
         finally:
             self.tracer.record_calculation_end()
+            self._leave_frame()
             self.purge_cache_of_invalid_values()
 
     def map_result(
@@ -1006,6 +1225,13 @@ class Simulation:
         cached_array = holder.get_array(period, self.branch_name)
         if cached_array is not None:
             return cached_array
+        # Then for one this calculation finished first (see
+        # ``_SpiralDeferrals.finished``), which the holder may not store.
+        state = _spiral_deferrals.get()
+        if state is not None and state.finished:
+            finished = state.finished_value(self, variable_name, period)
+            if finished is not None:
+                return finished
 
         # Check if cache can be used, if available, check if path exists
         is_cache_available = self.check_macro_cache(variable_name, str(period))
@@ -1030,6 +1256,10 @@ class Simulation:
 
         if variable.requires_computation_after is not None:
             variables_in_stack = [node.get("name") for node in self.tracer.stack]
+            if state is not None:
+                # A deeper period calculated first, with an empty stack,
+                # keeps the callers that needed it.
+                variables_in_stack = [*state.callers, *variables_in_stack]
             variable_in_stack = (
                 variable.requires_computation_after in variables_in_stack
             )
@@ -1079,6 +1309,12 @@ class Simulation:
         try:
             self._check_for_cycle(variable.name, period)
             array = self._run_formula(variable, population, period)
+            if state is not None and state.outstanding:
+                # The formula caught a request to finish a deeper period
+                # first (with a bare ``except``) and returned anyway: its
+                # value may be its fallback. Raise the request again instead
+                # of keeping it.
+                raise state.outstanding[-1]
 
             # If no result, use the default value and cache it
             if array is None:
@@ -1240,6 +1476,9 @@ class Simulation:
             smc.set_cache_value(cache_path, array)
 
         if hasattr(self, "_fast_cache"):
+            # Purged with what the holder stores if a cut recursion reached
+            # it, even when the holder stores nothing (``_do_not_store``).
+            self._note_cached_value(variable_name, period)
             self._fast_cache[(variable_name, period)] = array
 
         return array
@@ -1248,16 +1487,49 @@ class Simulation:
         # We wait for the end of calculate(), signalled by an empty stack, before purging the cache
         if self.tracer.stack:
             return
+        # A traced branch shares this simulation's stack, so its frames can
+        # only be purged now that the stack is empty.
+        for branch in list(getattr(self, "branches", {}).values()):
+            branch.purge_cache_of_invalid_values()
         _fast_cache = getattr(self, "_fast_cache", None)
         invalidated_caches = getattr(self, "invalidated_caches", None)
         if invalidated_caches is None:
             return
+        branch_name = getattr(self, "branch_name", "default")
+        spiral_invalidations = getattr(self, "_spiral_invalidated_caches", ())
         for _name, _period in invalidated_caches:
             holder = self.get_holder(_name)
-            holder.delete_arrays(_period)
-            if _fast_cache is not None:
-                _fast_cache.pop((_name, _period), None)
+            if (_name, _period) in spiral_invalidations:
+                # A cut only invalidates its calculated value, at exactly
+                # this period and under the calculating branch's name.
+                holder.delete_array(_period, branch_name, derived_only=True)
+                if _fast_cache is not None:
+                    _fast_cache.pop((_name, _period), None)
+            else:
+                # Explicit invalidation retains its public contract: inputs
+                # and contained periods in default storage are deleted too.
+                holder.delete_arrays(_period)
+                if _fast_cache is not None:
+                    invalid_period = periods.period(_period)
+                    eternal = (
+                        getattr(
+                            getattr(holder, "variable", None), "definition_period", None
+                        )
+                        == periods.ETERNITY
+                    )
+                    for key in list(_fast_cache):
+                        if key[0] == _name and (
+                            eternal
+                            or key[1] == _period
+                            or (
+                                isinstance(key[1], Period)
+                                and invalid_period.start <= key[1].start
+                                and _end_order(key[1]) <= _end_order(invalid_period)
+                            )
+                        ):
+                            _fast_cache.pop(key, None)
         self.invalidated_caches = set()
+        self._spiral_invalidated_caches = set()
 
     def calculate_add(
         self,
@@ -1544,32 +1816,256 @@ class Simulation:
                 )
             )
         spiral = len(previous_periods) >= self.max_spiral_loops
-        if spiral:
+        if spiral and self._has_calculation(variable, period):
+            if self._can_finish_deeper_period_first(variable, period):
+                raise self._defer(variable, period)
             self.invalidate_spiral_variables(variable)
             message = "Quasicircular definition detected on formula {}@{} involving {}".format(
                 variable, period, self.tracer.stack
             )
             raise SpiralError(message, variable)
 
+    def _has_calculation(self, variable_name: str, period: Period) -> bool:
+        """Whether calculating the variable for ``period`` can calculate others.
+
+        With no formula for ``period`` and no ``adds`` or ``subtracts``, the
+        value is an uprated or carried-over value or the default, which read
+        stored values only. Such a frame ends a recursion instead of
+        continuing it, so it is never a spiral.
+        """
+        tax_benefit_system = getattr(self, "tax_benefit_system", None)
+        if tax_benefit_system is None:
+            return True
+        variable = tax_benefit_system.get_variable(variable_name)
+        if variable is None:
+            return True
+        return bool(variable.adds or variable.subtracts or variable.get_formula(period))
+
+    def _can_finish_deeper_period_first(
+        self, variable_name: str, period: Period
+    ) -> bool:
+        """Whether a recursion that reached ``max_spiral_loops`` is anchored.
+
+        ``period`` is the newest frame of ``variable_name``. The frames from
+        its previous frame down to this one are one turn of the recursion.
+        The chain is anchored, and is then evaluated in full (see
+        ``_DeeperPeriodFirst``), when a variable it passes through is heading
+        towards something that stops it whatever is cached:
+
+        - going back in time, a period before the variable's first formula,
+          when its formulas all start after the earliest date
+          (``formula_2010``, not ``formula``) and it has no ``adds`` or
+          ``subtracts``: its value there is an input, an uprated or
+          carried-over value or its default, none of which recurse;
+        - going forward, likewise a period after its ``end``;
+        - either way, an input stored for the variable at a period of its own
+          unit further along.
+
+        Any other chain, such as one whose only base case is a condition
+        inside a formula, is cut at ``max_spiral_loops`` frames as before.
+        Being anchored depends on the variables and the inputs, not on what
+        has been calculated, so whether a chain is cut does not depend on
+        calculation order either.
+
+        A period cannot be deferred again after its evaluation has started:
+        one reached again after that (a cycle through the deferrals, or a
+        period calculated with a recursion cut on the way) is cut. And only
+        on the simulation the calculation was requested on and its branches:
+        a copy made while it runs is made anew when it starts again, and
+        would never reach what was finished on the first one.
+        """
+        deferrals = _spiral_deferrals.get()
+        if deferrals is None:
+            # Only an outermost ``calculate`` can finish the deeper period
+            # first; called any other way, the recursion is cut as before.
+            return False
+        key = (id(self), variable_name, period)
+        if (
+            key in deferrals.started
+            # Requested already by this attempt at the calculation, and the
+            # request caught: the formula tries again.
+            or any(key == other.key for other in deferrals.outstanding)
+            or self._branch_root() is not deferrals.root
+        ):
+            return False
+        tax_benefit_system = getattr(self, "tax_benefit_system", None)
+        if tax_benefit_system is None:
+            return False
+        stack = self.tracer.stack
+        previous = max(
+            (
+                index
+                for index, frame in enumerate(stack[:-1])
+                if frame["name"] == variable_name
+                and frame["branch_name"] == self.branch_name
+            ),
+            default=None,
+        )
+        if previous is None:  # max_spiral_loops is 0
+            return False
+        previous_period = stack[previous]["period"]
+        if period.start < previous_period.start:
+            backward = True
+        elif period.start > previous_period.start:
+            backward = False
+        else:
+            return False
+        turn = stack[previous + 1 :]
+        for frame in turn:
+            variable = tax_benefit_system.get_variable(frame["name"])
+            frame_period = frame["period"]
+            if variable is None or not isinstance(frame_period, Period):
+                continue
+            if self._has_formula_boundary_ahead(variable, frame_period, backward):
+                return True
+            # The set_input registry can outlive deleted inputs. Use the
+            # provenance of the value this branch actually reads, including
+            # ancestor fallback and replacements by calculated values.
+            holder = self.get_holder(variable.name)
+            for input_period in holder.get_input_periods(self.branch_name):
+                if input_period.unit == variable.definition_period and (
+                    input_period.start < frame_period.start
+                    if backward
+                    else input_period.start > frame_period.start
+                ):
+                    return True
+        return False
+
+    @staticmethod
+    def _has_formula_boundary_ahead(
+        variable: Variable, period: Period, backward: bool
+    ) -> bool:
+        """Whether ``variable`` stops having a formula beyond ``period``."""
+        if variable.adds or variable.subtracts or not variable.formulas:
+            return False
+        if backward:
+            first_start = next(iter(variable.formulas))
+            return "0001-01-01" < first_start <= str(period.start)
+        return variable.end is not None and period.start.date <= variable.end
+
+    def _defer(self, variable_name: str, period: Period) -> _DeeperPeriodFirst:
+        """A request to calculate ``variable_name`` for ``period`` first,
+        outstanding until the outermost ``calculate`` takes it.
+
+        The period may be requested already and not started: a formula
+        caught that request and the calculation went on to another. This
+        request puts it first.
+        """
+        state = _spiral_deferrals.get()
+        callers = state.callers.union(frame["name"] for frame in self.tracer.stack[:-1])
+        deferral = _DeeperPeriodFirst(self, variable_name, period, callers)
+        state.outstanding.append(deferral)
+        return deferral
+
+    def _branch_root(self) -> "Simulation":
+        """The simulation this one is a branch of, through ``parent_branch``
+        and as ``get_branch`` returns it, or this one if it is not a branch
+        (a copy of a branch is not)."""
+        simulation = self
+        while True:
+            parent = getattr(simulation, "parent_branch", None)
+            if (
+                parent is None
+                or getattr(parent, "branches", {}).get(
+                    getattr(simulation, "branch_name", None)
+                )
+                is not simulation
+            ):
+                return simulation
+            simulation = parent
+
     def invalidate_cache_entry(self, variable: str, period: Period) -> None:
+        """Mark an explicit invalidation, including inputs and contained periods."""
         invalidated_caches = getattr(self, "invalidated_caches", None)
         if invalidated_caches is None:
             self.invalidated_caches = {(variable, period)}
-            return
-        invalidated_caches.add((variable, period))
+        else:
+            invalidated_caches.add((variable, period))
+        spiral_invalidations = getattr(self, "_spiral_invalidated_caches", None)
+        if spiral_invalidations is not None:
+            spiral_invalidations.discard((variable, period))
+
+    def _invalidate_spiral_cache_entry(self, variable: str, period: Period) -> None:
+        """Mark an exact calculated value, preserving explicit invalidations."""
+        key = (variable, period)
+        invalidated_caches = getattr(self, "invalidated_caches", None)
+        if invalidated_caches is None:
+            invalidated_caches = self.invalidated_caches = set()
+        if key not in invalidated_caches:
+            spiral_invalidations = getattr(self, "_spiral_invalidated_caches", None)
+            if spiral_invalidations is None:
+                spiral_invalidations = self._spiral_invalidated_caches = set()
+            spiral_invalidations.add(key)
+            invalidated_caches.add(key)
 
     def invalidate_spiral_variables(self, variable: str) -> None:
-        # Visit the stack, from the bottom (most recent) up; we know that we'll find
-        # the variable implicated in the spiral (max_spiral_loops+1) times; we keep the
-        # intermediate values computed (to avoid impacting performance) but we mark them
-        # for deletion from the cache once the calculation ends.
-        count = 0
+        """Purge, once their calculation ends, the values a cut recursion reaches.
+
+        The value a recursion cut at ``max_spiral_loops`` frames gets depends
+        on where the cut fell, and so on which frames were on the stack. A
+        later calculation reading it from the cache, from another depth,
+        would get a different result from calculating it afresh. So no value
+        calculated while the cut is on the stack outlives that calculation:
+        the frames on the stack are marked now, and everything cached until
+        each active stack empties is marked as it is cached (see
+        ``_note_cached_value``). They are still reused until then.
+        """
         for frame in reversed(self.tracer.stack):
-            self.invalidate_cache_entry(frame["name"], frame["period"])
-            if frame["name"] == variable:
-                count += 1
-                if count > self.max_spiral_loops:
-                    break
+            # A traced branch shares its parent's stack, so a frame can be
+            # the parent's (or another ancestor's).
+            owner = self._simulation_for_branch(frame.get("branch_name"))
+            if owner is not None:
+                owner._invalidate_spiral_cache_entry(frame["name"], frame["period"])
+        state = _spiral_deferrals.get()
+        if state is None:
+            return
+        state.cuts += 1
+        # The cut value also reaches every calculation in progress in a
+        # related simulation (a branch's caller, say).
+        for simulation in self._related_simulations():
+            tracer = getattr(simulation, "tracer", None)
+            if getattr(tracer, "stack", None) and not any(
+                tracer is cut_tracer for cut_tracer in state.cut_tracers
+            ):
+                state.cut_tracers.append(tracer)
+
+    def _related_simulations(self) -> List["Simulation"]:
+        """This simulation, its ancestor branches and all their branches."""
+        root = self
+        while getattr(root, "parent_branch", None) is not None:
+            root = root.parent_branch
+        found, pending = [], [root]
+        while pending:
+            simulation = pending.pop()
+            found.append(simulation)
+            pending.extend(getattr(simulation, "branches", {}).values())
+        return found
+
+    def _note_cached_value(self, variable_name: str, period: Period) -> None:
+        """Mark a value cached while a cut recursion's calculation runs."""
+        state = _spiral_deferrals.get()
+        if state is not None and state.cut_tracers:
+            self._invalidate_spiral_cache_entry(variable_name, period)
+
+    def _leave_frame(self) -> None:
+        """Stop marking cached values once every stack a cut reached is empty."""
+        state = _spiral_deferrals.get()
+        if state is not None and state.cut_tracers:
+            state.cut_tracers = [
+                tracer for tracer in state.cut_tracers if getattr(tracer, "stack", None)
+            ]
+
+    def _simulation_for_branch(self, branch_name: Optional[str]) -> "Simulation":
+        """This simulation or the ancestor branch named ``branch_name``."""
+        simulation = self
+        while simulation is not None:
+            if (
+                branch_name is None
+                or getattr(simulation, "branch_name", "default") == branch_name
+            ):
+                return simulation
+            simulation = getattr(simulation, "parent_branch", None)
+        return None
 
     # ----- Methods to access stored values ----- #
 
@@ -1746,7 +2242,10 @@ class Simulation:
         Copy the simulation just enough to be able to run the copy without modifying the original simulation.
 
         The copy records its own cache invalidations (``invalidated_caches``,
-        starting from this simulation's pending ones). If ``baseline`` is a
+        starting from this simulation's pending ones). It removes copied
+        values from cut recursions before exposing the copy, preserving
+        inputs; explicit invalidations remain pending until its next purge.
+        If ``baseline`` is a
         branch of this simulation, as a reform simulation's is, the copy gets
         a copy of that branch as its own: a branch of the copy, under the same
         name, with this baseline's tax-benefit system, traced in the copy if
@@ -1830,6 +2329,9 @@ class Simulation:
         # over: the clone's cached arrays start as copies of its arrays.
         if getattr(self, "invalidated_caches", None) is not None:
             new.invalidated_caches = set(self.invalidated_caches)
+        new._spiral_invalidated_caches = set(
+            getattr(self, "_spiral_invalidated_caches", ())
+        )
 
         # Only pass ``share_arrays`` when sharing, so a population or holder
         # ``clone`` override with the earlier signature still deep-copies.
@@ -1865,6 +2367,7 @@ class Simulation:
             new.tax_benefit_system = self.tax_benefit_system
         new.debug = debug
         new.trace = trace
+        new._drop_invalid_values(self)
 
         # A branch shares its parent's baseline: formulas that run in a
         # branch read the parent's baseline values through it. That holds for
@@ -1902,6 +2405,30 @@ class Simulation:
             new.baseline = new_baseline
 
         return new
+
+    def _drop_invalid_values(self, source: "Simulation") -> None:
+        """Drop the values this copy of ``source`` took that ``source`` is to
+        purge once its calculation ends (see ``invalidate_spiral_variables``).
+
+        A calculated value a cut recursion reaches is marked when it is cached, or
+        before, so every one ``source`` holds now is marked now, and a copy
+        never sees what ``source`` caches later. Only the copy's own index
+        changes; ``source`` purges its own values when its calculation ends.
+        Inputs stay, as they do in ``source``.
+        """
+        invalidated_caches = getattr(source, "_spiral_invalidated_caches", None)
+        if not invalidated_caches:
+            return
+        branch_name = getattr(source, "branch_name", "default")
+        for name, invalid_period in invalidated_caches:
+            variable = self.tax_benefit_system.get_variable(name)
+            if variable is None:
+                continue
+            holder = self.populations[variable.entity.key]._holders.get(name)
+            if holder is not None:
+                holder.delete_array(invalid_period, branch_name, derived_only=True)
+        self.invalidated_caches.difference_update(invalidated_caches)
+        self._spiral_invalidated_caches.difference_update(invalidated_caches)
 
     def get_branch(
         self, name: str = "branch", clone_system: bool = False

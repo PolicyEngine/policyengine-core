@@ -13,6 +13,12 @@ The `policyengine_core.tracers` module contains classes used to represent tracer
 
 ## FlatTrace
 
+Flat traces retain the first completed calculation's dependencies and parameters
+when a later request reads its cache. When the period-recursion scheduler retries
+a calculation, a completed accepted result replaces an abandoned or provisional
+cut result for the same variable, period, and branch. The full computation and
+performance logs still contain the retry attempts.
+
 ```{eval-rst}
 .. autoclass:: policyengine_core.tracers.flat_trace.FlatTrace
     :members:

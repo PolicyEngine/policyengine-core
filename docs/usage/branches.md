@@ -66,7 +66,8 @@ from (directly or through the calculations it called), that simulation's count
 of input changes when the value's calculation began, and keeps its own result
 only if none has changed since. (A calculation nested in another in the same
 simulation shares that one's record, which can only make it keep less and can
-cause extra inner recalculations when formulas call between simulations.) So a
+cause extra inner recalculations when formulas call between simulations: a
+stale attempt leaves nested results uncached, so retries repeat that work.) So a
 parent formula calculating in a branch whose formula calls back into the parent
 and then changes the branch's input does not keep what it got, nor does a
 formula that read a branch and then calculated there something that changed the
@@ -94,10 +95,14 @@ shape, enum type and floating-point sign bits. Mutations identify the variable,
 period and branch. The attempts must also read the same set of simulation
 paths. Branches created by `get_branch` during each attempt compare by their
 path of names from the same existing ancestor, so a branch recreated under the
-same name on each attempt can settle too. Existing branches and direct clones
-retain separate identities even when their names match. Using
+same name on each attempt can settle too. A branch created during an earlier
+attempt of this calculation also keeps its path while its original parent and
+name still register that same object; this is checked both before restarting
+and when comparing transitions. Other existing branches, saved snapshots and
+direct clones retain separate identities even when their names match. Using
 multiple distinct branches at the same path within one attempt prevents this
-shortcut.
+shortcut. Exact comparisons copy input and result array bytes and retain the
+current and previous transition signatures while the calculation is running.
 
 Every intervening drop in a simulation whose values were read must have been
 observed in the calculation's context. A read from a thread without that

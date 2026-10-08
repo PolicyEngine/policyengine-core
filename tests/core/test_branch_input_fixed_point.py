@@ -63,6 +63,7 @@ def _simulation(
     masked_inputs=False,
     recreate_branch=False,
     cache_mode="memory",
+    branch_depth=1,
 ):
     values = np.asarray(values, dtype=np.float32)
     calls = []
@@ -83,6 +84,8 @@ def _simulation(
         # The branch inherits a record of the input it will replace.
         person("fp_cap", period)
         branch = simulation.get_branch("persistent")
+        for depth in range(1, branch_depth):
+            branch = branch.get_branch(f"nested_{depth}")
         branch.delete_arrays("fp_cap")
         if delete_derived:
             branch.delete_arrays("fp_capped")
@@ -164,7 +167,7 @@ def _input_first_result(values):
 def _assert_settled(simulation, calls, expected, kept_in_holder=True):
     result = simulation.calculate("fp_outer", "2020")
     np.testing.assert_array_equal(result, expected)
-    assert 1 < len(calls) <= 3
+    assert len(calls) == 2
     stored = simulation.get_array("fp_outer", "2020")
     if kept_in_holder:
         np.testing.assert_array_equal(stored, expected)
@@ -206,6 +209,46 @@ def test_branch_delete_read_set_reaches_a_cached_fixed_point(
         values, delete_derived=delete_derived, recreate_branch=recreate_branch
     )
     _assert_settled(simulation, calls, _input_first_result(values))
+
+
+@pytest.mark.parametrize("branch_depth", [1, 2, 3])
+def test_reused_branch_settles_in_two_attempts(branch_depth):
+    values = [-20.0, 0.0, 40.0]
+    simulation, calls = _simulation(values, branch_depth=branch_depth)
+    _assert_settled(simulation, calls, _input_first_result(values))
+
+
+def test_replacing_reused_branch_registration_keeps_saved_snapshot_distinct():
+    simulation, _ = _simulation([1.0])
+    calls = []
+    saved = simulation.get_branch("persistent")
+    saved.set_input("fp_x", "2020", np.array([0.0]))
+    saved.set_input("fp_cap", "2020", np.array([5.0]))
+    del simulation.branches["persistent"]
+
+    def outer(person, period):
+        calls.append(str(period))
+        simulation = person.simulation
+        person("fp_cap", period)
+        branch = simulation.get_branch("persistent")
+        old_cap = branch.calculate("fp_cap", period)
+        branch.delete_arrays("fp_cap")
+        maximum = branch.calculate("fp_base", period)
+        branch.set_input("fp_cap", period, maximum)
+        # The repeated transition swaps the registered reader to an older
+        # snapshot with different inputs. Its next result must still be read.
+        if np.all(old_cap <= maximum):
+            simulation.branches["persistent"] = saved
+        return np.minimum(branch.calculate("fp_x", period), 1)
+
+    simulation.tax_benefit_system.add_variable(
+        _variable("fp_registration_outer", periods.YEAR, outer)
+    )
+    assert simulation.calculate("fp_registration_outer", "2020").tolist() == [0.0]
+    assert len(calls) == 4
+    assert simulation.get_array("fp_registration_outer", "2020").tolist() == [0.0]
+    assert simulation.calculate("fp_registration_outer", "2020").tolist() == [0.0]
+    assert len(calls) == 4
 
 
 def test_repeated_result_with_alternating_inputs_is_not_a_fixed_point():
@@ -335,7 +378,7 @@ def test_calculate_add_keeps_a_sum_after_persistent_branch_resets_settle():
     np.testing.assert_array_equal(
         simulation.calculate_add("fp_outer", "2020"), expected
     )
-    assert 12 < len(calls) <= 36
+    assert len(calls) == 24
     np.testing.assert_array_equal(simulation.get_array("fp_outer", "2020"), expected)
     completed = len(calls)
     np.testing.assert_array_equal(simulation.calculate("fp_outer", "2020"), expected)

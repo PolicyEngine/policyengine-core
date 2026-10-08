@@ -232,10 +232,13 @@ class _Frame:
         "inputs_set",
         "branch_identities",
         "created_branches",
+        "carried_branches",
     )
 
     def __init__(self, simulation: "Simulation"):
         self.simulation = simulation
+        self.created_branches = {}
+        self.carried_branches = {}
 
     def restart(self) -> None:
         """Begin again, as when the calculation runs again."""
@@ -246,7 +249,12 @@ class _Frame:
         self.drop_epochs = {}
         self.untracked_changes = False
         self.branch_identities = {}
-        self.created_branches = set()
+        # Retain only creations whose original registration still names
+        # the same object. Saved or replaced snapshots keep their identities.
+        self.carried_branches = _registered_creations(
+            self.carried_branches | self.created_branches
+        )
+        self.created_branches = {}
 
     def note_branch(self, simulation: "Simulation") -> None:
         """A name path must refer to just one simulation within an attempt.
@@ -290,14 +298,19 @@ class _Frame:
         if value is None:
             return None
         # A saved branch snapshot can share a name with a later recreation.
-        # Only creations observed in this attempt may compare by name;
-        # existing branches, including read-only ones, keep their identities.
+        # Creations observed in this frame may keep their name path across
+        # retries while still registered. Recheck here: a formula can replace
+        # a registration after reading it, before the attempt ends.
+        comparable_branches = (
+            self.created_branches.keys()
+            | _registered_creations(self.carried_branches).keys()
+        )
         changes = tuple(
-            (operation, _branch_path(other, self.created_branches), *details)
+            (operation, _branch_path(other, comparable_branches), *details)
             for operation, other, *details in self.changes
         )
         reads = frozenset(
-            _branch_path(other, self.created_branches) for other in self.reads
+            _branch_path(other, comparable_branches) for other in self.reads
         )
         return changes, reads, value
 
@@ -417,6 +430,17 @@ def _value_signature(value: ArrayLike) -> Optional[tuple]:
     if array.dtype.kind not in "biufcmM":
         return None
     return array.dtype.str, array.shape, enum, array.tobytes()
+
+
+def _registered_creations(branches: dict) -> dict:
+    """Observed creations still registered under their original parent and name."""
+    return {
+        branch: (parent, name)
+        for branch, (parent, name) in branches.items()
+        if branch.parent_branch is parent
+        and branch.branch_name == name
+        and parent.branches.get(name) is branch
+    }
 
 
 def _branch_path(
@@ -2584,7 +2608,7 @@ class Simulation:
         branch.parent_branch = self
         branch._fixed_point_branch = True
         for frame in _calculation_frames.get():
-            frame.created_branches.add(branch)
+            frame.created_branches[branch] = (self, name)
         if self.trace:
             branch.trace = True
             branch.tracer = self.tracer

@@ -1,1 +1,1 @@
-Keep the record of `set_input` values in step with each simulation's storage, including mixed memory/disk provenance after deletion, isolated copies, calculating handlers, subsampling, storage-period aliases, and valid early-year inputs.
+Keep input records aligned with memory/disk storage across deletion, copies, handlers, subsampling, period aliases, and early years; custom handlers must use `holder._set` or `holder.set_input` for inputs, since `put_in_cache` values are excluded from input export and reform replay and no longer redirected to the input's branch.

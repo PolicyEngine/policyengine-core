@@ -150,6 +150,7 @@ def _restore_holder(simulation, variable, directory):
 
     derived_periods_path = os.path.join(storage_dir, DERIVED_PERIODS_FILE)
     derived_periods = set()
+    # Legacy dumps have no provenance record; their calculated values may restore as inputs.
     if os.path.exists(derived_periods_path):
         with open(derived_periods_path) as file:
             derived_periods = set(file.read().split())

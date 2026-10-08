@@ -191,6 +191,34 @@ class Holder:
                 recorded.pop(slot, None)
         user_input_keys.difference_update(forgotten)
 
+    def _seed_input_storage(self, period: Period, branch_name: str) -> None:
+        """Capture registered input locations before their first new write.
+
+        Restoration can register inputs without this holder's tier metadata.
+        Only an already-recorded slot can inherit storage's input marks: an
+        unrecorded cache value must never become a replayable input.
+        """
+        recorded = getattr(self, "_user_input_storage", None)
+        slot = (branch_name, str(period))
+        if recorded is not None and slot in recorded:
+            return
+        keys = getattr(self.simulation, "_user_input_keys", ())
+        if (self.variable.name, branch_name, period) not in keys:
+            return
+        locations = frozenset(
+            location
+            for location, storage in (
+                ("memory", self._memory_storage),
+                ("disk", self._disk_storage),
+            )
+            if storage is not None
+            and storage.has(period, branch_name)
+            and not storage.is_derived(period, branch_name)
+        )
+        if recorded is None:
+            recorded = self._user_input_storage = {}
+        recorded[slot] = (period, locations)
+
     def _record_input_storage(
         self, period: Period, branch_name: str, storage: str, is_input: bool = True
     ) -> None:
@@ -388,6 +416,10 @@ class Holder:
 
 
         If a ``set_input`` property has been set for the variable, this method may accept inputs for periods not matching the ``definition_period`` of the variable. To read more about this, check the `documentation <https://openfisca.org/doc/coding-the-legislation/35_periods.html#set-input-automatically-process-variable-inputs-defined-for-periods-not-matching-the-definition-period>`_.
+
+        Custom handlers store replayable inputs with ``holder._set`` or
+        ``holder.set_input``. Values written through ``put_in_cache`` are
+        excluded from input export and reform replay.
         """
 
         period = periods.period(period)
@@ -495,8 +527,8 @@ class Holder:
         value: ArrayLike,
         branch_name: str = "default",
         validate_nan: bool = False,
-        is_input: Optional[bool] = None,
         derived: bool = False,
+        is_input: Optional[bool] = None,
     ) -> None:
         simulation = getattr(self, "simulation", None)
         user_input_contexts = (
@@ -528,6 +560,8 @@ class Holder:
             if is_input or hasattr(self, "_user_input_storage")
             else None
         )
+        if stored_period is not None:
+            self._seed_input_storage(stored_period, branch_name)
 
         if should_store_on_disk:
             self._disk_storage.put(value, period, branch_name, derived=derived)

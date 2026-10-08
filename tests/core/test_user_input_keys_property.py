@@ -365,6 +365,38 @@ def test_user_input_keys_match_reference_model(operations):
             raise AssertionError((step, operation)) from error
 
 
+@hypothesis.settings(max_examples=300, deadline=None)
+@hypothesis.given(
+    unit=st.sampled_from([periods.DAY, periods.MONTH, periods.YEAR]),
+    year=st.integers(min_value=1, max_value=20_000),
+    month=st.integers(min_value=1, max_value=12),
+    day=st.integers(min_value=1, max_value=28),
+    size=st.integers(min_value=1, max_value=36),
+    eternal=st.booleans(),
+)
+def test_period_normalization_matches_storage_strings(
+    unit, year, month, day, size, eternal
+):
+    """Normalization preserves storage keys and agrees with the old parser
+    where it accepts the year, while accepting early and late years too."""
+    from policyengine_core.data_storage import InMemoryStorage
+    from policyengine_core.holders import Holder
+
+    holder = object.__new__(Holder)
+    holder._memory_storage = InMemoryStorage(is_eternal=eternal)
+    period = periods.Period((unit, periods.instant((year, month, day)), size))
+
+    canonical = holder._storage_period(period)
+
+    assert holder._storage_period(canonical) == canonical
+    if eternal:
+        assert canonical == periods.period(periods.ETERNITY)
+    else:
+        assert str(canonical) == str(period)
+        if 1_000 <= year <= 9_999:
+            assert canonical == periods.period(str(period))
+
+
 DISK_INPUTS = ["salary", "income_tax", "rent", "birth"]
 
 

@@ -202,6 +202,12 @@ def test_early_year_input_is_stored_and_recorded(
     np.testing.assert_array_equal(storage.get(period), [120.0])
     assert simulation._user_input_contexts == []
 
+    simulation.apply_reform(NoopReform)
+    np.testing.assert_array_equal(storage.get(period), [120.0])
+    simulation.delete_arrays(variable)
+    assert not storage.has(period)
+    assert (variable, "default", period) not in simulation._user_input_keys
+
 
 @pytest.mark.parametrize("on_disk", [False, True])
 def test_zero_padded_early_year_string_records_the_stored_period(on_disk):
@@ -288,6 +294,44 @@ def test_reform_does_not_replay_an_unrecorded_carry_over_input(on_disk):
     np.testing.assert_array_equal(
         simulation.get_holder("salary").get_array(JANUARY), [1_000.0]
     )
+
+
+def test_registered_disk_input_survives_a_new_memory_input_and_clone_deletion():
+    """Restoration can register an input without holder tier metadata (#576)."""
+    simulation = _simulation()
+    _store_on_disk(simulation, "rent")
+    holder = simulation.get_holder("rent")
+    holder._disk_storage.put(np.array([500.0]), JANUARY)
+    simulation._user_input_keys.add(_key("rent", JANUARY))
+    assert not hasattr(holder, "_user_input_storage")
+    simulation.memory_config.max_memory_occupation_pc = 101
+
+    simulation.set_input("rent", JANUARY, [700.0])
+    clone = simulation.clone()
+    clone.delete_arrays("rent", "2025")
+
+    assert _key("rent", JANUARY) in clone._user_input_keys
+    assert clone.to_input_dataframe()["rent__2025-01"].tolist() == [500.0]
+    assert simulation.to_input_dataframe()["rent__2025-01"].tolist() == [700.0]
+    simulation.delete_arrays("rent", "2025")
+    for sim in (simulation, clone):
+        assert _key("rent", JANUARY) in sim._user_input_keys
+        assert sim.to_input_dataframe()["rent__2025-01"].tolist() == [500.0]
+        sim.apply_reform(NoopReform)
+        assert sim.get_holder("rent")._memory_storage.get(JANUARY) is None
+        np.testing.assert_array_equal(
+            sim.get_holder("rent")._disk_storage.get(JANUARY), [500.0]
+        )
+
+
+def test_positional_derived_argument_keeps_masters_meaning():
+    simulation = _simulation()
+    holder = simulation.get_holder("rent")
+
+    holder._set(JANUARY, np.array([42.0]), "default", False, True)
+
+    assert holder.is_derived(JANUARY)
+    assert _key("rent", JANUARY) not in simulation._user_input_keys
 
 
 # Smoke environments may omit dev dependencies. Only the property is skipped;

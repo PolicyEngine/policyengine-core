@@ -48,9 +48,9 @@ def check_sampling_period(simulation_class, year, n, seed, quantize_weights):
     used.calculate("person_weight", year)
 
     for simulation in (fresh, used):
-        original_weight_total = simulation.dataset.load()[
-            f"household_weight__{DATASET_YEAR}"
-        ].sum()
+        original_weight_total = np.asarray(
+            simulation.calculate("household_weight", DATASET_YEAR)
+        ).sum()
         with patch("numpy.random.choice", wraps=np.random.choice) as choose:
             simulation.subsample(
                 n=n, seed=seed, time_period=year, quantize_weights=quantize_weights
@@ -62,9 +62,9 @@ def check_sampling_period(simulation_class, year, n, seed, quantize_weights):
         else:
             assert kwargs["p"] is None
         data = simulation.dataset.load()
-        assert data[f"household_weight__{DATASET_YEAR}"].sum() == pytest.approx(
-            original_weight_total
-        )
+        assert np.asarray(
+            simulation.calculate("household_weight", DATASET_YEAR)
+        ).sum() == pytest.approx(original_weight_total)
         if year != DATASET_YEAR:
             assert f"household_weight__{year}" not in data
         assert not any(name == "person_weight" for name, _, _ in stored(simulation))

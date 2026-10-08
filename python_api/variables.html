@@ -247,6 +247,36 @@
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>A <a class="reference external" href="https://openfisca.org/doc/key-concepts/variables.html">variable</a> of the legislation.</p>
 <dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.check_defined_for_variable">
+<span class="sig-name descname"><span class="pre">check_defined_for_variable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">defined_for_variable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.variables.variable.Variable" title="policyengine_core.variables.variable.Variable"><span class="pre">Variable</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.check_defined_for_variable" title="Permalink to this definition">#</a></dt>
+<dd><p>Reject a <code class="docutils literal notranslate"><span class="pre">defined_for</span></code> variable that cannot be compared with zero.</p>
+<p><code class="docutils literal notranslate"><span class="pre">calculate</span></code> keeps this variable’s formula result where the
+<code class="docutils literal notranslate"><span class="pre">defined_for</span></code> variable is greater than zero, and uses the default
+value elsewhere. That needs a <code class="docutils literal notranslate"><span class="pre">bool</span></code>, <code class="docutils literal notranslate"><span class="pre">int</span></code> or <code class="docutils literal notranslate"><span class="pre">float</span></code> variable:
+an Enum array allows only <code class="docutils literal notranslate"><span class="pre">==</span></code> and <code class="docutils literal notranslate"><span class="pre">!=</span></code>, and <code class="docutils literal notranslate"><span class="pre">str</span></code> and date
+arrays cannot be compared with a number, so the comparison raised a
+<code class="docutils literal notranslate"><span class="pre">TypeError</span></code> in the middle of a calculation. For an Enum condition,
+define a <code class="docutils literal notranslate"><span class="pre">bool</span></code> variable that compares it with a member and name
+that variable instead.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.check_uprating_value_type">
+<span class="sig-name descname"><span class="pre">check_uprating_value_type</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.check_uprating_value_type" title="Permalink to this definition">#</a></dt>
+<dd><p>Reject <code class="docutils literal notranslate"><span class="pre">uprating</span></code> on a variable whose values cannot be multiplied.</p>
+<p>Uprating multiplies the latest earlier input by a ratio of index
+values. Enum arrays allow only <code class="docutils literal notranslate"><span class="pre">==</span></code> and <code class="docutils literal notranslate"><span class="pre">!=</span></code>, and <code class="docutils literal notranslate"><span class="pre">str</span></code> and date
+arrays cannot be multiplied by a float, so <code class="docutils literal notranslate"><span class="pre">uprating</span></code> on such a
+variable raised a <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> the first time a later period was
+uprated. The check covers an <code class="docutils literal notranslate"><span class="pre">uprating</span></code> inherited from a baseline
+variable too, since the inherited one is what <code class="docutils literal notranslate"><span class="pre">calculate</span></code> uses.</p>
+<p>It runs when the variable is defined and when <code class="docutils literal notranslate"><span class="pre">uprating</span></code> is
+assigned. A class that declares <code class="docutils literal notranslate"><span class="pre">uprating</span></code> itself (even as
+<code class="docutils literal notranslate"><span class="pre">None</span></code>) replaces the property that checks assignments, so
+<code class="docutils literal notranslate"><span class="pre">calculate</span></code> runs it again before it uprates.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.variables.variable.Variable.clone">
 <span class="sig-name descname"><span class="pre">clone</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.variables.variable.Variable.clone" title="Permalink to this definition">#</a></dt>
 <dd><p>Return a copy that preserves the variable’s merged state.</p>

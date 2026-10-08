@@ -271,6 +271,8 @@
 <dt class="sig sig-object py" id="policyengine_core.tools.simulation_dumper.dump_simulation">
 <span class="sig-prename descclassname"><span class="pre">policyengine_core.tools.simulation_dumper.</span></span><span class="sig-name descname"><span class="pre">dump_simulation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">directory</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.tools.simulation_dumper.dump_simulation" title="Permalink to this definition">#</a></dt>
 <dd><p>Write simulation data to directory, so that it can be restored later.</p>
+<p>Writes the default branch’s values, listing the periods of those the
+simulation calculated (see <code class="docutils literal notranslate"><span class="pre">restore_simulation</span></code>).</p>
 </dd></dl>
 
 </section>
@@ -280,6 +282,22 @@
 <dt class="sig sig-object py" id="policyengine_core.tools.simulation_dumper.restore_simulation">
 <span class="sig-prename descclassname"><span class="pre">policyengine_core.tools.simulation_dumper.</span></span><span class="sig-name descname"><span class="pre">restore_simulation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tax_benefit_system</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.tools.simulation_dumper.restore_simulation" title="Permalink to this definition">#</a></dt>
 <dd><p>Restore simulation from directory</p>
+<p>Each value is restored as the dumped simulation stored it: one it
+calculated (listed in the variable’s <code class="docutils literal notranslate"><span class="pre">derived_periods.txt</span></code>) as a
+calculated value, and every other value as an input, recorded in
+<code class="docutils literal notranslate"><span class="pre">_user_input_keys</span></code> as <code class="docutils literal notranslate"><span class="pre">set_input</span></code> records one, so <code class="docutils literal notranslate"><span class="pre">apply_reform</span></code>
+keeps the inputs and drops the calculated values, as it would have in
+the dumped simulation.</p>
+<p>A dump lists which values were calculated, not where an input came
+from: a value the dumped simulation stored with <code class="docutils literal notranslate"><span class="pre">put_in_cache</span></code>
+without <code class="docutils literal notranslate"><span class="pre">derived=True</span></code> (an input to auto-carry-over and uprating that
+<code class="docutils literal notranslate"><span class="pre">set_input</span></code> did not record, so that <code class="docutils literal notranslate"><span class="pre">apply_reform</span></code> dropped it there)
+is restored as a recorded input too.</p>
+<p>A dump written before policyengine-core 3.32.16 lists no calculated
+value, so every value in it is restored as an input. A dump without a
+format marker that lists none may be one of those, so restoring it
+warns: <code class="docutils literal notranslate"><span class="pre">apply_reform</span></code> then keeps any calculated value in it as dumped
+instead of recalculating it.</p>
 </dd></dl>
 
 </section>

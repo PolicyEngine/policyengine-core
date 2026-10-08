@@ -131,6 +131,13 @@ def _simulation(
     elif cache_mode == "blacklist":
         system.cache_blacklist = ["fp_outer"]
         simulation.opt_out_cache = True
+    if cache_mode in ("disk", "drop"):
+        # Holders capture MemoryConfig when constructed. Build them before
+        # setting inputs, including holders later copied into branches.
+        for population in simulation.populations.values():
+            population._holders = {}
+        for variable in system.variables:
+            simulation.get_holder(variable)
     input_periods = (
         ["2020"]
         if definition_period == periods.YEAR
@@ -172,12 +179,21 @@ def _assert_settled(simulation, calls, expected, kept_in_holder=True):
 def test_fixed_point_respects_holder_storage_restrictions(cache_mode):
     values = [0.0, 40.0]
     simulation, calls = _simulation(values, cache_mode=cache_mode)
+    holder = simulation.get_holder("fp_outer")
+    assert holder._do_not_store == (cache_mode == "drop")
+    if cache_mode == "disk":
+        assert holder._on_disk_storable
     _assert_settled(
         simulation,
         calls,
         _input_first_result(values),
         kept_in_holder=cache_mode == "disk",
     )
+    if cache_mode == "disk":
+        assert holder._memory_storage.get("2020") is None
+        np.testing.assert_array_equal(
+            holder._disk_storage.get("2020"), _input_first_result(values)
+        )
 
 
 @pytest.mark.parametrize("delete_derived", [False, True])
@@ -323,4 +339,56 @@ def test_calculate_add_keeps_a_sum_after_persistent_branch_resets_settle():
     np.testing.assert_array_equal(simulation.get_array("fp_outer", "2020"), expected)
     completed = len(calls)
     np.testing.assert_array_equal(simulation.calculate("fp_outer", "2020"), expected)
+    assert len(calls) == completed
+
+
+@pytest.mark.parametrize("saved_recreations", [False, True])
+def test_rotating_read_only_clones_do_not_prove_a_fixed_point_between_attempts(
+    saved_recreations,
+):
+    # The mutations and first two results match, but they read different
+    # direct clones. The third reader's zero must not be hidden by caching.
+    simulation, _ = _simulation([0.0])
+    clones = []
+    calls = []
+
+    def outer(person, period):
+        calls.append(str(period))
+        simulation = person.simulation
+        branch = simulation.get_branch("same_path")
+        previous = branch.calculate("fp_rotate_x", period)
+        next_clone = int(branch.calculate("fp_rotate_next", period)[0])
+        simulation.branches["same_path"] = clones[next_clone]
+        person("fp_cap", period)
+        persistent = simulation.get_branch("persistent")
+        persistent.delete_arrays("fp_cap")
+        maximum = persistent.calculate("fp_base", period)
+        persistent.set_input("fp_cap", period, maximum)
+        return np.minimum(previous, 1)
+
+    system = simulation.tax_benefit_system
+    system.add_variables(
+        _variable("fp_rotate_x", periods.YEAR),
+        _variable("fp_rotate_next", periods.YEAR),
+        _variable("fp_rotate_outer", periods.YEAR, outer),
+    )
+    simulation.set_input("fp_rotate_x", "2020", np.array([0.0]))
+    original = simulation.get_branch("same_path")
+    clones.append(original)
+    for _ in range(2):
+        if saved_recreations:
+            del simulation.branches["same_path"]
+            clones.append(simulation.get_branch("same_path"))
+        else:
+            clones.append(original.clone())
+    for next_clone, (clone, value) in enumerate(zip(clones, (1.0, 2.0, 0.0)), 1):
+        clone.set_input("fp_rotate_x", "2020", np.array([value]))
+        clone.set_input("fp_rotate_next", "2020", np.array([min(next_clone, 2)]))
+    simulation.branches["same_path"] = original
+
+    assert simulation.calculate("fp_rotate_outer", "2020").tolist() == [0.0]
+    assert 3 <= len(calls) <= 4
+    assert simulation.get_array("fp_rotate_outer", "2020").tolist() == [0.0]
+    completed = len(calls)
+    assert simulation.calculate("fp_rotate_outer", "2020").tolist() == [0.0]
     assert len(calls) == completed

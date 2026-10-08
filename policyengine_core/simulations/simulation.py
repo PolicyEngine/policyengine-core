@@ -231,6 +231,7 @@ class _Frame:
         "untracked_changes",
         "inputs_set",
         "branch_identities",
+        "created_branches",
     )
 
     def __init__(self, simulation: "Simulation"):
@@ -245,6 +246,7 @@ class _Frame:
         self.drop_epochs = {}
         self.untracked_changes = False
         self.branch_identities = {}
+        self.created_branches = set()
 
     def note_branch(self, simulation: "Simulation") -> None:
         """A name path must refer to just one simulation within an attempt.
@@ -287,7 +289,17 @@ class _Frame:
         value = _value_signature(result)
         if value is None:
             return None
-        return tuple(self.changes), value
+        # A saved branch snapshot can share a name with a later recreation.
+        # Only creations observed in this attempt may compare by name;
+        # existing branches, including read-only ones, keep their identities.
+        changes = tuple(
+            (operation, _branch_path(other, self.created_branches), *details)
+            for operation, other, *details in self.changes
+        )
+        reads = frozenset(
+            _branch_path(other, self.created_branches) for other in self.reads
+        )
+        return changes, reads, value
 
     def settle_reads(self) -> None:
         """Keep dependencies, at their settled epochs, after a proven fixed point."""
@@ -407,7 +419,9 @@ def _value_signature(value: ArrayLike) -> Optional[tuple]:
     return array.dtype.str, array.shape, enum, array.tobytes()
 
 
-def _branch_path(simulation: "Simulation") -> tuple:
+def _branch_path(
+    simulation: "Simulation", created_branches: Optional[set] = None
+) -> tuple:
     """Identify recreated ``get_branch`` branches, keeping direct clones distinct.
 
     A direct clone retains its source's name and parent but has independent
@@ -415,8 +429,10 @@ def _branch_path(simulation: "Simulation") -> tuple:
     the source's name; only branches made by ``get_branch`` compare by name.
     """
     names = []
-    while getattr(simulation, "parent_branch", None) is not None and getattr(
-        simulation, "_fixed_point_branch", False
+    while (
+        getattr(simulation, "parent_branch", None) is not None
+        and getattr(simulation, "_fixed_point_branch", False)
+        and (created_branches is None or simulation in created_branches)
     ):
         names.append(simulation.branch_name)
         simulation = simulation.parent_branch
@@ -443,7 +459,7 @@ def _note_input_change(
         return
     change = (
         operation,
-        _branch_path(simulation),
+        simulation,
         branch_name,
         variable,
         period,
@@ -2567,6 +2583,8 @@ class Simulation:
         branch.branch_name = name
         branch.parent_branch = self
         branch._fixed_point_branch = True
+        for frame in _calculation_frames.get():
+            frame.created_branches.add(branch)
         if self.trace:
             branch.trace = True
             branch.tracer = self.tracer

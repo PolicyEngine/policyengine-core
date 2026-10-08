@@ -91,9 +91,11 @@ consecutive stale attempts must make exactly the same ordered input stores and
 deletions and return exactly the same numeric result. Each store is compared
 after conversion to the variable's stored dtype; comparisons include dtype,
 shape, enum type and floating-point sign bits. Mutations identify the variable,
-period and branch by its path of names from the same root simulation, so a
-branch recreated by `get_branch` under the same name on each attempt can settle
-too. Direct clones retain separate identities even when their names match. Using
+period and branch. The attempts must also read the same set of simulation
+paths. Branches created by `get_branch` during each attempt compare by their
+path of names from the same existing ancestor, so a branch recreated under the
+same name on each attempt can settle too. Existing branches and direct clones
+retain separate identities even when their names match. Using
 multiple distinct branches at the same path within one attempt prevents this
 shortcut.
 

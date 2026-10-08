@@ -109,6 +109,7 @@ class Holder:
         self._memory_storage.delete(period, branch_name)
         if self._disk_storage:
             self._disk_storage.delete(period, branch_name)
+        self._evict_fast_cache(period, branch_name, contained=True)
 
     def _get_array_from_storage(
         self, period: Period, branch_name: str = "default"
@@ -380,6 +381,7 @@ class Holder:
             self._disk_storage.put(value, period, branch_name, derived=derived)
         else:
             self._memory_storage.put(value, period, branch_name, derived=derived)
+        self._evict_fast_cache(period, branch_name)
         if user_input_contexts:
             if not hasattr(simulation, "_user_input_keys"):
                 simulation._user_input_keys = set()
@@ -507,3 +509,52 @@ class Holder:
             for period, (_, storage, stored_branch) in read.items()
             if not storage.is_derived(period, stored_branch)
         ]
+
+    def _evict_fast_cache(
+        self, period: Period, branch_name: str, contained: bool = False
+    ) -> None:
+        """Drop the simulation's ``_fast_cache`` entries a storage write or delete makes stale.
+
+        ``Simulation.calculate`` answers a repeated request from
+        ``_fast_cache``, keyed by ``(variable name, requested period)``,
+        before it reads this holder. So every write into, or delete from,
+        this holder's storage drops the entries for the periods it changes;
+        otherwise ``calculate`` kept returning the value the storage no
+        longer held (for example after ``holder.set_input``).
+
+        The fast cache belongs to this holder's simulation: a branch has its
+        own holders and its own fast cache, and keeps the values it started
+        with, so nothing outside this simulation is touched. Nor is anything
+        here when ``branch_name`` is a branch this simulation does not read.
+
+        A write changes one storage key: ``period``, or, for an ETERNITY
+        variable, the one value every period reads. A delete (``contained``)
+        removes every period ``period`` contains, or every period when
+        ``period`` is ``None``.
+        """
+        simulation = self.simulation
+        fast_cache = getattr(simulation, "_fast_cache", None)
+        if not fast_cache:
+            return
+        name = self.variable.name
+        drop_all = period is None or self.variable.definition_period == periods.ETERNITY
+        if not drop_all:
+            period = periods.period(period)
+            if not contained and (name, period) not in fast_cache:
+                return
+        visible_branch_names = getattr(simulation, "_get_visible_branch_names", None)
+        if visible_branch_names is not None and branch_name not in (
+            visible_branch_names()
+        ):
+            return
+        if not drop_all and not contained:
+            del fast_cache[(name, period)]
+            return
+        stale_keys = [
+            key
+            for key in fast_cache
+            if key[0] == name
+            and (drop_all or not isinstance(key[1], Period) or period.contains(key[1]))
+        ]
+        for key in stale_keys:
+            del fast_cache[key]

@@ -1,3 +1,10 @@
+## [3.32.23] - 2026-10-08
+
+### Fixed
+
+- Fix simulation copying and same-process unpickling, preserve `EnumArray` subclasses and enum metadata through pickling, and allow legacy enum arrays to be re-pickled.
+
+
 ## [3.32.22] - 2026-10-08
 
 ### Changed

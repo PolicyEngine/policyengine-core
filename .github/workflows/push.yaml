@@ -57,8 +57,9 @@ jobs:
           fetch: false
   Test:
     runs-on: ubuntu-latest
-    # Slowest observed 2026-10-06..08: 4 minutes. Publish and Docs wait on
-    # this job, so a hang would otherwise hold a runner for 6 hours.
+    # Slowest observed 2026-10-06..08: 4 minutes. Docs waits on this job
+    # (Publish does not). Fail a hang instead of holding a shared runner for
+    # the 6-hour default.
     timeout-minutes: 45
     if: |
       (github.repository == 'PolicyEngine/policyengine-core')

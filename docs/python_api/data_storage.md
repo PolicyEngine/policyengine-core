@@ -35,6 +35,7 @@ writing when its existing values must remain isolated.
 
 A caller-supplied `simulation._data_storage_dir` is created on first use if it
 does not exist. It keeps the caller-owned lifetime described below.
+Exits that skip finalizers (such as `os._exit` in multiprocessing workers) can leave uniquely named holder subdirectories in a caller-owned directory to accumulate across runs; the caller must remove them.
 
 ```{eval-rst}
 .. automodule:: policyengine_core.data_storage.storage_directory

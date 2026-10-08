@@ -206,8 +206,10 @@ class OnDiskStorage:
             state["_storage_dir_owner"] = owner
         if state.get("_parent_directory") is None:
             state["_parent_directory"] = directory_containing(state["storage_dir"])
-        # Nor numbers: pickled before stores were numbered.
-        state.setdefault("_sequence_numbers", {})
+        # Nor numbers: pickled before stores were numbered. Copies have their
+        # own numbers, like their file index: replacing or dropping a key
+        # through one must not change when the other's value was stored.
+        state["_sequence_numbers"] = dict(state.get("_sequence_numbers", {}))
         self.__dict__.update(state)
         # Numbers from the process that pickled this storage must stay below
         # those of stores made after unpickling it.

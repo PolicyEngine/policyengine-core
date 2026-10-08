@@ -2277,6 +2277,8 @@ class Simulation:
         the sample, then rescale the input weight columns. Calculated weights
         and other formula results are recomputed on the sample. Calculation
         branches are recreated on its populations; baseline policy is kept.
+        If the flat-file data omits an input-only household ID, recorded
+        person-to-household IDs retain the partition used by the loader.
 
         Args:
             n (int, optional): The number of households to sample. Defaults to 10_000.
@@ -2305,14 +2307,19 @@ class Simulation:
         # be calculated before subsampling.
         df = self._to_person_dataframe(self._get_set_input_periods)
 
-        # Extract time period from DataFrame columns
-        df_time_period = (
-            df.columns[df.columns.str.contains("household_id__")]
-            .values[0]
-            .split("__")[1]
-        )
-        df_household_id_column = f"household_id__{df_time_period}"
-        df_person_id_column = f"person_id__{df_time_period}"
+        # Flat-file loading can infer households from recorded membership
+        # IDs when the input-only household ID is absent. Use those same
+        # labels for selection without materializing a default ID input.
+        household_id_columns = [
+            column for column in df if column.startswith("household_id__")
+        ]
+        if not household_id_columns and self._is_exportable_input_variable(
+            "household_id"
+        ):
+            household_id_columns = [
+                column for column in df if column.startswith("person_household_id__")
+            ]
+        df_household_id_column = household_id_columns[0]
 
         # Sampling needs the requested year's weight even when it was
         # calculated rather than supplied as an input. Use it for selection

@@ -1,4 +1,4 @@
-"""Requested-year weights select the sample without becoming source inputs."""
+"""Requested-period weights select the sample without becoming source inputs."""
 
 from unittest.mock import patch
 
@@ -80,9 +80,9 @@ def check_sampling_period(simulation_class, year, n, seed, quantize_weights):
 
 
 @pytest.mark.parametrize("simulation_class", [Simulation, Microsimulation])
-@pytest.mark.parametrize("year", [DATASET_YEAR, "2023", "2024"])
+@pytest.mark.parametrize("year", [DATASET_YEAR, "2023", "2024", "2022-07", "2023-07"])
 @pytest.mark.parametrize("quantize_weights", [False, True])
-def test_sampling_uses_requested_year_weights_independently_of_calculations(
+def test_sampling_uses_requested_period_weights_independently_of_calculations(
     simulation_class, year, quantize_weights
 ):
     check_sampling_period(simulation_class, year, 6, "probe", quantize_weights)
@@ -98,3 +98,11 @@ def test_sampling_period_is_preserved_after_repeated_subsamples():
             name == "household_weight" and period == "2024"
             for name, _, period in stored(simulation)
         )
+
+
+def test_monthly_sampling_uses_existing_annual_flow_conversion():
+    simulation = make_simulation(Simulation)
+    annual = np.asarray(simulation.calculate("household_weight", "2023"))
+    monthly = np.asarray(simulation.calculate("household_weight", "2023-07"))
+    np.testing.assert_allclose(monthly, annual / 12)
+    np.testing.assert_allclose(monthly / monthly.sum(), annual / annual.sum())

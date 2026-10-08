@@ -202,7 +202,15 @@ GUARDED_FORWARD = Scenario(
 )
 
 
-@hypothesis.settings(max_examples=60, deadline=None, derandomize=True)
+# The generator is bounded to two variables, two terms and three inputs.
+# Host pauses can trip generation timing even when the same draw takes
+# milliseconds, so validate every example without a wall-clock health gate.
+@hypothesis.settings(
+    max_examples=60,
+    deadline=None,
+    derandomize=True,
+    suppress_health_check=[hypothesis.HealthCheck.too_slow],
+)
 @hypothesis.given(
     scenario=anchored_scenarios(),
     traced=st.booleans(),
@@ -223,7 +231,12 @@ def test_anchored_scheduler_matches_iterative_values(scenario, traced, storage):
     assert_request(fresh, name, year, expected[(name, year)], not traced)
 
 
-@hypothesis.settings(max_examples=40, deadline=None, derandomize=True)
+@hypothesis.settings(
+    max_examples=40,
+    deadline=None,
+    derandomize=True,
+    suppress_health_check=[hypothesis.HealthCheck.too_slow],
+)
 @hypothesis.given(
     scenario=anchored_scenarios(),
     traced=st.booleans(),

@@ -20,6 +20,7 @@ sphinx:
     html_css_files:
       - style.css
   extra_extensions:
+    - "sphinx.ext.githubpages"
     - "sphinx.ext.autodoc"
     - "sphinxarg.ext"
     - "sphinx.ext.viewcode"

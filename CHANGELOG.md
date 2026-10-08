@@ -1,3 +1,10 @@
+## [3.32.22] - 2026-10-08
+
+### Changed
+
+- The release workflow deploys the documentation site again, from a Docs job that runs once the tests pass and the release reaches PyPI; the deploy step had been skipped on every release since September 2024 because it checked a matrix the Test job no longer has.
+
+
 ## [3.32.21] - 2026-10-07
 
 ### Changed

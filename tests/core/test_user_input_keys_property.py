@@ -366,6 +366,12 @@ def test_user_input_keys_match_reference_model(operations):
 
 
 @hypothesis.settings(max_examples=300, deadline=None)
+@hypothesis.example(
+    unit=periods.MONTH, year=2025, month=1, day=1, size=12, eternal=False
+)
+@hypothesis.example(
+    unit=periods.MONTH, year=2025, month=3, day=1, size=12, eternal=False
+)
 @hypothesis.given(
     unit=st.sampled_from([periods.DAY, periods.MONTH, periods.YEAR]),
     year=st.integers(min_value=1, max_value=20_000),

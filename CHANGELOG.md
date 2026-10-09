@@ -1,3 +1,10 @@
+## [3.32.25] - 2026-10-09
+
+### Changed
+
+- Cancel superseded pull request CI runs and give every test and lint job a timeout, so hung or outdated jobs free shared GitHub Actions runners.
+
+
 ## [3.32.24] - 2026-10-08
 
 ### Changed

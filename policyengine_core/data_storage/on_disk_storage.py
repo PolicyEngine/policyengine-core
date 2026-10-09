@@ -51,6 +51,11 @@ def _epoch() -> tuple:
 class OnDiskStorage:
     """
     Low-level class responsible for storing and retrieving calculated vectors on disk
+
+    Compound periods contain colons, which Windows forbids in filenames.
+    Their physical filenames use semicolons in the period suffix instead;
+    logical storage keys keep the original period strings. ``restore`` reads
+    both these portable filenames and legacy filenames containing colons.
     """
 
     # Defaults for ``__del__``, which also runs on an instance whose
@@ -313,13 +318,19 @@ class OnDiskStorage:
         own = self._own_paths.get(filename)
         if own is not None:
             return own
-        path = os.path.join(self.storage_dir, filename) + ".npy"
+        # A period string can contain colons, which Windows forbids in
+        # filenames. Period strings never contain semicolons or underscores,
+        # so translating only the final suffix is reversible and leaves
+        # branch names untouched.
+        branch, separator, period_string = filename.rpartition("_")
+        portable_filename = f"{branch}{separator}{period_string.replace(':', ';')}"
+        path = os.path.join(self.storage_dir, portable_filename) + ".npy"
         if path not in self._family_files and not self._writes_only_new_files():
             return path
         directory = os.path.join(self.storage_dir, REPLACEMENTS_DIR)
         os.makedirs(directory, exist_ok=True)
         descriptor, path = tempfile.mkstemp(
-            prefix=f"{filename}.", suffix=".npy", dir=directory
+            prefix=f"{portable_filename}.", suffix=".npy", dir=directory
         )
         os.close(descriptor)
         return path
@@ -363,13 +374,21 @@ class OnDiskStorage:
         """Read back the values stored in this storage's directory: for each
         key, the file named for it (not those in ``REPLACEMENTS_DIR``).
 
-        This storage writes over those files, as over those it wrote, until
+        This storage writes over portable files, as over those it wrote, until
         it is cloned or copied, or this process forks: from then on it writes
         a new file instead, since the clone, copy or forked process reads
         them. A storage made separately for the directory, the one that wrote
         them say, still writes over them, as before. So may another storage
         in this one's family, when ``restore`` runs after it was cloned and
         this process has not forked since.
+
+        The period suffix of new filenames uses semicolons for the colons
+        in compound period strings. Legacy filenames containing colons are
+        still accepted. If both versions of a key exist after updating a
+        legacy value, the portable filename holds the current value and wins
+        regardless of directory listing order. Readers still indexed to the
+        legacy file keep its old value until they restore again. Branch names
+        are unchanged.
         """
         self._files = files = {}
         # Files read back from a directory carry no derived marks.
@@ -380,7 +399,15 @@ class OnDiskStorage:
                 continue
             path = os.path.join(self.storage_dir, filename)
             filename_core = filename.rsplit(".", 1)[0]
-            files[filename_core] = path
+            branch, separator, period_string = filename_core.rpartition("_")
+            key = filename_core
+            if separator:
+                key = f"{branch}{separator}{period_string.replace(';', ':')}"
+            # Updating a legacy value may leave its old colon filename
+            # beside the portable file. Prefer the latter, independent of
+            # directory listing order, without parsing arbitrary basenames.
+            if key not in files or key != filename_core:
+                files[key] = path
         self._restored_paths.update(files.values())
 
     def __del__(self, _rmtree=shutil.rmtree, _getpid=os.getpid) -> None:

@@ -121,6 +121,7 @@ def test_annual_request_uses_monthly_formula_starting_midyear():
         value_type = float
         entity = Household
         definition_period = MONTH
+        label = "Monthly household weight"
 
         def formula_2023_07(household, period):
             return household.filled_array(2.0)

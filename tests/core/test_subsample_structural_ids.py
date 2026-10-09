@@ -209,6 +209,7 @@ def test_formula_only_integer_roles_preserve_loaded_subroles(shuffled):
         value_type = int
         entity = Person
         definition_period = ETERNITY
+        label = "Formula integer role"
 
         def formula(person, period):
             return person.filled_array(2)

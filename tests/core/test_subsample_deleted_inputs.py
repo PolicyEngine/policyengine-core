@@ -38,10 +38,21 @@ def prepare(variable, on_disk=False, branch=False):
     simulation.tax_benefit_system.add_variables(deleted_leaf, deleted_eternal)
     holder = simulation.get_holder(variable)
     if on_disk:
-        simulation.memory_config = MemoryConfig(max_memory_occupation=0)
+        # Exercise this variable's provenance on disk, including after the
+        # rebuild, without spilling unrelated object-valued role arrays.
+        simulation.memory_config = MemoryConfig(
+            max_memory_occupation=0,
+            priority_variables=[
+                name
+                for name in simulation.tax_benefit_system.variables
+                if name != variable
+            ],
+        )
         holder._disk_storage = holder.create_disk_storage()
         holder._on_disk_storable = True
     simulation.set_input(variable, DATASET_YEAR, np.full(simulation.persons.count, 99))
+    if on_disk:
+        assert holder._disk_storage.has(period(DATASET_YEAR))
     if branch:
         simulation = simulation.get_branch("child")
     return simulation

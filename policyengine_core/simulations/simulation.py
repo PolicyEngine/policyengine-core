@@ -3,6 +3,7 @@ import os
 from contextlib import nullcontext
 import types
 from contextvars import ContextVar
+from dataclasses import dataclass
 from threading import Lock
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 
@@ -564,6 +565,18 @@ def _taint_waiting_frames(simulation: "Simulation") -> None:
         simulation = getattr(simulation, "parent_branch", None)
 
 
+@dataclass(frozen=True)
+class PreservedUserInput:
+    variable_name: str
+    branch_name: str
+    period: Period
+    value: object
+    storage: str
+    disk_key: Optional[str] = None
+    disk_file: Optional[str] = None
+    disk_enum: object = None
+
+
 class Simulation:
     """
     Represents a simulation, and handles the calculation logic
@@ -688,7 +701,11 @@ class Simulation:
         # populates so ``_invalidate_all_caches`` can tell user-provided
         # source data apart from formula-computed caches. Without this the
         # post-``apply_reform`` cache wipe would also wipe the dataset the
-        # simulation was loaded from.
+        # simulation was loaded from. The record follows this simulation's
+        # storage: each entry names one stored value (the period is the one
+        # storage keys it under), ``delete_arrays`` drops the entries for the
+        # values it deletes, and ``clone`` (so also ``get_branch``) gives the
+        # copy its own record.
         self._user_input_keys: set[tuple[str, str, Period]] = set()
         # What this simulation's values may have been calculated from; each
         # branch starts with a copy (see ``set_input``).
@@ -823,22 +840,73 @@ class Simulation:
         Called after ``apply_reform`` and any other operation that changes
         the tax-benefit system underneath an already-calculated simulation.
 
-        Every value stored through ``set_input`` is preserved — those are
-        source data, not stale formula output — so a structural reform
-        applied after dataset load doesn't silently discard the dataset.
-        Everything else (formula outputs, cached short-path results, on-disk
-        caches) is wiped, here and in every branch, so the next ``calculate``
-        recomputes under the new tax-benefit system.
+        Still-present supplied inputs are preserved from the tiers that
+        hold them, so a structural reform applied after dataset load
+        doesn't silently discard the dataset. A cache write replacing an
+        input does not make that cached value a supplied input. Everything
+        else (formula outputs, cached short-path results, on-disk caches) is
+        wiped so the next ``calculate`` recomputes under the new
+        tax-benefit system.
         """
         self.invalidated_caches = set()
-        # Keep only what ``set_input`` stored (``_user_input_keys``): every
-        # other value, calculated or cached directly, is marked derived and
-        # dropped with the calculated ones.
-        user_inputs = {}
-        for variable_name, branch_name, period in (
-            getattr(self, "_user_input_keys", None) or ()
-        ):
-            user_inputs.setdefault(variable_name, set()).add((branch_name, period))
+        # Snapshot user-provided inputs before wiping so they can be
+        # replayed into the fresh storage. Use the storage API instead of
+        # hand-building keys, since ETERNITY variables canonicalize every
+        # period to the single ETERNITY storage key.
+        preserved: list[PreservedUserInput] = []
+        user_input_keys = getattr(self, "_user_input_keys", None) or set()
+        for variable_name, branch_name, period in user_input_keys:
+            holder = self.get_holder(variable_name)
+            holder._seed_input_storage(period, branch_name)
+            locations = holder._user_input_storage[(branch_name, str(period))][1]
+            # Carry-over marks also include external cache writes. Replay
+            # only tiers that still hold the recorded, supplied input.
+            stored_value = (
+                holder._memory_storage.get(period, branch_name)
+                if "memory" in locations
+                and not holder._memory_storage.is_derived(period, branch_name)
+                else None
+            )
+            if stored_value is not None:
+                preserved.append(
+                    PreservedUserInput(
+                        variable_name=variable_name,
+                        branch_name=branch_name,
+                        period=period,
+                        value=stored_value,
+                        storage="memory",
+                    )
+                )
+                continue
+            if (
+                "disk" in locations
+                and holder._disk_storage is not None
+                and not holder._disk_storage.is_derived(period, branch_name)
+            ):
+                disk_period = (
+                    periods.period(periods.ETERNITY)
+                    if holder._disk_storage.is_eternal
+                    else periods.period(period)
+                )
+                disk_key = f"{branch_name}_{disk_period}"
+                disk_file = holder._disk_storage._files.get(disk_key)
+                if disk_file is not None:
+                    preserved.append(
+                        PreservedUserInput(
+                            variable_name=variable_name,
+                            branch_name=branch_name,
+                            period=period,
+                            value=None,
+                            storage="disk",
+                            disk_key=disk_key,
+                            disk_file=disk_file,
+                            disk_enum=holder._disk_storage._enums.get(disk_file),
+                        )
+                    )
+        self._user_input_keys = {
+            (user_input.variable_name, user_input.branch_name, user_input.period)
+            for user_input in preserved
+        }
         # Iterate only over holders that already exist on each population —
         # lazy-creating a holder for every variable in the tax-benefit
         # system (thousands in policyengine-us) inflated the cost of
@@ -847,10 +915,43 @@ class Simulation:
         # no holder and therefore nothing to wipe.
         for population in self.populations.values():
             for holder in population._holders.values():
-                holder._mark_derived_except(user_inputs.get(holder.variable.name, ()))
+                holder._memory_storage._arrays = {}
+                holder._memory_storage._unmark_dropped_keys()
+                holder._memory_storage._stop_sharing_dropped_keys()
+                holder._memory_storage._forget_dropped_numbers()
+                if holder._disk_storage is not None:
+                    holder._disk_storage._files = {}
+                    holder._disk_storage._derived = set()
+                    holder._disk_storage._forget_dropped_keys()
+                if hasattr(holder, "_user_input_storage"):
+                    holder._user_input_storage = {}
         for frame in _calculation_frames.get():
             frame.untracked_changes = True
         self._drop_computed()
+        # Replay preserved user inputs so ``calculate`` still sees them.
+        for user_input in preserved:
+            holder = self.get_holder(user_input.variable_name)
+            if user_input.storage == "disk" and holder._disk_storage is not None:
+                holder._disk_storage._files[user_input.disk_key] = user_input.disk_file
+                holder._disk_storage._sequence_numbers[user_input.disk_key] = (
+                    next_sequence_number()
+                )
+                if user_input.disk_enum is not None:
+                    holder._disk_storage._enums[user_input.disk_file] = (
+                        user_input.disk_enum
+                    )
+            else:
+                holder._memory_storage.put(
+                    user_input.value,
+                    user_input.period,
+                    user_input.branch_name,
+                )
+            holder._record_input_storage(
+                user_input.period, user_input.branch_name, user_input.storage
+            )
+        for population in self.populations.values():
+            for holder in population._holders.values():
+                holder._record_inputs(None)
         for branch in self.branches.values():
             branch._invalidate_all_caches()
 
@@ -1108,7 +1209,8 @@ class Simulation:
         Folder in which this simulation stores values on disk when memory is
         short (see ``MemoryConfig``).
 
-        Set ``_data_storage_dir`` to choose the folder: nothing removes it,
+        Set ``_data_storage_dir`` to choose the folder: it is created on first
+        use if it does not exist. Nothing removes it,
         unless it is in a temporary folder a simulation made, which this
         simulation then keeps alive, and which removes it with everything else
         in it once nothing keeps it. Otherwise this is a new temporary folder,
@@ -1140,10 +1242,14 @@ class Simulation:
             if os.path.isdir(inherited):
                 self._storage_dir_parent = inherited
         if self._data_storage_dir is None:
+            if self._storage_dir_parent is not None:
+                os.makedirs(self._storage_dir_parent, exist_ok=True)
             self._storage_directory = TemporaryStorageDirectory(
                 self._storage_dir_parent
             )
             self._data_storage_dir = self._storage_directory.path
+        elif not self._made_data_storage_dir():
+            os.makedirs(self._data_storage_dir, exist_ok=True)
         self._storage_dir_pid = pid
         return self._data_storage_dir
 
@@ -1490,6 +1596,17 @@ class Simulation:
         self._check_period_consistency(period, variable)
 
         if variable.defined_for is not None:
+            # Registration rejects a non-numeric defined_for variable (see
+            # ``TaxBenefitSystem._check_defined_for``). This catches one set,
+            # or a variable replaced, afterwards. It reads the variable's
+            # type, not the values: mapped to a group entity, an Enum's
+            # indices are summed into numbers, and str or date values fail
+            # inside the mapping.
+            defined_for_variable = self.tax_benefit_system.get_variable(
+                variable.defined_for
+            )
+            if defined_for_variable is not None:
+                variable.check_defined_for_variable(defined_for_variable)
             mask = (
                 self.calculate(variable.defined_for, period, map_to=variable.entity.key)
                 > 0
@@ -1549,6 +1666,9 @@ class Simulation:
                         if known_period in input_periods
                     ]
                 if earlier_input_periods:
+                    # Registration rejects these; an ``uprating`` assigned
+                    # past the setter gets the same message here.
+                    variable.check_uprating_value_type()
                     # Take the latest period from the filtered list itself.
                     # Indexing ``known_periods`` with a position in the
                     # filtered list picked the wrong period whenever a later
@@ -1828,13 +1948,7 @@ class Simulation:
                     frame.restart()
                     input_state = self._calculation_start()
                     result = total()
-                # Cache only a sum over several sub-periods, as derived from
-                # them. A single sub-period's value is already stored, as an
-                # input or derived, by ``calculate``.
-                if len(sub_periods) > 1:
-                    holder = self.get_holder(variable.name)
-                    return self._cache_result(holder, result, period, input_state)
-                return result
+                return self._cache_option_result(variable, period, result, input_state)
         finally:
             self._calculations_in_flight -= 1
 
@@ -1870,8 +1984,7 @@ class Simulation:
                 input_state = self._calculation_start()
                 computation_period = period.this_year
                 result = self.calculate(variable_name, period=computation_period) / 12.0
-                holder = self.get_holder(variable.name)
-                return self._cache_result(holder, result, period, input_state)
+                return self._cache_option_result(variable, period, result, input_state)
         elif period.unit == periods.YEAR:
             return self.calculate(variable_name, period)
 
@@ -1879,6 +1992,59 @@ class Simulation:
             "Unable to divide the value of '{}' to match period {}.".format(
                 variable_name, period
             )
+        )
+
+    def _cache_option_result(
+        self,
+        variable: Variable,
+        period: Period,
+        result: ArrayLike,
+        input_state: Tuple[int, int, int],
+    ) -> ArrayLike:
+        """Cache an ADD or DIVIDE result at ``period`` if a plain read would return it.
+
+        A value cached at ``period`` is what every later ``calculate`` of the
+        variable at ``period`` returns. ``_calculate`` computes a FLOW
+        variable over a period of another unit with these same options (a
+        monthly variable over a year with ``calculate_add``, a yearly one over
+        a month with ``calculate_divide``), so their result is the plain value
+        there and is cached. Anywhere else it is not:
+
+        - A STOCK variable's plain value over a year is its last month's, and
+          over a month the year's, not the sum or the twelfth.
+        - Over several periods of the variable's own unit, a plain read
+          raises instead.
+        - A day variable's plain read over a month or a year does not sum.
+        - Over a single period of its own unit, the sum is the value
+          ``calculate`` has already stored.
+
+        Caching there would make a later plain read depend on whether the
+        option ran first. Nor is an option result cached when storing it would
+        change it (the twelfth of an integer or a count of true months is
+        stored as the variable's own type, so a later read would return the
+        truncated value where the first returned the exact one).
+
+        The result is cached as derived, so auto-carry-over and uprating
+        never take it for an input, and ``put_in_cache`` keeps an input a
+        plain read finds at ``period`` (in this branch, an ancestor or
+        ``default``) instead of storing it. It does replace a value
+        calculated there before, which may predate a change to the inputs.
+        Whether the value read is an input comes from the storage's mark for
+        the first visible value, which every write sets. The simulation's
+        supplied-input record follows inputs across storage tiers for replay
+        and export; it can name a disk input hidden by a derived memory value,
+        and raw holder inputs need not be registered there. Accepted cache
+        writes never register the aggregate as a supplied input.
+        """
+        if variable.quantity_type == QuantityType.STOCK:
+            return result
+        routed = (variable.definition_period == MONTH and period.unit == YEAR) or (
+            variable.definition_period == YEAR and period.unit == MONTH
+        )
+        if not routed or np.asarray(result).dtype != variable.dtype:
+            return result
+        return self._cache_result(
+            self.get_holder(variable.name), result, period, input_state
         )
 
     def calculate_output(self, variable_name: str, period: Period = None) -> ArrayLike:
@@ -2144,6 +2310,9 @@ class Simulation:
         The calling branch, each ancestor branch, and the default branch are
         purged from this simulation's private holder storage. Other branch
         names and the parent simulation's holder storage remain unchanged.
+        Deleted inputs stop counting as inputs: a value calculated later for
+        the same period is a formula result, which ``apply_reform`` discards
+        and ``to_input_dataframe`` does not export.
 
         :param variable: the variable whose cached values should be deleted
         :param period: the period to delete, or all periods when omitted
@@ -2283,8 +2452,9 @@ class Simulation:
         the formula's own branches calculated from a thread the formula
         starts without copying its context; and branches a formula keeps
         between calls, which hold what their parent held when they were
-        created. Inputs set on a simulation that is not a branch drop
-        nothing, as before; branches already created from the branch keep
+        created. On any simulation, input helpers remove overlapping
+        calculated values of the variable they write. Dependency invalidation
+        runs only on branches; branches already created from the branch keep
         their values; and a value another simulation calculated from the
         branch and kept stays when the branch's input changes after that
         calculation ended.
@@ -2301,21 +2471,6 @@ class Simulation:
         _fast_cache = getattr(self, "_fast_cache", None)
         if _fast_cache is not None:
             _fast_cache.pop((variable_name, period), None)
-            if variable.set_input and period.unit != variable.definition_period:
-                # The helper wrote the input's sub-periods, replacing any
-                # value calculated there, so what ``calculate`` returned for
-                # them is stale too. (``_end_order``, not ``stop``: ``stop``
-                # raises for a period that ends after 9999-12-31.)
-                stale = [
-                    key
-                    for key in _fast_cache
-                    if key[0] == variable_name
-                    and isinstance(key[1], Period)
-                    and period.start <= key[1].start
-                    and _end_order(key[1]) <= _end_order(period)
-                ]
-                for key in stale:
-                    del _fast_cache[key]
 
     def _get_store_history(self) -> StoreHistory:
         history = self._store_history
@@ -2566,6 +2721,8 @@ class Simulation:
         # taking different inputs. ``get_branch`` marks the returned branch
         # after assigning its ancestry, for comparable recreated branches.
         new._fixed_point_branch = False
+        # A ``set_input`` running on this simulation is not running on the copy.
+        new._user_input_contexts = []
 
         # A branch shares its parent's baseline: formulas that run in a
         # branch read the parent's baseline values through it. That holds for
@@ -3064,11 +3221,10 @@ class Simulation:
 
         df = subset_df
 
-        # Update the dataset and rebuild the simulation. Nothing stored before
-        # survives the rebuild, so start a new store history before the
-        # rebuilt inputs are recorded in it.
+        # Rebuilding replaces storage, its input record, and store history.
         self.dataset = Dataset.from_dataframe(df, self.dataset.time_period)
         self._store_history = StoreHistory()
+        self._user_input_keys = set()
         self.build_from_dataset()
 
         # Purge ``_fast_cache`` entries populated by ``to_input_dataframe``

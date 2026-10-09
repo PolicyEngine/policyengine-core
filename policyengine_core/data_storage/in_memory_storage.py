@@ -5,6 +5,7 @@ from numpy.typing import ArrayLike
 
 from policyengine_core import periods
 from policyengine_core.data_storage.store_history import (
+    _period_from_storage_key,
     advance_sequence_past,
     next_sequence_number,
 )
@@ -338,7 +339,7 @@ class InMemoryStorage:
         """The period and number of each input stored at ``since`` or later (or ever)."""
         numbers = self._sequence_numbers
         return [
-            (periods.period(key.split(":", 1)[1]), numbers[key])
+            (_period_from_storage_key(key.split(":", 1)[1]), numbers[key])
             for key in self._inputs
             if key in self._arrays
             and key in numbers

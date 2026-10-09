@@ -37,6 +37,16 @@ def advance_sequence_past(number: int) -> None:
     _sequence = itertools.count(max(next(_sequence), number + 1))
 
 
+def _period_from_storage_key(period_string: str) -> Period:
+    """Parse a stored period whose early year may have lost leading zeros."""
+    components = period_string.split(":")
+    date_index = 1 if len(components) > 1 else 0
+    date = components[date_index].split("-")
+    date[0] = date[0].zfill(4)
+    components[date_index] = "-".join(date)
+    return periods.period(":".join(components))
+
+
 def periods_overlap(first: Period, second: Period) -> bool:
     """Whether two periods share at least one day."""
     if periods.ETERNITY in (first.unit, second.unit):

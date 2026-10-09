@@ -125,6 +125,14 @@ after the calculation began (by its own formula, say; under the branch's name
 or any it reads, such as `default` through `Holder.set_input`) is the result,
 as it would be had it been set first.
 
+Input helpers that divide or dispatch a larger-period input replace calculated
+sub-periods while retaining supplied inputs in their storage tiers. Their shared
+overlap cleanup also removes calculated sums or twelfths for the variable,
+including inherited values in the branch's storage, without changing the parent.
+Branch dependency invalidation additionally drops later calculated values that
+may depend on the replaced input. On a simulation without a parent, helper
+overlap cleanup still runs while branch dependency invalidation does not.
+
 A custom `set_input` handler that calculates values between its own stores
 calculates them from inputs it has not yet replaced, so if it calculated
 anything (through `calculate`, `calculate_add` or `_calculate`), the branch

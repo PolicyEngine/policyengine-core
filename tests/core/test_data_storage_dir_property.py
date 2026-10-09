@@ -17,8 +17,7 @@ on disk, starting from one simulation:
   simulation's folder, preserving it or not (``preserve_storage_dir``);
 * ``nest``: a new simulation is given a simulation's folder: a new
   subfolder of it, or the folder itself, in which case only its clone,
-  made before it stores anything, is kept (two simulations storing a
-  variable in one folder would share its subfolder). Its clones then make
+  made before it stores anything, is kept. Its clones then make
   their folders in a folder another simulation may have made;
 * ``preserve``: a disk storage a simulation or ``make`` made is set to
   preserve its folder;

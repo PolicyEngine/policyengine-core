@@ -2609,7 +2609,8 @@ class Simulation:
         # repeat on person rows, so summing those rows counts larger groups
         # more often. The loader reads each retained group's first member;
         # that member can differ from its original first member when another
-        # group partition crosses the sampled households.
+        # group partition crosses the sampled households. Group by the same
+        # exported membership the rebuild reads, including later overrides.
 
         for col in subset_df.columns:
             if "weight__" in col:
@@ -2630,9 +2631,12 @@ class Simulation:
                 if entity.is_person:
                     selected_total = subset_df[col].values.sum()
                 else:
-                    memberships = self.populations[entity.key].members_entity_id[
-                        subset_df.index
-                    ]
+                    membership_column = next(
+                        column
+                        for column in subset_df
+                        if column.split("__")[0] == f"{person_key}_{entity.key}_id"
+                    )
+                    memberships = subset_df[membership_column].values
                     _, first_retained = np.unique(memberships, return_index=True)
                     selected_total = subset_df[col].values[first_retained].sum()
                 if selected_total == 0:

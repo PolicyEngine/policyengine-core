@@ -15,10 +15,11 @@ import pytest
 
 from policyengine_core.data import Dataset
 from policyengine_core.entities import build_entity
-from policyengine_core.periods import ETERNITY, YEAR
+from policyengine_core.periods import ETERNITY, YEAR, period
 from policyengine_core.simulations import Simulation
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 from policyengine_core.variables import Variable
+from tests.core.test_user_input_keys import _store_on_disk
 
 YEAR_INPUT = "2022"
 Person = build_entity(key="person", plural="persons", label="Person", is_person=True)
@@ -156,6 +157,121 @@ def test_subsample_preserves_native_entity_weight_totals(chosen, quantize_weight
         person_weights=np.arange(2.0, 11.0),
     )
     assert_weight_totals_and_reference(data, chosen, quantize_weights)
+
+
+@pytest.mark.parametrize("quantize_weights", [False, True])
+def test_subsample_normalizes_using_exported_membership(quantize_weights):
+    data = weight_data(
+        households=[30, 10, 20, 20, 30, 40, 40, 20, 40],
+        families=[110, 110, 220, 110, 330, 330, 220, 220, 440],
+        household_weights={10: 100.0, 20: 200.0, 30: 300.0, 40: 400.0},
+        family_weights={110: 5.0, 220: 11.0, 330: 17.0, 440: 23.0},
+        person_weights=np.arange(2.0, 11.0),
+    )
+    simulation = weight_simulation(data)
+    exported_memberships = np.array([110, 110, 220, 220, 330, 330, 330, 220, 440])
+    simulation.set_input("person_family_id", ETERNITY, exported_memberships)
+
+    # set_input changes the recorded column without changing loaded populations.
+    # The retained rows contain three exported families, but four old families.
+    chosen = [20, 40, 20]
+    retained = data[data["household_id__ETERNITY"].isin(chosen)].copy()
+    retained["person_family_id__ETERNITY"] = exported_memberships[retained.index]
+    counts = retained["household_id__ETERNITY"].map(Counter(chosen))
+    np.testing.assert_array_equal(
+        simulation.to_input_dataframe()["person_family_id__ETERNITY"],
+        exported_memberships,
+    )
+    with patch("numpy.random.choice", return_value=np.asarray(chosen)):
+        simulation.subsample(
+            n=len(chosen),
+            seed="exported-membership",
+            time_period=YEAR_INPUT,
+            quantize_weights=quantize_weights,
+        )
+
+    for entity in ENTITIES:
+        entity_ids = simulation.calculate(f"{entity}_id", ETERNITY)
+        membership_column = (
+            "person_id__ETERNITY"
+            if entity == "person"
+            else f"person_{entity}_id__ETERNITY"
+        )
+        for year in WEIGHT_YEARS:
+            column = f"{entity}_weight__{year}"
+            # Each period's target comes independently from the source's native
+            # entity groups, before the membership override or subsampling.
+            target = data.groupby(f"{entity}_id__ETERNITY")[column].first().sum()
+            candidate = (
+                counts.astype(float) if quantize_weights else retained[column] * counts
+            )
+            reference = candidate.groupby(retained[membership_column]).first()
+            reference *= target / reference.sum()
+            actual = simulation.calculate(f"{entity}_weight", year)
+            assert actual.sum() == pytest.approx(target, rel=2e-6)
+            np.testing.assert_allclose(
+                actual, reference.loc[entity_ids].to_numpy(), rtol=2e-6
+            )
+
+
+@pytest.mark.parametrize("quantize_weights", [False, True])
+def test_subsample_conserves_recorded_disk_weight_total_under_memory_cache(
+    quantize_weights,
+):
+    data = weight_data(
+        households=[10, 10, 20, 30, 30],
+        families=[110, 110, 220, 330, 110],
+        household_weights={10: 100.0, 20: 200.0, 30: 300.0},
+        family_weights={110: 7.0, 220: 11.0, 330: 13.0},
+        person_weights=np.arange(2.0, 7.0),
+    )
+    simulation = weight_simulation(data)
+    simulation.delete_arrays("family_weight")
+    _store_on_disk(simulation, "family_weight")
+    source_weights = data.groupby("family_id__ETERNITY").first()
+    holder = simulation.get_holder("family_weight")
+    for year in WEIGHT_YEARS:
+        values = source_weights[f"family_weight__{year}"].to_numpy()
+        simulation.set_input("family_weight", year, values)
+        np.testing.assert_array_equal(holder._disk_storage.get(period(year)), values)
+
+    simulation.memory_config.max_memory_occupation_pc = 101
+    for year in WEIGHT_YEARS:
+        # An unmarked memory cache can shadow a surviving disk input in reads.
+        # Normalization must preserve the recorded source total from disk.
+        shadow = np.full(len(source_weights), 999.0)
+        holder._set(period(year), shadow, derived=False, is_input=False)
+        assert not holder._stores_user_input(period(year), "default", "memory")
+        assert holder._stores_user_input(period(year), "default", "disk")
+        np.testing.assert_array_equal(
+            simulation.calculate("family_weight", year), shadow
+        )
+
+    chosen = [20, 30, 20]
+    with patch("numpy.random.choice", return_value=np.asarray(chosen)):
+        simulation.subsample(
+            n=len(chosen),
+            seed="recorded-disk-weight-total",
+            time_period=YEAR_INPUT,
+            quantize_weights=quantize_weights,
+        )
+
+    retained = data[data["household_id__ETERNITY"].isin(chosen)]
+    counts = retained["household_id__ETERNITY"].map(Counter(chosen))
+    entity_ids = simulation.calculate("family_id", ETERNITY)
+    for year in WEIGHT_YEARS:
+        column = f"family_weight__{year}"
+        target = source_weights[column].sum()
+        candidate = (
+            counts.astype(float) if quantize_weights else retained[column] * counts
+        )
+        reference = candidate.groupby(retained["person_family_id__ETERNITY"]).first()
+        reference *= target / reference.sum()
+        actual = simulation.calculate("family_weight", year)
+        assert actual.sum() == pytest.approx(target, rel=2e-6)
+        np.testing.assert_allclose(
+            actual, reference.loc[entity_ids].to_numpy(), rtol=2e-6
+        )
 
 
 @pytest.mark.parametrize("quantize_weights", [False, True])

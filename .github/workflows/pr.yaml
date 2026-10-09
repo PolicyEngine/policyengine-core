@@ -2,9 +2,20 @@ name: Pull request
 on:
   pull_request:
     branches: [master]
+
+# A new push to a pull request supersedes the run on its previous head. Cancel
+# that run instead of letting its 19 jobs (8 Test, 8 smoke, 3 checks) keep
+# holding org-wide shared runners. From 2026-10-06 to 10-08, 21 of 55 PR runs
+# were superseded while still running, and finishing them used 850
+# runner-minutes (26% of this workflow).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   Lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
       - name: Install uv
@@ -14,6 +25,7 @@ jobs:
   lint-workflows:
     name: Lint workflows
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
@@ -29,6 +41,7 @@ jobs:
   check-changelog:
     name: Check changelog fragment
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
       - name: Check for changelog fragment
@@ -47,6 +60,9 @@ jobs:
         python-version: [ "3.11", "3.12", "3.13", "3.14" ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
+    # Slowest observed 2026-10-06..08: 16 minutes (Windows). Fail a hung job
+    # instead of holding a shared runner for the 6-hour default.
+    timeout-minutes: 45
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
@@ -75,6 +91,8 @@ jobs:
     name: Test Core and country packages (${{ matrix.os }}, py${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
     needs: Lint
+    # Slowest observed 2026-10-06..08: 4.5 minutes.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:

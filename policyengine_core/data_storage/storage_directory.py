@@ -1,7 +1,7 @@
 """The temporary folder a simulation stores values on disk in.
 
-A simulation with a ``MemoryConfig`` stores values on disk, each variable's
-in a subfolder (an ``OnDiskStorage``) of the simulation's folder,
+A simulation with a ``MemoryConfig`` stores values on disk, each independently
+created holder's in its own subfolder (an ``OnDiskStorage``) of the simulation's folder,
 ``Simulation.data_storage_dir``. Unless the caller chose that folder, the
 simulation makes it, as a ``TemporaryStorageDirectory``. That object removes
 the folder, with everything in it but the subfolders of preserved storages
@@ -17,7 +17,8 @@ files guarantees:
   storage is an ``OnDiskStorage.clone`` that reads the source's files and
   keeps alive the folder and the storage that removes their subfolder. A
   pickled or copied disk storage does the same. The disk storages a clone
-  makes itself go in a folder of its own.
+  makes itself go in a folder of its own. Replacing a holder creates a new
+  subfolder, so its writes and cleanup leave the old holder's files alone.
 
   Folders nest: a simulation given the folder, or a folder in it, as its
   own (``_data_storage_dir``) keeps the folder alive from then on, and so
@@ -29,7 +30,7 @@ files guarantees:
   is collected first, with one exception, as before: a disk storage removes
   everything in its subfolder when collected, including files there that
   another storage reads without keeping it alive. Those are the files of a
-  second storage made to remove the same subfolder, and anything made
+  second storage explicitly made to remove the same subfolder, and anything made
   inside the subfolder. Nor does a storage write over a file another reads:
   storages cloned or copied from one another write a new file instead (see
   ``OnDiskStorage._path_to_write``), for the files any of them read back
@@ -71,7 +72,7 @@ files guarantees:
   only the subfolders disk storages made in it, as before, unless it is in a
   folder a simulation made: that one removes it with everything else in it,
   once nothing keeps that one alive (above). A clone or forked process makes
-  its own folder inside it.
+  its own folder inside it. If it does not exist, it is created on first use.
 * **A process that ends without running the exit handlers that remove its
   folders** (killed, or ended with ``os._exit``, as a process
   ``multiprocessing`` forks is) leaves the folders it made that were still

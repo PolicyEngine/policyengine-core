@@ -110,12 +110,15 @@ def _run(script, tmp_path, **environment):
 
 def test_a_simulation_storing_on_disk_leaves_no_folder_once_collected():
     simulation = disk_simulation()
-    _fill(simulation)
+    stored = _fill(simulation)
     folder = simulation.data_storage_dir
-    assert _files(folder) == [
-        "disk_amount/default_2015.npy",
-        "disk_level/default_2015.npy",
-    ]
+    assert _files(folder) == sorted(
+        Path(simulation.persons._holders[variable]._disk_storage._files["default_2015"])
+        .relative_to(folder)
+        .as_posix()
+        for variable in VARIABLES
+    )
+    _assert_reads(simulation, stored)
 
     del simulation
     gc.collect()
@@ -663,16 +666,19 @@ def test_a_disk_storage_preserving_its_folder_keeps_it_at_exit(tmp_path):
         SYSTEM.simulation = simulation
         simulation.set_input("disk_level", "2015", values("disk_level", 0))
         simulation.set_input("disk_amount", "2015", values("disk_amount", 1))
-        simulation.persons._holders["disk_amount"]._disk_storage.preserve_storage_dir = True
+        storage = simulation.persons._holders["disk_amount"]._disk_storage
+        storage.preserve_storage_dir = True
         print(simulation.data_storage_dir)
+        print(storage.storage_dir)
         """,
         tmp_path,
     )
-    folder = printed.split()[-1]
+    folder, storage_dir = printed.splitlines()[-2:]
     try:
-        assert _files(folder) == ["disk_amount/default_2015.npy"]
+        relative = Path(storage_dir).relative_to(folder).as_posix()
+        assert _files(folder) == [f"{relative}/default_2015.npy"]
         np.testing.assert_array_equal(
-            _restored(os.path.join(folder, "disk_amount")).get("2015"),
+            _restored(storage_dir).get("2015"),
             values("disk_amount", 1),
         )
     finally:

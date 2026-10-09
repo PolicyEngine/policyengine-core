@@ -1,3 +1,10 @@
+## [3.32.26] - 2026-10-09
+
+### Fixed
+
+- Give independently created temporary holder storages distinct directories, create caller-supplied storage directories on first use, and clear stale enum metadata when replacing enum values with plain arrays.
+
+
 ## [3.32.25] - 2026-10-09
 
 ### Changed

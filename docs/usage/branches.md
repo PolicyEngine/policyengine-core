@@ -205,10 +205,12 @@ depend on the input is calculated again) but not less, within these limits:
 - **A branch a formula keeps between calls is a snapshot.** It holds what its
   parent held when it was created, so inputs set on the parent afterwards do
   not reach what the formula reads from it.
-- **Inputs on the root simulation drop nothing.** `set_input` on a simulation
-  that is not a branch keeps values it already calculated. A formula's input
-  for its own period is still returned as described above, and results
-  calculated while an input is being set do not enter the fast cache.
+- **Inputs on the root simulation skip dependency invalidation.** `set_input`
+  on a simulation that is not a branch keeps values calculated from the replaced
+  input. Input helpers still remove overlapping calculated values of the
+  variable they write. A formula's input for its own period is still returned
+  as described above, and results calculated while an input is being set do not
+  enter the fast cache.
 - **Existing child branches keep their values.** An input set on a branch does
   not reach branches already created from it.
 - **Values kept elsewhere stay.** A value one simulation calculated from

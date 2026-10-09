@@ -1,0 +1,1 @@
+Keep input records aligned with memory/disk storage across deletion, copies, handlers, subsampling, period aliases, and early years; custom handlers must use `holder._set` or `holder.set_input` for inputs, since `put_in_cache` values are excluded from input export and reform replay and no longer redirected to the input's branch.

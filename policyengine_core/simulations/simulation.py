@@ -301,7 +301,11 @@ class Simulation:
         # populates so ``_invalidate_all_caches`` can tell user-provided
         # source data apart from formula-computed caches. Without this the
         # post-``apply_reform`` cache wipe would also wipe the dataset the
-        # simulation was loaded from.
+        # simulation was loaded from. The record follows this simulation's
+        # storage: each entry names one stored value (the period is the one
+        # storage keys it under), ``delete_arrays`` drops the entries for the
+        # values it deletes, and ``clone`` (so also ``get_branch``) gives the
+        # copy its own record.
         self._user_input_keys: set[tuple[str, str, Period]] = set()
         self.debug: bool = False
         self.trace: bool = trace
@@ -433,11 +437,11 @@ class Simulation:
         Called after ``apply_reform`` and any other operation that changes
         the tax-benefit system underneath an already-calculated simulation.
 
-        Every (variable, branch, period) that was populated via
-        ``set_input`` is preserved — those are source data, not stale
-        formula output — so a structural reform applied after dataset
-        load doesn't silently discard the dataset. Everything else
-        (formula outputs, cached short-path results, on-disk caches) is
+        Still-present supplied inputs are preserved from the tiers that
+        hold them, so a structural reform applied after dataset load
+        doesn't silently discard the dataset. A cache write replacing an
+        input does not make that cached value a supplied input. Everything
+        else (formula outputs, cached short-path results, on-disk caches) is
         wiped so the next ``calculate`` recomputes under the new
         tax-benefit system.
         """
@@ -451,7 +455,16 @@ class Simulation:
         user_input_keys = getattr(self, "_user_input_keys", None) or set()
         for variable_name, branch_name, period in user_input_keys:
             holder = self.get_holder(variable_name)
-            stored_value = holder._memory_storage.get(period, branch_name)
+            holder._seed_input_storage(period, branch_name)
+            locations = holder._user_input_storage[(branch_name, str(period))][1]
+            # Carry-over marks also include external cache writes. Replay
+            # only tiers that still hold the recorded, supplied input.
+            stored_value = (
+                holder._memory_storage.get(period, branch_name)
+                if "memory" in locations
+                and not holder._memory_storage.is_derived(period, branch_name)
+                else None
+            )
             if stored_value is not None:
                 preserved.append(
                     PreservedUserInput(
@@ -463,7 +476,11 @@ class Simulation:
                     )
                 )
                 continue
-            if holder._disk_storage is not None:
+            if (
+                "disk" in locations
+                and holder._disk_storage is not None
+                and not holder._disk_storage.is_derived(period, branch_name)
+            ):
                 disk_period = (
                     periods.period(periods.ETERNITY)
                     if holder._disk_storage.is_eternal
@@ -484,6 +501,10 @@ class Simulation:
                             disk_enum=holder._disk_storage._enums.get(disk_file),
                         )
                     )
+        self._user_input_keys = {
+            (user_input.variable_name, user_input.branch_name, user_input.period)
+            for user_input in preserved
+        }
         # Iterate only over holders that already exist on each population —
         # lazy-creating a holder for every variable in the tax-benefit
         # system (thousands in policyengine-us) inflated the cost of
@@ -497,6 +518,8 @@ class Simulation:
                 if holder._disk_storage is not None:
                     holder._disk_storage._files = {}
                     holder._disk_storage._derived = set()
+                if hasattr(holder, "_user_input_storage"):
+                    holder._user_input_storage = {}
         # Replay preserved user inputs so ``calculate`` still sees them.
         for user_input in preserved:
             holder = self.get_holder(user_input.variable_name)
@@ -512,6 +535,9 @@ class Simulation:
                     user_input.period,
                     user_input.branch_name,
                 )
+            holder._record_input_storage(
+                user_input.period, user_input.branch_name, user_input.storage
+            )
         for branch in self.branches.values():
             branch._invalidate_all_caches()
 
@@ -1628,6 +1654,9 @@ class Simulation:
         The calling branch, each ancestor branch, and the default branch are
         purged from this simulation's private holder storage. Other branch
         names and the parent simulation's holder storage remain unchanged.
+        Deleted inputs stop counting as inputs: a value calculated later for
+        the same period is a formula result, which ``apply_reform`` discards
+        and ``to_input_dataframe`` does not export.
 
         :param variable: the variable whose cached values should be deleted
         :param period: the period to delete, or all periods when omitted
@@ -1884,6 +1913,8 @@ class Simulation:
             new.tax_benefit_system = self.tax_benefit_system
         new.debug = debug
         new.trace = trace
+        # A ``set_input`` running on this simulation is not running on the copy.
+        new._user_input_contexts = []
 
         # A branch shares its parent's baseline: formulas that run in a
         # branch read the parent's baseline values through it. That holds for
@@ -2371,8 +2402,11 @@ class Simulation:
 
         df = subset_df
 
-        # Update the dataset and rebuild the simulation
+        # Update the dataset and rebuild the simulation. Rebuilding replaces
+        # every stored value, so the record of inputs starts again with the
+        # ones the rebuild sets.
         self.dataset = Dataset.from_dataframe(df, self.dataset.time_period)
+        self._user_input_keys = set()
         self.build_from_dataset()
 
         # Purge ``_fast_cache`` entries populated by ``to_input_dataframe``

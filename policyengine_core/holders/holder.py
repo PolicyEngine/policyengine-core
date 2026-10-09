@@ -1,7 +1,7 @@
 import os
 import tempfile
 import warnings
-from typing import TYPE_CHECKING, Any, List, Tuple
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple
 
 import numpy
 import psutil
@@ -22,6 +22,8 @@ class Holder:
     """
     A holder keeps tracks of a variable values after they have been calculated, or set as an input.
     """
+
+    _user_input_storage: dict[tuple[str, str], tuple[Period, frozenset[str]]]
 
     def __init__(self, variable: "Variable", population: "Population"):
         self.population = population
@@ -63,6 +65,7 @@ class Holder:
                 "simulation",
                 "_memory_storage",
                 "_disk_storage",
+                "_user_input_storage",
             ):
                 new_dict[key] = value
 
@@ -74,6 +77,9 @@ class Holder:
         new._disk_storage = (
             self._disk_storage.clone() if self._disk_storage is not None else None
         )
+        if hasattr(self, "_user_input_storage"):
+            # Locations are immutable; only the holder's index needs copying.
+            new._user_input_storage = self._user_input_storage.copy()
 
         new_dict["population"] = population
         new_dict["simulation"] = population.simulation
@@ -116,12 +122,185 @@ class Holder:
         If ``period`` is ``None``, remove all known values of the variable.
 
         If ``period`` is not ``None``, only remove all values for any period included in period (e.g. if period is "2017", values for "2017-01", "2017-07", etc. would be removed)
+
+        A deleted value set with ``set_input`` stops counting as an input, so
+        a value calculated later for the same period is not taken for one.
         """
+        simulation = getattr(self, "simulation", None)
+        user_input_keys = getattr(simulation, "_user_input_keys", None)
+        stored_before = self._stored_keys() if user_input_keys else None
 
         self._memory_storage.delete(period, branch_name)
         if self._disk_storage:
             self._disk_storage.delete(period, branch_name)
         self._evict_fast_cache(period, branch_name, contained=True)
+
+        if user_input_keys:
+            self._forget_deleted_inputs(user_input_keys, stored_before)
+
+    def _stored_keys(self) -> Tuple[set, set]:
+        """The keys memory and disk storage hold values under."""
+        return (
+            set(self._memory_storage._arrays),
+            set(self._disk_storage._files) if self._disk_storage is not None else set(),
+        )
+
+    def _forget_deleted_inputs(
+        self, user_input_keys: set, stored_before: Tuple[set, set]
+    ) -> None:
+        """Drop the simulation's record of the inputs ``delete_arrays`` deleted.
+
+        ``_user_input_keys`` records each (variable, branch, period) stored
+        through ``set_input``, with the period as storage keys it (see
+        ``_set``). ``_invalidate_all_caches`` keeps the values it names and
+        ``to_input_dataframe`` exports them, so an entry left behind for a
+        deleted value would make a formula result stored later for that
+        period count as an input.
+
+        The keys the deletion removed are found by comparing the keys each
+        storage holds before and after, so the cost depends on what this
+        holder stores, not on the size of the record, and no stored file is
+        read. An entry for a removed key stays only while a storage still
+        holds an input for it. A computed disk value does not become an input
+        when the memory input for the same key is deleted.
+        """
+        name = self.variable.name
+        memory_before, disk_before = stored_before
+        arrays = self._memory_storage._arrays
+        files = self._disk_storage._files if self._disk_storage is not None else {}
+        # Memory keys are "{branch}:{period}"; branch names cannot contain ":".
+        removed = [key.split(":", 1) for key in memory_before if key not in arrays]
+        # Disk keys are "{branch}_{period}"; branch names can contain "_" but
+        # period strings cannot, so the period follows the last "_".
+        removed += [key.rsplit("_", 1) for key in disk_before if key not in files]
+        forgotten = []
+        recorded = getattr(self, "_user_input_storage", {})
+        for branch, period_string in removed:
+            slot = (branch, period_string)
+            input_storage = recorded.get(slot)
+            if input_storage is not None:
+                input_period, locations = input_storage
+                locations = frozenset(
+                    location
+                    for location in locations
+                    if (
+                        f"{branch}:{period_string}" in arrays
+                        if location == "memory"
+                        else f"{branch}_{period_string}" in files
+                    )
+                )
+                recorded[slot] = (input_period, locations)
+            else:
+                try:
+                    # Storage strings omit early years' leading zeros;
+                    # the period parser requires a four-digit year.
+                    components = period_string.split(":")
+                    date_index = 1 if len(components) > 1 else 0
+                    date_components = components[date_index].split("-")
+                    date_components[0] = date_components[0].zfill(4)
+                    components[date_index] = "-".join(date_components)
+                    input_period = periods.period(":".join(components))
+                except ValueError:
+                    # Not a key ``put`` wrote (say, a file ``restore`` found).
+                    continue
+            key = (name, branch, input_period)
+            if key in user_input_keys and not self._stores_user_input(
+                input_period, branch
+            ):
+                forgotten.append(key)
+                recorded.pop(slot, None)
+        user_input_keys.difference_update(forgotten)
+
+    def _seed_input_storage(self, period: Period, branch_name: str) -> None:
+        """Capture registered input locations before their first new write.
+
+        Restoration can register inputs without this holder's tier metadata.
+        Only an already-recorded slot can inherit storage's input marks: an
+        unrecorded cache value must never become a replayable input.
+        """
+        recorded = getattr(self, "_user_input_storage", None)
+        slot = (branch_name, str(period))
+        if recorded is not None and slot in recorded:
+            return
+        keys = getattr(self.simulation, "_user_input_keys", ())
+        if (self.variable.name, branch_name, period) not in keys:
+            return
+        locations = frozenset(
+            location
+            for location, storage in (
+                ("memory", self._memory_storage),
+                ("disk", self._disk_storage),
+            )
+            if storage is not None
+            and storage.has(period, branch_name)
+            and not storage.is_derived(period, branch_name)
+        )
+        if recorded is None:
+            recorded = self._user_input_storage = {}
+        recorded[slot] = (period, locations)
+
+    def _record_input_storage(
+        self, period: Period, branch_name: str, storage: str, is_input: bool = True
+    ) -> None:
+        """Remember which tier received the actual ``set_input`` value.
+
+        Storage's carry-over marks are broader: ``put_in_cache`` defaults to
+        ``derived=False`` without making its value a replay/export input.
+        Keep this metadata only for slots that have received an input, with
+        immutable locations so clones can copy the index independently.
+        """
+        recorded = getattr(self, "_user_input_storage", None)
+        slot = (branch_name, str(period))
+        if not is_input and (recorded is None or slot not in recorded):
+            return
+        if recorded is None:
+            recorded = self._user_input_storage = {}
+        _, locations = recorded.get(slot, (period, frozenset()))
+        locations = locations | {storage} if is_input else locations - {storage}
+        recorded[slot] = (period, locations)
+
+    def _stores_user_input(self, period: Period, branch_name: str) -> bool:
+        """Whether an actual input survives in either tier, without reading it.
+
+        Called only for a slot already in the simulation's replay record.
+        Register-only inputs (including restored inputs) may have no location
+        metadata yet; their existing storage marks identify the surviving
+        tier. Marks never add an unrecorded slot to the replay record.
+        """
+        recorded = getattr(self, "_user_input_storage", {}).get(
+            (branch_name, str(period))
+        )
+        locations = recorded[1] if recorded is not None else {"memory", "disk"}
+        for location, storage in (
+            ("memory", self._memory_storage),
+            ("disk", self._disk_storage),
+        ):
+            if (
+                location in locations
+                and storage is not None
+                and storage.has(period, branch_name)
+                and not storage.is_derived(period, branch_name)
+            ):
+                return True
+        return False
+
+    def _storage_period(self, period: Period) -> Period:
+        """The period storage keys a value for ``period`` under.
+
+        Match the string key's aliases using the period fields: eternity for
+        an eternal variable, and a year for twelve months. Do not reparse the
+        string: valid early-year periods stringify without leading zeros.
+        """
+        if self._memory_storage.is_eternal:
+            return periods.period(periods.ETERNITY)
+        period = periods.period(period)
+        if period.unit in (periods.MONTH, periods.YEAR):
+            unit, size = period.unit, period.size
+            if unit == periods.MONTH and size == 12:
+                unit, size = periods.YEAR, 1
+            start = periods.instant((period.start.year, period.start.month, 1))
+            return Period((unit, start, size))
+        return period
 
     def _get_array_from_storage(
         self, period: Period, branch_name: str = "default"
@@ -257,6 +436,10 @@ class Holder:
 
 
         If a ``set_input`` property has been set for the variable, this method may accept inputs for periods not matching the ``definition_period`` of the variable. To read more about this, check the `documentation <https://openfisca.org/doc/coding-the-legislation/35_periods.html#set-input-automatically-process-variable-inputs-defined-for-periods-not-matching-the-definition-period>`_.
+
+        Custom handlers store replayable inputs with ``holder._set`` or
+        ``holder.set_input``. Values written through ``put_in_cache`` are
+        excluded from input export and reform replay.
         """
 
         period = periods.period(period)
@@ -365,15 +548,18 @@ class Holder:
         branch_name: str = "default",
         validate_nan: bool = False,
         derived: bool = False,
+        is_input: Optional[bool] = None,
     ) -> None:
         simulation = getattr(self, "simulation", None)
-        # A value calculated while an input is being set (say, by a
-        # ``set_input`` helper that calculates) is not part of that input: it
-        # belongs to the branch it was calculated on.
         user_input_contexts = (
             None if derived else getattr(simulation, "_user_input_contexts", None)
         )
-        if user_input_contexts and branch_name == "default":
+        # A value is an input when stored while ``set_input`` runs, unless the
+        # caller says otherwise: ``put_in_cache`` stores calculated values,
+        # including those a custom ``set_input`` handler calculates.
+        if is_input is None:
+            is_input = bool(user_input_contexts)
+        if is_input and user_input_contexts and branch_name == "default":
             branch_name = user_input_contexts[-1]
         value = self._to_array(value, validate_nan=validate_nan)
         if self.variable.definition_period != periods.ETERNITY:
@@ -389,15 +575,38 @@ class Holder:
             >= self.simulation.memory_config.max_memory_occupation_pc
         )
 
+        stored_period = (
+            self._storage_period(period)
+            if is_input
+            or hasattr(self, "_user_input_storage")
+            or (not derived and getattr(simulation, "_user_input_keys", None))
+            else None
+        )
+        if stored_period is not None:
+            self._seed_input_storage(stored_period, branch_name)
+
         if should_store_on_disk:
             self._disk_storage.put(value, period, branch_name, derived=derived)
         else:
             self._memory_storage.put(value, period, branch_name, derived=derived)
         self._evict_fast_cache(period, branch_name)
-        if user_input_contexts:
+        if stored_period is not None:
+            self._record_input_storage(
+                stored_period,
+                branch_name,
+                "disk" if should_store_on_disk else "memory",
+                is_input=is_input,
+            )
+        if is_input and simulation is not None:
             if not hasattr(simulation, "_user_input_keys"):
                 simulation._user_input_keys = set()
-            simulation._user_input_keys.add((self.variable.name, branch_name, period))
+            # Record the period as storage keys the value (eternity for an
+            # eternal variable, whatever period it was set for; the year for
+            # twelve months starting on the first of a month), so each entry
+            # names one stored value.
+            simulation._user_input_keys.add(
+                (self.variable.name, branch_name, stored_period)
+            )
 
     def put_in_cache(
         self,
@@ -436,7 +645,7 @@ class Holder:
         ):
             return
 
-        self._set(period, value, branch_name, derived=derived)
+        self._set(period, value, branch_name, is_input=False, derived=derived)
 
     def default_array(self) -> ArrayLike:
         """

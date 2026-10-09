@@ -158,6 +158,225 @@ def test_ordered_local_credits_cache_shared_dependencies_during_a_stale_attempt(
     assert calls == completed
 
 
+@pytest.mark.parametrize("depth", [1, 6, 12, 20])
+@pytest.mark.parametrize("mediated_foreign_read", [False, True])
+@pytest.mark.parametrize("replace_after_credits", [False, True])
+def test_foreign_read_credits_take_linear_work_during_a_stale_attempt(
+    depth,
+    mediated_foreign_read,
+    replace_after_credits,
+):
+    calls = Counter()
+
+    def foreign_source(person, period):
+        calls["foreign_source"] += 1
+        return person.simulation.get_branch("worker").calculate("sf_source", period)
+
+    def credit_formula(index):
+        def formula(person, period):
+            calls[f"credit_{index}"] += 1
+            source = (
+                person("sf_foreign_source", period)
+                if mediated_foreign_read
+                else person.simulation.get_branch("worker").calculate(
+                    "sf_source", period
+                )
+            )
+            return source + sum(
+                person(f"sf_credit_{previous}", period) for previous in range(index)
+            )
+
+        return formula
+
+    def outer(person, period):
+        calls["outer"] += 1
+        worker = person.simulation.get_branch("worker")
+        previous = worker.calculate("sf_source", period)
+        first = np.any(previous == 1)
+        if first:
+            worker.set_input(
+                "sf_source",
+                period,
+                np.array([2.0 if replace_after_credits else 3.0]),
+            )
+        # Every credit reads all its predecessors. Refusing all foreign-read
+        # reuse in this stale attempt expands depth n into 2**(n - 1) calls.
+        result = person(f"sf_credit_{depth - 1}", period)
+        if first and replace_after_credits:
+            np.testing.assert_array_equal(result, [2.0 * 2 ** (depth - 1)])
+            worker.set_input("sf_source", period, np.array([3.0]))
+            # Reused values must retain their foreign dependencies, including
+            # dependencies reached through a locally calculated source.
+            result = person(f"sf_credit_{depth - 1}", period)
+        np.testing.assert_array_equal(result, [3.0 * 2 ** (depth - 1)])
+        return result
+
+    simulation = _simulation(
+        periods.YEAR,
+        {
+            "sf_foreign_source": foreign_source,
+            **{f"sf_credit_{index}": credit_formula(index) for index in range(depth)},
+            "sf_outer": outer,
+        },
+    )
+    expected = [3.0 * 2 ** (depth - 1)]
+    result = simulation.calculate("sf_outer", "2020")
+    np.testing.assert_array_equal(result, expected)
+    assert calls["outer"] == 2
+    # At most one evaluation per credit and settled input state in each
+    # attempt: the stale graph, an optional changed graph, and the clean retry.
+    graphs = 3 if replace_after_credits else 2
+    credit_calls = sum(calls[f"credit_{index}"] for index in range(depth))
+    assert credit_calls <= graphs * depth
+    assert max(calls[f"credit_{index}"] for index in range(depth)) <= graphs
+    assert calls["foreign_source"] <= (graphs if mediated_foreign_read else 0)
+    np.testing.assert_array_equal(simulation.get_array("sf_outer", "2020"), result)
+
+    completed = calls.copy()
+    np.testing.assert_array_equal(simulation.calculate("sf_outer", "2020"), expected)
+    np.testing.assert_array_equal(
+        simulation.calculate(f"sf_credit_{depth - 1}", "2020"), expected
+    )
+    assert calls == completed
+
+
+@pytest.mark.parametrize("mutation_in_thread", [False, True])
+@pytest.mark.parametrize("raw_cache_write", [False, True])
+def test_stale_attempt_reuse_observes_raw_holder_changes_between_siblings(
+    mutation_in_thread,
+    raw_cache_write,
+):
+    calls = Counter()
+    expected = [4.0 if raw_cache_write else 1.0]
+
+    def suffix(person, period):
+        calls["suffix"] += 1
+        return person.simulation.get_branch("worker").calculate("sf_source", period)
+
+    def outer(person, period):
+        calls["outer"] += 1
+        worker = person.simulation.get_branch("worker")
+        worker.calculate("sf_source", period)
+        worker.set_input("sf_source", period, np.array([2.0]))
+        np.testing.assert_array_equal(person("sf_suffix", period), [2.0])
+        counters = worker._input_epoch, worker._inputs_set
+
+        def change():
+            holder = worker.get_holder("sf_source")
+            if raw_cache_write:
+                holder.put_in_cache(np.array([4.0]), period, worker.branch_name)
+            else:
+                # Removing only the worker override exposes its inherited 1.
+                holder.delete_arrays(period, worker.branch_name)
+
+        if mutation_in_thread:
+            # The memo-producing child has exited. Context-free activity
+            # must invalidate its reuse even with no restricted frame open.
+            assert not simulation_module._restricted_frames
+            _in_thread(change)
+        else:
+            change()
+        assert (worker._input_epoch, worker._inputs_set) == counters
+        result = person("sf_suffix", period)
+        np.testing.assert_array_equal(result, expected)
+        return result
+
+    simulation = _simulation(periods.YEAR, {"sf_suffix": suffix, "sf_outer": outer})
+    np.testing.assert_array_equal(simulation.calculate("sf_outer", "2020"), expected)
+    # Context-free effects can exhaust the retry budget; every attempt must
+    # nevertheless recalculate the suffix after the counter-preserving change.
+    assert 2 <= calls["outer"] <= simulation_module._RERUNS_AFTER_INPUT_CHANGE + 1
+    assert calls["suffix"] == 2 * calls["outer"]
+
+
+def test_stale_attempt_reuse_revalidates_foreign_branch_registration():
+    calls = Counter()
+    replacement = None
+
+    def suffix(person, period):
+        calls["suffix"] += 1
+        return person.simulation.get_branch("worker").calculate("sf_source", period)
+
+    def outer(person, period):
+        calls["outer"] += 1
+        trigger = person.simulation.get_branch("trigger")
+        previous = trigger.calculate("sf_source", period)
+        first = np.any(previous == 1)
+        if first:
+            trigger.set_input("sf_source", period, np.array([3.0]))
+            np.testing.assert_array_equal(person("sf_suffix", period), [1.0])
+            original = person.simulation.get_branch("worker")
+            assert (original._input_epoch, original._inputs_set) == (
+                replacement._input_epoch,
+                replacement._inputs_set,
+            )
+            # Replacing a registration does not change the old snapshot's
+            # counters. A memoized named read must still follow the new branch.
+            person.simulation.branches["worker"] = replacement
+        result = person("sf_suffix", period)
+        np.testing.assert_array_equal(result, [4.0])
+        return result
+
+    simulation = _simulation(periods.YEAR, {"sf_suffix": suffix, "sf_outer": outer})
+    original = simulation.get_branch("worker")
+    replacement = original.clone()
+    replacement.get_holder("sf_source").put_in_cache(
+        np.array([4.0]), periods.period("2020"), replacement.branch_name
+    )
+    assert (original._input_epoch, original._inputs_set) == (
+        replacement._input_epoch,
+        replacement._inputs_set,
+    )
+
+    result = simulation.calculate("sf_outer", "2020")
+    np.testing.assert_array_equal(result, [4.0])
+    assert calls == {"outer": 2, "suffix": 3}
+    np.testing.assert_array_equal(simulation.get_array("sf_outer", "2020"), result)
+    completed = calls.copy()
+    np.testing.assert_array_equal(simulation.calculate("sf_outer", "2020"), result)
+    assert calls == completed
+
+
+def test_stale_attempt_reuse_keeps_direct_foreign_calculations_in_their_simulation():
+    calls = Counter()
+
+    def value(person, period):
+        calls[f"value_{person.simulation.branch_name}"] += 1
+        return person("sf_source", period) * 10
+
+    def suffix(person, period):
+        calls["suffix"] += 1
+        # Custom input handlers can call _calculate without opening a frame
+        # in that simulation. Its result still belongs to the foreign worker.
+        return person.simulation.get_branch("worker")._calculate("sf_value", period)
+
+    def outer(person, period):
+        calls["outer"] += 1
+        worker = person.simulation.get_branch("worker")
+        previous = worker.calculate("sf_source", period)
+        if np.any(previous != 3):
+            worker.set_input("sf_source", period, np.array([3.0]))
+        foreign = person("sf_suffix", period)
+        local = person("sf_value", period)
+        # Assert inside the stale attempt so its later retry cannot hide a
+        # worker result incorrectly memoized under the root's variable name.
+        np.testing.assert_array_equal(foreign, [30.0])
+        np.testing.assert_array_equal(local, [10.0])
+        return foreign + local
+
+    simulation = _simulation(
+        periods.YEAR,
+        {"sf_value": value, "sf_suffix": suffix, "sf_outer": outer},
+    )
+    simulation.get_branch("worker")
+    result = simulation.calculate("sf_outer", "2020")
+    np.testing.assert_array_equal(result, [40.0])
+    assert calls == {"outer": 2, "suffix": 2, "value_worker": 2, "value_default": 1}
+    completed = calls.copy()
+    np.testing.assert_array_equal(simulation.calculate("sf_outer", "2020"), result)
+    assert calls == completed
+
+
 @pytest.mark.parametrize("suffix_branch", ["worker", "other"])
 def test_foreign_suffix_is_not_cached_before_its_stale_caller_settles(suffix_branch):
     calls = Counter()

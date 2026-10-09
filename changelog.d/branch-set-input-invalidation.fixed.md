@@ -1,1 +1,1 @@
-Branch input changes invalidate derived values while preserving supplied inputs, independent caches, guarded retry effects including raw cache writes, fixed-point settlement, branch dump values, and separate disk invalidation order.
+Branch input changes invalidate derived values while preserving supplied inputs, independent caches, guarded retry effects, fixed-point settlement, branch dumps and disk invalidation order, with read-only foreign calculations reused within each attempt.

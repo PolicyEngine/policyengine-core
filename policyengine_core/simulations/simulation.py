@@ -205,13 +205,44 @@ _calculation_frames: ContextVar[tuple] = ContextVar("_calculation_frames", defau
 # changing ordinary frames' scoped read tracking or convergence decisions.
 _restricted_frames = set()
 _restricted_frames_lock = Lock()
+# Activity between restricted calculations must also invalidate their shared
+# attempt cache, even when no restricted child is currently running.
+_unobserved_activity_generation = 0
 
 
 def _note_unobserved_activity() -> None:
-    if _restricted_frames:
-        with _restricted_frames_lock:
-            for frame in _restricted_frames:
-                frame.unobserved_activity = True
+    global _unobserved_activity_generation
+    with _restricted_frames_lock:
+        _unobserved_activity_generation += 1
+        for frame in _restricted_frames:
+            frame.unobserved_activity = True
+
+
+@dataclass
+class _AttemptResult:
+    """Read-only work reusable within one stale attempt, with its dependencies."""
+
+    array: ArrayLike
+    epoch: int
+    inputs_set: int
+    reads: tuple
+    registrations: tuple
+    activity_generation: int
+
+    def is_current(self, simulation: "Simulation") -> bool:
+        return (
+            self.activity_generation == _unobserved_activity_generation
+            and self.epoch == simulation._input_epoch
+            and self.inputs_set == simulation._inputs_set
+            and all(
+                other._input_epoch == epoch and other._inputs_set == inputs_set
+                for other, epoch, inputs_set in self.reads
+            )
+            and all(
+                parent.branches.get(name) is branch
+                for parent, name, branch in self.registrations
+            )
+        )
 
 
 class _Frame:
@@ -250,6 +281,7 @@ class _Frame:
         "carried_branches",
         "stale_parent",
         "unobserved_activity",
+        "attempt_cache",
     )
 
     def __init__(self, simulation: "Simulation", stale_parent: bool = False):
@@ -268,6 +300,9 @@ class _Frame:
         self.untracked_changes = False
         self.unobserved_activity = False
         self.branch_identities = {}
+        # Restricted children share this dictionary only until this attempt
+        # restarts. Foreign results never enter persistent caches this way.
+        self.attempt_cache = {}
         # Retain only creations whose original registration still names
         # the same object. Saved or replaced snapshots keep their identities.
         self.carried_branches = _registered_creations(
@@ -369,10 +404,58 @@ class _Frame:
             and not self.is_stale()
         )
 
+    def remember(self, variable: str, period: Period, array: ArrayLike) -> None:
+        """Reuse stable foreign reads without hiding reads or effects on retry."""
+        if (
+            not self.stale_parent
+            or not self.reads
+            or self.changes
+            or self.untracked_changes
+            or self.created_branches
+            or self.unobserved_activity
+            or self.is_stale()
+        ):
+            return
+        registrations = set()
+        for other in self.reads:
+            while getattr(other, "parent_branch", None) is not None:
+                parent = other.parent_branch
+                name = other.branch_name
+                if parent.branches.get(name) is other:
+                    registrations.add((parent, name, other))
+                other = parent
+        self.attempt_cache[(self.simulation, variable, period)] = _AttemptResult(
+            array,
+            self.start,
+            self.inputs_set,
+            tuple(
+                (other, epoch, other._inputs_set) for other, epoch in self.reads.items()
+            ),
+            tuple(registrations),
+            _unobserved_activity_generation,
+        )
+
+    def recall(self, variable: str, period: Period) -> Optional[ArrayLike]:
+        """Validate a memoized result and pass its foreign reads to this frame."""
+        key = (self.simulation, variable, period)
+        cached = self.attempt_cache.get(key)
+        if cached is None:
+            return None
+        if not cached.is_current(self.simulation):
+            del self.attempt_cache[key]
+            return None
+        for other, epoch, _ in cached.reads:
+            self.reads.setdefault(other, epoch)
+        # This simulation's history cannot have been pruned without changing
+        # its epoch, so it still records every source of the reused value.
+        return cached.array
+
     def __enter__(self) -> "_Frame":
         simulation = self.simulation
         self.restart()
         self.outer = outer = _calculation_frames.get()
+        if self.stale_parent:
+            self.attempt_cache = outer[-1].attempt_cache
         self.token = _calculation_frames.set(outer + (self,))
         registry = simulation._open_frames
         if registry is None:
@@ -528,6 +611,10 @@ def _note_input_change(
     if not frames:
         _taint_waiting_frames(simulation)
         return
+    # Deletes and raw holder writes need not change an input epoch. They can
+    # still change what a foreign calculation reads during this attempt.
+    for frame in frames:
+        frame.attempt_cache.clear()
     signature = _value_signature(value) if operation == "set" else None
     if operation == "set" and signature is None:
         for frame in frames:
@@ -1524,6 +1611,12 @@ class Simulation:
         if cached_array is not None:
             return cached_array
 
+        frames = _calculation_frames.get()
+        if frames and frames[-1].simulation is self:
+            cached_array = frames[-1].recall(variable_name, period)
+            if cached_array is not None:
+                return cached_array
+
         # Check if cache can be used, if available, check if path exists
         is_cache_available = self.check_macro_cache(variable_name, str(period))
         if is_cache_available:
@@ -1866,6 +1959,13 @@ class Simulation:
         else:
             # Not kept, but whatever reads it is stored after it all the same.
             holder._record_store(period, next_sequence_number())
+            if (
+                frames
+                and frames[-1].simulation is self
+                and epoch == self._input_epoch
+                and inputs_set == self._inputs_set
+            ):
+                frames[-1].remember(holder.variable.name, period, array)
         return array
 
     def purge_cache_of_invalid_values(self) -> None:
@@ -2821,6 +2921,7 @@ class Simulation:
         if not frames:
             _note_unobserved_activity()
         for frame in frames:
+            frame.attempt_cache.clear()
             frame.created_branches[branch] = (self, name)
         if self.trace:
             branch.trace = True

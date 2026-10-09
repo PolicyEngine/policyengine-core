@@ -69,7 +69,27 @@ share this record while it is current. After it becomes stale, later nested
 calculations can still keep results that use only that simulation's own values.
 During these stale attempts, results that read another simulation, change inputs,
 write raw cache values, create branches, or observe untracked activity remain
-unkept so the caller's retry observes the same reads and repeats those operations.
+absent from holder storage, the fast cache and the macro cache so the caller's
+retry observes the same reads and repeats those operations. Read-only results
+that read another simulation can be reused temporarily within the same attempt.
+Reuse checks the input-change and input-store counts in the calculating
+simulation and every simulation read, the registrations of named branches, and
+whether activity occurred without the formula's context. It also passes the
+original dependency reads back to the caller, so a later input change still
+makes that caller stale. Observed mutations, including deletes and raw cache
+writes, and branch creations clear this temporary reuse; mutations, creations
+and untracked activity within a calculation prevent its result from entering it.
+The temporary results are discarded when the outer attempt restarts or ends.
+
+Within a stable phase of one stale attempt, each distinct variable and period in
+an eligible read-only foreign-read dependency graph needs at most one formula
+evaluation per simulation. Formula calls therefore grow at most linearly with
+the graph's distinct calculations, even when many calculations share the same
+descendants. Dependency validation and replay still visit their recorded reads.
+This reuse retains the result arrays and dependency records in memory until
+invalidated entries are removed, the attempt restarts or the outer calculation
+ends; it does not make those values part of the simulation's stored values.
+
 Raw writes through `Holder.put_in_cache` without `derived=True` count as mutation
 activity too, including writes from threads without the formula's context, while
 remaining excluded from the supplied-input record used for reform replay and

@@ -281,6 +281,8 @@ class OnDiskStorage:
         if isinstance(value, EnumArray):
             self._enums[path] = value.possible_values
             value = value.view(numpy.ndarray)
+        else:
+            self._enums.pop(path, None)
         numpy.save(path, value)
         self._files[filename] = path
         self._own_paths[filename] = path

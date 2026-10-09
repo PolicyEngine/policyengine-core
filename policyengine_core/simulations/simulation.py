@@ -769,7 +769,8 @@ class Simulation:
         Folder in which this simulation stores values on disk when memory is
         short (see ``MemoryConfig``).
 
-        Set ``_data_storage_dir`` to choose the folder: nothing removes it,
+        Set ``_data_storage_dir`` to choose the folder: it is created on first
+        use if it does not exist. Nothing removes it,
         unless it is in a temporary folder a simulation made, which this
         simulation then keeps alive, and which removes it with everything else
         in it once nothing keeps it. Otherwise this is a new temporary folder,
@@ -801,10 +802,14 @@ class Simulation:
             if os.path.isdir(inherited):
                 self._storage_dir_parent = inherited
         if self._data_storage_dir is None:
+            if self._storage_dir_parent is not None:
+                os.makedirs(self._storage_dir_parent, exist_ok=True)
             self._storage_directory = TemporaryStorageDirectory(
                 self._storage_dir_parent
             )
             self._data_storage_dir = self._storage_directory.path
+        elif not self._made_data_storage_dir():
+            os.makedirs(self._data_storage_dir, exist_ok=True)
         self._storage_dir_pid = pid
         return self._data_storage_dir
 

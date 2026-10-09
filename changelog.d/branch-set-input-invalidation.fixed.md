@@ -1,3 +1,1 @@
-Branch input changes invalidate derived values instead of inheriting stale results, independent nested calculations retain their caches during stale retries without hiding foreign reads or effects, repeated resets on reused branches settle in two attempts without conflating saved snapshots, fixed-point calculations support missing optional fast caches, derivatives preserve later inputs, formulas retain own-period inputs, branch dumps preserve branch values, and copied disk storages retain independent invalidation order.
-
-Raw holder cache writes remain observable during guarded stale retries without being replayed or exported as supplied inputs.
+Branch input changes invalidate derived values while preserving supplied inputs, independent caches, guarded retry effects including raw cache writes, fixed-point settlement, branch dump values, and separate disk invalidation order.

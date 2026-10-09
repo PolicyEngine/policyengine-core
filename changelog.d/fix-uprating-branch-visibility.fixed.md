@@ -1,0 +1,1 @@
+Scope known periods and dumps to the branch's readable values while preserving derived marks, parse underscore-containing disk branch names safely, delete contained disk periods consistently with memory, reject ambiguous or unparseable storage keys before writing, and warn and skip malformed restored filenames.

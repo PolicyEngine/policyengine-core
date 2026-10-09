@@ -123,13 +123,17 @@ def restore_simulation(directory, tax_benefit_system, **kwargs):
 
 def _dump_holder(holder, directory):
     disk_storage = holder.create_disk_storage(directory, preserve=True)
+    # Dump what the simulation reads: on a branch, its own value, else its
+    # nearest ancestor's or the default one. A value stored only under a
+    # branch the simulation cannot read is left out: read here, it would be
+    # ``None``, saved as an array ``restore_simulation`` cannot load.
+    branch_name = holder.simulation.branch_name
     derived_periods = set()
-    for period in holder.get_known_periods():
-        value = holder.get_array(period)
-        disk_storage.put(value, period)
+    for period in holder.get_known_periods(branch_name):
+        disk_storage.put(holder.get_array(period, branch_name), period)
         # Read the mark of exactly the value dumped: the same period on the
         # same branch as ``get_array``.
-        if holder.is_derived(period):
+        if holder.is_derived(period, branch_name):
             derived_periods.add(str(period))
     if derived_periods:
         path = os.path.join(disk_storage.storage_dir, DERIVED_PERIODS_FILE)

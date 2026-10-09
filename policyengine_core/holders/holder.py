@@ -206,11 +206,25 @@ class Holder:
 
         return usage
 
-    def get_known_periods(self) -> List[Period]:
+    def get_known_periods(self, branch_name: str = None) -> List[Period]:
         """
         Get the list of periods the variable value is known for.
-        """
 
+        With ``branch_name``, list each period ``get_array(period,
+        branch_name)`` reads a stored value for, once: those stored under
+        that branch, its ``parent_branch`` ancestors or ``default`` (see
+        ``_readable_branches``). Without it, list the period of every value
+        stored, under any branch; that branch may not read some of them.
+        """
+        if branch_name is not None:
+            readable = set(self._readable_branches(branch_name))
+            return list(
+                dict.fromkeys(
+                    period
+                    for stored_branch, period in self.get_known_branch_periods()
+                    if stored_branch in readable
+                )
+            )
         return list(self._memory_storage.get_known_periods()) + list(
             (self._disk_storage.get_known_periods() if self._disk_storage else [])
         )

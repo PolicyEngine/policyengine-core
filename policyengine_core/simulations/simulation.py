@@ -1093,8 +1093,12 @@ class Simulation:
 
             # If no result, use the default value and cache it
             if array is None:
-                # Check if the variable has a previously defined value
-                known_periods = holder.get_known_periods()
+                # Check if the variable has a previously defined value.
+                # Only periods this branch can read count: a value stored
+                # only under a branch this one cannot read must not change
+                # what it calculates or caches (below, a later stored period
+                # leaves the default uncached).
+                known_periods = holder.get_known_periods(self.branch_name)
                 earlier_known_periods = [
                     known_period
                     for known_period in known_periods

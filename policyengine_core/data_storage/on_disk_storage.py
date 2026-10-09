@@ -1,6 +1,7 @@
 import os
 import shutil
 import tempfile
+import warnings
 import weakref
 
 import numpy
@@ -11,6 +12,7 @@ from policyengine_core.data_storage.storage_directory import (
     directory_containing,
     path_key,
 )
+from policyengine_core.data_storage.storage_keys import check_storable
 from policyengine_core.enums import EnumArray
 from policyengine_core.periods import Period
 
@@ -46,6 +48,41 @@ if hasattr(os, "register_at_fork"):
 def _epoch() -> tuple:
     """Changes in a process when it forks, and differs in the forked one."""
     return os.getpid(), _forks
+
+
+def _split_key(key: str) -> tuple:
+    """Split a ``f"{branch_name}_{period}"`` file key into its two parts.
+
+    Branch names often contain ``_`` (policyengine-us uses ``no_salt`` and
+    ``mtr_for_adult_1``) but a period's string form never does, so the key
+    splits on its last ``_``.
+    """
+    branch_name, period = key.rsplit("_", 1)
+    return branch_name, period
+
+
+def _is_key(key: str) -> bool:
+    """Whether ``key`` ends with a canonical period after the branch separator.
+
+    Legacy branch names and eternal-storage files retain their restore
+    behavior; this check only validates the period's spelling.
+    """
+    _, separator, period = key.rpartition("_")
+    if not separator:
+        return False
+    try:
+        return str(periods.period(period)) == period
+    except ValueError:
+        return False
+
+
+def _is_within(key: str, branch_name: str, period: Period) -> bool:
+    """Whether file key ``key`` stores a value of ``branch_name`` for a
+    period that ``period`` contains."""
+    key_branch_name, key_period = _split_key(key)
+    return key_branch_name == branch_name and period.contains(
+        periods.period(key_period)
+    )
 
 
 class OnDiskStorage:
@@ -275,6 +312,11 @@ class OnDiskStorage:
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
+        # The key must split back into this branch name and period (see
+        # ``get_known_branch_periods`` and ``delete``): reject what
+        # ``InMemoryStorage.put`` rejects. A month anchored mid-month, say,
+        # would be stored under the key of the calendar month.
+        check_storable(branch_name, period)
 
         filename = f"{branch_name}_{period}"
         path = self._path_to_write(filename)
@@ -328,12 +370,13 @@ class OnDiskStorage:
         if period is None:
             # Only wipe files belonging to the requested branch (previously
             # this wiped every branch regardless of ``branch_name`` — same
-            # class of bug as C2 in InMemoryStorage).
-            branch_prefix = f"{branch_name}_"
+            # class of bug as C2 in InMemoryStorage). Compare the parsed
+            # branch name, not a prefix: deleting ``pre_tcja`` must not
+            # also wipe ``pre_tcja_ctc``.
             self._files = {
                 period_item: value
                 for period_item, value in self._files.items()
-                if not period_item.startswith(branch_prefix)
+                if _split_key(period_item)[0] != branch_name
             }
             self._derived.intersection_update(self._files)
             return
@@ -342,26 +385,33 @@ class OnDiskStorage:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
 
+        # Delete every period of the branch that ``period`` contains, as
+        # ``InMemoryStorage.delete`` does and ``Holder.delete_arrays``
+        # documents: deleting ``2025`` also deletes ``2025-01``. Previously
+        # only the file keyed exactly ``period`` was deleted.
         if period is not None:
             self._files = {
                 period_item: value
                 for period_item, value in self._files.items()
-                if not period_item == f"{branch_name}_{period}"
+                if not _is_within(period_item, branch_name, period)
             }
             self._derived.intersection_update(self._files)
 
     def get_known_periods(self) -> list:
-        return list([periods.period(x.split("_")[1]) for x in self._files.keys()])
+        return [period for _, period in self.get_known_branch_periods()]
 
     def get_known_branch_periods(self) -> list:
         return [
             (branch_name, periods.period(period))
-            for branch_name, period in map(lambda x: x.split("_"), self._files.keys())
+            for branch_name, period in map(_split_key, self._files.keys())
         ]
 
     def restore(self) -> None:
         """Read back the values stored in this storage's directory: for each
         key, the file named for it (not those in ``REPLACEMENTS_DIR``).
+
+        A ``.npy`` file whose name lacks a branch separator and a canonical
+        period string is left out, with a warning.
 
         This storage writes over those files, as over those it wrote, until
         it is cloned or copied, or this process forks: from then on it writes
@@ -374,14 +424,28 @@ class OnDiskStorage:
         self._files = files = {}
         # Files read back from a directory carry no derived marks.
         self._derived = set()
+        not_keys = []
         # Restore self._files from content of storage_dir.
         for filename in os.listdir(self.storage_dir):
             if not filename.endswith(".npy"):
                 continue
             path = os.path.join(self.storage_dir, filename)
             filename_core = filename.rsplit(".", 1)[0]
+            if not _is_key(filename_core):
+                # Reading it back would put a key in ``_files`` that names no
+                # branch and period, which ``delete`` and
+                # ``get_known_periods`` could not parse.
+                not_keys.append(filename)
+                continue
             files[filename_core] = path
         self._restored_paths.update(files.values())
+        if not_keys:
+            warnings.warn(
+                f"Not restoring {', '.join(sorted(not_keys))} in "
+                f"{self.storage_dir}: a stored value's file is named for a "
+                "branch name, '_' and a period.",
+                stacklevel=2,
+            )
 
     def __del__(self, _rmtree=shutil.rmtree, _getpid=os.getpid) -> None:
         # (The defaults keep the two functions reachable while the

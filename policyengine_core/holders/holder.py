@@ -564,7 +564,9 @@ class Holder:
 
         stored_period = (
             self._storage_period(period)
-            if is_input or hasattr(self, "_user_input_storage")
+            if is_input
+            or hasattr(self, "_user_input_storage")
+            or (not derived and getattr(simulation, "_user_input_keys", None))
             else None
         )
         if stored_period is not None:

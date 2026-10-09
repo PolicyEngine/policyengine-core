@@ -437,11 +437,11 @@ class Simulation:
         Called after ``apply_reform`` and any other operation that changes
         the tax-benefit system underneath an already-calculated simulation.
 
-        Every (variable, branch, period) that was populated via
-        ``set_input`` is preserved — those are source data, not stale
-        formula output — so a structural reform applied after dataset
-        load doesn't silently discard the dataset. Everything else
-        (formula outputs, cached short-path results, on-disk caches) is
+        Still-present supplied inputs are preserved from the tiers that
+        hold them, so a structural reform applied after dataset load
+        doesn't silently discard the dataset. A cache write replacing an
+        input does not make that cached value a supplied input. Everything
+        else (formula outputs, cached short-path results, on-disk caches) is
         wiped so the next ``calculate`` recomputes under the new
         tax-benefit system.
         """
@@ -455,7 +455,16 @@ class Simulation:
         user_input_keys = getattr(self, "_user_input_keys", None) or set()
         for variable_name, branch_name, period in user_input_keys:
             holder = self.get_holder(variable_name)
-            stored_value = holder._memory_storage.get(period, branch_name)
+            holder._seed_input_storage(period, branch_name)
+            locations = holder._user_input_storage[(branch_name, str(period))][1]
+            # Carry-over marks also include external cache writes. Replay
+            # only tiers that still hold the recorded, supplied input.
+            stored_value = (
+                holder._memory_storage.get(period, branch_name)
+                if "memory" in locations
+                and not holder._memory_storage.is_derived(period, branch_name)
+                else None
+            )
             if stored_value is not None:
                 preserved.append(
                     PreservedUserInput(
@@ -467,7 +476,11 @@ class Simulation:
                     )
                 )
                 continue
-            if holder._disk_storage is not None:
+            if (
+                "disk" in locations
+                and holder._disk_storage is not None
+                and not holder._disk_storage.is_derived(period, branch_name)
+            ):
                 disk_period = (
                     periods.period(periods.ETERNITY)
                     if holder._disk_storage.is_eternal
@@ -488,6 +501,10 @@ class Simulation:
                             disk_enum=holder._disk_storage._enums.get(disk_file),
                         )
                     )
+        self._user_input_keys = {
+            (user_input.variable_name, user_input.branch_name, user_input.period)
+            for user_input in preserved
+        }
         # Iterate only over holders that already exist on each population —
         # lazy-creating a holder for every variable in the tax-benefit
         # system (thousands in policyengine-us) inflated the cost of

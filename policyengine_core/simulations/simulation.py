@@ -2505,6 +2505,11 @@ class Simulation:
                     ]
                     _, first_retained = np.unique(memberships, return_index=True)
                     selected_total = subset_df[col].values[first_retained].sum()
+                if selected_total == 0:
+                    raise ValueError(
+                        f"Cannot preserve {col} total: the retained entities have "
+                        "zero weight. Use quantize_weights=True or a different sample."
+                    )
                 subset_df[col] *= target_total_weight / selected_total
 
         df = subset_df

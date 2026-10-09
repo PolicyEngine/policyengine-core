@@ -195,3 +195,27 @@ def test_zero_total_input_weight_column_remains_zero(quantize_weights):
             np.testing.assert_array_equal(
                 simulation.calculate(f"{entity}_weight", year), 0
             )
+
+
+@pytest.mark.parametrize("quantize_weights", [False, True])
+def test_positive_total_with_only_zero_retained_weights(quantize_weights):
+    data = weight_data(
+        households=[10, 20],
+        families=[110, 220],
+        household_weights={10: 1, 20: 1},
+        family_weights={110: 1, 220: 1},
+        person_weights=[0, 5],
+    )
+    simulation = weight_simulation(data)
+    original_dataset = simulation.dataset
+    with patch("numpy.random.choice", return_value=np.array([10])):
+        if quantize_weights:
+            simulation.subsample(n=1, seed="zero-retained", quantize_weights=True)
+            assert simulation.calculate("person_weight", YEAR_INPUT).sum() == 5
+        else:
+            with pytest.raises(ValueError, match="person_weight__2022.*zero weight"):
+                simulation.subsample(n=1, seed="zero-retained", quantize_weights=False)
+            assert simulation.dataset is original_dataset
+            np.testing.assert_array_equal(
+                simulation.calculate("person_weight", YEAR_INPUT), [0, 5]
+            )

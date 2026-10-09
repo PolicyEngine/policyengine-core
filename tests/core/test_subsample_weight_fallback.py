@@ -4,7 +4,9 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
-from hypothesis import given, settings, strategies as st
+
+hypothesis = pytest.importorskip("hypothesis")
+st = hypothesis.strategies
 
 from policyengine_core.country_template import Microsimulation, Simulation
 from policyengine_core.country_template.entities import Household
@@ -76,8 +78,8 @@ def test_missing_period_weights_use_dataset_input(
     check_fallback(simulation_class, uprated, carry_over, year, 3, "fallback")
 
 
-@settings(max_examples=25, deadline=None)
-@given(
+@hypothesis.settings(max_examples=25, deadline=None)
+@hypothesis.given(
     simulation_class=st.sampled_from([Simulation, Microsimulation]),
     case=st.sampled_from(
         [(False, False, "2023"), (False, True, "2021"), (True, True, "2021-07")]

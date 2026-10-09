@@ -119,6 +119,45 @@ def test_unrelated_suffix_caches_while_its_stale_caller_retries(definition_perio
     assert calls == completed
 
 
+def test_ordered_local_credits_cache_shared_dependencies_during_a_stale_attempt():
+    calls = Counter()
+
+    def credit_formula(index):
+        def formula(person, period):
+            calls[f"credit_{index}"] += 1
+            return person("sf_source", period) + sum(
+                person(f"sf_credit_{previous}", period) for previous in range(index)
+            )
+
+        return formula
+
+    def outer(person, period):
+        calls["outer"] += 1
+        worker = person.simulation.get_branch("worker")
+        previous = worker.calculate("sf_source", period)
+        if np.any(previous != 3):
+            worker.set_input("sf_source", period, np.array([3.0]))
+        # Every credit reads all its predecessors. Reusing those local
+        # values keeps this dependency graph from expanding on stale retries.
+        return previous + person("sf_credit_5", period)
+
+    simulation = _simulation(
+        periods.YEAR,
+        {
+            **{f"sf_credit_{index}": credit_formula(index) for index in range(6)},
+            "sf_outer": outer,
+        },
+    )
+    result = simulation.calculate("sf_outer", "2020")
+    np.testing.assert_array_equal(result, [35.0])
+    assert calls == {"outer": 2, **{f"credit_{index}": 1 for index in range(6)}}
+    np.testing.assert_array_equal(simulation.get_array("sf_outer", "2020"), result)
+    completed = calls.copy()
+    np.testing.assert_array_equal(simulation.calculate("sf_outer", "2020"), result)
+    np.testing.assert_array_equal(simulation.calculate("sf_credit_5", "2020"), [32.0])
+    assert calls == completed
+
+
 @pytest.mark.parametrize("suffix_branch", ["worker", "other"])
 def test_foreign_suffix_is_not_cached_before_its_stale_caller_settles(suffix_branch):
     calls = Counter()

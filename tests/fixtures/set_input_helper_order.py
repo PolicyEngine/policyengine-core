@@ -326,9 +326,11 @@ def read(simulation, name: str, period: str) -> np.ndarray:
 
 
 def storable_on_disk(period: str) -> bool:
-    """Whether disk storage can hold a value calculated for ``period`` on any
-    platform: it names the file after the period, and Windows rejects ":" in
-    file names (policyengine-core#526)."""
+    """The properties' conservative disk period domain.
+
+    Compound-period filename portability has separate coverage in
+    ``test_disk_period_filenames.py``; these properties retain simple periods.
+    """
     return ":" not in period
 
 

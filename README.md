@@ -39,6 +39,11 @@ uv run pytest tests/core/test_file.py::test_name -v
 
 # Format before committing (CI enforces)
 make format
+
+# Lint GitHub Actions workflows after editing .github/, from the repo root
+# (CI enforces; install shellcheck and pyflakes so actionlint also checks
+# run: scripts)
+uvx --from actionlint-py==1.7.12.25 actionlint
 ```
 
 **Always use `uv run`** for Python commands; bare `python` / `pytest` / `pip` may pick up the wrong environment.

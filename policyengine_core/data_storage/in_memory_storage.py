@@ -38,6 +38,15 @@ def _read_only_view(array: numpy.ndarray) -> numpy.ndarray:
 # share nothing, and an empty set is 216 bytes.
 _NOTHING_SHARED: FrozenSet[str] = frozenset()
 
+# What ``InMemoryStorage._inputs`` is while a storage holds no input, for the
+# same reason: most storages in a simulation hold no input.
+_NO_INPUTS: FrozenSet[str] = frozenset()
+
+# Key a pickled storage's state carries once it records its inputs; a state
+# without it comes from a version that recorded neither inputs nor derived
+# values (see ``__setstate__``).
+_INPUTS_RECORDED = "_inputs_recorded"
+
 
 class InMemoryStorage:
     """
@@ -52,11 +61,46 @@ class InMemoryStorage:
     # this class attribute. A key left in the set after code outside this
     # class empties ``_arrays`` costs one extra copy at most.
     _shared: Union[Set[str], FrozenSet[str]] = _NOTHING_SHARED
+    # Keys whose value was stored as an input: with ``put(..., derived=False)``,
+    # the default. Every other stored value was calculated by the simulation
+    # (``put(..., derived=True)``), which ``is_derived`` reports. A key counts
+    # only while it is stored, and every ``put`` sets or clears its mark.
+    #
+    # The storage records inputs rather than derived values because a
+    # simulation calculates far more values than it is given (in a
+    # policyengine-us household, 5,201 of 5,204 stored values are derived).
+    # As with ``_shared``, a storage has a set of its own only while it holds
+    # an input; otherwise it reads this class attribute.
+    #
+    # A storage's own inputs are a set it alone changes, or a frozenset it
+    # shares with storages cloned from it (or it from them): ``clone`` hands
+    # both the same frozenset, and whichever changes its inputs first
+    # replaces it with a set of its own (``_own_inputs``). A branch clones
+    # every holder, so copying at each clone would cost a set per input
+    # holder per branch for inputs most branches never change.
+    _inputs: Union[Set[str], FrozenSet[str]] = _NO_INPUTS
     is_eternal: bool
 
     def __init__(self, is_eternal: bool):
         self._arrays = {}
         self.is_eternal = is_eternal
+
+    def __getstate__(self) -> dict:
+        state = self.__dict__.copy()
+        state[_INPUTS_RECORDED] = True
+        return state
+
+    def __setstate__(self, state: dict) -> None:
+        if not state.pop(_INPUTS_RECORDED, False):
+            # Pickled before storages recorded their inputs, when nothing
+            # marked a calculated value: every stored value counts as an
+            # input, as it did then, except any a development version of this
+            # change marked derived.
+            derived = state.pop("_derived", ())
+            inputs = set(state.get("_arrays", {})).difference(derived)
+            if inputs:
+                state["_inputs"] = inputs
+        self.__dict__.update(state)
 
     def clone(self, share_arrays: bool = False) -> "InMemoryStorage":
         """Copy this storage.
@@ -95,6 +139,19 @@ class InMemoryStorage:
                 clone._shared = shared
         else:
             clone._arrays = {key: array.copy() for key, array in self._arrays.items()}
+        # Share the inputs (see ``_inputs``). A mark left behind by code
+        # outside this class emptying ``_arrays`` never counts (see
+        # ``is_derived``), so the clone gets only those of keys it holds.
+        inputs = self._inputs
+        if inputs:
+            if inputs <= clone._arrays.keys():
+                if not isinstance(inputs, frozenset):
+                    inputs = self.__dict__["_inputs"] = frozenset(inputs)
+                clone._inputs = inputs
+            else:
+                held = inputs.intersection(clone._arrays)
+                if held:
+                    clone._inputs = frozenset(held)
         return clone
 
     def get(self, period: Period, branch_name: str = "default") -> ArrayLike:
@@ -112,6 +169,23 @@ class InMemoryStorage:
             self._arrays[key] = values
             self._stop_sharing(key)
         return values
+
+    def has(self, period: Period, branch_name: str = "default") -> bool:
+        """Whether a value is stored for ``period`` under ``branch_name``.
+
+        Unlike ``get``, this never copies an array shared by ``clone``.
+        """
+        if self.is_eternal:
+            period = periods.period(periods.ETERNITY)
+        return f"{branch_name}:{periods.period(period)}" in self._arrays
+
+    def is_derived(self, period: Period, branch_name: str = "default") -> bool:
+        """Whether the value stored for ``period`` under ``branch_name`` was
+        stored with ``derived=True``; ``False`` if none is stored."""
+        if self.is_eternal:
+            period = periods.period(periods.ETERNITY)
+        key = f"{branch_name}:{periods.period(period)}"
+        return key in self._arrays and key not in self._inputs
 
     # Each method below reads ``self._shared`` once and works on that set, and
     # releases it with one ``dict.pop`` that never raises. A storage is still
@@ -144,8 +218,48 @@ class InMemoryStorage:
         if not shared:
             self.__dict__.pop("_shared", None)
 
+    def _own_inputs(self) -> Set[str]:
+        """This storage's inputs as a set that only it changes, made from the
+        inputs it shares, or from nothing, if need be."""
+        inputs = self.__dict__.get("_inputs")
+        if inputs is None:
+            inputs = self.__dict__["_inputs"] = set()
+        elif isinstance(inputs, frozenset):
+            inputs = self.__dict__["_inputs"] = set(inputs)
+        return inputs
+
+    def _mark_input(self, key: str) -> None:
+        """Record that the value stored for ``key`` is an input."""
+        if key not in self._inputs:
+            self._own_inputs().add(key)
+
+    def _unmark_input(self, key: str) -> None:
+        """Record that the value stored for ``key`` was calculated."""
+        if key in self._inputs:
+            inputs = self._own_inputs()
+            inputs.discard(key)
+            self._release_inputs_if_empty(inputs)
+
+    def _unmark_dropped_keys(self) -> None:
+        """Forget the input marks of keys ``_arrays`` no longer has."""
+        inputs = self._inputs
+        if inputs and not inputs <= self._arrays.keys():
+            inputs = self._own_inputs()
+            inputs.intersection_update(self._arrays)
+            self._release_inputs_if_empty(inputs)
+
+    def _release_inputs_if_empty(self, inputs: Set[str]) -> None:
+        """Go back to the class's no-inputs object once no stored value is an
+        input, as ``_release_if_empty`` does for ``_shared``."""
+        if not inputs:
+            self.__dict__.pop("_inputs", None)
+
     def put(
-        self, value: ArrayLike, period: Period, branch_name: str = "default"
+        self,
+        value: ArrayLike,
+        period: Period,
+        branch_name: str = "default",
+        derived: bool = False,
     ) -> None:
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
@@ -169,6 +283,10 @@ class InMemoryStorage:
         key = f"{branch_name}:{period}"
         self._arrays[key] = value
         self._stop_sharing(key)
+        if derived:
+            self._unmark_input(key)
+        else:
+            self._mark_input(key)
 
     def delete(self, period: Period = None, branch_name: str = "default") -> None:
         if period is None:
@@ -181,6 +299,7 @@ class InMemoryStorage:
                 if not period_item.startswith(branch_prefix)
             }
             self._stop_sharing_dropped_keys()
+            self._unmark_dropped_keys()
             return
 
         if self.is_eternal:
@@ -199,6 +318,7 @@ class InMemoryStorage:
             )
         }
         self._stop_sharing_dropped_keys()
+        self._unmark_dropped_keys()
 
     def get_known_periods(self) -> list:
         # Split on the first colon only: an anchored period's string form

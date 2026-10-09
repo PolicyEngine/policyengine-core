@@ -144,8 +144,8 @@ def _run(first_inputs, requests_by_level, later_inputs, on_disk, depth):
 def test_inputs_do_not_depend_on_what_was_calculated_before(
     first_inputs, requests_by_level, later_inputs, on_disk, depth
 ):
-    # Branches of a simulation that stores on disk share its files
-    # (policyengine-core#558), so the two are not combined.
+    # Keep disk and branch examples separate: the storage period-listing
+    # parser does not support branch names containing underscores.
     on_disk = on_disk and not depth
     calculated, outcomes, expected, reference, branch_name = _run(
         first_inputs, requests_by_level, later_inputs, on_disk, depth

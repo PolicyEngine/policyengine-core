@@ -23,38 +23,47 @@ def get_stored_array(holder: Holder, period: Period, branch_name: str) -> ArrayL
     return holder._get_array_from_storage(period, branch_name)
 
 
-def _is_input(holder: Holder, period: Period, branch_name: str) -> bool:
+def _is_input(
+    holder: Holder, period: Period, branch_name: str, storage_name: str
+) -> bool:
     """Whether the value stored for ``period`` under ``branch_name`` was set
     as an input, rather than calculated by the simulation (a formula result,
     or a default, carried-over or uprated value).
 
-    The simulation's record of inputs is ``_user_input_keys``. A holder with
-    no simulation, or a simulation with no record, cannot tell the two apart,
-    so every stored value counts as an input there.
+    Use the same supplied-input tier record as reform replay. A cache write
+    can leave a registry entry behind or hide an input in another tier, and
+    its carry-over mark (``derived=False``) does not make it a supplied input.
+    A holder with no simulation, or a simulation with no record, keeps the
+    legacy behavior: every stored value counts as an input there.
     """
     simulation = getattr(holder, "simulation", None)
     input_keys = getattr(simulation, "_user_input_keys", None)
     if input_keys is None:
         return True
-    name = holder.variable.name
-    if (name, branch_name, period) in input_keys:
-        return True
-    # Storage keys twelve months from the first of a month as that year, so
-    # an input set for ``month:2013-01:12`` is stored under ``2013``.
-    unit, start, size = period
-    if unit == periods.YEAR and size == 1:
-        return (name, branch_name, Period((periods.MONTH, start, 12))) in input_keys
-    return False
+    period = holder._storage_period(period)
+    if (holder.variable.name, branch_name, period) not in input_keys:
+        return False
+    holder._seed_input_storage(period, branch_name)
+    return holder._stores_user_input(period, branch_name, storage_name)
 
 
-def _get_input_array(holder: Holder, period: Period, branch_name: str) -> ArrayLike:
-    """The input stored for ``period`` under ``branch_name``, or ``None`` if
-    nothing is stored there or the value was calculated."""
+def get_stored_input(holder: Holder, period: Period, branch_name: str) -> ArrayLike:
+    """The supplied input under this exact branch, preferring memory to disk.
+
+    A surviving disk input is still known when a non-input memory cache
+    hides it; overlap cleanup removes that cache after the helper succeeds.
+    """
     # Checked before reading, so that a calculated value a branch still
     # shares with its parent is not copied only to be replaced.
-    if not _is_input(holder, period, branch_name):
-        return None
-    return get_stored_array(holder, period, branch_name)
+    for storage_name, storage in (
+        ("memory", holder._memory_storage),
+        ("disk", holder._disk_storage),
+    ):
+        if storage is not None and _is_input(holder, period, branch_name, storage_name):
+            value = storage.get(period, branch_name)
+            if value is not None:
+                return value
+    return None
 
 
 def _store_input(
@@ -67,12 +76,12 @@ def _store_input(
     helper is called directly instead of through ``Holder.set_input``, and
     ``calculate``'s fast cache drops the value it held for the period.
     """
-    holder._set(period, array, branch_name)
     simulation = getattr(holder, "simulation", None)
     input_keys = getattr(simulation, "_user_input_keys", None)
-    if input_keys is not None:
-        input_keys.add((holder.variable.name, branch_name, period))
-    _evict_fast_cache(holder, [period], branch_name)
+    # Let the holder normalize and record the supplied-input tier, including
+    # direct helper calls. Keep a legacy holder without an input record in
+    # that mode for the whole call, rather than creating a partial record.
+    holder._set(period, array, branch_name, is_input=input_keys is not None)
 
 
 def _evict_fast_cache(holder: Holder, changed_periods, branch_name: str) -> None:
@@ -137,25 +146,33 @@ def _drop_calculated_overlapping(
     for key in list(memory._arrays):
         stored_branch_name, period_string = key.split(":", 1)
         if _is_calculated_overlapping(
-            holder, stored_branch_name, period_string, branch_names, period
+            holder, stored_branch_name, period_string, branch_names, period, "memory"
         ):
             del memory._arrays[key]
-            dropped_periods.add(period_string)
+            dropped_periods.add(_period_from_storage_key(period_string))
     memory._stop_sharing_dropped_keys()
+    memory._unmark_dropped_keys()
     disk = holder._disk_storage
     if disk is not None:
         for key in list(disk._files):
             stored_branch_name, period_string = key.rsplit("_", 1)
             if _is_calculated_overlapping(
-                holder, stored_branch_name, period_string, branch_names, period
+                holder, stored_branch_name, period_string, branch_names, period, "disk"
             ):
                 del disk._files[key]
-                dropped_periods.add(period_string)
-    _evict_fast_cache(
-        holder,
-        [periods.period(dropped_period) for dropped_period in dropped_periods],
-        branch_name,
-    )
+                dropped_periods.add(_period_from_storage_key(period_string))
+        disk._derived.intersection_update(disk._files)
+    _evict_fast_cache(holder, dropped_periods, branch_name)
+
+
+def _period_from_storage_key(period_string: str) -> Period:
+    """Parse a stored period whose early year may have lost leading zeros."""
+    components = period_string.split(":")
+    date_index = 1 if len(components) > 1 else 0
+    date = components[date_index].split("-")
+    date[0] = date[0].zfill(4)
+    components[date_index] = "-".join(date)
+    return periods.period(":".join(components))
 
 
 def _is_calculated_overlapping(
@@ -164,11 +181,12 @@ def _is_calculated_overlapping(
     period_string: str,
     branch_names: set,
     period: Period,
+    storage_name: str,
 ) -> bool:
     if stored_branch_name not in branch_names:
         return False
     try:
-        stored_period = periods.period(period_string)
+        stored_period = _period_from_storage_key(period_string)
     except ValueError:
         # Not a key ``put`` wrote (say, a file ``restore`` found).
         return False
@@ -176,7 +194,7 @@ def _is_calculated_overlapping(
         return False
     if stored_period.start > period.stop or stored_period.stop < period.start:
         return False
-    return not _is_input(holder, stored_period, stored_branch_name)
+    return not _is_input(holder, stored_period, stored_branch_name, storage_name)
 
 
 def set_input_dispatch_by_period(holder: Holder, period: Period, array: ArrayLike):
@@ -220,19 +238,16 @@ def set_input_dispatch_by_period(holder: Holder, period: Period, array: ArrayLik
     # Store the input data, skipping the sub-periods that already have an input
     branch_name = get_input_branch(holder)
     sub_period = period.start.period(cached_period_unit)
-    stored = False
     while sub_period.start < after_instant:
-        existing_input = _get_input_array(holder, sub_period, branch_name)
+        existing_input = get_stored_input(holder, sub_period, branch_name)
         if existing_input is None:
             _store_input(holder, sub_period, array, branch_name)
-            stored = True
         else:
             # The input of the current sub-period is applied to the next
             # ones (see the docstring).
             array = existing_input
         sub_period = sub_period.offset(1)
-    if stored:
-        _drop_calculated_overlapping(holder, period, branch_name)
+    _drop_calculated_overlapping(holder, period, branch_name)
 
 
 def set_input_divide_by_period(holder: Holder, period: Period, array: ArrayLike):
@@ -273,7 +288,7 @@ def set_input_divide_by_period(holder: Holder, period: Period, array: ArrayLike)
     sub_period = period.start.period(cached_period_unit)
     sub_periods_to_set = []
     while sub_period.start < after_instant:
-        existing_input = _get_input_array(holder, sub_period, branch_name)
+        existing_input = get_stored_input(holder, sub_period, branch_name)
         if existing_input is not None:
             remaining_array -= existing_input
         else:
@@ -285,10 +300,10 @@ def set_input_divide_by_period(holder: Holder, period: Period, array: ArrayLike)
         divided_array = remaining_array / len(sub_periods_to_set)
         for sub_period in sub_periods_to_set:
             _store_input(holder, sub_period, divided_array, branch_name)
-        _drop_calculated_overlapping(holder, period, branch_name)
     elif not (remaining_array == 0).all():
         raise ValueError(
             "Inconsistent input: variable {0} has already been set for all months contained in period {1}, and value {2} provided for {1} doesn't match the total ({3}). This error may also be thrown if you try to call set_input twice for the same variable and period.".format(
                 holder.variable.name, period, array, array - remaining_array
             )
         )
+    _drop_calculated_overlapping(holder, period, branch_name)

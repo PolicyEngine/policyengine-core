@@ -10,8 +10,10 @@ so results after subsampling depended on what had been calculated before.
 import numpy as np
 import pytest
 
+from policyengine_core.periods import period
 from policyengine_core.reforms import Reform
 from policyengine_core.variables import Variable
+from tests.core.test_user_input_keys import _store_on_disk
 from tests.fixtures.subsample_inputs import (
     DATASET_YEAR,
     build,
@@ -95,6 +97,87 @@ def test_dataset_values_for_a_formula_variable_survive_subsample():
         == (ids - 1).astype(float).tolist()
     )
     assert ("overridden", "default", DATASET_YEAR) in stored(simulation)
+
+
+@pytest.mark.parametrize("variable", ["base", "overridden"])
+@pytest.mark.parametrize("derived", [False, True], ids=["unmarked", "derived"])
+def test_subsample_uses_recorded_disk_input_under_a_memory_cache(variable, derived):
+    simulation = build()
+    simulation.delete_arrays(variable)
+    _store_on_disk(simulation, variable)
+    source_values = np.arange(simulation.persons.count, dtype=float) + 10
+    simulation.set_input(variable, DATASET_YEAR, source_values)
+    holder = simulation.get_holder(variable)
+    input_period = period(DATASET_YEAR)
+    np.testing.assert_array_equal(holder._disk_storage.get(input_period), source_values)
+
+    simulation.memory_config.max_memory_occupation_pc = 101
+    # A low-level cache write can coexist with the recorded disk input.
+    # The holder's tier record distinguishes both marked and unmarked caches
+    # from the actual input even when ordinary reads see the memory value.
+    holder._set(
+        input_period,
+        np.full(simulation.persons.count, 999.0),
+        derived=derived,
+        is_input=False,
+    )
+    assert not holder._stores_user_input(input_period, "default", "memory")
+    assert holder._stores_user_input(input_period, "default", "disk")
+    np.testing.assert_array_equal(
+        simulation.calculate(variable, DATASET_YEAR),
+        np.full(simulation.persons.count, 999.0),
+    )
+    column = f"{variable}__{DATASET_YEAR}"
+    if variable == "base":
+        assert (
+            simulation.to_input_dataframe()[column].tolist() == source_values.tolist()
+        )
+        assert (
+            simulation.to_input_dict()[variable][DATASET_YEAR] == source_values.tolist()
+        )
+    else:
+        assert column not in simulation.to_input_dataframe()
+        assert variable not in simulation.to_input_dict()
+    cached_values = [999.0] * simulation.persons.count
+    assert (
+        simulation.to_input_dataframe(include_computed_variables=True)[column].tolist()
+        == cached_values
+    )
+    assert (
+        simulation.to_input_dict(include_computed_variables=True)[variable][
+            DATASET_YEAR
+        ]
+        == cached_values
+    )
+
+    simulation.subsample(n=4, seed=SEED, time_period=DATASET_YEAR)
+
+    retained_ids = simulation.calculate("person_id", DATASET_YEAR)
+    np.testing.assert_array_equal(
+        simulation.calculate(variable, DATASET_YEAR),
+        source_values[retained_ids - 1],
+    )
+
+
+@pytest.mark.parametrize("variable,expected", [("base", 0.0), ("overridden", -1.0)])
+def test_subsample_discards_a_cache_that_replaced_the_only_input(variable, expected):
+    simulation = build()
+    holder = simulation.get_holder(variable)
+    holder.put_in_cache(
+        np.full(simulation.persons.count, 999.0),
+        period(DATASET_YEAR),
+        derived=False,
+    )
+    if variable == "base":
+        assert f"{variable}__{DATASET_YEAR}" not in simulation.to_input_dataframe()
+        assert variable not in simulation.to_input_dict()
+
+    simulation.subsample(n=4, seed=SEED, time_period=DATASET_YEAR)
+
+    np.testing.assert_array_equal(
+        simulation.calculate(variable, DATASET_YEAR),
+        np.full(simulation.persons.count, expected),
+    )
 
 
 def test_formulas_run_on_the_subsample_after_subsample():

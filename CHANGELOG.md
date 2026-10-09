@@ -1,3 +1,60 @@
+## [3.32.29] - 2026-10-09
+
+### Fixed
+
+- Period-splitting input helpers now preserve supplied inputs in memory or on disk, replace calculated sub-period values, and invalidate overlapping caches consistently with the supplied-input tier record.
+
+
+## [3.32.28] - 2026-10-09
+
+### Fixed
+
+- Cache `calculate_add` and `calculate_divide` results as derived only where a plain read returns them without changing dtype, preserving visible inputs and allowing explicit aggregate refresh after an input changes or is deleted.
+
+
+## [3.32.27] - 2026-10-09
+
+### Fixed
+
+- Fix compound period disk storage on Windows while preserving legacy filename restores and clone isolation.
+- Keep input records aligned with memory/disk storage across deletion, copies, handlers, subsampling, period aliases, and early years; custom handlers must use `holder._set` or `holder.set_input` for inputs, since `put_in_cache` values are excluded from input export and reform replay and no longer redirected to the input's branch.
+
+
+## [3.32.26] - 2026-10-09
+
+### Fixed
+
+- Give independently created temporary holder storages distinct directories, create caller-supplied storage directories on first use, and clear stale enum metadata when replacing enum values with plain arrays.
+
+
+## [3.32.25] - 2026-10-09
+
+### Changed
+
+- Cancel superseded pull request CI runs and give every test and lint job a timeout, so hung or outdated jobs free shared GitHub Actions runners.
+
+
+## [3.32.24] - 2026-10-08
+
+### Changed
+
+- Restore non-derived dumped values as recorded inputs using derived-period marks and an explicit format marker, warn for ambiguous legacy dumps, evict affected fast-cache entries on holder writes and deletes, reject non-numeric uprating and defined_for conditions, and preserve existing variables when a replacement is rejected.
+
+
+## [3.32.23] - 2026-10-08
+
+### Fixed
+
+- Fix simulation copying and same-process unpickling, preserve `EnumArray` subclasses and enum metadata through pickling, and allow legacy enum arrays to be re-pickled.
+
+
+## [3.32.22] - 2026-10-08
+
+### Changed
+
+- The release workflow deploys the documentation site again, from a Docs job that runs once the tests pass and the release reaches PyPI; the deploy step had been skipped on every release since September 2024 because it checked a matrix the Test job no longer has.
+
+
 ## [3.32.21] - 2026-10-07
 
 ### Changed

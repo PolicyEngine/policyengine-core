@@ -336,6 +336,10 @@ writing when its existing values must remain isolated.</p>
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.data_storage.on_disk_storage.</span></span><span class="sig-name descname"><span class="pre">OnDiskStorage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">storage_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_eternal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preserve_storage_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.data_storage.on_disk_storage.OnDiskStorage" title="Permalink to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Low-level class responsible for storing and retrieving calculated vectors on disk</p>
+<p>Compound periods contain colons, which Windows forbids in filenames.
+Their physical filenames use semicolons in the period suffix instead;
+logical storage keys keep the original period strings. <code class="docutils literal notranslate"><span class="pre">restore</span></code> reads
+both these portable filenames and legacy filenames containing colons.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.data_storage.on_disk_storage.OnDiskStorage.clone">
 <span class="sig-name descname"><span class="pre">clone</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.data_storage.on_disk_storage.OnDiskStorage" title="policyengine_core.data_storage.on_disk_storage.OnDiskStorage"><span class="pre">OnDiskStorage</span></a></span></span><a class="headerlink" href="#policyengine_core.data_storage.on_disk_storage.OnDiskStorage.clone" title="Permalink to this definition">#</a></dt>
@@ -408,13 +412,20 @@ keeps that storage alive, so the files last while it reads them.</p>
 <span class="sig-name descname"><span class="pre">restore</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#policyengine_core.data_storage.on_disk_storage.OnDiskStorage.restore" title="Permalink to this definition">#</a></dt>
 <dd><p>Read back the values stored in this storage’s directory: for each
 key, the file named for it (not those in <code class="docutils literal notranslate"><span class="pre">REPLACEMENTS_DIR</span></code>).</p>
-<p>This storage writes over those files, as over those it wrote, until
+<p>This storage writes over portable files, as over those it wrote, until
 it is cloned or copied, or this process forks: from then on it writes
 a new file instead, since the clone, copy or forked process reads
 them. A storage made separately for the directory, the one that wrote
 them say, still writes over them, as before. So may another storage
 in this one’s family, when <code class="docutils literal notranslate"><span class="pre">restore</span></code> runs after it was cloned and
 this process has not forked since.</p>
+<p>The period suffix of new filenames uses semicolons for the colons
+in compound period strings. Legacy filenames containing colons are
+still accepted. If both versions of a key exist after updating a
+legacy value, the portable filename holds the current value and wins
+regardless of directory listing order. Readers still indexed to the
+legacy file keep its old value until they restore again. Branch names
+are unchanged.</p>
 </dd></dl>
 
 </dd></dl>

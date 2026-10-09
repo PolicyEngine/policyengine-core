@@ -432,7 +432,10 @@ this guarantees.</p>
 <dd><p>Delete a variable’s values visible to this simulation branch.</p>
 <p>The calling branch, each ancestor branch, and the default branch are
 purged from this simulation’s private holder storage. Other branch
-names and the parent simulation’s holder storage remain unchanged.</p>
+names and the parent simulation’s holder storage remain unchanged.
+Deleted inputs stop counting as inputs: a value calculated later for
+the same period is a formula result, which <code class="docutils literal notranslate"><span class="pre">apply_reform</span></code> discards
+and <code class="docutils literal notranslate"><span class="pre">to_input_dataframe</span></code> does not export.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -991,7 +994,10 @@ this guarantees.</p>
 <dd><p>Delete a variable’s values visible to this simulation branch.</p>
 <p>The calling branch, each ancestor branch, and the default branch are
 purged from this simulation’s private holder storage. Other branch
-names and the parent simulation’s holder storage remain unchanged.</p>
+names and the parent simulation’s holder storage remain unchanged.
+Deleted inputs stop counting as inputs: a value calculated later for
+the same period is a formula result, which <code class="docutils literal notranslate"><span class="pre">apply_reform</span></code> discards
+and <code class="docutils literal notranslate"><span class="pre">to_input_dataframe</span></code> does not export.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">

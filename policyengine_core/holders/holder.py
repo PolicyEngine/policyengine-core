@@ -259,13 +259,18 @@ class Holder:
         locations = locations | {storage} if is_input else locations - {storage}
         recorded[slot] = (period, locations)
 
-    def _stores_user_input(self, period: Period, branch_name: str) -> bool:
+    def _stores_user_input(
+        self, period: Period, branch_name: str, storage_name: Optional[str] = None
+    ) -> bool:
         """Whether an actual input survives in either tier, without reading it.
 
         Called only for a slot already in the simulation's replay record.
         Register-only inputs (including restored inputs) may have no location
         metadata yet; their existing storage marks identify the surviving
         tier. Marks never add an unrecorded slot to the replay record.
+
+        With ``storage_name``, check only that tier so input helpers can
+        discard a cache in one tier while keeping an input in the other.
         """
         recorded = getattr(self, "_user_input_storage", {}).get(
             (branch_name, str(period))
@@ -276,7 +281,8 @@ class Holder:
             ("disk", self._disk_storage),
         ):
             if (
-                location in locations
+                (storage_name is None or location == storage_name)
+                and location in locations
                 and storage is not None
                 and storage.has(period, branch_name)
                 and not storage.is_derived(period, branch_name)

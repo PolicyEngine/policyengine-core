@@ -1,0 +1,1 @@
+Period-splitting input helpers now preserve supplied inputs in memory or on disk, replace calculated sub-period values, and invalidate overlapping caches consistently with the supplied-input tier record.

@@ -2277,6 +2277,11 @@ class Simulation:
             if variable.definition_period == YEAR and requested.unit == MONTH
             else requested
         )
+        calculation_periods = (
+            requested.get_subperiods(MONTH)
+            if variable.definition_period == MONTH and requested.unit == YEAR
+            else [calculation_period]
+        )
         input_period = (
             periods.period(ETERNITY)
             if variable.definition_period == ETERNITY
@@ -2284,7 +2289,9 @@ class Simulation:
         )
         inputs = self.get_holder("household_weight").get_input_periods(self.branch_name)
         has_formula = (
-            variable.get_formula(calculation_period) is not None
+            any(
+                variable.get_formula(value) is not None for value in calculation_periods
+            )
             or variable.adds
             or variable.subtracts
             or variable.is_neutralized
@@ -2299,7 +2306,14 @@ class Simulation:
             and variable.calculate_output is None
             and any(source.start <= calculation_period.start for source in inputs)
         )
-        if input_period in inputs or has_formula or can_uprate or can_carry:
+        if (
+            requested in inputs
+            or input_period in inputs
+            or any(value in inputs for value in calculation_periods)
+            or has_formula
+            or can_uprate
+            or can_carry
+        ):
             return requested
         dataset_period = periods.period(self.dataset.time_period).start.period(
             variable.definition_period
@@ -2382,15 +2396,19 @@ class Simulation:
                 f"{person_key}_{entity.key}_id",
                 population.ids[population.members_entity_id],
             )
-            retain_structure(
-                f"{person_key}_{entity.key}_role",
-                [
-                    getattr(role, "key", "")
-                    for role in np.broadcast_to(
-                        population.members_role, self.persons.count
-                    )
-                ],
-            )
+            role_name = f"{person_key}_{entity.key}_role"
+            role_variable = self.tax_benefit_system.get_variable(role_name)
+            roles = np.broadcast_to(population.members_role, self.persons.count)
+            if role_variable is not None and role_variable.value_type == int:
+                role_values = [
+                    entity.flattened_roles.index(role)
+                    if role in entity.flattened_roles
+                    else 0
+                    for role in roles
+                ]
+            else:
+                role_values = [getattr(role, "key", "") for role in roles]
+            retain_structure(role_name, role_values)
 
         # Flat-file loading can infer households from membership IDs even
         # when the household ID variable has a formula. Use the same leaves
@@ -2472,6 +2490,9 @@ class Simulation:
                 target_total_weight = np.asarray(
                     self.calculate(variable_name, weight_period)
                 ).sum()
+                if target_total_weight == 0:
+                    subset_df[col] = 0.0
+                    continue
                 if not quantize_weights:
                     subset_df[col] *= household_counts.values
                 else:

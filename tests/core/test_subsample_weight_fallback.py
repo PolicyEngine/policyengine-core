@@ -10,7 +10,7 @@ from policyengine_core.country_template import Microsimulation, Simulation
 from policyengine_core.country_template.entities import Household
 from policyengine_core.data import Dataset
 from policyengine_core.parameters import Parameter
-from policyengine_core.periods import YEAR
+from policyengine_core.periods import MONTH, YEAR
 from policyengine_core.variables import Variable
 from tests.fixtures.subsample_inputs import DATASET_YEAR, build, dataframe, stored
 
@@ -105,3 +105,36 @@ def test_absent_weight_source_has_clear_error():
     simulation.delete_arrays("household_weight")
     with pytest.raises(ValueError, match="household_weight.*2023.*2022"):
         simulation.subsample(n=1, seed="missing", time_period="2023")
+
+
+def test_annual_weight_fallback_normalizes_dataset_period():
+    simulation = make_simulation(Simulation, False, False)
+    simulation.dataset.time_period = "2022-01"
+    weights = np.asarray(simulation.calculate("household_weight", DATASET_YEAR))
+    with patch("numpy.random.choice", wraps=np.random.choice) as choose:
+        simulation.subsample(n=3, seed="dataset-month", time_period="2023")
+    np.testing.assert_allclose(choose.call_args.kwargs["p"], weights / weights.sum())
+
+
+def test_annual_request_uses_monthly_formula_starting_midyear():
+    class monthly_weight(Variable):
+        value_type = float
+        entity = Household
+        definition_period = MONTH
+
+        def formula_2023_07(household, period):
+            return household.filled_array(2.0)
+
+    monthly_weight.__name__ = "household_weight"
+    system = build(carry_over=False).tax_benefit_system
+    system.replace_variable(monthly_weight)
+    data = dataframe().rename(
+        columns={"household_weight__2022": "household_weight__2022-01"}
+    )
+    simulation = Simulation(
+        tax_benefit_system=system,
+        dataset=Dataset.from_dataframe(data, DATASET_YEAR),
+    )
+    with patch("numpy.random.choice", wraps=np.random.choice) as choose:
+        simulation.subsample(n=3, seed="monthly-formula", time_period="2023")
+    np.testing.assert_allclose(choose.call_args.kwargs["p"], np.full(6, 1 / 6))

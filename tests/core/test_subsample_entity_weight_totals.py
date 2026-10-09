@@ -177,3 +177,21 @@ def test_entity_total_invariant_across_deterministic_random_partitions(
     )
     chosen = rng.choice([10, 20, 30, 40], size=5, replace=True)
     assert_weight_totals_and_reference(data, chosen, quantize_weights)
+
+
+@pytest.mark.parametrize("quantize_weights", [False, True])
+def test_zero_total_input_weight_column_remains_zero(quantize_weights):
+    data = weight_data(
+        households=[10, 10, 20],
+        families=[110, 110, 220],
+        household_weights={10: 100, 20: 200},
+        family_weights={110: 0, 220: 0},
+        person_weights=[0, 0, 0],
+    )
+    simulation = weight_simulation(data)
+    simulation.subsample(n=2, seed="zero-column", quantize_weights=quantize_weights)
+    for entity in ("person", "family"):
+        for year in WEIGHT_YEARS:
+            np.testing.assert_array_equal(
+                simulation.calculate(f"{entity}_weight", year), 0
+            )

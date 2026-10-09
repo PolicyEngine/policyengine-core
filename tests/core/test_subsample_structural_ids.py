@@ -198,3 +198,24 @@ def test_loaded_structural_leaves_survive_independent_of_formula_caches(
 
     assert partition(used) == partition(fresh)
     assert stored(used) == stored(fresh)
+
+
+@pytest.mark.parametrize("shuffled", [False, True])
+def test_formula_only_integer_roles_preserve_loaded_subroles(shuffled):
+    simulation = make_population_simulation(False, shuffled)
+    source_roles = roles_by_person(simulation)
+
+    class integer_role(Variable):
+        value_type = int
+        entity = Person
+        definition_period = ETERNITY
+
+        def formula(person, period):
+            return person.filled_array(2)
+
+    integer_role.__name__ = "person_household_role"
+    simulation.tax_benefit_system.replace_variable(integer_role)
+    simulation.subsample(n=4, seed="integer-roles", time_period=DATASET_YEAR)
+    assert roles_by_person(simulation) == {
+        person: source_roles[person] for person in simulation.persons.ids
+    }

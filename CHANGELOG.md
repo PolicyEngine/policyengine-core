@@ -1,3 +1,10 @@
+## [3.32.29] - 2026-10-09
+
+### Fixed
+
+- Period-splitting input helpers now preserve supplied inputs in memory or on disk, replace calculated sub-period values, and invalidate overlapping caches consistently with the supplied-input tier record.
+
+
 ## [3.32.28] - 2026-10-09
 
 ### Fixed

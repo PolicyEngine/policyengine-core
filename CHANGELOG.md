@@ -1,3 +1,24 @@
+## [3.32.25] - 2026-10-09
+
+### Changed
+
+- Cancel superseded pull request CI runs and give every test and lint job a timeout, so hung or outdated jobs free shared GitHub Actions runners.
+
+
+## [3.32.24] - 2026-10-08
+
+### Changed
+
+- Restore non-derived dumped values as recorded inputs using derived-period marks and an explicit format marker, warn for ambiguous legacy dumps, evict affected fast-cache entries on holder writes and deletes, reject non-numeric uprating and defined_for conditions, and preserve existing variables when a replacement is rejected.
+
+
+## [3.32.23] - 2026-10-08
+
+### Fixed
+
+- Fix simulation copying and same-process unpickling, preserve `EnumArray` subclasses and enum metadata through pickling, and allow legacy enum arrays to be re-pickled.
+
+
 ## [3.32.22] - 2026-10-08
 
 ### Changed

@@ -1089,6 +1089,17 @@ class Simulation:
         self._check_period_consistency(period, variable)
 
         if variable.defined_for is not None:
+            # Registration rejects a non-numeric defined_for variable (see
+            # ``TaxBenefitSystem._check_defined_for``). This catches one set,
+            # or a variable replaced, afterwards. It reads the variable's
+            # type, not the values: mapped to a group entity, an Enum's
+            # indices are summed into numbers, and str or date values fail
+            # inside the mapping.
+            defined_for_variable = self.tax_benefit_system.get_variable(
+                variable.defined_for
+            )
+            if defined_for_variable is not None:
+                variable.check_defined_for_variable(defined_for_variable)
             mask = (
                 self.calculate(variable.defined_for, period, map_to=variable.entity.key)
                 > 0
@@ -1135,6 +1146,9 @@ class Simulation:
                         if known_period in input_periods
                     ]
                 if earlier_input_periods:
+                    # Registration rejects these; an ``uprating`` assigned
+                    # past the setter gets the same message here.
+                    variable.check_uprating_value_type()
                     # Take the latest period from the filtered list itself.
                     # Indexing ``known_periods`` with a position in the
                     # filtered list picked the wrong period whenever a later

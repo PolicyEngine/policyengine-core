@@ -322,6 +322,15 @@ stored with <code class="docutils literal notranslate"><span class="pre">derived
 </section>
 <section id="ondiskstorage">
 <h2>OnDiskStorage<a class="headerlink" href="#ondiskstorage" title="Permalink to this heading">#</a></h2>
+<p>Each independently created temporary holder storage gets its own subdirectory,
+so replacing a holder leaves files read by existing clones intact. Cloned
+storages retain their source’s directory and use new files for later writes.
+Explicit <code class="docutils literal notranslate"><span class="pre">Holder.create_disk_storage(directory=...)</span></code> calls and preserved
+storages keep the <code class="docutils literal notranslate"><span class="pre">directory/variable</span></code> layout used by simulation dumps.</p>
+<p><code class="docutils literal notranslate"><span class="pre">OnDiskStorage.restore()</span></code> reads direct key files in its directory. It does not
+read files in the <code class="docutils literal notranslate"><span class="pre">replaced</span></code> subdirectory or select the latest write across
+independently constructed storages. Clone or copy a restored storage before
+writing when its existing values must remain isolated.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.data_storage.on_disk_storage.OnDiskStorage">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.data_storage.on_disk_storage.</span></span><span class="sig-name descname"><span class="pre">OnDiskStorage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">storage_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_eternal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preserve_storage_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.data_storage.on_disk_storage.OnDiskStorage" title="Permalink to this definition">#</a></dt>
@@ -411,11 +420,14 @@ this process has not forked since.</p>
 </dd></dl>
 
 </section>
-<section id="module-policyengine_core.data_storage.storage_directory">
-<span id="temporarystoragedirectory"></span><h2>TemporaryStorageDirectory<a class="headerlink" href="#module-policyengine_core.data_storage.storage_directory" title="Permalink to this heading">#</a></h2>
-<p>The temporary folder a simulation stores values on disk in.</p>
-<p>A simulation with a <code class="docutils literal notranslate"><span class="pre">MemoryConfig</span></code> stores values on disk, each variable’s
-in a subfolder (an <code class="docutils literal notranslate"><span class="pre">OnDiskStorage</span></code>) of the simulation’s folder,
+<section id="temporarystoragedirectory">
+<h2>TemporaryStorageDirectory<a class="headerlink" href="#temporarystoragedirectory" title="Permalink to this heading">#</a></h2>
+<p>A caller-supplied <code class="docutils literal notranslate"><span class="pre">simulation._data_storage_dir</span></code> is created on first use if it
+does not exist. It keeps the caller-owned lifetime described below.
+Exits that skip finalizers (such as <code class="docutils literal notranslate"><span class="pre">os._exit</span></code> in multiprocessing workers) can leave uniquely named holder subdirectories in a caller-owned directory to accumulate across runs; the caller must remove them.</p>
+<span class="target" id="module-policyengine_core.data_storage.storage_directory"></span><p>The temporary folder a simulation stores values on disk in.</p>
+<p>A simulation with a <code class="docutils literal notranslate"><span class="pre">MemoryConfig</span></code> stores values on disk, each independently
+created holder’s in its own subfolder (an <code class="docutils literal notranslate"><span class="pre">OnDiskStorage</span></code>) of the simulation’s folder,
 <code class="docutils literal notranslate"><span class="pre">Simulation.data_storage_dir</span></code>. Unless the caller chose that folder, the
 simulation makes it, as a <code class="docutils literal notranslate"><span class="pre">TemporaryStorageDirectory</span></code>. That object removes
 the folder, with everything in it but the subfolders of preserved storages
@@ -431,7 +443,8 @@ made it or the caller constructed it there. <code class="docutils literal notran
 storage is an <code class="docutils literal notranslate"><span class="pre">OnDiskStorage.clone</span></code> that reads the source’s files and
 keeps alive the folder and the storage that removes their subfolder. A
 pickled or copied disk storage does the same. The disk storages a clone
-makes itself go in a folder of its own.</p>
+makes itself go in a folder of its own. Replacing a holder creates a new
+subfolder, so its writes and cleanup leave the old holder’s files alone.</p>
 <p>Folders nest: a simulation given the folder, or a folder in it, as its
 own (<code class="docutils literal notranslate"><span class="pre">_data_storage_dir</span></code>) keeps the folder alive from then on, and so
 does a clone of that simulation, which makes its own folder there. A
@@ -441,7 +454,7 @@ leave the subfolders it preserves, however deep the nesting.</p>
 is collected first, with one exception, as before: a disk storage removes
 everything in its subfolder when collected, including files there that
 another storage reads without keeping it alive. Those are the files of a
-second storage made to remove the same subfolder, and anything made
+second storage explicitly made to remove the same subfolder, and anything made
 inside the subfolder. Nor does a storage write over a file another reads:
 storages cloned or copied from one another write a new file instead (see
 <code class="docutils literal notranslate"><span class="pre">OnDiskStorage._path_to_write</span></code>), for the files any of them read back
@@ -484,7 +497,7 @@ preservation is likewise kept only by the process that made the folder.</p></li>
 only the subfolders disk storages made in it, as before, unless it is in a
 folder a simulation made: that one removes it with everything else in it,
 once nothing keeps that one alive (above). A clone or forked process makes
-its own folder inside it.</p></li>
+its own folder inside it. If it does not exist, it is created on first use.</p></li>
 <li><p><strong>A process that ends without running the exit handlers that remove its
 folders</strong> (killed, or ended with <code class="docutils literal notranslate"><span class="pre">os._exit</span></code>, as a process
 <code class="docutils literal notranslate"><span class="pre">multiprocessing</span></code> forks is) leaves the folders it made that were still
@@ -612,7 +625,7 @@ any live directory this one was made in.</p>
 <li><a class="reference internal" href="#">Data storage</a><ul>
 <li><a class="reference internal" href="#inmemorystorage">InMemoryStorage</a></li>
 <li><a class="reference internal" href="#ondiskstorage">OnDiskStorage</a></li>
-<li><a class="reference internal" href="#module-policyengine_core.data_storage.storage_directory">TemporaryStorageDirectory</a></li>
+<li><a class="reference internal" href="#temporarystoragedirectory">TemporaryStorageDirectory</a></li>
 </ul>
 </li>
 </ul>

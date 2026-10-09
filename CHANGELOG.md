@@ -1,3 +1,10 @@
+## [3.32.28] - 2026-10-09
+
+### Fixed
+
+- Cache `calculate_add` and `calculate_divide` results as derived only where a plain read returns them without changing dtype, preserving visible inputs and allowing explicit aggregate refresh after an input changes or is deleted.
+
+
 ## [3.32.27] - 2026-10-09
 
 ### Fixed

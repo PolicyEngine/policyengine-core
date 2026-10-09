@@ -1,0 +1,385 @@
+"""A stale caller must not disable caching for unrelated nested formulas."""
+
+from collections import Counter
+import contextvars
+import threading
+
+import numpy as np
+import pytest
+
+from policyengine_core import periods
+from policyengine_core.country_template import CountryTaxBenefitSystem, entities
+from policyengine_core.simulations import SimulationBuilder
+import policyengine_core.simulations.simulation as simulation_module
+from policyengine_core.variables import Variable
+
+
+def _variable(name, definition_period, formula=None):
+    attributes = {
+        "value_type": float,
+        "entity": entities.Person,
+        "definition_period": definition_period,
+        "label": name,
+    }
+    if formula is not None:
+        attributes["formula"] = formula
+    return type(name, (Variable,), attributes)
+
+
+def _simulation(definition_period, formulas):
+    system = CountryTaxBenefitSystem()
+    system.add_variables(
+        _variable("sf_source", definition_period),
+        *[
+            _variable(name, definition_period, formula)
+            for name, formula in formulas.items()
+        ],
+    )
+    simulation = SimulationBuilder().build_default_simulation(system)
+    input_periods = (
+        ["2020"]
+        if definition_period == periods.YEAR
+        else [f"2020-{month:02d}" for month in range(1, 13)]
+    )
+    for input_period in input_periods:
+        simulation.set_input("sf_source", input_period, np.array([1.0]))
+    return simulation
+
+
+def _in_thread(call):
+    returned = []
+    failures = []
+
+    def target():
+        try:
+            returned.append(call())
+        except BaseException as error:
+            failures.append(error)
+
+    context = contextvars.Context()
+    thread = threading.Thread(target=context.run, args=(target,))
+    thread.start()
+    thread.join()
+    if failures:
+        raise failures[0]
+    return returned[0]
+
+
+@pytest.mark.parametrize("definition_period", [periods.YEAR, periods.MONTH])
+def test_unrelated_suffix_caches_while_its_stale_caller_retries(definition_period):
+    calls = Counter()
+
+    def doubled(person, period):
+        return person("sf_source", period) * 2
+
+    def reader(person, period):
+        calls["reader"] += 1
+        branch = person.simulation.get_branch("worker")
+        earlier = branch.calculate("sf_doubled", period)
+        if np.any(earlier != 6):
+            branch.set_input("sf_source", period, np.array([3.0]))
+        return earlier
+
+    def independent(person, period):
+        calls["independent"] += 1
+        return person("sf_source", period) + 10
+
+    def outer(person, period):
+        calls["outer"] += 1
+        earlier = person("sf_reader", period)
+        # The reader made the caller stale. This value only uses the
+        # caller's own unchanged input, so it can still be kept.
+        return earlier + person("sf_independent", period)
+
+    simulation = _simulation(
+        definition_period,
+        {
+            "sf_doubled": doubled,
+            "sf_reader": reader,
+            "sf_independent": independent,
+            "sf_outer": outer,
+        },
+    )
+    count = 1 if definition_period == periods.YEAR else 12
+    calculate = (
+        simulation.calculate
+        if definition_period == periods.YEAR
+        else simulation.calculate_add
+    )
+    result = calculate("sf_outer", "2020")
+    # A new calculation with the final branch input first returns 6 + 11
+    # per period. The dependent reader and caller must both run again.
+    np.testing.assert_array_equal(result, [count * 17.0])
+    assert calls == {"outer": count * 2, "reader": count * 2, "independent": count}
+    np.testing.assert_array_equal(simulation.get_array("sf_outer", "2020"), result)
+
+    completed = calls.copy()
+    np.testing.assert_array_equal(calculate("sf_outer", "2020"), result)
+    np.testing.assert_array_equal(simulation.calculate("sf_outer", "2020"), result)
+    assert calls == completed
+
+
+@pytest.mark.parametrize("suffix_branch", ["worker", "other"])
+def test_foreign_suffix_is_not_cached_before_its_stale_caller_settles(suffix_branch):
+    calls = Counter()
+
+    def suffix(person, period):
+        calls["suffix"] += 1
+        return person.simulation.get_branch(suffix_branch).calculate(
+            "sf_source", period
+        )
+
+    def outer(person, period):
+        calls["outer"] += 1
+        worker = person.simulation.get_branch("worker")
+        previous = worker.calculate("sf_source", period)
+        first = np.any(previous == 1)
+        if first:
+            worker.set_input("sf_source", period, np.array([2.0]))
+        # A new frame for this suffix is locally clean, but its caller
+        # already read the replaced worker input. Keeping the suffix now
+        # would hide the later mutation from the caller's next attempt.
+        result = person("sf_suffix", period)
+        if first:
+            person.simulation.get_branch(suffix_branch).set_input(
+                "sf_source", period, np.array([3.0])
+            )
+            worker.set_input("sf_source", period, np.array([3.0]))
+        return result
+
+    simulation = _simulation(periods.YEAR, {"sf_suffix": suffix, "sf_outer": outer})
+    result = simulation.calculate("sf_outer", "2020")
+    np.testing.assert_array_equal(result, [3.0])
+    assert calls == {"outer": 2, "suffix": 2}
+    np.testing.assert_array_equal(simulation.get_array("sf_outer", "2020"), result)
+
+    completed = calls.copy()
+    np.testing.assert_array_equal(simulation.calculate("sf_outer", "2020"), result)
+    assert calls == completed
+
+
+@pytest.mark.parametrize("write_in_thread", [False, True])
+@pytest.mark.parametrize("worker_family", ["own", "unrelated"])
+def test_foreign_writing_suffix_repeats_its_effects_while_independent_work_caches(
+    write_in_thread,
+    worker_family,
+):
+    calls = Counter()
+    unrelated_worker = (
+        _simulation(periods.YEAR, {}).get_branch("worker")
+        if worker_family == "unrelated"
+        else None
+    )
+
+    def get_worker(simulation):
+        return (
+            unrelated_worker
+            if unrelated_worker is not None
+            else simulation.get_branch("worker")
+        )
+
+    def independent(person, period):
+        calls["independent"] += 1
+        return person("sf_source", period) + 10
+
+    def suffix(person, period):
+        calls["suffix"] += 1
+        worker = get_worker(person.simulation)
+
+        def change():
+            worker.set_input("sf_source", period, np.array([3.0]))
+
+        if write_in_thread:
+            _in_thread(change)
+        else:
+            change()
+        # This formula writes a foreign input without reading a foreign
+        # value. Its effect must still repeat on the caller's retry, while
+        # the independent calculation beneath it can safely stay cached.
+        return person("sf_independent", period)
+
+    def outer(person, period):
+        calls["outer"] += 1
+        worker = get_worker(person.simulation)
+        previous = worker.calculate("sf_source", period)
+        worker.set_input("sf_source", period, np.array([2.0]))
+        return previous + person("sf_suffix", period)
+
+    simulation = _simulation(
+        periods.YEAR,
+        {
+            "sf_independent": independent,
+            "sf_suffix": suffix,
+            "sf_outer": outer,
+        },
+    )
+    attempts = (
+        simulation_module._RERUNS_AFTER_INPUT_CHANGE + 1 if write_in_thread else 3
+    )
+    result = simulation.calculate("sf_outer", "2020")
+    np.testing.assert_array_equal(result, [14.0])
+    assert calls == {"outer": attempts, "suffix": attempts, "independent": 1}
+    np.testing.assert_array_equal(
+        get_worker(simulation).calculate("sf_source", "2020"), [3.0]
+    )
+    if write_in_thread:
+        # A context-free write cannot certify convergence even though each
+        # transition ends at the same input. The original shared-frame rule
+        # exhausts the budget and leaves the result unkept in this case.
+        assert simulation.get_array("sf_outer", "2020") is None
+        np.testing.assert_array_equal(simulation.calculate("sf_outer", "2020"), result)
+        assert calls == {
+            "outer": attempts * 2,
+            "suffix": attempts * 2,
+            "independent": 1,
+        }
+    else:
+        # The first attempt returns the old input; the next two repeat the
+        # same complete 2 -> 3 transition and result and prove a fixed point.
+        np.testing.assert_array_equal(simulation.get_array("sf_outer", "2020"), result)
+        completed = calls.copy()
+        np.testing.assert_array_equal(simulation.calculate("sf_outer", "2020"), result)
+        assert calls == completed
+
+
+def test_branch_creating_suffix_recreates_registration_while_independent_work_caches():
+    def run(input_first):
+        calls = Counter()
+        created = []
+
+        def independent(person, period):
+            calls["independent"] += 1
+            return person("sf_source", period) + 10
+
+        def suffix(person, period):
+            calls["suffix"] += 1
+            # Creating a branch is the only foreign effect here: no
+            # foreign value is read and no input is changed by this suffix.
+            created.append(person.simulation.get_branch("scratch"))
+            return person("sf_independent", period)
+
+        def outer(person, period):
+            calls["outer"] += 1
+            worker = person.simulation.get_branch("worker")
+            previous = worker.calculate("sf_source", period)
+            worker.set_input("sf_source", period, np.array([3.0]))
+            result = previous + person("sf_suffix", period)
+            # Each attempt requires the suffix's creation, even after an
+            # earlier attempt removed its registration. A cached suffix
+            # would omit that effect and leave no branch to remove here.
+            assert person.simulation.branches.pop("scratch") is created[-1]
+            return result
+
+        simulation = _simulation(
+            periods.YEAR,
+            {
+                "sf_independent": independent,
+                "sf_suffix": suffix,
+                "sf_outer": outer,
+            },
+        )
+        if input_first:
+            simulation.get_branch("worker").set_input(
+                "sf_source", "2020", np.array([3.0])
+            )
+        result = simulation.calculate("sf_outer", "2020")
+        attempts = 1 if input_first else 2
+        assert calls == {"outer": attempts, "suffix": attempts, "independent": 1}
+        assert len(created) == attempts
+        if not input_first:
+            assert created[0] is not created[1]
+        np.testing.assert_array_equal(simulation.get_array("sf_outer", "2020"), result)
+        completed = calls.copy()
+        np.testing.assert_array_equal(simulation.calculate("sf_outer", "2020"), result)
+        assert calls == completed
+        return result
+
+    np.testing.assert_array_equal(run(input_first=False), run(input_first=True))
+
+
+@pytest.mark.parametrize("prime_fast_cache", [False, True])
+def test_unrelated_thread_read_suffix_is_read_again_after_its_caller_changes_input(
+    prime_fast_cache,
+):
+    calls = Counter()
+    unrelated_worker = _simulation(
+        periods.YEAR,
+        {"sf_doubled": lambda person, period: person("sf_source", period) * 2},
+    ).get_branch("worker")
+    if prime_fast_cache:
+        unrelated_worker.calculate("sf_doubled", "2020")
+
+    def suffix(person, period):
+        calls["suffix"] += 1
+        # A context-free read from another family cannot reach this frame
+        # through ancestry, so it must still refuse the optional cache.
+        return _in_thread(lambda: unrelated_worker.calculate("sf_doubled", period))
+
+    def outer(person, period):
+        calls["outer"] += 1
+        worker = person.simulation.get_branch("worker")
+        previous = worker.calculate("sf_source", period)
+        first = np.any(previous == 1)
+        if first:
+            worker.set_input("sf_source", period, np.array([2.0]))
+        result = person("sf_suffix", period)
+        if first:
+            unrelated_worker.set_input("sf_source", period, np.array([3.0]))
+            worker.set_input("sf_source", period, np.array([3.0]))
+        return result
+
+    simulation = _simulation(periods.YEAR, {"sf_suffix": suffix, "sf_outer": outer})
+    result = simulation.calculate("sf_outer", "2020")
+    np.testing.assert_array_equal(result, [6.0])
+    assert calls == {"outer": 2, "suffix": 2}
+    np.testing.assert_array_equal(simulation.get_array("sf_outer", "2020"), result)
+    completed = calls.copy()
+    np.testing.assert_array_equal(simulation.calculate("sf_outer", "2020"), result)
+    assert calls == completed
+
+
+def test_unrelated_unread_thread_mutation_does_not_prevent_caller_convergence():
+    calls = Counter()
+    unrelated_worker = _simulation(periods.YEAR, {}).get_branch("worker")
+
+    def independent(person, period):
+        calls["independent"] += 1
+        return person("sf_source", period) + 10
+
+    def suffix(person, period):
+        calls["suffix"] += 1
+
+        def change():
+            unrelated_worker.delete_arrays("sf_source")
+            unrelated_worker.set_input("sf_source", period, np.array([5.0]))
+
+        _in_thread(change)
+        return person("sf_independent", period)
+
+    def outer(person, period):
+        calls["outer"] += 1
+        worker = person.simulation.get_branch("worker")
+        previous = worker.calculate("sf_source", period)
+        worker.set_input("sf_source", period, np.array([2.0]))
+        result = person("sf_suffix", period)
+        worker.set_input("sf_source", period, np.array([3.0]))
+        return previous + result
+
+    simulation = _simulation(
+        periods.YEAR,
+        {
+            "sf_independent": independent,
+            "sf_suffix": suffix,
+            "sf_outer": outer,
+        },
+    )
+    result = simulation.calculate("sf_outer", "2020")
+    np.testing.assert_array_equal(result, [14.0])
+    # The optional suffix cache cannot skip its threaded effects, but the
+    # caller's observed 2 -> 3 transition still settles on the third attempt.
+    # Unread changes in another family do not taint that convergence proof.
+    assert calls == {"outer": 3, "suffix": 3, "independent": 1}
+    np.testing.assert_array_equal(simulation.get_array("sf_outer", "2020"), result)
+    completed = calls.copy()
+    np.testing.assert_array_equal(simulation.calculate("sf_outer", "2020"), result)
+    assert calls == completed

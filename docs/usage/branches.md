@@ -64,12 +64,14 @@ result calculated from a value the branch gave before the change, in any
 simulation: each calculation notes, for every other simulation it got a value
 from (directly or through the calculations it called), that simulation's count
 of input changes when the value's calculation began, and keeps its own result
-only if none has changed since. (A calculation nested in another in the same
-simulation shares that one's record, which can only make it keep less and can
-cause extra inner recalculations when formulas call between simulations: a
-stale attempt leaves nested results uncached, so retries repeat that work.) So a
-parent formula calculating in a branch whose formula calls back into the parent
-and then changes the branch's input does not keep what it got, nor does a
+only if none has changed since. Nested calculations in the same simulation
+share this record while it is current. After it becomes stale, later nested
+calculations can still keep results that use only that simulation's own values.
+During these stale attempts, results that read another simulation, change inputs,
+create branches, or observe untracked activity remain unkept so the caller's
+retry observes the same reads and repeats those operations. So a parent formula
+calculating in a branch whose formula calls back into the parent and then changes
+the branch's input does not keep what it got, nor does a
 formula that read a branch and then calculated there something that changed the
 branch's input, or set an input on it directly. A value calculated in a thread
 started without the formula's context counts too: with no calculation above it

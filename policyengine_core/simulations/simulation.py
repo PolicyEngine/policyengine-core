@@ -3,6 +3,7 @@ import os
 from contextlib import nullcontext
 import types
 from contextvars import ContextVar
+from threading import Lock
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy as np
@@ -198,6 +199,19 @@ _RERUNS_AFTER_INPUT_CHANGE = 10
 # The calculations running in this context, innermost last (``_Frame``).
 _calculation_frames: ContextVar[tuple] = ContextVar("_calculation_frames", default=())
 
+# Only these frames try to keep work that the stale shared frame refused.
+# Context-free activity anywhere prevents that optional cache write, without
+# changing ordinary frames' scoped read tracking or convergence decisions.
+_restricted_frames = set()
+_restricted_frames_lock = Lock()
+
+
+def _note_unobserved_activity() -> None:
+    if _restricted_frames:
+        with _restricted_frames_lock:
+            for frame in _restricted_frames:
+                frame.unobserved_activity = True
+
 
 class _Frame:
     """A calculation running in ``simulation``.
@@ -233,12 +247,15 @@ class _Frame:
         "branch_identities",
         "created_branches",
         "carried_branches",
+        "stale_parent",
+        "unobserved_activity",
     )
 
-    def __init__(self, simulation: "Simulation"):
+    def __init__(self, simulation: "Simulation", stale_parent: bool = False):
         self.simulation = simulation
         self.created_branches = {}
         self.carried_branches = {}
+        self.stale_parent = stale_parent
 
     def restart(self) -> None:
         """Begin again, as when the calculation runs again."""
@@ -248,6 +265,7 @@ class _Frame:
         self.changes = []
         self.drop_epochs = {}
         self.untracked_changes = False
+        self.unobserved_activity = False
         self.branch_identities = {}
         # Retain only creations whose original registration still names
         # the same object. Saved or replaced snapshots keep their identities.
@@ -328,6 +346,28 @@ class _Frame:
             other._input_epoch != epoch for other, epoch in tuple(reads.items())
         )
 
+    def may_keep(self) -> bool:
+        """Cache independent work after a stale caller without hiding foreign reads.
+
+        A fresh nested frame can keep work using only its own simulation.
+        Reads, mutations and branch creations must still reach the stale
+        caller on its next attempt: caching them here could hide a later
+        input change or skip a mutation when that caller retries.
+        """
+        return (
+            not (
+                self.stale_parent
+                and (
+                    self.reads
+                    or self.changes
+                    or self.untracked_changes
+                    or self.created_branches
+                    or self.unobserved_activity
+                )
+            )
+            and not self.is_stale()
+        )
+
     def __enter__(self) -> "_Frame":
         simulation = self.simulation
         self.restart()
@@ -339,9 +379,15 @@ class _Frame:
             registry = simulation.__dict__.setdefault("_open_frames", set())
         registry.add(self)
         self.registry = registry
+        if self.stale_parent:
+            with _restricted_frames_lock:
+                _restricted_frames.add(self)
         return self
 
     def __exit__(self, *exc_info) -> bool:
+        if self.stale_parent:
+            with _restricted_frames_lock:
+                _restricted_frames.discard(self)
         self.registry.discard(self)
         _calculation_frames.reset(self.token)
         _hand_to_caller(self.outer, self)
@@ -353,17 +399,21 @@ def _frame_for(simulation: "Simulation", outermost: bool) -> Optional[_Frame]:
     the frame it runs in.
 
     A calculation nested in another in the same simulation shares that one's
-    frame: the shared frame began no later and notes at least the same reads,
-    each at the first epoch noted, so it is stale whenever the nested
-    calculation's own would be, and the nested one keeps a result only when
-    it would have anyway. The outermost calculation in a simulation has its
-    own, to run again from (``Simulation.calculate``).
+    frame while it can cache: the shared frame began no later and notes at
+    least the same reads, each at the first epoch noted, so it is stale
+    whenever the nested calculation's own would be, and the nested one keeps
+    a result only when it would have anyway. The outermost calculation has its
+    own, to run again from (``Simulation.calculate``). Once a shared frame
+    cannot cache, independent nested work gets a fresh frame so it can still
+    cache. Reads and mutations remain guarded (``_Frame.may_keep``).
     """
     if outermost:
         return _Frame(simulation)
     frames = _calculation_frames.get()
     if not frames or frames[-1].simulation is not simulation:
         return _Frame(simulation)
+    if not frames[-1].may_keep():
+        return _Frame(simulation, stale_parent=True)
     return None
 
 
@@ -405,6 +455,7 @@ def _hand_to_waiting_ancestors(
     ``Simulation._share_store_history_with_caller``). A frame keeps the first
     epoch it notes for a simulation.
     """
+    _note_unobserved_activity()
     ancestor = getattr(simulation, "parent_branch", None)
     while ancestor is not None:
         for open_frame in tuple(getattr(ancestor, "_open_frames", None) or ()):
@@ -506,6 +557,7 @@ def _taint_waiting_frames(simulation: "Simulation") -> None:
     counting only drops since that read would miss its mutation entirely.
     The simulation and its ancestors may have frames waiting on that thread.
     """
+    _note_unobserved_activity()
     while simulation is not None:
         for frame in tuple(getattr(simulation, "_open_frames", None) or ()):
             frame.untracked_changes = True
@@ -1641,7 +1693,7 @@ class Simulation:
         if input_state[0] != self._input_epoch or input_state[1] != self._inputs_set:
             return False
         frames = _calculation_frames.get()
-        return not (frames and frames[-1].is_stale())
+        return not frames or frames[-1].may_keep()
 
     def _calculation_start(self) -> Tuple[int, int, int]:
         """When a calculation begins: how many drops ran here (``_input_epoch``)
@@ -1688,8 +1740,8 @@ class Simulation:
             if stored_input is not None:
                 return stored_input
         frames = _calculation_frames.get()
-        stale = bool(frames) and frames[-1].is_stale()
-        if epoch == self._input_epoch and not stale:
+        may_keep = not frames or frames[-1].may_keep()
+        if epoch == self._input_epoch and may_keep:
             holder.put_in_cache(array, period, self.branch_name, derived=True)
         else:
             # Not kept, but whatever reads it is stored after it all the same.
@@ -2608,7 +2660,10 @@ class Simulation:
         branch.branch_name = name
         branch.parent_branch = self
         branch._fixed_point_branch = True
-        for frame in _calculation_frames.get():
+        frames = _calculation_frames.get()
+        if not frames:
+            _note_unobserved_activity()
+        for frame in frames:
             frame.created_branches[branch] = (self, name)
         if self.trace:
             branch.trace = True

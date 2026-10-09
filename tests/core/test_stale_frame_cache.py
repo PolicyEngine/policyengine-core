@@ -377,7 +377,10 @@ def test_unrelated_thread_read_suffix_is_read_again_after_its_caller_changes_inp
     assert calls == completed
 
 
-def test_unrelated_unread_thread_mutation_does_not_prevent_caller_convergence():
+@pytest.mark.parametrize("raw_cache_write", [False, True])
+def test_unrelated_unread_thread_mutation_does_not_prevent_caller_convergence(
+    raw_cache_write,
+):
     calls = Counter()
     unrelated_worker = _simulation(periods.YEAR, {}).get_branch("worker")
 
@@ -389,8 +392,13 @@ def test_unrelated_unread_thread_mutation_does_not_prevent_caller_convergence():
         calls["suffix"] += 1
 
         def change():
-            unrelated_worker.delete_arrays("sf_source")
-            unrelated_worker.set_input("sf_source", period, np.array([5.0]))
+            if raw_cache_write:
+                unrelated_worker.get_holder("sf_source").put_in_cache(
+                    np.array([5.0]), period, unrelated_worker.branch_name
+                )
+            else:
+                unrelated_worker.delete_arrays("sf_source")
+                unrelated_worker.set_input("sf_source", period, np.array([5.0]))
 
         _in_thread(change)
         return person("sf_independent", period)
@@ -418,6 +426,14 @@ def test_unrelated_unread_thread_mutation_does_not_prevent_caller_convergence():
     # caller's observed 2 -> 3 transition still settles on the third attempt.
     # Unread changes in another family do not taint that convergence proof.
     assert calls == {"outer": 3, "suffix": 3, "independent": 1}
+    if raw_cache_write:
+        # A raw cache write is observable activity, but is still excluded
+        # from the record of supplied inputs used for replay and export.
+        assert (
+            "sf_source",
+            unrelated_worker.branch_name,
+            periods.period("2020"),
+        ) not in unrelated_worker._user_input_keys
     np.testing.assert_array_equal(simulation.get_array("sf_outer", "2020"), result)
     completed = calls.copy()
     np.testing.assert_array_equal(simulation.calculate("sf_outer", "2020"), result)

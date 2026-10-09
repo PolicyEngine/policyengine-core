@@ -779,12 +779,20 @@ class Holder:
                 "disk" if should_store_on_disk else "memory",
                 is_input=is_input,
             )
-        if is_input and simulation is not None:
+        if not derived and simulation is not None:
             from policyengine_core.simulations.simulation import _note_input_change
 
+            # Raw cache writes are effects a stale caller must repeat, even
+            # though they are not supplied inputs for replay or export.
             _note_input_change(
-                simulation, "set", self.variable.name, stored_period, branch_name, value
+                simulation,
+                "set",
+                self.variable.name,
+                stored_period or self._storage_period(period),
+                branch_name,
+                value,
             )
+        if is_input and simulation is not None:
             if not hasattr(simulation, "_user_input_keys"):
                 simulation._user_input_keys = set()
             # Record the period as storage keys the value (eternity for an

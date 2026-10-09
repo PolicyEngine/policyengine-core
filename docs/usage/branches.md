@@ -68,8 +68,12 @@ only if none has changed since. Nested calculations in the same simulation
 share this record while it is current. After it becomes stale, later nested
 calculations can still keep results that use only that simulation's own values.
 During these stale attempts, results that read another simulation, change inputs,
-create branches, or observe untracked activity remain unkept so the caller's
-retry observes the same reads and repeats those operations. So a parent formula
+write raw cache values, create branches, or observe untracked activity remain
+unkept so the caller's retry observes the same reads and repeats those operations.
+Raw writes through `Holder.put_in_cache` without `derived=True` count as mutation
+activity too, including writes from threads without the formula's context, while
+remaining excluded from the supplied-input record used for reform replay and
+input export. So a parent formula
 calculating in a branch whose formula calls back into the parent and then changes
 the branch's input does not keep what it got, nor does a
 formula that read a branch and then calculated there something that changed the
@@ -265,9 +269,10 @@ branches for comparisons that need both the earlier and the later values.
 `simulation.drop_computed_arrays()` deletes every value the simulation holds
 except inputs (the dataset or situation it was built from, values set with
 `set_input` on it, and, for a branch, values set on the simulations it was
-created from before it was created; also values cached with
-`Holder.put_in_cache` without `derived=True`), and returns how many arrays it
-deleted. Values a custom `set_input` handler calculates are not inputs. Use it on a
+created from before it was created), and returns how many arrays it deleted.
+Values cached with `Holder.put_in_cache`, including those without `derived=True`,
+and values a custom `set_input` handler calculates are excluded from supplied
+inputs. Use it on a
 branch after changing its policy:
 
 ```python

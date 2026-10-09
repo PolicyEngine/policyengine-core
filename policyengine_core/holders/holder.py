@@ -179,7 +179,14 @@ class Holder:
                 recorded[slot] = (input_period, locations)
             else:
                 try:
-                    input_period = periods.period(period_string)
+                    # Storage strings omit early years' leading zeros;
+                    # the period parser requires a four-digit year.
+                    components = period_string.split(":")
+                    date_index = 1 if len(components) > 1 else 0
+                    date_components = components[date_index].split("-")
+                    date_components[0] = date_components[0].zfill(4)
+                    components[date_index] = "-".join(date_components)
+                    input_period = periods.period(":".join(components))
                 except ValueError:
                     # Not a key ``put`` wrote (say, a file ``restore`` found).
                     continue

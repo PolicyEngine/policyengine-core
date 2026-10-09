@@ -1182,7 +1182,8 @@ class Simulation:
                         keep_state,
                     )
                     if self._may_keep(keep_state):
-                        self._fast_cache[(variable_name, period)] = result
+                        if hasattr(self, "_fast_cache"):
+                            self._fast_cache[(variable_name, period)] = result
                         if self.check_macro_cache(variable_name, str(period)):
                             macro = SimulationMacroCache(self.tax_benefit_system)
                             macro.set_cache_path(

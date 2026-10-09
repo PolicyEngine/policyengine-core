@@ -251,6 +251,13 @@ def test_replacing_reused_branch_registration_keeps_saved_snapshot_distinct():
     assert len(calls) == 4
 
 
+def test_fixed_point_without_fast_cache_attribute():
+    values = [0.0, 40.0]
+    simulation, calls = _simulation(values)
+    del simulation._fast_cache
+    _assert_settled(simulation, calls, _input_first_result(values))
+
+
 def test_repeated_result_with_alternating_inputs_is_not_a_fixed_point():
     # Both caps produce zero, but the mutations differ on every attempt.
     simulation, calls = _simulation([0.0], alternating=True)

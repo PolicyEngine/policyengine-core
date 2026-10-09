@@ -1342,12 +1342,7 @@ class Simulation:
         result = sum(
             self.calculate(variable_name, sub_period) for sub_period in sub_periods
         )
-        # Cache only a sum over several sub-periods, as derived from them. A
-        # single sub-period's value is already stored, as an input or
-        # derived, by ``calculate``.
-        if len(sub_periods) > 1:
-            holder = self.get_holder(variable.name)
-            holder.put_in_cache(result, period, self.branch_name, derived=True)
+        self._cache_option_result(variable, period, result)
         return result
 
     def calculate_divide(
@@ -1379,8 +1374,7 @@ class Simulation:
         if period.unit == periods.MONTH:
             computation_period = period.this_year
             result = self.calculate(variable_name, period=computation_period) / 12.0
-            holder = self.get_holder(variable.name)
-            holder.put_in_cache(result, period, self.branch_name, derived=True)
+            self._cache_option_result(variable, period, result)
             return result
         elif period.unit == periods.YEAR:
             return self.calculate(variable_name, period)
@@ -1389,6 +1383,55 @@ class Simulation:
             "Unable to divide the value of '{}' to match period {}.".format(
                 variable_name, period
             )
+        )
+
+    def _cache_option_result(
+        self, variable: Variable, period: Period, result: ArrayLike
+    ) -> None:
+        """Cache an ADD or DIVIDE result at ``period`` if a plain read would return it.
+
+        A value cached at ``period`` is what every later ``calculate`` of the
+        variable at ``period`` returns. ``_calculate`` computes a FLOW
+        variable over a period of another unit with these same options (a
+        monthly variable over a year with ``calculate_add``, a yearly one over
+        a month with ``calculate_divide``), so their result is the plain value
+        there and is cached. Anywhere else it is not:
+
+        - A STOCK variable's plain value over a year is its last month's, and
+          over a month the year's, not the sum or the twelfth.
+        - Over several periods of the variable's own unit, a plain read
+          raises instead.
+        - A day variable's plain read over a month or a year does not sum.
+        - Over a single period of its own unit, the sum is the value
+          ``calculate`` has already stored.
+
+        Caching there would make a later plain read depend on whether the
+        option ran first. Nor is an option result cached when storing it would
+        change it (the twelfth of an integer or a count of true months is
+        stored as the variable's own type, so a later read would return the
+        truncated value where the first returned the exact one).
+
+        The result is cached as derived, so auto-carry-over and uprating
+        never take it for an input, and ``put_in_cache`` keeps an input a
+        plain read finds at ``period`` (in this branch, an ancestor or
+        ``default``) instead of storing it. It does replace a value
+        calculated there before, which may predate a change to the inputs.
+        Whether the value read is an input comes from the storage's mark for
+        the first visible value, which every write sets. The simulation's
+        supplied-input record follows inputs across storage tiers for replay
+        and export; it can name a disk input hidden by a derived memory value,
+        and raw holder inputs need not be registered there. Accepted cache
+        writes never register the aggregate as a supplied input.
+        """
+        if variable.quantity_type == QuantityType.STOCK:
+            return
+        routed = (variable.definition_period == MONTH and period.unit == YEAR) or (
+            variable.definition_period == YEAR and period.unit == MONTH
+        )
+        if not routed or np.asarray(result).dtype != variable.dtype:
+            return
+        self.get_holder(variable.name).put_in_cache(
+            result, period, self.branch_name, derived=True
         )
 
     def calculate_output(self, variable_name: str, period: Period = None) -> ArrayLike:

@@ -1,0 +1,1 @@
+Cache `calculate_add` and `calculate_divide` results as derived only where a plain read returns them without changing dtype, preserving visible inputs and allowing explicit aggregate refresh after an input changes or is deleted.

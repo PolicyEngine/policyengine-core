@@ -215,10 +215,9 @@ def test_an_option_in_a_branch_does_not_replace_a_parent_input(
 def test_an_option_refreshes_its_aggregate_where_a_deleted_input_was(
     definition_period, deleted, native, target, option, first, second
 ):
-    # An input stored at the target itself, then deleted. The simulation's
-    # record of what ``set_input`` stored keeps it, but the value a plain
-    # read finds at the target afterwards is the aggregate the option
-    # cached, which is calculated: running the option again replaces it.
+    # Deleting the target input also removes its supplied-input record. The
+    # aggregate subsequently cached there is derived, so running the option
+    # again replaces it with the result from the current native inputs.
     probe = make_probe(definition_period, FLOW, set_input=None)
     simulation = build(probe, {deleted: 7})
     simulation.delete_arrays(PROBE, deleted)
@@ -239,8 +238,8 @@ def test_an_option_refreshes_its_aggregate_where_a_deleted_input_was(
 def test_an_option_does_not_replace_an_input_restored_from_a_dump(
     definition_period, stored, option, result, tmp_path
 ):
-    # ``restore_simulation`` stores the dumped input with ``put_in_cache``,
-    # not ``set_input``: only the storage's input mark says it is one.
+    # ``restore_simulation`` restores storage's input mark and registers the
+    # supplied input for replay. The option must preserve the visible input.
     probe = make_probe(definition_period, FLOW, with_formula=True, set_input=None)
     built = build(probe, {stored: 7})
     dump_simulation(built, str(tmp_path / "dump"))

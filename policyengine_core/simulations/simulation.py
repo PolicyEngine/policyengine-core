@@ -1417,9 +1417,11 @@ class Simulation:
         ``default``) instead of storing it. It does replace a value
         calculated there before, which may predate a change to the inputs.
         Whether the value read is an input comes from the storage's mark for
-        that key, which every write sets, not from the simulation's record of
-        ``set_input`` calls: that record keeps a key after its value is
-        deleted, and has no key for an input restored from a dump.
+        the first visible value, which every write sets. The simulation's
+        supplied-input record follows inputs across storage tiers for replay
+        and export; it can name a disk input hidden by a derived memory value,
+        and raw holder inputs need not be registered there. Accepted cache
+        writes never register the aggregate as a supplied input.
         """
         if variable.quantity_type == QuantityType.STOCK:
             return

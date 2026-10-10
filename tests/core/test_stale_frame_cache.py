@@ -337,6 +337,107 @@ def test_stale_attempt_reuse_revalidates_foreign_branch_registration():
     assert calls == completed
 
 
+@pytest.mark.parametrize("registration_depth", [1, 2])
+@pytest.mark.parametrize("prime_fast_cache", [False, True])
+@pytest.mark.parametrize("read_route", ["direct", "memo", "foreign_formula"])
+def test_registration_replaced_inside_memo_producer_preserves_the_next_read(
+    registration_depth,
+    prime_fast_cache,
+    read_route,
+):
+    calls = Counter()
+    suffix_reads = []
+    replacement = None
+
+    def worker(simulation):
+        branch = simulation.get_branch("worker")
+        return branch.get_branch("leaf") if registration_depth == 2 else branch
+
+    def replace_registration():
+        simulation.branches["worker"] = replacement
+
+    def foreign_value(person, period):
+        result = person("sf_source", period)
+        # Replacement inside the foreign calculation must retain the
+        # registration that was present when that calculation began.
+        replace_registration()
+        return result
+
+    def reader(person, period):
+        calls["reader"] += 1
+        return worker(person.simulation).calculate("sf_source", period)
+
+    def suffix(person, period):
+        calls["suffix"] += 1
+        if read_route == "memo":
+            # The outer formula already memoized this reader. The fresh
+            # suffix frame must receive its registration dependencies too.
+            result = person("sf_reader", period)
+        else:
+            name = (
+                "sf_foreign_value" if read_route == "foreign_formula" else "sf_source"
+            )
+            result = worker(person.simulation).calculate(name, period)
+        suffix_reads.append(float(result[0]))
+        if read_route != "foreign_formula":
+            replace_registration()
+        return result
+
+    def outer(person, period):
+        calls["outer"] += 1
+        trigger = person.simulation.get_branch("trigger")
+        if np.any(trigger.calculate("sf_source", period) == 1):
+            trigger.set_input("sf_source", period, np.array([3.0]))
+            if read_route == "memo":
+                person("sf_reader", period)
+            person("sf_suffix", period)
+            result = person("sf_suffix", period)
+            # A wrong memoized value becomes a supplied input and survives
+            # the outer retry, so checking only the final retry is insufficient.
+            sink.set_input("sf_source", period, result)
+        return sink.calculate("sf_source", period)
+
+    simulation = _simulation(
+        periods.YEAR,
+        {
+            "sf_foreign_value": foreign_value,
+            "sf_reader": reader,
+            "sf_suffix": suffix,
+            "sf_outer": outer,
+        },
+    )
+    original = simulation.get_branch("worker")
+    original_worker = worker(simulation)
+    replacement = original.clone()
+    replacement_worker = (
+        replacement.get_branch("leaf") if registration_depth == 2 else replacement
+    )
+    replacement_worker.get_holder("sf_source").put_in_cache(
+        np.array([4.0]), periods.period("2020"), replacement_worker.branch_name
+    )
+    assert (original_worker._input_epoch, original_worker._inputs_set) == (
+        replacement_worker._input_epoch,
+        replacement_worker._inputs_set,
+    )
+    if prime_fast_cache:
+        original_worker.calculate("sf_source", "2020")
+    sink = simulation.get_branch("sink")
+
+    result = simulation.calculate("sf_outer", "2020")
+    np.testing.assert_array_equal(result, [4.0])
+    assert suffix_reads == [1.0, 4.0]
+    assert calls["outer"] == 2
+    assert calls["suffix"] == 2
+    if read_route == "memo":
+        assert calls["reader"] == 2
+    np.testing.assert_array_equal(sink.calculate("sf_source", "2020"), result)
+    np.testing.assert_array_equal(simulation.get_array("sf_outer", "2020"), result)
+    np.testing.assert_array_equal(original_worker.calculate("sf_source", "2020"), [1.0])
+    completed = calls.copy()
+    np.testing.assert_array_equal(simulation.calculate("sf_outer", "2020"), result)
+    assert calls == completed
+
+
 def test_stale_attempt_reuse_keeps_direct_foreign_calculations_in_their_simulation():
     calls = Counter()
 

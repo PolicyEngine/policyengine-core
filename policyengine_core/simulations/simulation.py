@@ -269,6 +269,7 @@ class _Frame:
         "simulation",
         "start",
         "reads",
+        "registrations",
         "outer",
         "token",
         "registry",
@@ -295,6 +296,9 @@ class _Frame:
         self.start = self.simulation._input_epoch
         self.inputs_set = self.simulation._inputs_set
         self.reads = {}
+        # Capture this calculation's named path before its formula can
+        # replace a registration. Foreign callers inherit these exact links.
+        self.registrations = _branch_registrations(self.simulation)
         self.changes = []
         self.drop_epochs = {}
         self.untracked_changes = False
@@ -414,16 +418,12 @@ class _Frame:
             or self.created_branches
             or self.unobserved_activity
             or self.is_stale()
+            or any(
+                parent.branches.get(name) is not branch
+                for parent, name, branch in self.registrations
+            )
         ):
             return
-        registrations = set()
-        for other in self.reads:
-            while getattr(other, "parent_branch", None) is not None:
-                parent = other.parent_branch
-                name = other.branch_name
-                if parent.branches.get(name) is other:
-                    registrations.add((parent, name, other))
-                other = parent
         self.attempt_cache[(self.simulation, variable, period)] = _AttemptResult(
             array,
             self.start,
@@ -431,7 +431,7 @@ class _Frame:
             tuple(
                 (other, epoch, other._inputs_set) for other, epoch in self.reads.items()
             ),
-            tuple(registrations),
+            tuple(self.registrations),
             _unobserved_activity_generation,
         )
 
@@ -446,6 +446,7 @@ class _Frame:
             return None
         for other, epoch, _ in cached.reads:
             self.reads.setdefault(other, epoch)
+        self.registrations.update(cached.registrations)
         # This simulation's history cannot have been pruned without changing
         # its epoch, so it still records every source of the reused value.
         return cached.array
@@ -517,6 +518,7 @@ def _hand_to_caller(outer: tuple, frame: _Frame) -> None:
         return
     caller = outer[-1]
     caller.untracked_changes |= frame.untracked_changes
+    caller.registrations.update(frame.registrations)
     caller_simulation = caller.simulation
     caller_reads = caller.reads
     for other, epoch in reads:
@@ -565,6 +567,22 @@ def _value_signature(value: ArrayLike) -> Optional[tuple]:
     if array.dtype.kind not in "biufcmM":
         return None
     return array.dtype.str, array.shape, enum, array.tobytes()
+
+
+def _branch_registrations(simulation: "Simulation") -> set:
+    """Named branch links present when a calculation starts or a value is read.
+
+    A standalone clone need not occupy its source's registration, but its
+    registered ancestors still constrain reuse through that named path.
+    """
+    registrations = set()
+    while getattr(simulation, "parent_branch", None) is not None:
+        parent = simulation.parent_branch
+        name = simulation.branch_name
+        if parent.branches.get(name) is simulation:
+            registrations.add((parent, name, simulation))
+        simulation = parent
+    return registrations
 
 
 def _registered_creations(branches: dict) -> dict:
@@ -1388,6 +1406,7 @@ class Simulation:
                         _hand_to_waiting_ancestors(self, self._input_epoch, ())
                     elif frames[-1].simulation is not self:
                         frames[-1].reads.setdefault(self, self._input_epoch)
+                        frames[-1].registrations.update(_branch_registrations(self))
                     return _cached
 
         self.tracer.record_calculation_start(variable_name, period, self.branch_name)

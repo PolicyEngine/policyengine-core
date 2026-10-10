@@ -1150,12 +1150,12 @@ class Simulation:
             person_membership_ids = get_eternity_array(person_membership_id_field)
 
             person_role_field = f"{person_entity.key}_{group_entity.key}_role"
-            if person_role_field in data:
+            if any(column.split("__")[0] == person_role_field for column in data):
                 person_roles = get_eternity_array(person_role_field)
             elif "role" in data:
                 person_roles = get_eternity_array("role")
             elif self.default_role is not None:
-                person_roles = np.full(len(entity_ids), self.default_role)
+                person_roles = np.full(self.persons.count, self.default_role)
             else:
                 raise ValueError(
                     f"Missing {person_role_field} column in the dataset. Each group entity must have a person role array defined for ETERNITY."
@@ -3161,6 +3161,15 @@ class Simulation:
         if not self._is_exportable_input_variable(variable_name):
             return []
 
+        return self._get_set_input_periods(variable_name)
+
+    def _get_set_input_periods(self, variable_name: str) -> List[Period]:
+        """Periods of ``variable_name`` whose stored value the simulation was given.
+
+        Use the holder's per-tier input record, including for variables with
+        formulas. Storage's carry-over marks also include cache writes, which
+        must not become source inputs when a simulation is rebuilt.
+        """
         user_input_periods = {
             period
             for input_variable_name, branch_name, period in getattr(
@@ -3168,15 +3177,29 @@ class Simulation:
             )
             if input_variable_name == variable_name
             and branch_name in self._get_visible_branch_names()
+            and self.get_holder(variable_name)._stores_user_input(period, branch_name)
         }
-        if not user_input_periods:
-            return []
-        variable = self.tax_benefit_system.get_variable(variable_name)
+        return sorted(user_input_periods, key=str)
+
+    def _get_recorded_input_array(self, variable_name: str, period: Period):
+        """Read a surviving supplied value from the tier that still records it.
+
+        Match input replay's branch and tier precedence. A cache in memory
+        can shadow a recorded disk input, so ``calculate`` is not an input
+        export operation even when the period remains in the input record.
+        """
         holder = self.get_holder(variable_name)
-        if variable.definition_period == ETERNITY:
-            return holder.get_known_periods()
-        known_periods = set(holder.get_known_periods())
-        return sorted(user_input_periods & known_periods, key=str)
+        input_keys = getattr(self, "_user_input_keys", set())
+        for branch_name in self._get_visible_branch_names():
+            if (variable_name, branch_name, period) not in input_keys:
+                continue
+            for storage_name, storage in (
+                ("memory", holder._memory_storage),
+                ("disk", holder._disk_storage),
+            ):
+                if holder._stores_user_input(period, branch_name, storage_name):
+                    return storage.get(period, branch_name)
+        return None
 
     def to_input_dataframe(
         self,
@@ -3185,8 +3208,9 @@ class Simulation:
         """Exports a DataFrame that can be loaded back into a new Simulation.
 
         By default, only structurally input variables populated through
-        ``set_input`` are exported. This avoids serializing pseudo-inputs and
-        stale calculated values that would override formulas when reloaded.
+        ``set_input`` are exported from their recorded storage tiers. This
+        avoids serializing pseudo-inputs and stale calculated values that
+        would override formulas when reloaded.
 
         Args:
             include_computed_variables: If ``True``, export every variable with
@@ -3196,17 +3220,33 @@ class Simulation:
             pd.DataFrame: The DataFrame containing the input values.
         """
 
+        return self._to_person_dataframe(
+            lambda variable: self._get_exportable_input_periods(
+                variable, include_computed_variables
+            ),
+            include_computed_variables=include_computed_variables,
+        )
+
+    def _to_person_dataframe(
+        self, get_periods, include_computed_variables: bool = False
+    ) -> pd.DataFrame:
+        """Person-level DataFrame of each variable at ``get_periods(variable)``."""
         df = pd.DataFrame()
 
         for variable in self.tax_benefit_system.variables:
             variable_meta = self.tax_benefit_system.variables[variable]
-            for period in self._get_exportable_input_periods(
-                variable, include_computed_variables
-            ):
+            for period in get_periods(variable):
                 # Test if period matches entity definition period
                 if variable_meta.definition_period != period.unit:
                     continue
-                values = self.calculate(variable, period, map_to="person")
+                if include_computed_variables:
+                    values = self.calculate(variable, period, map_to="person")
+                else:
+                    values = self._get_recorded_input_array(variable, period)
+                    if values is not None:
+                        values = self.map_result(
+                            values, variable_meta.entity.key, self.persons.entity.key
+                        )
                 if values is not None:
                     df[f"{variable}__{period}"] = values
 
@@ -3216,8 +3256,9 @@ class Simulation:
         """Exports a dictionary that can be loaded back into a new Simulation.
 
         By default, only structurally input variables populated through
-        ``set_input`` are exported. This avoids serializing pseudo-inputs and
-        stale calculated values that would override formulas when reloaded.
+        ``set_input`` are exported from their recorded storage tiers. This
+        avoids serializing pseudo-inputs and stale calculated values that
+        would override formulas when reloaded.
 
         Args:
             include_computed_variables: If ``True``, export every variable with
@@ -3233,7 +3274,15 @@ class Simulation:
             for period in self._get_exportable_input_periods(
                 variable, include_computed_variables
             ):
-                values = self.calculate(variable, period, map_to="person")
+                if include_computed_variables:
+                    values = self.calculate(variable, period, map_to="person")
+                else:
+                    values = self._get_recorded_input_array(variable, period)
+                    if values is not None:
+                        variable_meta = self.tax_benefit_system.get_variable(variable)
+                        values = self.map_result(
+                            values, variable_meta.entity.key, self.persons.entity.key
+                        )
                 if values is not None:
                     data[variable][str(period)] = values.tolist()
 
@@ -3241,6 +3290,68 @@ class Simulation:
                 del data[variable]
 
         return data
+
+    def _subsample_weight_period(self, time_period) -> Period:
+        """Use dataset input weights if the requested period has no source.
+
+        A calculated default is not evidence of available sampling weights.
+        Check the input/formula paths, rather than comparing values with the
+        default, so a formula intentionally returning uniform weights is kept.
+        """
+        requested = periods.period(time_period)
+        variable = self.tax_benefit_system.get_variable("household_weight")
+        calculation_period = (
+            requested.this_year
+            if variable.definition_period == YEAR and requested.unit == MONTH
+            else requested
+        )
+        calculation_periods = (
+            requested.get_subperiods(MONTH)
+            if variable.definition_period == MONTH and requested.unit == YEAR
+            else [calculation_period]
+        )
+        input_period = (
+            periods.period(ETERNITY)
+            if variable.definition_period == ETERNITY
+            else calculation_period
+        )
+        inputs = self._get_set_input_periods("household_weight")
+        has_formula = (
+            any(
+                variable.get_formula(value) is not None for value in calculation_periods
+            )
+            or variable.adds
+            or variable.subtracts
+            or variable.is_neutralized
+        )
+        can_uprate = variable.uprating is not None and any(
+            source.unit == variable.definition_period
+            and source.start < calculation_period.start
+            for source in inputs
+        )
+        can_carry = (
+            self.tax_benefit_system.auto_carry_over_input_variables
+            and variable.calculate_output is None
+            and any(source.start <= calculation_period.start for source in inputs)
+        )
+        if (
+            requested in inputs
+            or input_period in inputs
+            or any(value in inputs for value in calculation_periods)
+            or has_formula
+            or can_uprate
+            or can_carry
+        ):
+            return requested
+        dataset_period = periods.period(self.dataset.time_period).start.period(
+            variable.definition_period
+        )
+        if dataset_period in inputs:
+            return dataset_period
+        raise ValueError(
+            f"No household_weight source is available for {requested}, "
+            f"and no input weights exist for dataset period {dataset_period}."
+        )
 
     def subsample(
         self,
@@ -3251,6 +3362,19 @@ class Simulation:
         quantize_weights: bool = True,
     ) -> "Simulation":
         """Quantize the simulation to a smaller size by sampling households.
+
+        Rebuild from the holder's recorded input tiers, including inputs of
+        formula-backed variables. Calculate household weights for
+        ``time_period`` to choose the sample, falling back to dataset-period
+        input weights when that period has no input, formula, uprating or
+        carry-over source. Rescale each input weight column to preserve its
+        own entity's total using the memberships exported for the rebuild.
+        Calculated weights and other formula results are recomputed on the
+        sample. Calculation branches are recreated on its populations;
+        baseline policy is kept.
+        If structural inputs are absent, loaded population IDs, memberships
+        and roles supply the leaves needed to rebuild the same partition.
+        This also supports structural variables whose IDs have formulas.
 
         Args:
             n (int, optional): The number of households to sample. Defaults to 10_000.
@@ -3270,33 +3394,82 @@ class Simulation:
         if time_period is None:
             time_period = self.default_calculation_period
 
-        # Subsampling rebuilds the complete dataset, so preserve computed
-        # structural variables such as formula-backed IDs.
-        df = self.to_input_dataframe(include_computed_variables=True)
+        # Subsampling rebuilds the simulation from what it was given: every
+        # value loaded from the dataset or set with ``set_input``, including
+        # for variables that have a formula (structural IDs, for instance).
+        # Calculated values are left out. Reloaded as inputs they would
+        # replace their formulas for good, so later results (after a reform,
+        # or carried over to another year) would depend on what happened to
+        # be calculated before subsampling.
+        df = self._to_person_dataframe(self._get_set_input_periods)
 
-        # Extract time period from DataFrame columns
-        df_time_period = (
-            df.columns[df.columns.str.contains("household_id__")]
-            .values[0]
-            .split("__")[1]
+        def retain_structure(name, values):
+            variable = self.tax_benefit_system.get_variable(name)
+            if variable is None or any(column.split("__")[0] == name for column in df):
+                return
+            structural_period = (
+                ETERNITY
+                if variable.definition_period == ETERNITY
+                else periods.period(self.dataset.time_period).start.period(
+                    variable.definition_period
+                )
+            )
+            df[f"{name}__{structural_period}"] = values
+
+        # These are loaded population leaves, not calculated ID formulas.
+        # A simulation built from populations may have no stored ID inputs.
+        person_key = self.persons.entity.key
+        retain_structure(f"{person_key}_id", self.persons.ids)
+        for entity in self.tax_benefit_system.group_entities:
+            population = self.populations[entity.key]
+            retain_structure(
+                f"{person_key}_{entity.key}_id",
+                population.ids[population.members_entity_id],
+            )
+            role_name = f"{person_key}_{entity.key}_role"
+            role_variable = self.tax_benefit_system.get_variable(role_name)
+            roles = np.broadcast_to(population.members_role, self.persons.count)
+            if role_variable is not None and role_variable.value_type == int:
+                role_values = [
+                    entity.flattened_roles.index(role)
+                    if role in entity.flattened_roles
+                    else 0
+                    for role in roles
+                ]
+            else:
+                role_values = [getattr(role, "key", "") for role in roles]
+            retain_structure(role_name, role_values)
+
+        # Flat-file loading can infer households from membership IDs even
+        # when the household ID variable has a formula. Use the same leaves
+        # for selection without materializing a calculated ID input.
+        household_id_columns = [
+            column for column in df if column.startswith("household_id__")
+        ]
+        if not household_id_columns:
+            household_id_columns = [
+                column for column in df if column.startswith("person_household_id__")
+            ]
+        df_household_id_column = household_id_columns[0]
+
+        # Sampling needs the requested year's weight even when it was
+        # calculated rather than supplied as an input. Use it for selection
+        # without adding it to the data that will be reloaded as inputs.
+        sampling_df = df[[df_household_id_column]].copy()
+        sampling_df["household_weight"] = np.asarray(
+            self.calculate(
+                "household_weight",
+                self._subsample_weight_period(time_period),
+                map_to="person",
+            )
         )
-        df_household_id_column = f"household_id__{df_time_period}"
-        df_person_id_column = f"person_id__{df_time_period}"
-
-        # Determine the appropriate household weight column
-        if f"household_weight__{time_period}" in df.columns:
-            household_weight_column = f"household_weight__{time_period}"
-        else:
-            household_weight_column = f"household_weight__{df_time_period}"
-
-        # Group by household ID and get the first entry for each group
-        h_df = df.groupby(df_household_id_column).first()
+        h_df = sampling_df.groupby(df_household_id_column).first()
         h_ids = pd.Series(h_df.index)
         if n is None and frac is None:
             raise ValueError("Either n or frac must be provided.")
         if n is None:
             n = int(len(h_ids) * frac)
-        h_weights = pd.Series(h_df[household_weight_column].values)
+        h_weights = pd.Series(h_df["household_weight"].values)
 
         frac = n / len(h_ids)
 
@@ -3334,16 +3507,46 @@ class Simulation:
             lambda x: household_id_to_count.get(x, 0)
         )
 
-        # Adjust household weights to maintain the total weight
+        # Conserve each source column's native entity total. Group weights
+        # repeat on person rows, so summing those rows counts larger groups
+        # more often. The loader reads each retained group's first member;
+        # that member can differ from its original first member when another
+        # group partition crosses the sampled households. Group by the same
+        # exported membership the rebuild reads, including later overrides.
 
         for col in subset_df.columns:
             if "weight__" in col:
-                target_total_weight = df[col].values.sum()
+                variable_name, weight_period = col.split("__")
+                entity = self.tax_benefit_system.get_variable(variable_name).entity
+                target_total_weight = np.asarray(
+                    self._get_recorded_input_array(
+                        variable_name, periods.period(weight_period)
+                    )
+                ).sum()
+                if target_total_weight == 0:
+                    subset_df[col] = 0.0
+                    continue
                 if not quantize_weights:
                     subset_df[col] *= household_counts.values
                 else:
                     subset_df[col] = household_counts.values
-                subset_df[col] *= target_total_weight / subset_df[col].values.sum()
+                if entity.is_person:
+                    selected_total = subset_df[col].values.sum()
+                else:
+                    membership_column = next(
+                        column
+                        for column in subset_df
+                        if column.split("__")[0] == f"{person_key}_{entity.key}_id"
+                    )
+                    memberships = subset_df[membership_column].values
+                    _, first_retained = np.unique(memberships, return_index=True)
+                    selected_total = subset_df[col].values[first_retained].sum()
+                if selected_total == 0:
+                    raise ValueError(
+                        f"Cannot preserve {col} total: the retained entities have "
+                        "zero weight. Use quantize_weights=True or a different sample."
+                    )
+                subset_df[col] *= target_total_weight / selected_total
 
         df = subset_df
 
@@ -3363,6 +3566,13 @@ class Simulation:
         # (see the short-circuit at the top of ``calculate``) and surface
         # as "size X != Y = count" projection errors.
         self._invalidate_all_caches()
+
+        # Other branches still contain the pre-subsample populations. Forget
+        # them so a formula's next ``get_branch`` starts from the new sample.
+        # Keep the baseline long enough to preserve its policy below.
+        self.branches = {
+            name: branch for name, branch in self.branches.items() if name == "baseline"
+        }
 
         # Ensure the baseline branch has the new data: rebuild it from the
         # subsampled simulation through ``get_branch`` (the same wiring

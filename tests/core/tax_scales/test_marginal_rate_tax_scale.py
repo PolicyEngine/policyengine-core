@@ -231,8 +231,16 @@ def test_to_average_of_a_single_bracket(rate):
 
     result = tax_scale.to_average()
 
+    # For rate 0.37: 1 * 0.37 = 0.37, 1.5 * 0.37 = 0.555,
+    # and 1_000 * 0.37 = 370. Negative bases owe no marginal tax.
+    tax_base = numpy.array([-1, 0, 1, 1.5, 1_000])
+    tools.assert_near(
+        result.calc(tax_base),
+        [0, 0, rate, 1.5 * rate, 1_000 * rate],
+        absolute_error_margin=1e-10,
+    )
     assert result.thresholds == [0, numpy.inf]
-    assert result.rates == [0, rate]
+    assert result.rates == [rate, rate]
     assert result.to_marginal().rates == [rate]
 
 

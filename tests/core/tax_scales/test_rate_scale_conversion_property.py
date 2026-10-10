@@ -1,12 +1,15 @@
 """Properties of converting between marginal and linear-average rate scales.
 
-For any marginal rate scale whose first threshold is 0, with 1 to 6 brackets:
+For equal-length scales with 1 to 6 brackets, rates in [0, 1], first threshold
+0, and strictly increasing positive integer upper thresholds up to 1,000,000:
 
 * ``to_average`` and then ``to_marginal`` give back the same thresholds and
   rates (one bracket included; it used to raise ``UnboundLocalError``);
-* the average scale's last bracket starts at infinity with the top rate.
+* the average scale's last bracket starts at infinity with the top rate;
+* a singleton marginal conversion preserves tax at finite bases within
+  [-1,000,000, 1,000,000].
 
-For any linear-average rate scale whose first threshold is 0, ``to_marginal``
+For such a linear-average rate scale, ``to_marginal``
 gives a marginal scale that levies threshold x rate at every threshold (the
 average rate there), and the top rate on the whole base above the last one.
 Examples are in ``test_marginal_rate_tax_scale.py`` and
@@ -62,6 +65,35 @@ def test_marginal_to_average_round_trips(brackets):
     assert average.rates[-1] == rates[-1]
     assert round_trip.thresholds == thresholds
     numpy.testing.assert_allclose(round_trip.rates, rates, rtol=0, atol=1e-9)
+
+
+@settings(max_examples=300, deadline=None)
+@given(
+    rate=st.integers(min_value=0, max_value=1_000).map(lambda r: r / 1_000),
+    bases=st.lists(
+        st.floats(
+            min_value=-1_000_000,
+            max_value=1_000_000,
+            allow_nan=False,
+            allow_infinity=False,
+        ),
+        min_size=1,
+        max_size=10,
+    ),
+)
+def test_singleton_marginal_to_average_preserves_calculation(rate, bases):
+    marginal = taxscales.MarginalRateTaxScale()
+    marginal.add_bracket(0, rate)
+    tax_base = numpy.array([-1_000, -1, 0, 1, 1.5, 1_000, *bases])
+
+    average = marginal.to_average()
+
+    # One zero-origin marginal bracket taxes max(base, 0) * rate.
+    expected = numpy.maximum(tax_base, 0) * rate
+    numpy.testing.assert_allclose(average.calc(tax_base), expected, rtol=1e-12)
+    numpy.testing.assert_allclose(
+        average.calc(tax_base), marginal.calc(tax_base), rtol=1e-12
+    )
 
 
 @settings(max_examples=300, deadline=None)

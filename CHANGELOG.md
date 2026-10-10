@@ -1,3 +1,10 @@
+## [3.33.2] - 2026-10-10
+
+### Changed
+
+- Add regression coverage for reform and baseline fidelity when subsampling simulations after calculations.
+
+
 ## [3.33.1] - 2026-10-10
 
 ### Fixed

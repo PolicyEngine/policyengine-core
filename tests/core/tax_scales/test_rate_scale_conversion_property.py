@@ -14,6 +14,9 @@ gives a marginal scale that levies threshold x rate at every threshold (the
 average rate there), and the top rate on the whole base above the last one.
 Examples are in ``test_marginal_rate_tax_scale.py`` and
 ``test_linear_average_rate_tax_scale.py``.
+
+Appending surplus rates to a scale with at least two brackets leaves both
+conversion results unchanged, preserving the last paired terminal rate.
 """
 
 from __future__ import annotations
@@ -31,10 +34,11 @@ from policyengine_core import taxscales  # noqa: E402
 
 
 @st.composite
-def _brackets(draw):
+def _brackets(draw, min_upper_thresholds=0):
     upper_thresholds = draw(
         st.lists(
             st.integers(min_value=1, max_value=1_000_000),
+            min_size=min_upper_thresholds,
             max_size=5,
             unique=True,
         )
@@ -126,3 +130,36 @@ def test_average_to_marginal_levies_the_average_rate(brackets):
         rtol=1e-9,
         atol=1e-6 + rounding,
     )
+
+
+@pytest.mark.parametrize(
+    "scale_type, conversion",
+    [
+        (taxscales.MarginalRateTaxScale, "to_average"),
+        (taxscales.LinearAverageRateTaxScale, "to_marginal"),
+    ],
+)
+@settings(max_examples=300, deadline=None)
+@given(
+    brackets=_brackets(min_upper_thresholds=1),
+    surplus_rates=st.lists(
+        st.integers(min_value=0, max_value=1_000).map(lambda r: r / 1_000),
+        min_size=1,
+        max_size=3,
+    ),
+)
+def test_conversions_ignore_surplus_rates(
+    scale_type, conversion, brackets, surplus_rates
+):
+    thresholds, rates = brackets
+    paired = scale_type()
+    for threshold, rate in zip(thresholds, rates):
+        paired.add_bracket(threshold, rate)
+    surplus = paired.copy()
+    surplus.rates.extend(surplus_rates)
+
+    expected = getattr(paired, conversion)()
+    result = getattr(surplus, conversion)()
+
+    assert result.thresholds == expected.thresholds
+    assert result.rates == expected.rates

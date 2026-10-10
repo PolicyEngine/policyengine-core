@@ -64,8 +64,10 @@ class LinearAverageRateTaxScale(RateTaxScaleLike):
 
         previous_i = 0
         previous_threshold = 0
+        terminal_rate = self.rates[0]
 
         for threshold, rate in zip(self.thresholds[1:], self.rates[1:]):
+            terminal_rate = rate
             if threshold != float("Inf"):
                 i = rate * threshold
                 marginal_tax_scale.add_bracket(
@@ -75,6 +77,6 @@ class LinearAverageRateTaxScale(RateTaxScaleLike):
                 previous_i = i
                 previous_threshold = threshold
 
-        marginal_tax_scale.add_bracket(previous_threshold, self.rates[-1])
+        marginal_tax_scale.add_bracket(previous_threshold, terminal_rate)
 
         return marginal_tax_scale

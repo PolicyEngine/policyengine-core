@@ -290,6 +290,6 @@ class MarginalRateTaxScale(RateTaxScaleLike):
                 previous_rate = rate
 
             # Far above the last threshold the average rate approaches the top rate.
-            average_tax_scale.add_bracket(float("Inf"), self.rates[-1])
+            average_tax_scale.add_bracket(float("Inf"), previous_rate)
 
         return average_tax_scale

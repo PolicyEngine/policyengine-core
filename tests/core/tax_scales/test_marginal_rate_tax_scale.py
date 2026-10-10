@@ -244,6 +244,20 @@ def test_to_average_of_a_single_bracket(rate):
     assert result.to_marginal().rates == [rate]
 
 
+@pytest.mark.parametrize("rates_type", [list, numpy.array])
+def test_to_average_uses_last_paired_rate(rates_type):
+    tax_scale = taxscales.MarginalRateTaxScale()
+    tax_scale.thresholds = [0, 100]
+    tax_scale.rates = rates_type([0.1, 0.2, 0.8])
+
+    result = tax_scale.to_average()
+
+    assert result.thresholds == [0, 100, numpy.inf]
+    # Tax at 100 is 100 * 0.1 = 10, so its average rate is 10 / 100 = 0.1.
+    # The terminal marginal rate paired with threshold 100 is 0.2, not 0.8.
+    assert result.rates == [0, 0.1, 0.2]
+
+
 def test_rate_from_bracket_indice():
     tax_base = numpy.array([0, 1_000, 1_500, 50_000])
     tax_scale = taxscales.MarginalRateTaxScale()

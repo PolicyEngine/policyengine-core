@@ -5,6 +5,7 @@ import numpy
 from numpy.typing import ArrayLike
 
 from policyengine_core import periods
+from policyengine_core.data_storage.store_history import _period_from_storage_key
 from policyengine_core.holders.holder import Holder
 from policyengine_core.periods import Period
 
@@ -152,6 +153,7 @@ def _drop_calculated_overlapping(
             dropped_periods.add(_period_from_storage_key(period_string))
     memory._stop_sharing_dropped_keys()
     memory._unmark_dropped_keys()
+    memory._forget_dropped_numbers()
     disk = holder._disk_storage
     if disk is not None:
         for key in list(disk._files):
@@ -161,18 +163,8 @@ def _drop_calculated_overlapping(
             ):
                 del disk._files[key]
                 dropped_periods.add(_period_from_storage_key(period_string))
-        disk._derived.intersection_update(disk._files)
+        disk._forget_dropped_keys()
     _evict_fast_cache(holder, dropped_periods, branch_name)
-
-
-def _period_from_storage_key(period_string: str) -> Period:
-    """Parse a stored period whose early year may have lost leading zeros."""
-    components = period_string.split(":")
-    date_index = 1 if len(components) > 1 else 0
-    date = components[date_index].split("-")
-    date[0] = date[0].zfill(4)
-    components[date_index] = "-".join(date)
-    return periods.period(":".join(components))
 
 
 def _is_calculated_overlapping(

@@ -162,31 +162,7 @@ def _latest_input_key(period: Period, definition_period: str) -> tuple:
     )
 
 
-def _default_role_key(entity: "GroupEntity", default_role: str) -> str:
-    """The role key a dataset with no role column gives each member of ``entity``.
-
-    ``default_role`` may name a role that members hold directly, or a role
-    with subroles, whose first subrole they get. ``Simulation.default_role``
-    is one key for every group entity, so it can name no role of ``entity``
-    (``"member"`` in a household of parents and children); then members get
-    the entity's first role, as people given no role in a situation do. A key
-    that names no role would otherwise leave members holding no role at all,
-    so every role query would find nobody.
-    """
-    roles = entity.flattened_roles
-    if not roles:
-        return default_role
-    for role in roles:
-        if role.key == default_role:
-            return role.key
-    for role in entity.roles:
-        if role.key == default_role and role.subroles:
-            return role.subroles[0].key
-    return roles[0].key
-
-
 if TYPE_CHECKING:
-    from policyengine_core.entities import GroupEntity
     from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 
 from policyengine_core.experimental import MemoryConfig
@@ -552,7 +528,18 @@ class Simulation:
         self.create_shortcuts()
 
     def build_from_dataset(self) -> None:
-        """Build a simulation from a dataset."""
+        """Build a simulation from a dataset.
+
+        Entity-specific role columns take precedence over a generic ``role``
+        column. Without either, each person receives the literal ``default_role``
+        key. Only flattened-role keys match: unmatched and compound keys remain
+        unrecognized rather than selecting a first role or subrole.
+
+        A recognized implicit default with a finite role maximum must fit every
+        group's membership count. Otherwise an explicit role column is required.
+        Explicit dataset role columns do not validate role capacity.
+        ``default_role=None`` requires a role column.
+        """
         self.build_from_populations(self.tax_benefit_system.instantiate_entities())
         from policyengine_core.simulations.simulation_builder import (
             SimulationBuilder,
@@ -629,12 +616,28 @@ class Simulation:
             elif "role" in data:
                 person_roles = get_eternity_array("role")
             elif self.default_role is not None:
-                # One role per person, like the membership IDs: ``entity_ids``
-                # holds one entry per group, not per person.
-                person_roles = np.full(
-                    len(person_membership_ids),
-                    _default_role_key(group_entity, self.default_role),
+                default_role = next(
+                    (
+                        role
+                        for role in group_entity.flattened_roles
+                        if role.key == self.default_role
+                    ),
+                    None,
                 )
+                if default_role is not None and default_role.max is not None:
+                    membership_counts = np.unique(
+                        person_membership_ids, return_counts=True
+                    )[1]
+                    if np.any(membership_counts > default_role.max):
+                        raise ValueError(
+                            f"Cannot assign default role {self.default_role!r} "
+                            f"to every person in {group_entity.key}: at most "
+                            f"{default_role.max} member(s) per group may hold it; "
+                            f"provide an explicit {person_role_field} column."
+                        )
+                # One role per person, like the membership IDs: ``entity_ids``
+                # holds one entry per group. Keep literal matching as on master.
+                person_roles = np.full(len(person_membership_ids), self.default_role)
             else:
                 raise ValueError(
                     f"Missing {person_role_field} column in the dataset. Each group entity must have a person role array defined for ETERNITY."

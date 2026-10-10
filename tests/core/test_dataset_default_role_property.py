@@ -1,23 +1,16 @@
-"""Property: a dataset without role columns gives every person one role.
+"""Dataset defaults preserve literal role matching and person-level cardinality.
 
-For any persons, any assignment of them to the groups of several group
-entities (empty groups included), any of the three dataset formats and any
-``Simulation.default_role``, building the simulation must give, for every
-group entity:
-
-* ``members_role`` with one entry per person, like ``members_entity_id``;
-* every member holding the same role of that entity: the role the default
-  names, the first subrole of a role with subroles it names, or else the
-  entity's first role;
-* role queries shaped like their non-role counterparts (one cell per group
-  for ``nb_persons``, ``sum`` and ``max``; one per person for ``project`` and
-  ``has_role``), equal to them for every role that contains the default role
-  and to the empty result for every other role.
-
-Examples, including the audit witness, are in ``test_dataset_default_role.py``.
+The role table below specifies expected assignments independently of the loader:
+only a literal flattened-role key matches; unknown and compound keys remain 0.
+For accepted defaults, role counts, aggregates, projections and unique lookups
+are computed from the original dataset memberships. A capacity-limited default
+must be rejected if assigning it uniformly would exceed its per-group maximum.
 """
 
 from __future__ import annotations
+
+from collections import Counter
+from typing import NamedTuple
 
 import numpy as np
 import pandas as pd
@@ -26,12 +19,14 @@ import pytest
 # The smoke job installs Core without the dev extra but collects every module.
 pytest.importorskip("hypothesis")
 
-from hypothesis import given, settings  # noqa: E402
+from hypothesis import example, given, settings  # noqa: E402
 from hypothesis import strategies as st  # noqa: E402
 
 from policyengine_core.data import Dataset  # noqa: E402
 from policyengine_core.entities import build_entity  # noqa: E402
 from policyengine_core.periods import ETERNITY  # noqa: E402
+from policyengine_core.projectors import UniqueRoleToEntityProjector  # noqa: E402
+from policyengine_core.simulations import SimulationBuilder  # noqa: E402
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem  # noqa: E402
 from tests.core.test_dataset_default_role import (  # noqa: E402
     in_memory_dataset,
@@ -39,40 +34,54 @@ from tests.core.test_dataset_default_role import (  # noqa: E402
 )
 
 PERSON = build_entity(key="person", plural="persons", label="Person", is_person=True)
-GROUP_ENTITIES = [
-    # Shaped like the country template's household.
-    build_entity(
-        key="household",
-        plural="households",
-        label="Household",
-        roles=[
-            {
-                "key": "parent",
-                "plural": "parents",
-                "subroles": ["first_parent", "second_parent"],
-            },
-            {"key": "child", "plural": "children"},
-        ],
-    ),
-    # A role with subroles that is not the first role.
-    build_entity(
-        key="family",
-        plural="families",
-        label="Family",
-        roles=[
-            {"key": "child", "plural": "children"},
-            {"key": "parent", "plural": "parents", "subroles": ["mother", "father"]},
-        ],
-    ),
-    # Shaped like the country models' groups: one role, "member".
-    build_entity(
-        key="unit",
-        plural="units",
-        label="Unit",
-        roles=[{"key": "member", "plural": "members"}],
-    ),
-]
+HOUSEHOLD = build_entity(
+    key="household",
+    plural="households",
+    label="Household",
+    roles=[
+        {
+            "key": "parent",
+            "plural": "parents",
+            "subroles": ["first_parent", "second_parent"],
+        },
+        {"key": "child", "plural": "children"},
+    ],
+)
+FAMILY = build_entity(
+    key="family",
+    plural="families",
+    label="Family",
+    roles=[
+        {"key": "child", "plural": "children"},
+        {"key": "parent", "plural": "parents", "subroles": ["mother", "father"]},
+    ],
+)
+UNIT = build_entity(
+    key="unit",
+    plural="units",
+    label="Unit",
+    roles=[{"key": "member", "plural": "members"}],
+)
+COMMITTEE = build_entity(
+    key="committee",
+    plural="committees",
+    label="Committee",
+    roles=[{"key": "delegate", "plural": "delegates", "max": 2}],
+)
+GROUP_ENTITIES = [HOUSEHOLD, FAMILY, UNIT, COMMITTEE]
 SYSTEM = TaxBenefitSystem([PERSON, *GROUP_ENTITIES])
+
+# Deliberately explicit: this oracle does not reproduce a resolution algorithm.
+EXPECTED_DEFAULT_ROLES = {
+    "household": {
+        "child": HOUSEHOLD.CHILD,
+        "first_parent": HOUSEHOLD.FIRST_PARENT,
+        "second_parent": HOUSEHOLD.SECOND_PARENT,
+    },
+    "family": {"child": FAMILY.CHILD, "mother": FAMILY.MOTHER, "father": FAMILY.FATHER},
+    "unit": {"member": UNIT.MEMBER},
+    "committee": {"delegate": COMMITTEE.DELEGATE},
+}
 DEFAULT_ROLES = [
     "member",
     "parent",
@@ -81,18 +90,39 @@ DEFAULT_ROLES = [
     "second_parent",
     "mother",
     "father",
+    "delegate",
     "nobody",
 ]
 
 
-def expected_default_role(entity, default_role):
-    for role in entity.flattened_roles:
-        if role.key == default_role:
-            return role
-    for role in entity.roles:
-        if role.key == default_role and role.subroles:
-            return role.subroles[0]
-    return entity.flattened_roles[0]
+class DatasetCase(NamedTuple):
+    dataset: Dataset
+    memberships: dict[str, np.ndarray]
+    values: np.ndarray
+
+
+def _case(columns, data_format, values):
+    memberships = {
+        entity.key: columns[f"person_{entity.key}_id"].copy()
+        for entity in GROUP_ENTITIES
+    }
+    if data_format == Dataset.FLAT_FILE:
+        dataset = Dataset.from_dataframe(pd.DataFrame(columns), "2024")
+    elif data_format == Dataset.TIME_PERIOD_ARRAYS:
+        dataset = in_memory_dataset(
+            {name: {ETERNITY: array} for name, array in columns.items()}, data_format
+        )
+    else:
+        dataset = in_memory_dataset(columns, data_format)
+    return DatasetCase(dataset, memberships, np.array(values, dtype=float))
+
+
+def _uniform_case(persons, group_ids, memberships):
+    columns = {"person_id": np.arange(1, persons + 1)}
+    for entity in GROUP_ENTITIES:
+        columns[f"{entity.key}_id"] = np.array(group_ids, dtype=int)
+        columns[f"person_{entity.key}_id"] = np.array(memberships, dtype=int)
+    return _case(columns, Dataset.ARRAYS, np.arange(1, persons + 1) * 100)
 
 
 @st.composite
@@ -104,7 +134,8 @@ def _datasets(draw):
     columns = {"person_id": np.arange(100, 100 + persons)}
     for entity in GROUP_ENTITIES:
         if data_format == Dataset.FLAT_FILE:
-            # A flat file declares groups only through their members.
+            # The loader synthesizes group IDs 0..n-1 for a flat file. Choose
+            # consecutive occupied IDs to isolate roles from ID renumbering.
             group_ids = list(range(max(persons, 1)))
         else:
             group_ids = draw(
@@ -115,26 +146,27 @@ def _datasets(draw):
                     unique=True,
                 )
             )
-            columns[f"{entity.key}_id"] = np.array(group_ids, dtype=int)
-        columns[f"person_{entity.key}_id"] = np.array(
-            draw(
+        if persons:
+            occupied = draw(
+                st.integers(min_value=1, max_value=min(persons, len(group_ids)))
+            )
+            # Keep empty groups after occupied ones in sorted ID order. The
+            # existing join's treatment of other empty-group positions is
+            # separate from default-role assignment.
+            occupied_ids = sorted(group_ids)[:occupied]
+            memberships = occupied_ids + draw(
                 st.lists(
-                    st.sampled_from(group_ids) if group_ids else st.nothing(),
-                    min_size=persons,
-                    max_size=persons,
+                    st.sampled_from(occupied_ids),
+                    min_size=persons - occupied,
+                    max_size=persons - occupied,
                 )
-            ),
-            dtype=int,
-        )
-    if data_format == Dataset.FLAT_FILE:
-        dataset = Dataset.from_dataframe(pd.DataFrame(columns), "2024")
-    elif data_format == Dataset.TIME_PERIOD_ARRAYS:
-        dataset = in_memory_dataset(
-            {name: {ETERNITY: values} for name, values in columns.items()},
-            data_format,
-        )
-    else:
-        dataset = in_memory_dataset(columns, data_format)
+            )
+            memberships = draw(st.permutations(memberships))
+        else:
+            memberships = []
+        if data_format != Dataset.FLAT_FILE:
+            columns[f"{entity.key}_id"] = np.array(group_ids, dtype=int)
+        columns[f"person_{entity.key}_id"] = np.array(memberships, dtype=int)
     values = draw(
         st.lists(
             st.integers(min_value=-1000, max_value=1000),
@@ -142,49 +174,152 @@ def _datasets(draw):
             max_size=persons,
         )
     )
-    return dataset, persons, np.array(values, dtype=float)
+    return _case(columns, data_format, values)
 
 
 @settings(max_examples=200, deadline=None)
 @given(_datasets(), st.sampled_from(DEFAULT_ROLES))
-def test_every_person_holds_one_default_role(case, default_role):
-    dataset, persons, values = case
+@example(_uniform_case(2, [10, 20], [10, 10]), "member")
+@example(_uniform_case(3, [10, 20], [10, 10, 10]), "first_parent")
+@example(_uniform_case(3, [10, 20], [10, 10, 10]), "delegate")
+@example(_uniform_case(2, [10, 20], [10, 10]), "delegate")
+@example(_uniform_case(3, [20, 10, 30], [20, 10, 30]), "first_parent")
+def test_default_roles_preserve_literal_matching_and_capacity(case, default_role):
+    dataset, memberships, values = case
+    persons = len(values)
+    violations = []
+    for entity in GROUP_ENTITIES:
+        role = EXPECTED_DEFAULT_ROLES[entity.key].get(default_role)
+        if role is not None and role.max is not None:
+            if any(
+                count > role.max for count in Counter(memberships[entity.key]).values()
+            ):
+                violations.append(entity)
+    if violations:
+        with pytest.raises(ValueError, match="default role.*at most") as error:
+            simulate(SYSTEM, dataset, default_role=default_role)
+        assert f"person_{violations[0].key}_role" in str(error.value)
+        return
+
     simulation = simulate(SYSTEM, dataset, default_role=default_role)
 
     for entity in GROUP_ENTITIES:
         group = simulation.populations[entity.key]
-        role = expected_default_role(entity, default_role)
+        role = EXPECTED_DEFAULT_ROLES[entity.key].get(default_role)
+        raw_memberships = memberships[entity.key]
 
-        # One role per person, and it is a role of this entity.
-        assert len(group.members_role) == persons == len(group.members_entity_id)
-        assert all(member_role is role for member_role in group.members_role)
+        assert group.members_role.shape == (persons,)
+        assert len(group.members_entity_id) == persons
+        if role is None:
+            assert (group.members_role == 0).all()
+        else:
+            assert all(member_role is role for member_role in group.members_role)
+            if role.max is not None:
+                assert all(
+                    count <= role.max for count in Counter(raw_memberships).values()
+                )
 
         group_values = np.arange(group.count, dtype=float)
+        group_indices = {group_id: index for index, group_id in enumerate(group.ids)}
+        counts = np.array(
+            [(raw_memberships == group_id).sum() for group_id in group.ids]
+        )
+        totals = np.array(
+            [values[raw_memberships == group_id].sum() for group_id in group.ids]
+        )
+        projected_values = np.array(
+            [group_values[group_indices[group_id]] for group_id in raw_memberships]
+        )
+
         for query_role in [*entity.roles, *entity.flattened_roles]:
-            holds = query_role is role or role in (query_role.subroles or [])
+            holds = role is not None and (
+                query_role is role or role in (query_role.subroles or [])
+            )
             has_role = simulation.persons.has_role(query_role)
             nb_persons = group.nb_persons(role=query_role)
             total = group.sum(values, role=query_role)
             projected = group.project(group_values, role=query_role)
 
-            assert has_role.shape == (persons,)
+            assert has_role.shape == projected.shape == (persons,)
             assert nb_persons.shape == total.shape == (group.count,)
-            assert projected.shape == (persons,)
-            if holds:
-                assert has_role.all()
-                assert np.array_equal(nb_persons, group.nb_persons())
-                assert np.array_equal(total, group.sum(values))
-                assert np.array_equal(projected, group.project(group_values))
-            else:
-                assert not has_role.any()
-                assert not nb_persons.any()
-                assert not total.any()
-                assert not projected.any()
+            assert np.array_equal(has_role, np.full(persons, holds))
+            assert np.array_equal(
+                nb_persons, counts if holds else np.zeros(group.count)
+            )
+            if query_role.max is not None:
+                assert (nb_persons <= query_role.max).all()
+            assert np.array_equal(total, totals if holds else np.zeros(group.count))
+            assert np.array_equal(
+                projected, projected_values if holds else np.zeros(persons)
+            )
             if persons:
-                # ``reduce`` needs at least one person to size its loop.
                 maximum = group.max(values, role=query_role)
+                expected_maximum = np.array(
+                    [
+                        max(values[raw_memberships == group_id], default=-np.inf)
+                        if holds
+                        else -np.inf
+                        for group_id in group.ids
+                    ]
+                )
                 assert maximum.shape == (group.count,)
-                if holds:
-                    assert np.array_equal(maximum, group.max(values))
-                else:
-                    assert (maximum == -np.inf).all()
+                assert np.array_equal(maximum, expected_maximum)
+
+        for unique_role in entity.flattened_roles:
+            if unique_role.max != 1:
+                continue
+            # The accepted-capacity invariant guarantees zero or one selected
+            # person per raw group ID. Unmatched roles select nobody.
+            expected_lookup = np.array(
+                [
+                    next(iter(values[raw_memberships == group_id]), -123)
+                    if role is unique_role
+                    else -123
+                    for group_id in group.ids
+                ]
+            )
+            lookup = group.value_from_person(values, unique_role, default=-123)
+            assert lookup.shape == (group.count,)
+            assert np.array_equal(lookup, expected_lookup)
+
+            expected_projector = np.array(
+                [
+                    next(iter(values[raw_memberships == group_id]), 0)
+                    if role is unique_role
+                    else 0
+                    for group_id in group.ids
+                ]
+            )
+            projector = UniqueRoleToEntityProjector(group, unique_role)
+            assert np.array_equal(projector.transform(values), expected_projector)
+
+        for compound_role in entity.roles:
+            if not compound_role.subroles or len(compound_role.subroles) != 2:
+                continue
+            # Uniform defaults cannot supply both partner subroles. Pass the
+            # public person-to-group projector so group values project back to
+            # person shape, as in existing partner contract tests.
+            partners = simulation.persons.value_from_partner(
+                values, getattr(simulation.persons, entity.key), compound_role
+            )
+            assert partners.shape == (persons,)
+            assert not partners.any()
+
+
+@settings(max_examples=50, deadline=None)
+@given(
+    st.integers(min_value=1, max_value=50), st.sampled_from(["short", "long", "matrix"])
+)
+@example(0, "matrix")
+def test_join_requires_a_one_dimensional_role_per_person(persons, shape):
+    builder = SimulationBuilder()
+    builder.create_entities(SYSTEM)
+    builder.declare_person_entity("person", np.arange(persons))
+    household = builder.declare_entity("household", [10])
+    if shape == "matrix":
+        roles = np.zeros((persons, 1), dtype=int)
+    else:
+        roles = np.zeros(persons + (1 if shape == "long" else -1), dtype=int)
+
+    with pytest.raises(ValueError, match="give one role per person"):
+        builder.join_with_persons(household, np.repeat(10, persons), roles)

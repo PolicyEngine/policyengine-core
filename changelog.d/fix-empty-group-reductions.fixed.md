@@ -1,0 +1,1 @@
+Group `all`, `max` and `min`, `members_position` and `Population.get_rank` now work when a simulation has no persons, giving the neutral element (True, -inf, inf) for each group instead of raising "zero-size array to reduction"; memberships given as an empty list, and default simulations of no one, are kept as integers so ranks and projections over them work.

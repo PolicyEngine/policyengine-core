@@ -9,6 +9,7 @@ from numpy.typing import ArrayLike
 
 from policyengine_core import commons, periods, tools
 from policyengine_core.data_storage import InMemoryStorage, OnDiskStorage
+from policyengine_core.data_storage.store_history import next_sequence_number
 from policyengine_core.enums import Enum
 from policyengine_core.errors import PeriodMismatchError
 from policyengine_core.periods import Period
@@ -130,6 +131,12 @@ class Holder:
         user_input_keys = getattr(simulation, "_user_input_keys", None)
         stored_before = self._stored_keys() if user_input_keys else None
 
+        if self.simulation is not None:
+            from policyengine_core.simulations.simulation import _note_input_change
+
+            _note_input_change(
+                self.simulation, "delete", self.variable.name, period, branch_name
+            )
         self._memory_storage.delete(period, branch_name)
         if self._disk_storage:
             self._disk_storage.delete(period, branch_name)
@@ -308,6 +315,134 @@ class Holder:
             return Period((unit, start, size))
         return period
 
+    def _drop_computed(self, since: Optional[int] = None) -> int:
+        """Delete every stored value that is not an input, and return how many.
+
+        With ``since``, only values stored with that sequence number or a
+        later one are deleted. Inputs are values stored through
+        :meth:`set_input`, on any branch.
+        """
+        if (self._memory_storage._inputs or self._disk_storage is not None) and getattr(
+            self.simulation, "_user_input_keys", None
+        ) is not None:
+            from .helpers import _is_input, _period_from_storage_key
+
+            # Carry-over marks also include low-level cache writes. Only an
+            # actual supplied input in this tier survives a branch's drop.
+            for storage_name, storage in (
+                ("memory", self._memory_storage),
+                ("disk", self._disk_storage),
+            ):
+                if storage is None:
+                    continue
+                candidate_keys = (
+                    storage._inputs
+                    if storage_name == "memory"
+                    else storage._files.keys() - storage._derived
+                )
+                kept = set()
+                recorded = getattr(self, "_user_input_storage", {})
+                for key in candidate_keys:
+                    branch_name, period_string = (
+                        key.split(":", 1)
+                        if storage_name == "memory"
+                        else key.rsplit("_", 1)
+                    )
+                    input_storage = recorded.get((branch_name, period_string))
+                    if input_storage is not None:
+                        stored_period = input_storage[0]
+                    else:
+                        try:
+                            stored_period = _period_from_storage_key(period_string)
+                        except ValueError:
+                            continue
+                    if _is_input(self, stored_period, branch_name, storage_name):
+                        kept.add(key)
+                storage.mark_derived_except(kept)
+        dropped = self._memory_storage.drop_computed(since=since)
+        if self._disk_storage is not None:
+            dropped += self._disk_storage.drop_computed(since=since)
+        return dropped
+
+    def _record_inputs(self, since: Optional[int] = None) -> None:
+        """Record in the simulation's history each input stored at ``since`` or later."""
+        for storage in (self._memory_storage, self._disk_storage):
+            if storage is not None:
+                for period, sequence_number in storage.inputs_since(since):
+                    self._record_store(period, sequence_number)
+
+    def _is_input(self, period: Period, branch_name: str = "default") -> bool:
+        """Whether a value is stored for ``period`` under ``branch_name``
+        itself, as the supplied input that ``get_array`` reads."""
+        from .helpers import _is_input
+
+        for storage_name, storage in (
+            ("memory", self._memory_storage),
+            ("disk", self._disk_storage),
+        ):
+            if storage is not None and storage.has(period, branch_name):
+                return _is_input(self, period, branch_name, storage_name)
+        return False
+
+    def _input_unchanged(
+        self, period: Period, array: ArrayLike, branch_name: str = "default"
+    ) -> bool:
+        """Whether :meth:`set_input` would store, for ``period`` itself, the
+        input :meth:`get_array` already reads there for ``branch_name``.
+
+        Then nothing calculated from that input changes. An input a
+        ``set_input`` helper spreads over other periods never counts, nor
+        does a value equal only after conversion to the variable's type (a
+        float rounded to float32, say), nor ``-0.0`` for ``0.0`` (``1 / x``
+        tells them apart).
+        """
+        if self.variable.set_input and period.unit != self.variable.definition_period:
+            return False
+        stored_on = self._branch_storing(period, branch_name)
+        if stored_on is None or not self._is_input(period, stored_on):
+            return False
+        try:
+            stored = self._get_array_from_storage(period, stored_on)
+            given = numpy.asarray(array)
+            return bool(
+                numpy.array_equal(stored, given)
+                and numpy.array_equal(numpy.signbit(stored), numpy.signbit(given))
+            )
+        except Exception:  # values that cannot be compared are not equal
+            return False
+
+    def _stored_sequence_number(
+        self, period: Period, branch_name: str = "default"
+    ) -> Optional[int]:
+        """The sequence number of the value stored for ``period`` on ``branch_name``."""
+        if self.variable.definition_period == periods.ETERNITY:
+            period = periods.period(periods.ETERNITY)
+        period = periods.period(period)
+        number = self._memory_storage._sequence_numbers.get(f"{branch_name}:{period}")
+        if number is None and self._disk_storage is not None:
+            number = self._disk_storage._sequence_numbers.get(f"{branch_name}_{period}")
+        return number
+
+    def _mark_derived_except(self, kept) -> None:
+        """Mark every stored value derived except those stored for the
+        ``(branch_name, period)`` pairs in ``kept``."""
+        memory_keys, disk_keys = set(), set()
+        for branch_name, period in kept:
+            if self.variable.definition_period == periods.ETERNITY:
+                period = periods.ETERNITY
+            period = periods.period(period)
+            memory_keys.add(f"{branch_name}:{period}")
+            disk_keys.add(f"{branch_name}_{period}")
+        self._memory_storage.mark_derived_except(memory_keys)
+        if self._disk_storage is not None:
+            self._disk_storage.mark_derived_except(disk_keys)
+
+    def _has_unnumbered_values(self) -> bool:
+        return self._memory_storage.has_unnumbered_values() or (
+            self._disk_storage is not None
+            and self._disk_storage.has_unnumbered_values()
+        )
+
     def _get_array_from_storage(
         self, period: Period, branch_name: str = "default"
     ) -> ArrayLike:
@@ -475,6 +610,24 @@ class Holder:
         self._raise_if_input_contains_nan(numpy.asarray(array))
         simulation = getattr(self, "simulation", None)
         if simulation is not None:
+            # On a branch, drop what may have been calculated from the value
+            # this input replaces (see ``Simulation.set_input``), unless it
+            # replaces the same input. Either way the branch stops reading
+            # macro-cache files, which are keyed by branch name and period,
+            # not by inputs: a file for its name (written by this branch, or
+            # by another simulation's branch of the same name) may hold values
+            # calculated without this input, even before the branch read any.
+            if getattr(simulation, "parent_branch", None) is None:
+                simulation._drop_values_that_may_depend_on(self.variable.name, period)
+            else:
+                simulation.macro_cache_read = False
+                if not self._input_unchanged(period, array, branch_name):
+                    simulation._drop_values_that_may_depend_on(
+                        self.variable.name, period
+                    )
+            # A calculation running meanwhile looks for inputs set for its own
+            # period (``Simulation._cache_result``).
+            simulation._inputs_set += 1
             if not hasattr(simulation, "_user_input_keys"):
                 simulation._user_input_keys = set()
             if not hasattr(simulation, "_user_input_contexts"):
@@ -485,7 +638,20 @@ class Holder:
                 self.variable.set_input
                 and period.unit != self.variable.definition_period
             ):
-                return self.variable.set_input(self, period, array)
+                started = getattr(simulation, "_calculations_started", 0)
+                try:
+                    return self.variable.set_input(self, period, array)
+                finally:
+                    if (
+                        simulation is not None
+                        and simulation._calculations_started != started
+                    ):
+                        # The handler calculated, maybe between its stores,
+                        # from inputs it had not yet replaced (also if it
+                        # then failed: the inputs it stored stay).
+                        simulation._drop_values_that_may_depend_on(
+                            self.variable.name, period
+                        )
             return self._set(period, array, branch_name, validate_nan=True)
         finally:
             if simulation is not None:
@@ -555,6 +721,7 @@ class Holder:
         validate_nan: bool = False,
         derived: bool = False,
         is_input: Optional[bool] = None,
+        sequence_number: Optional[int] = None,
     ) -> None:
         simulation = getattr(self, "simulation", None)
         user_input_contexts = (
@@ -591,10 +758,19 @@ class Holder:
         if stored_period is not None:
             self._seed_input_storage(stored_period, branch_name)
 
-        if should_store_on_disk:
-            self._disk_storage.put(value, period, branch_name, derived=derived)
-        else:
-            self._memory_storage.put(value, period, branch_name, derived=derived)
+        if sequence_number is None or not derived:
+            # Inputs are always numbered when stored: a calculation running
+            # meanwhile looks for inputs stored after it began.
+            sequence_number = next_sequence_number()
+        storage = self._disk_storage if should_store_on_disk else self._memory_storage
+        storage.put(
+            value,
+            period,
+            branch_name,
+            derived=derived,
+            sequence_number=sequence_number,
+        )
+        self._record_store(period, sequence_number)
         self._evict_fast_cache(period, branch_name)
         if stored_period is not None:
             self._record_input_storage(
@@ -602,6 +778,19 @@ class Holder:
                 branch_name,
                 "disk" if should_store_on_disk else "memory",
                 is_input=is_input,
+            )
+        if not derived and simulation is not None:
+            from policyengine_core.simulations.simulation import _note_input_change
+
+            # Raw cache writes are effects a stale caller must repeat, even
+            # though they are not supplied inputs for replay or export.
+            _note_input_change(
+                simulation,
+                "set",
+                self.variable.name,
+                stored_period or self._storage_period(period),
+                branch_name,
+                value,
             )
         if is_input and simulation is not None:
             if not hasattr(simulation, "_user_input_keys"):
@@ -634,14 +823,13 @@ class Holder:
         A derived value never replaces an input that ``get_array(period,
         branch_name)`` reads: the input is kept and nothing is stored.
         """
-        if self._do_not_store:
-            return
-
-        if (
+        if self._do_not_store or (
             self.simulation.opt_out_cache
             and self.simulation.tax_benefit_system.cache_blacklist
             and self.variable.name in self.simulation.tax_benefit_system.cache_blacklist
         ):
+            # Not kept, but whatever reads it is stored after it all the same.
+            self._record_store(period, next_sequence_number())
             return
 
         if (
@@ -652,6 +840,19 @@ class Holder:
             return
 
         self._set(period, value, branch_name, is_input=False, derived=derived)
+
+    def _record_store(self, period: Period, sequence_number: int) -> None:
+        simulation = getattr(self, "simulation", None)
+        if simulation is None:
+            return
+        variable = self.variable
+        if variable.definition_period == periods.ETERNITY:
+            period = periods.period(periods.ETERNITY)
+        elif not isinstance(period, Period):
+            period = periods.period(period)
+        simulation._get_store_history().record_store(
+            variable.name, period, sequence_number
+        )
 
     def default_array(self) -> ArrayLike:
         """

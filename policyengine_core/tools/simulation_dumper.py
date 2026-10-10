@@ -7,6 +7,7 @@ import warnings
 import numpy as np
 
 from policyengine_core.data_storage import OnDiskStorage
+from policyengine_core.data_storage.store_history import next_sequence_number
 from policyengine_core.periods import ETERNITY
 from policyengine_core.simulations import Simulation
 
@@ -31,8 +32,8 @@ def dump_simulation(simulation, directory):
     """
     Write simulation data to directory, so that it can be restored later.
 
-    Writes the default branch's values, listing the periods of those the
-    simulation calculated (see ``restore_simulation``).
+    Writes the simulation's branch values, including inherited values, and
+    lists the periods it calculated (see ``restore_simulation``).
     """
     parent_directory = os.path.abspath(os.path.join(directory, os.pardir))
     if not os.path.isdir(parent_directory):  # To deal with reforms
@@ -103,9 +104,22 @@ def restore_simulation(directory, tax_benefit_system, **kwargs):
     lists_calculated_values = os.path.exists(
         os.path.join(entities_dump_dir, DUMP_FORMAT_FILE)
     )
+    # Inputs first, then every calculated value under one later number. The
+    # dump does not say what each value was calculated from (nor what was read
+    # without being kept), so an input set for any variable on a branch of the
+    # restored simulation drops them all.
     for variable in variables_to_restore:
-        if _restore_holder(simulation, variable, directory):
-            lists_calculated_values = True
+        _restore_holder(simulation, variable, directory, inputs=True)
+    calculated_number = next_sequence_number()
+    restored = sum(
+        _restore_holder(
+            simulation, variable, directory, calculated_number=calculated_number
+        )
+        for variable in variables_to_restore
+    )
+    if restored:
+        simulation._get_store_history().record_unknown_sources(calculated_number)
+        lists_calculated_values = True
     if variables_to_restore and not lists_calculated_values:
         warnings.warn(
             f"The simulation dump in {directory} does not say which of its "
@@ -123,13 +137,18 @@ def restore_simulation(directory, tax_benefit_system, **kwargs):
 
 def _dump_holder(holder, directory):
     disk_storage = holder.create_disk_storage(directory, preserve=True)
+    branch_name = holder.simulation.branch_name
     derived_periods = set()
-    for period in holder.get_known_periods():
-        value = holder.get_array(period)
-        disk_storage.put(value, period)
+    for period in dict.fromkeys(holder.get_known_periods()):
+        # What the simulation itself reads: on a branch, its own value, else
+        # its nearest ancestor's or the default one.
+        stored_on = holder._branch_storing(period, branch_name)
+        if stored_on is None:
+            continue
+        disk_storage.put(holder._get_array_from_storage(period, stored_on), period)
         # Read the mark of exactly the value dumped: the same period on the
-        # same branch as ``get_array``.
-        if holder.is_derived(period):
+        # same branch.
+        if holder.is_derived(period, branch_name):
             derived_periods.add(str(period))
     if derived_periods:
         path = os.path.join(disk_storage.storage_dir, DERIVED_PERIODS_FILE)
@@ -188,10 +207,14 @@ def _restore_entity(population, directory):
     return person_count
 
 
-def _restore_holder(simulation, variable, directory):
-    """Restore one variable's values: those its ``DERIVED_PERIODS_FILE``
-    lists as calculated values, every other one as an input. Return whether
-    it lists any."""
+def _restore_holder(
+    simulation, variable, directory, inputs=False, calculated_number=None
+):
+    """Restore one variable's inputs or calculated values and return the count.
+
+    Inputs are registered as supplied values; calculated values share the
+    later ``calculated_number`` because a dump does not keep their sources.
+    """
     storage_dir = os.path.join(directory, variable)
     is_variable_eternal = (
         simulation.tax_benefit_system.get_variable(variable).definition_period
@@ -203,7 +226,8 @@ def _restore_holder(simulation, variable, directory):
     disk_storage.restore()
 
     holder = simulation.get_holder(variable)
-
+    # Dumped before derived values were recorded, there is no such file and
+    # every value counts as an input, as it did then.
     derived_periods_path = os.path.join(storage_dir, DERIVED_PERIODS_FILE)
     derived_periods = set()
     # Legacy dumps have no provenance record; their calculated values may restore as inputs.
@@ -211,13 +235,23 @@ def _restore_holder(simulation, variable, directory):
         with open(derived_periods_path) as file:
             derived_periods = set(file.read().split())
 
+    restored = 0
     for period in disk_storage.get_known_periods():
+        derived = str(period) in derived_periods
+        if derived == inputs:
+            continue
+        restored += 1
         value = disk_storage.get(period)
-        if str(period) in derived_periods:
-            holder.put_in_cache(value, period, derived=True)
+        if derived:
+            holder._set(
+                period,
+                value,
+                derived=True,
+                sequence_number=calculated_number,
+            )
         else:
             _restore_input(simulation, holder, period, value)
-    return bool(derived_periods)
+    return restored
 
 
 def _restore_input(simulation, holder, period, value):

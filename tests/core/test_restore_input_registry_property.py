@@ -186,6 +186,10 @@ def _input_keys(simulation):
     ],
     requests=[],
 )
+@hypothesis.example(
+    steps=[("input", ("eligible", "2012", [False, False]))],
+    requests=[],
+)
 def test_restored_simulation_keeps_and_drops_what_the_dumped_one_would(
     system, steps, requests
 ):
@@ -195,8 +199,22 @@ def test_restored_simulation_keeps_and_drops_what_the_dumped_one_would(
     kind = None
     original_put = InMemoryStorage.put
 
-    def observe_put(storage, value, period, branch_name="default", derived=False):
-        result = original_put(storage, value, period, branch_name, derived=derived)
+    def observe_put(
+        storage,
+        value,
+        period,
+        branch_name="default",
+        derived=False,
+        sequence_number=None,
+    ):
+        result = original_put(
+            storage,
+            value,
+            period,
+            branch_name,
+            derived=derived,
+            sequence_number=sequence_number,
+        )
         if branch_name != "default" or kind not in ("input", "cache", "calculate"):
             return result
         # Observe successful writes to this simulation's leaf storage, not

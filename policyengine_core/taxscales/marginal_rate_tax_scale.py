@@ -267,7 +267,12 @@ class MarginalRateTaxScale(RateTaxScaleLike):
             unit=self.unit,
         )
 
-        average_tax_scale.add_bracket(0, 0)
+        if len(self.thresholds) == len(self.rates) == 1 and self.thresholds[0] == 0:
+            # A zero-origin singleton has a constant average rate. Starting
+            # at a zero rate and interpolating toward infinity would levy no tax.
+            average_tax_scale.add_bracket(0, self.rates[0])
+        else:
+            average_tax_scale.add_bracket(0, 0)
 
         if self.thresholds:
             i = 0
@@ -284,6 +289,7 @@ class MarginalRateTaxScale(RateTaxScaleLike):
                 previous_threshold = threshold
                 previous_rate = rate
 
-            average_tax_scale.add_bracket(float("Inf"), rate)
+            # Far above the last threshold the average rate approaches the top rate.
+            average_tax_scale.add_bracket(float("Inf"), previous_rate)
 
         return average_tax_scale

@@ -1,1 +1,1 @@
-Give each person, not each group, the literal dataset default role, preserve unmatched defaults as unrecognized, require explicit roles when a recognized default would exceed its per-group capacity, and reject role arrays with invalid dimensions or membership lengths.
+Reject implicit dataset defaults that exceed their recognized role's capacity per group and role arrays that are not one dimensional or do not match the membership count.

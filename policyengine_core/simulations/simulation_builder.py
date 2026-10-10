@@ -300,7 +300,7 @@ class SimulationBuilder:
         roles_array = np.array(roles)
         if roles_array.ndim != 1 or len(roles_array) != len(persons_group_assignment):
             # ``members_role`` is indexed like ``members_entity_id``: one entry
-            # per person. Any other length breaks every role query later.
+            # per membership. Other shapes can make queries fail or broadcast incorrectly.
             raise ValueError(
                 f"Got {roles_array.size} {group_population.entity.key} role(s) "
                 f"for {len(persons_group_assignment)} person(s); give one role "

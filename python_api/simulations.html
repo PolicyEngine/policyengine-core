@@ -804,6 +804,18 @@ calculation ended.</p>
 <dt class="sig sig-object py" id="policyengine_core.simulations.simulation.Simulation.subsample">
 <span class="sig-name descname"><span class="pre">subsample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frac</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_period</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantize_weights</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.simulations.simulation.Simulation" title="policyengine_core.simulations.simulation.Simulation"><span class="pre">Simulation</span></a></span></span><a class="headerlink" href="#policyengine_core.simulations.simulation.Simulation.subsample" title="Permalink to this definition">#</a></dt>
 <dd><p>Quantize the simulation to a smaller size by sampling households.</p>
+<p>Rebuild from the holder’s recorded input tiers, including inputs of
+formula-backed variables. Calculate household weights for
+<code class="docutils literal notranslate"><span class="pre">time_period</span></code> to choose the sample, falling back to dataset-period
+input weights when that period has no input, formula, uprating or
+carry-over source. Rescale each input weight column to preserve its
+own entity’s total using the memberships exported for the rebuild.
+Calculated weights and other formula results are recomputed on the
+sample. Calculation branches are recreated on its populations;
+baseline policy is kept.
+If structural inputs are absent, loaded population IDs, memberships
+and roles supply the leaves needed to rebuild the same partition.
+This also supports structural variables whose IDs have formulas.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -827,8 +839,9 @@ calculation ended.</p>
 <span class="sig-name descname"><span class="pre">to_input_dataframe</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">include_computed_variables</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#policyengine_core.simulations.simulation.Simulation.to_input_dataframe" title="Permalink to this definition">#</a></dt>
 <dd><p>Exports a DataFrame that can be loaded back into a new Simulation.</p>
 <p>By default, only structurally input variables populated through
-<code class="docutils literal notranslate"><span class="pre">set_input</span></code> are exported. This avoids serializing pseudo-inputs and
-stale calculated values that would override formulas when reloaded.</p>
+<code class="docutils literal notranslate"><span class="pre">set_input</span></code> are exported from their recorded storage tiers. This
+avoids serializing pseudo-inputs and stale calculated values that
+would override formulas when reloaded.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>include_computed_variables</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, export every variable with
@@ -848,8 +861,9 @@ a known period, matching the historical unsafe behavior.</p>
 <span class="sig-name descname"><span class="pre">to_input_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">include_computed_variables</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#policyengine_core.simulations.simulation.Simulation.to_input_dict" title="Permalink to this definition">#</a></dt>
 <dd><p>Exports a dictionary that can be loaded back into a new Simulation.</p>
 <p>By default, only structurally input variables populated through
-<code class="docutils literal notranslate"><span class="pre">set_input</span></code> are exported. This avoids serializing pseudo-inputs and
-stale calculated values that would override formulas when reloaded.</p>
+<code class="docutils literal notranslate"><span class="pre">set_input</span></code> are exported from their recorded storage tiers. This
+avoids serializing pseudo-inputs and stale calculated values that
+would override formulas when reloaded.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>include_computed_variables</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, export every variable with
@@ -1448,6 +1462,18 @@ calculation ended.</p>
 <dt class="sig sig-object py" id="policyengine_core.simulations.microsimulation.Microsimulation.subsample">
 <span class="sig-name descname"><span class="pre">subsample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frac</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_period</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantize_weights</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.simulations.simulation.Simulation" title="policyengine_core.simulations.simulation.Simulation"><span class="pre">Simulation</span></a></span></span><a class="headerlink" href="#policyengine_core.simulations.microsimulation.Microsimulation.subsample" title="Permalink to this definition">#</a></dt>
 <dd><p>Quantize the simulation to a smaller size by sampling households.</p>
+<p>Rebuild from the holder’s recorded input tiers, including inputs of
+formula-backed variables. Calculate household weights for
+<code class="docutils literal notranslate"><span class="pre">time_period</span></code> to choose the sample, falling back to dataset-period
+input weights when that period has no input, formula, uprating or
+carry-over source. Rescale each input weight column to preserve its
+own entity’s total using the memberships exported for the rebuild.
+Calculated weights and other formula results are recomputed on the
+sample. Calculation branches are recreated on its populations;
+baseline policy is kept.
+If structural inputs are absent, loaded population IDs, memberships
+and roles supply the leaves needed to rebuild the same partition.
+This also supports structural variables whose IDs have formulas.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1471,8 +1497,9 @@ calculation ended.</p>
 <span class="sig-name descname"><span class="pre">to_input_dataframe</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">include_computed_variables</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#policyengine_core.simulations.microsimulation.Microsimulation.to_input_dataframe" title="Permalink to this definition">#</a></dt>
 <dd><p>Exports a DataFrame that can be loaded back into a new Simulation.</p>
 <p>By default, only structurally input variables populated through
-<code class="docutils literal notranslate"><span class="pre">set_input</span></code> are exported. This avoids serializing pseudo-inputs and
-stale calculated values that would override formulas when reloaded.</p>
+<code class="docutils literal notranslate"><span class="pre">set_input</span></code> are exported from their recorded storage tiers. This
+avoids serializing pseudo-inputs and stale calculated values that
+would override formulas when reloaded.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>include_computed_variables</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, export every variable with
@@ -1492,8 +1519,9 @@ a known period, matching the historical unsafe behavior.</p>
 <span class="sig-name descname"><span class="pre">to_input_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">include_computed_variables</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#policyengine_core.simulations.microsimulation.Microsimulation.to_input_dict" title="Permalink to this definition">#</a></dt>
 <dd><p>Exports a dictionary that can be loaded back into a new Simulation.</p>
 <p>By default, only structurally input variables populated through
-<code class="docutils literal notranslate"><span class="pre">set_input</span></code> are exported. This avoids serializing pseudo-inputs and
-stale calculated values that would override formulas when reloaded.</p>
+<code class="docutils literal notranslate"><span class="pre">set_input</span></code> are exported from their recorded storage tiers. This
+avoids serializing pseudo-inputs and stale calculated values that
+would override formulas when reloaded.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>include_computed_variables</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, export every variable with

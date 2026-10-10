@@ -169,6 +169,7 @@
 <p class="caption" role="heading"><span class="caption-text">Using PolicyEngine Core</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="usage/simulation.html">Simulating policy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage/branches.html">Branches</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage/country.html">Creating a country package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage/parameters.html">Writing parameters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage/datasets.html">Writing datasets</a></li>
@@ -548,14 +549,14 @@
           <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.default_input_period">(policyengine_core.simulations.simulation.Simulation attribute)</a>
 </li>
         </ul></li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/simulations.html#policyengine_core.simulations.microsimulation.Microsimulation.default_role">default_role (policyengine_core.simulations.microsimulation.Microsimulation attribute)</a>
 
         <ul>
           <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.default_role">(policyengine_core.simulations.simulation.Simulation attribute)</a>
 </li>
         </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/simulations.html#policyengine_core.simulations.microsimulation.Microsimulation.default_tax_benefit_system">default_tax_benefit_system (policyengine_core.simulations.microsimulation.Microsimulation attribute)</a>
 
         <ul>
@@ -598,6 +599,18 @@
 </li>
         <li><a href="python_api/data.html#policyengine_core.data.Dataset.download_from_huggingface">download_from_huggingface() (policyengine_core.data.Dataset method)</a>
 </li>
+        <li><a href="python_api/data_storage.html#policyengine_core.data_storage.in_memory_storage.InMemoryStorage.drop_computed">drop_computed() (policyengine_core.data_storage.in_memory_storage.InMemoryStorage method)</a>
+
+        <ul>
+          <li><a href="python_api/data_storage.html#policyengine_core.data_storage.on_disk_storage.OnDiskStorage.drop_computed">(policyengine_core.data_storage.on_disk_storage.OnDiskStorage method)</a>
+</li>
+        </ul></li>
+        <li><a href="python_api/simulations.html#policyengine_core.simulations.microsimulation.Microsimulation.drop_computed_arrays">drop_computed_arrays() (policyengine_core.simulations.microsimulation.Microsimulation method)</a>
+
+        <ul>
+          <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.drop_computed_arrays">(policyengine_core.simulations.simulation.Simulation method)</a>
+</li>
+        </ul></li>
         <li><a href="python_api/tools.html#policyengine_core.tools.simulation_dumper.dump_simulation">dump_simulation() (in module policyengine_core.tools.simulation_dumper)</a>
 </li>
         <li><a href="usage/parameters.html#policyengine_core.data_structures.parameter_node_metadata.DynamicBreakdown">DynamicBreakdown (class in policyengine_core.data_structures.parameter_node_metadata)</a>
@@ -844,12 +857,18 @@
           <li><a href="python_api/data_storage.html#policyengine_core.data_storage.on_disk_storage.OnDiskStorage.has">(policyengine_core.data_storage.on_disk_storage.OnDiskStorage method)</a>
 </li>
         </ul></li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/populations.html#policyengine_core.populations.population.Population.has_any_input">has_any_input() (policyengine_core.populations.population.Population method)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/populations.html#policyengine_core.populations.population.Population.has_role">has_role() (policyengine_core.populations.population.Population method)</a>
 </li>
+        <li><a href="python_api/data_storage.html#policyengine_core.data_storage.in_memory_storage.InMemoryStorage.has_unnumbered_values">has_unnumbered_values() (policyengine_core.data_storage.in_memory_storage.InMemoryStorage method)</a>
+
+        <ul>
+          <li><a href="python_api/data_storage.html#policyengine_core.data_storage.on_disk_storage.OnDiskStorage.has_unnumbered_values">(policyengine_core.data_storage.on_disk_storage.OnDiskStorage method)</a>
+</li>
+        </ul></li>
         <li><a href="python_api/holders.html#policyengine_core.holders.holder.Holder">Holder (class in policyengine_core.holders.holder)</a>
 </li>
     </ul></td>
@@ -864,6 +883,12 @@
 </li>
         <li><a href="python_api/data_storage.html#policyengine_core.data_storage.in_memory_storage.InMemoryStorage">InMemoryStorage (class in policyengine_core.data_storage.in_memory_storage)</a>
 </li>
+        <li><a href="python_api/data_storage.html#policyengine_core.data_storage.in_memory_storage.InMemoryStorage.inputs_since">inputs_since() (policyengine_core.data_storage.in_memory_storage.InMemoryStorage method)</a>
+
+        <ul>
+          <li><a href="python_api/data_storage.html#policyengine_core.data_storage.on_disk_storage.OnDiskStorage.inputs_since">(policyengine_core.data_storage.on_disk_storage.OnDiskStorage method)</a>
+</li>
+        </ul></li>
         <li><a href="python_api/periods.html#policyengine_core.periods.instant_.Instant">Instant (class in policyengine_core.periods.instant_)</a>
 </li>
         <li><a href="python_api/periods.html#policyengine_core.periods.helpers.instant">instant() (in module policyengine_core.periods.helpers)</a>
@@ -876,14 +901,14 @@
           <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.invalidate_cache_entry">(policyengine_core.simulations.simulation.Simulation method)</a>
 </li>
         </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/simulations.html#policyengine_core.simulations.microsimulation.Microsimulation.invalidate_spiral_variables">invalidate_spiral_variables() (policyengine_core.simulations.microsimulation.Microsimulation method)</a>
 
         <ul>
           <li><a href="python_api/simulations.html#policyengine_core.simulations.simulation.Simulation.invalidate_spiral_variables">(policyengine_core.simulations.simulation.Simulation method)</a>
 </li>
         </ul></li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python_api/taxscales.html#policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.inverse">inverse() (policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale method)</a>
 </li>
         <li><a href="python_api/data_storage.html#policyengine_core.data_storage.in_memory_storage.InMemoryStorage.is_derived">is_derived() (policyengine_core.data_storage.in_memory_storage.InMemoryStorage method)</a>
@@ -1002,12 +1027,18 @@
           <li><a href="python_api/parameters.html#policyengine_core.parameters.parameter_scale.ParameterScale.mark_as_modified">(policyengine_core.parameters.parameter_scale.ParameterScale method)</a>
 </li>
         </ul></li>
-        <li><a href="python_api/populations.html#policyengine_core.populations.group_population.GroupPopulation.max">max() (policyengine_core.populations.group_population.GroupPopulation method)</a>
+        <li><a href="python_api/data_storage.html#policyengine_core.data_storage.in_memory_storage.InMemoryStorage.mark_derived_except">mark_derived_except() (policyengine_core.data_storage.in_memory_storage.InMemoryStorage method)</a>
+
+        <ul>
+          <li><a href="python_api/data_storage.html#policyengine_core.data_storage.on_disk_storage.OnDiskStorage.mark_derived_except">(policyengine_core.data_storage.on_disk_storage.OnDiskStorage method)</a>
 </li>
-        <li><a href="python_api/populations.html#policyengine_core.populations.group_population.GroupPopulation.members_entity_id">members_entity_id (policyengine_core.populations.group_population.GroupPopulation property)</a>
+        </ul></li>
+        <li><a href="python_api/populations.html#policyengine_core.populations.group_population.GroupPopulation.max">max() (policyengine_core.populations.group_population.GroupPopulation method)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python_api/populations.html#policyengine_core.populations.group_population.GroupPopulation.members_entity_id">members_entity_id (policyengine_core.populations.group_population.GroupPopulation property)</a>
+</li>
         <li><a href="python_api/populations.html#policyengine_core.populations.group_population.GroupPopulation.members_position">members_position (policyengine_core.populations.group_population.GroupPopulation property)</a>
 </li>
         <li><a href="python_api/populations.html#policyengine_core.populations.group_population.GroupPopulation.members_role">members_role (policyengine_core.populations.group_population.GroupPopulation property)</a>

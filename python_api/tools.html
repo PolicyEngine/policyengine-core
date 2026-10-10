@@ -171,6 +171,7 @@
 <p class="caption" role="heading"><span class="caption-text">Using PolicyEngine Core</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../usage/simulation.html">Simulating policy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage/branches.html">Branches</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../usage/country.html">Creating a country package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../usage/parameters.html">Writing parameters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../usage/datasets.html">Writing datasets</a></li>
@@ -271,8 +272,8 @@
 <dt class="sig sig-object py" id="policyengine_core.tools.simulation_dumper.dump_simulation">
 <span class="sig-prename descclassname"><span class="pre">policyengine_core.tools.simulation_dumper.</span></span><span class="sig-name descname"><span class="pre">dump_simulation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">directory</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.tools.simulation_dumper.dump_simulation" title="Permalink to this definition">#</a></dt>
 <dd><p>Write simulation data to directory, so that it can be restored later.</p>
-<p>Writes the default branch’s values, listing the periods of those the
-simulation calculated (see <code class="docutils literal notranslate"><span class="pre">restore_simulation</span></code>).</p>
+<p>Writes the simulation’s branch values, including inherited values, and
+lists the periods it calculated (see <code class="docutils literal notranslate"><span class="pre">restore_simulation</span></code>).</p>
 </dd></dl>
 
 </section>

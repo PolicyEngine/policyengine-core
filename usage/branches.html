@@ -1,0 +1,651 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Creating a country package" href="country.html" /><link rel="prev" title="Simulating policy" href="simulation.html" />
+
+    <!-- Generated with Sphinx 5.0.0 and Furo 2023.03.27 -->
+        <title>Branches - PolicyEngine Core</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/design-style.4045f2051d55cab465a707391d5b2007.min.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    <link rel="stylesheet" type="text/css" href="../_static/style.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/style.css" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../intro.html"><div class="brand">PolicyEngine Core</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand centered" href="../intro.html">
+  
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo" src="../_static/logo.png" alt="Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">PolicyEngine Core</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Contributing</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/intro.html">How to contribute</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Using PolicyEngine Core</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="simulation.html">Simulating policy</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Branches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="country.html">Creating a country package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="parameters.html">Writing parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">Writing datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reforms.html">Reforms</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/commons.html">Commons</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/country_template.html">Country template</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/data_storage.html">Data storage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/entities.html">Entities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/enums.html">Enums</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/experimental.html">Experimental features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/extension_template.html">Extension template</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/holders.html">Holders</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/parameters.html">Parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/periods.html">Periods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/populations.html">Populations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/projectors.html">Projectors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/reforms.html">Reforms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/scripts.html">Scripts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/simulations.html">Simulations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/taxbenefitsystems.html">Tax-benefit systems</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/taxscales.html">Tax scales</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/tools.html">Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/tracers.html">Tracers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/types.html">Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/variables.html">Variables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/warnings.html">Warnings</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <section class="tex2jax_ignore mathjax_ignore" id="branches">
+<h1>Branches<a class="headerlink" href="#branches" title="Permalink to this heading">#</a></h1>
+<p>A branch is a copy of a simulation that calculates under different inputs or
+policy without changing the simulation it came from. Formulas use branches to
+compare alternatives (for example, tax liability if itemizing), and marginal
+tax rates use them to recalculate with slightly higher earnings.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">branch</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">get_branch</span><span class="p">(</span><span class="s2">"itemizing"</span><span class="p">)</span>
+<span class="n">branch</span><span class="o">.</span><span class="n">set_input</span><span class="p">(</span><span class="s2">"tax_unit_itemizes"</span><span class="p">,</span> <span class="mi">2026</span><span class="p">,</span> <span class="n">itemizes</span><span class="p">)</span>
+<span class="n">tax_if_itemizing</span> <span class="o">=</span> <span class="n">branch</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="s2">"income_tax"</span><span class="p">,</span> <span class="mi">2026</span><span class="p">)</span>
+</pre></div>
+</div>
+<section id="what-a-branch-starts-with">
+<h2>What a branch starts with<a class="headerlink" href="#what-a-branch-starts-with" title="Permalink to this heading">#</a></h2>
+<p>The first <code class="docutils literal notranslate"><span class="pre">get_branch(name)</span></code> call returns a new branch holding every value its
+parent holds at that moment: inputs and calculated values alike. Later calls
+with the same name return that branch as it is. What the parent stores after
+the branch is created does not reach the branch, and what the branch stores
+does not reach the parent. A branch of a branch reads its own values first,
+then its parent’s, then those of the simulation at the root.</p>
+</section>
+<section id="inputs-set-on-a-branch">
+<h2>Inputs set on a branch<a class="headerlink" href="#inputs-set-on-a-branch" title="Permalink to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">set_input</span></code> on a branch stores the new value and drops every value the branch
+holds that may have been calculated from the value it replaces. What the branch
+calculates next therefore uses the input, as a simulation given the input
+before calculating anything would, whatever its parent had calculated before
+the branch was created.</p>
+<p>To decide what to drop, every stored value carries a sequence number from one
+counter shared by the whole process, so a larger number means a later store.
+Each simulation also keeps a store history: for each variable and period, the
+number of the first store its values may have been calculated from, and for
+each variable, the first time one of its values was uprated or carried over
+from another period. The history records:</p>
+<ul class="simple">
+<li><p>the simulation’s own stores, including values a holder calculates but does
+not keep (<code class="docutils literal notranslate"><span class="pre">variables_to_drop</span></code>, the cache blacklist), values read from the
+macro cache, and the default a spiral returns;</p></li>
+<li><p>the number from which values may have been calculated from anything: the
+first value read from the macro cache (what it was calculated from was
+never calculated here) and the values restored from a dump (see below), so
+an input for any variable drops them;</p></li>
+<li><p>a copy of its parent’s history, taken when the branch is created;</p></li>
+<li><p>the history of any simulation its formulas calculate in, taken in each time
+<code class="docutils literal notranslate"><span class="pre">calculate</span></code> there returns or raises (a formula that branches, sets an input
+and calculates in the branch hands back values calculated there); a branch
+calculated from a thread with no formula context hands its history to every
+ancestor with a calculation running.</p></li>
+</ul>
+<p>When <code class="docutils literal notranslate"><span class="pre">set_input(variable,</span> <span class="pre">period,</span> <span class="pre">value)</span></code> is called on a branch, the branch
+drops each value it holds, other than an input, whose number is at least the
+earliest recorded store of the variable for a period that shares a day with
+<code class="docutils literal notranslate"><span class="pre">period</span></code>, or the earliest recorded uprated or carried-over value of the
+variable. It then forgets the records numbered from there on (its remaining
+values were all stored earlier) and records again the inputs it keeps, unless a
+formula is still running in the branch: such a formula may hold, in its own
+variables, a value it read before the drop, so the records stay. Each drop
+counts as an input change of the branch. A calculation running in the branch
+then (one whose formula sets an input, say) may have read the replaced value,
+so its result is kept neither in storage nor in the macro cache. Neither is any
+result calculated from a value the branch gave before the change, in any
+simulation: each calculation notes, for every other simulation it got a value
+from (directly or through the calculations it called), that simulation’s count
+of input changes when the value’s calculation began, and keeps its own result
+only if none has changed since. Nested calculations in the same simulation
+share this record while it is current. After it becomes stale, later nested
+calculations can still keep results that use only that simulation’s own values.
+During these stale attempts, results that read another simulation, change inputs,
+write raw cache values, create branches, or observe untracked activity remain
+absent from holder storage, the fast cache and the macro cache so the caller’s
+retry observes the same reads and repeats those operations. Read-only results
+that read another simulation can be reused temporarily within the same attempt.
+Reuse checks the input-change and input-store counts in the calculating
+simulation and every simulation read, the registrations of named branches, and
+whether activity occurred without the formula’s context. Named branch
+registrations, including registered ancestor links, are captured when the
+value’s calculation begins or a cached value is read. Existing <code class="docutils literal notranslate"><span class="pre">get_branch</span></code>
+lookups also capture the name resolved, including aliases whose names differ
+from the branch object’s own name. Replacing a registration while the producing
+formula runs prevents reuse of its earlier read. Nested calculations and reused
+results pass these captured registrations and the original dependency reads
+back to the caller, so a later input change still
+makes that caller stale. Observed mutations, including deletes and raw cache
+writes, and branch creations clear this temporary reuse; mutations, creations
+and untracked activity within a calculation prevent its result from entering it.
+The temporary results are discarded when the outer attempt restarts or ends.</p>
+<p>Within a stable phase of one stale attempt, each distinct variable and period in
+an eligible read-only foreign-read dependency graph needs at most one formula
+evaluation per simulation. Formula calls therefore grow at most linearly with
+the graph’s distinct calculations, even when many calculations share the same
+descendants. Dependency validation and replay still visit their recorded reads.
+This reuse retains the result arrays and dependency records in memory until
+invalidated entries are removed, the attempt restarts or the outer calculation
+ends; it does not make those values part of the simulation’s stored values.</p>
+<p>Raw writes through <code class="docutils literal notranslate"><span class="pre">Holder.put_in_cache</span></code> without <code class="docutils literal notranslate"><span class="pre">derived=True</span></code> count as mutation
+activity too, including writes from threads without the formula’s context, while
+remaining excluded from the supplied-input record used for reform replay and
+input export. So a parent formula
+calculating in a branch whose formula calls back into the parent and then changes
+the branch’s input does not keep what it got, nor does a
+formula that read a branch and then calculated there something that changed the
+branch’s input, or set an input on it directly. A value calculated in a thread
+started without the formula’s context counts too: with no calculation above it
+in that thread, every calculation running in the simulation’s ancestors notes
+it (<code class="docutils literal notranslate"><span class="pre">asyncio.to_thread</span></code> and <code class="docutils literal notranslate"><span class="pre">contextvars.copy_context</span></code> keep the context, so the
+formula notes it directly). A calculation whose call into another simulation
+settled before returning keeps its result, and unrelated simulations keep
+caching. The outermost calculation running in each simulation that does not
+keep its result (a <code class="docutils literal notranslate"><span class="pre">calculate</span></code>, or a direct <code class="docutils literal notranslate"><span class="pre">calculate_add</span></code>, whose terms run
+within it) then runs again, inner calculations included, until a run reads
+nothing that has changed since, and keeps that result, as a simulation given
+the new inputs first would. After ten reruns it stops: a formula that keeps
+changing inputs returns its last result without keeping it. The budget is per
+simulation, so calculations nested across several such simulations can rerun
+more.</p>
+<p>An outermost <code class="docutils literal notranslate"><span class="pre">calculate</span></code> or <code class="docutils literal notranslate"><span class="pre">calculate_add</span></code> can also settle a repeated input
+transition in branches other than the simulation doing the calculation. Two
+consecutive stale attempts must make exactly the same ordered input stores and
+deletions and return exactly the same numeric result. Each store is compared
+after conversion to the variable’s stored dtype; comparisons include dtype,
+shape, enum type and floating-point sign bits. Mutations identify the variable,
+period and branch. The attempts must also read the same set of simulation
+paths. Branches created by <code class="docutils literal notranslate"><span class="pre">get_branch</span></code> during each attempt compare by their
+path of names from the same existing ancestor, so a branch recreated under the
+same name on each attempt can settle too. A branch created during an earlier
+attempt of this calculation also keeps its path while its original parent and
+name still register that same object; this is checked both before restarting
+and when comparing transitions. Other existing branches, saved snapshots and
+direct clones retain separate identities even when their names match. Using
+multiple distinct branches at the same path within one attempt prevents this
+shortcut. Exact comparisons copy input and result array bytes and retain the
+current and previous transition signatures while the calculation is running.</p>
+<p>Every intervening drop in a simulation whose values were read must have been
+observed in the calculation’s context. A read from a thread without that
+context, an unexplained drop, an explicit cache reset for a policy change, an
+object, string or masked stored input or result, or an input change in the simulation
+doing the calculation prevents this shortcut. After a fixed point is proved,
+the calculation retains its dependencies at their settled input-change counts
+and keeps the result using the usual rules that preserve inputs and respect
+cache restrictions. A persistent branch that deletes an input, reads another
+value and sets the deleted input to the same value on each attempt can
+therefore settle without exhausting the retry budget.</p>
+<p>An input set again with the value the branch already reads for that very
+period, as an input (not through a <code class="docutils literal notranslate"><span class="pre">set_input</span></code> helper that spreads it over
+other periods, and not <code class="docutils literal notranslate"><span class="pre">-0.0</span></code> for <code class="docutils literal notranslate"><span class="pre">0.0</span></code>), changes nothing, so it drops nothing
+and is no input change. An input stored for the very period being calculated
+after the calculation began (by its own formula, say; under the branch’s name
+or any it reads, such as <code class="docutils literal notranslate"><span class="pre">default</span></code> through <code class="docutils literal notranslate"><span class="pre">Holder.set_input</span></code>) is the result,
+as it would be had it been set first.</p>
+<p>Input helpers that divide or dispatch a larger-period input replace calculated
+sub-periods while retaining supplied inputs in their storage tiers. Their shared
+overlap cleanup also removes calculated sums or twelfths for the variable,
+including inherited values in the branch’s storage, without changing the parent.
+Branch dependency invalidation additionally drops later calculated values that
+may depend on the replaced input. On a simulation without a parent, helper
+overlap cleanup still runs while branch dependency invalidation does not.</p>
+<p>A custom <code class="docutils literal notranslate"><span class="pre">set_input</span></code> handler that calculates values between its own stores
+calculates them from inputs it has not yet replaced, so if it calculated
+anything (through <code class="docutils literal notranslate"><span class="pre">calculate</span></code>, <code class="docutils literal notranslate"><span class="pre">calculate_add</span></code> or <code class="docutils literal notranslate"><span class="pre">_calculate</span></code>), the branch
+drops again, by the same rule, once the handler returns or raises (the inputs
+it stored before raising stay).</p>
+<p>If there is no such record, the branch drops nothing. That is the case when a
+formula creates the branch while it is still calculating the variable the
+branch overrides, unless another branch the formula created for the same
+comparison already handed back a value calculated from that variable: then the
+branch drops what came back and what was calculated after it.</p>
+<p>A value written into a holder’s storage directly, not through the storage’s
+<code class="docutils literal notranslate"><span class="pre">put</span></code>, has no number; an input for a variable holding such a value drops every
+calculated value.</p>
+<section id="why-this-is-sound">
+<h3>Why this is sound<a class="headerlink" href="#why-this-is-sound" title="Permalink to this heading">#</a></h3>
+<p>A formula’s result is stored after everything the formula read was stored or
+recorded, so a calculated value carries a larger number than each value it was
+calculated from, directly or through other calculated values. Every value a
+simulation holds was calculated there, inherited from its parent, handed back
+by another simulation’s <code class="docutils literal notranslate"><span class="pre">calculate</span></code>, or restored from a dump. In the first
+three cases, for every variable it was calculated from, the simulation’s
+history holds a record of that variable for an overlapping period numbered no
+later than the value read (for a value summed or divided from other periods,
+the record may be of those periods), unless it was calculated from a
+macro-cache read; restored values and values calculated from a macro-cache
+read are covered by the record that values from a number on may depend on
+anything. So any value that depends on the overridden variable at an
+overlapping period was stored after the earliest record that applies. Uprating
+and carry-over read which periods hold inputs, so a value they give can change
+with an input for any period of the variable, which is why the first uprated
+or carried-over value also counts. A result whose calculation was
+running when an input changed is not kept unless it was calculated again from
+the new inputs. An input set again with the value the branch
+already reads for that period, as an input, changes no value read anywhere, so
+dropping nothing then is sound; one set where the value was calculated still
+drops, since it changes which periods hold inputs.</p>
+<p>The rule can drop more than it needs to (a value stored later that does not
+depend on the input is calculated again) but not less, within these limits:</p>
+<ul class="simple">
+<li><p><strong>Policy changes are not tracked.</strong> A branch whose tax-benefit system or
+parameters differ from its parent’s still holds the parent’s values
+calculated under the parent’s policy. Call <code class="docutils literal notranslate"><span class="pre">branch.drop_computed_arrays()</span></code>
+after changing them.</p></li>
+<li><p><strong>Formulas must not write into arrays they read.</strong> A formula that changes a
+cached array in place (<code class="docutils literal notranslate"><span class="pre">array</span> <span class="pre">+=</span> <span class="pre">x</span></code>) changes a value after its sequence
+number was assigned, so values calculated from it may be dropped too late or
+not at all.</p></li>
+<li><p><strong>Formulas should calculate, not inspect storage.</strong> A formula that reads
+<code class="docutils literal notranslate"><span class="pre">holder.get_known_periods()</span></code>, <code class="docutils literal notranslate"><span class="pre">simulation.get_array()</span></code> or another
+simulation’s storage directly, and acts on what it finds, depends on values
+that are not recorded.</p></li>
+<li><p><strong>Unrelated simulations in other threads.</strong> A formula that calculates in a
+simulation other than its own branches, from a thread it starts without
+copying its context (<code class="docutils literal notranslate"><span class="pre">contextvars.copy_context</span></code>, which <code class="docutils literal notranslate"><span class="pre">asyncio.to_thread</span></code>
+does), does not take in that simulation’s history, nor note what it read
+there. Its own branches are covered: their history, and what was read in
+them, go to every ancestor with a calculation running.</p></li>
+<li><p><strong>Concurrent use of one simulation is not supported.</strong> A formula can wait for
+a calculation in a branch from a worker thread, but simultaneous calculations
+or mutations in the same simulation or branch are not covered by these
+guarantees.</p></li>
+<li><p><strong>A branch a formula keeps between calls is a snapshot.</strong> It holds what its
+parent held when it was created, so inputs set on the parent afterwards do
+not reach what the formula reads from it.</p></li>
+<li><p><strong>Inputs on the root simulation skip dependency invalidation.</strong> <code class="docutils literal notranslate"><span class="pre">set_input</span></code>
+on a simulation that is not a branch keeps values calculated from the replaced
+input. Input helpers still remove overlapping calculated values of the
+variable they write. A formula’s input for its own period is still returned
+as described above, and results calculated while an input is being set do not
+enter the fast cache.</p></li>
+<li><p><strong>Existing child branches keep their values.</strong> An input set on a branch does
+not reach branches already created from it.</p></li>
+<li><p><strong>Values kept elsewhere stay.</strong> A value one simulation calculated from
+another’s (its branch’s, its parent’s, or another family’s) and kept stays
+when that other simulation’s input changes after the calculation ended: only
+calculations still running then are not kept, and run again. A rerun reads
+such a kept value as it is. Variables in <code class="docutils literal notranslate"><span class="pre">cache_blacklist</span></code> or
+<code class="docutils literal notranslate"><span class="pre">variables_to_drop</span></code> are still kept in the simulation’s fast cache, as
+before, so this applies to them too.</p></li>
+<li><p><strong>Branch resets that do not settle.</strong> A formula that reads a branch and then
+sets an input the branch does not hold can trigger a rerun, whether the branch
+is new or the formula deleted that input. If its transition and result do not
+settle under the rules above, it uses the full retry budget and returns its
+last result without keeping it. Each later <code class="docutils literal notranslate"><span class="pre">calculate</span></code> or <code class="docutils literal notranslate"><span class="pre">calculate_add</span></code>
+pays those reruns again; the result is also absent from dumps and the macro
+cache.</p></li>
+</ul>
+<p>With disk storage (<code class="docutils literal notranslate"><span class="pre">MemoryConfig</span></code>), dropping a value removes it from the
+storage’s index and leaves its file on disk, since a clone may still read it.
+Cloned and copied storages in the same process keep the storage that owns
+cleanup, and the containing temporary directory, alive. Unpreserved storage
+directories are removed when their cleanup owners are collected; a simulation’s
+temporary directory is removed when nothing in that process keeps it alive, or
+at interpreter exit, except explicitly preserved storage subdirectories and
+the folders leading to them. Readers in another process do not extend that
+lifetime.
+Storing a dropped key again reuses a file only if that storage wrote it and has
+not shared it since; cloning, copying or forking can require a new file instead
+(see <code class="docutils literal notranslate"><span class="pre">OnDiskStorage._path_to_write</span></code>).</p>
+<p>A simulation dump (<code class="docutils literal notranslate"><span class="pre">dump_simulation</span></code>) holds the values the simulation reads
+(on a branch, its own and those it inherited) and records which were
+calculated (<code class="docutils literal notranslate"><span class="pre">derived_periods.txt</span></code>). <code class="docutils literal notranslate"><span class="pre">restore_simulation</span></code> restores the others
+as inputs and every calculated value under one later number. The dump does not
+say what each value was calculated from, nor what was read without being kept,
+so the restored simulation records that values from that number on may depend
+on anything: an input set for any variable on a branch of it drops all of them.
+A dump written before calculated values were recorded is restored with every
+value as an input, as before, so such values never drop. With disk storage, a branch whose
+name contains <code class="docutils literal notranslate"><span class="pre">_</span></code> cannot be dumped yet: <code class="docutils literal notranslate"><span class="pre">OnDiskStorage.get_known_periods</span></code>
+splits its keys on every <code class="docutils literal notranslate"><span class="pre">_</span></code> (as on master).</p>
+<p>Two related behaviours: a branch stops reading macro-cache files once an input
+is set on it, even one it already reads, since they are keyed by branch name and
+period but not by inputs (a file for its name may have been written by this
+branch before the input, or by another simulation’s branch of the same name),
+and a branch that read one drops, on any input that changes what it reads,
+everything calculated from the first read on; and
+<code class="docutils literal notranslate"><span class="pre">requires_computation_after</span></code> is satisfied by a prerequisite successfully
+requested earlier, even if its values were deleted, dropped, or not kept.</p>
+<p>A formula that reads a branch and then changes an input may return the value
+from a rerun with the new input, as if the input had been set first. Use two
+branches for comparisons that need both the earlier and the later values.</p>
+</section>
+</section>
+<section id="dropping-calculated-values">
+<h2>Dropping calculated values<a class="headerlink" href="#dropping-calculated-values" title="Permalink to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">simulation.drop_computed_arrays()</span></code> deletes every value the simulation holds
+except inputs (the dataset or situation it was built from, values set with
+<code class="docutils literal notranslate"><span class="pre">set_input</span></code> on it, and, for a branch, values set on the simulations it was
+created from before it was created), and returns how many arrays it deleted.
+Values cached with <code class="docutils literal notranslate"><span class="pre">Holder.put_in_cache</span></code>, including those without <code class="docutils literal notranslate"><span class="pre">derived=True</span></code>,
+and values a custom <code class="docutils literal notranslate"><span class="pre">set_input</span></code> handler calculates are excluded from supplied
+inputs. Use it on a
+branch after changing its policy:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">branch</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">get_branch</span><span class="p">(</span><span class="s2">"pre_reform_rules"</span><span class="p">,</span> <span class="n">clone_system</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">branch</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">gov</span><span class="o">.</span><span class="n">some_rate</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">period</span><span class="o">=</span><span class="s2">"2026"</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>
+<span class="n">branch</span><span class="o">.</span><span class="n">drop_computed_arrays</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "binder-examples/jupyter-stacks-datascience",
+            ref: "master",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            name: "python3",
+            path: "./usage"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="country.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Creating a country package</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="simulation.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Simulating policy</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2022
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Branches</a><ul>
+<li><a class="reference internal" href="#what-a-branch-starts-with">What a branch starts with</a></li>
+<li><a class="reference internal" href="#inputs-set-on-a-branch">Inputs set on a branch</a><ul>
+<li><a class="reference internal" href="#why-this-is-sound">Why this is sound</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#dropping-calculated-values">Dropping calculated values</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/clipboard.min.js"></script>
+    <script src="../_static/copybutton.js"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?digest=5a5c038af52cf7bc1a1ec88eea08e6366ee68824"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../_static/togglebutton.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script src="../_static/design-tabs.js"></script>
+    <script src="../_static/scripts/furo.js"></script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"
+const thebe_selector = ".thebe,.cell"
+const thebe_selector_input = "pre"
+const thebe_selector_output = ".output, .cell_output"
+</script>
+    <script async="async" src="../_static/sphinx-thebe.js"></script>
+    </body>
+</html>

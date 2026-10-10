@@ -8,6 +8,9 @@ The `policyengine_core.tools` module contains miscellaneous utility functions, i
 .. autofunction:: policyengine_core.tools.test_runner.run_tests
 ```
 
+The same runner backs `policyengine-core test <paths> -c <country_package>`,
+where `--reform-cache-size N` sets `reform_cache_size`.
+
 ## dump_simulation
 
 ```{eval-rst}

@@ -214,17 +214,19 @@ class ParameterNode(AtInstantLike):
         return clone
 
     def _get_at_instant(self, instant: Instant) -> ParameterNodeAtInstant:
-        if instant in self._at_instant_cache:
-            return self._at_instant_cache[instant]
-        node_at_instant = ParameterNodeAtInstant(self.name, self, instant)
+        node_at_instant = self._at_instant_cache.get(instant)
+        if node_at_instant is None:
+            node_at_instant = ParameterNodeAtInstant(self.name, self, instant)
+            self._at_instant_cache[instant] = node_at_instant
         if self.trace:
-            at_instant = TracingParameterNodeAtInstant(
+            # Wrapped on each read and never cached: a cached wrapper kept the
+            # tracer of whichever simulation first read this instant alive for
+            # the life of the parameters, and recorded later reads into it,
+            # while a node cached before tracing was turned on went untraced.
+            return TracingParameterNodeAtInstant(
                 node_at_instant, self.tracer, self.branch_name
             )
-        else:
-            at_instant = node_at_instant
-        self._at_instant_cache[instant] = at_instant
-        return at_instant
+        return node_at_instant
 
     def attach_to_parent(self, parent: "ParameterNode"):
         self.parent = parent

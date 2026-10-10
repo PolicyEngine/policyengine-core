@@ -36,3 +36,33 @@ broader behavioral change, run the relevant focused tests and formatting check.
 - Prefer small synthetic fixtures for regression tests.
 - When fixing a bug, add a regression test that fails without the fix and passes
   with it unless the change is documentation-only.
+
+## YAML suites and memory
+
+`policyengine-core test <paths> -c <country_package>` runs every case in one
+process. Its memory is bounded by design, and tests must keep it that way:
+
+- A finished case releases its simulation (`YamlItem.teardown`). pytest keeps
+  every collected item until the session ends, so anything stored on the item
+  lives for the whole run.
+- A case that names `reforms` or `extensions`, or sets a parameter with a
+  dotted input key, runs on a system built for that combination: a full copy
+  of the baseline system. The runner caches the `--reform-cache-size` most
+  recently used of them (default 2) plus the reform-free system. Do not add a
+  cache to the runner that grows with the number of cases or combinations.
+- Each system still caches its parameter tree at every distinct instant its
+  cases read (`ParameterNode.get_at_instant`,
+  `TaxBenefitSystem.get_parameters_at_instant`), so memory grows with the
+  number of distinct dates a suite reads, not with the number of cases.
+  Neither cache may hold a tracer: a read of a traced tree is wrapped for that
+  read only.
+- `tests/core/tools/test_runner/test_runner_memory.py` holds the regression
+  tests: a few hundred cases in one process must not grow traced memory or
+  the number of live simulations and systems, and traced cases at distinct
+  dates must leave no tracer or recorded result alive.
+
+Run one large suite at a time. A country package's whole YAML tree in one
+process still holds the baseline system, the reform-free copy and the cached
+reform systems at once; use the country package's own batch runner where it
+has one (policyengine-us: `policyengine_us/tests/test_batched.py` and the
+`make test-yaml-*` targets).

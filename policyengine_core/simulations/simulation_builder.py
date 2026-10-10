@@ -379,6 +379,18 @@ class SimulationBuilder:
         persons_group_assignment: ArrayLike,
         roles: typing.Iterable[str],
     ) -> None:
+        """Join persons to the groups named by their membership IDs.
+
+        Memberships and roles are supplied in person order. Each membership
+        must match a unique declared group ID by value; equal numeric IDs
+        may have different dtypes. ``members_entity_id`` indexes the declared
+        group order, including groups with no members. An empty assignment
+        is supported. Roles are interpreted as role keys or integer indices.
+
+        Raises:
+            ValueError: if declared group IDs repeat or a membership names
+                an undeclared group.
+        """
         group_population.members_entity_id = group_positions(
             group_population.ids,
             persons_group_assignment,

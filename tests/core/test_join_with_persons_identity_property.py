@@ -14,6 +14,10 @@ different dtypes (int32, int64, uint64, float64), including negative values
 and values near 2**31, 2**53, 2**62 and beyond the int64 limit, where a
 common float64 would merge neighbours.
 
+Flat-file group values match each group's first member, including empty
+frames. Default-role masks have one entry per person, and role-filtered
+sums and projections match independent membership oracles.
+
 Examples, including the audit witness, are in
 ``test_join_with_persons_identity.py``.
 """
@@ -23,18 +27,23 @@ from __future__ import annotations
 from collections import Counter
 
 import numpy as np
+import pandas as pd
 import pytest
 
 # The smoke job installs Core without the dev extra but collects every module.
 pytest.importorskip("hypothesis")
 
 import hypothesis  # noqa: E402
-from hypothesis import given, settings  # noqa: E402
+from hypothesis import example, given, settings  # noqa: E402
 from hypothesis import strategies as st  # noqa: E402
 
+from policyengine_core.data import Dataset  # noqa: E402
+from policyengine_core.entities import build_entity  # noqa: E402
+from policyengine_core.simulations import Simulation  # noqa: E402
 from policyengine_core.simulations.simulation_builder import (  # noqa: E402
     group_positions,
 )
+from policyengine_core.taxbenefitsystems import TaxBenefitSystem  # noqa: E402
 from tests.core.test_join_with_persons_identity import _join  # noqa: E402
 
 
@@ -158,3 +167,85 @@ def test_numeric_ids_match_by_value_across_dtypes(dtypes, offsets, data):
     )
 
     assert [group_values[i] for i in positions] == persons_values
+
+
+@st.composite
+def _flat_file_rows(draw):
+    memberships = draw(st.lists(st.integers(-10, 10), max_size=12))
+    rents = draw(
+        st.lists(
+            st.integers(0, 10_000),
+            min_size=len(memberships),
+            max_size=len(memberships),
+        )
+    )
+    return memberships, rents, draw(st.booleans()), draw(st.booleans())
+
+
+@settings(max_examples=100, deadline=None)
+@example(case=([], [], False, True))
+@given(case=_flat_file_rows())
+def test_flat_file_group_values_match_first_member_oracle(tax_benefit_system, case):
+    memberships, rents, suffixed, explicit_memberships = case
+    suffix = "__2024" if suffixed else ""
+    columns = {
+        f"person_id{suffix}": np.arange(len(memberships)),
+        f"household_id{suffix}": np.array(memberships, dtype=np.int64),
+        "rent__2024-01": np.array(rents, dtype=float),
+    }
+    if explicit_memberships:
+        columns[f"person_household_id{suffix}"] = np.array(memberships, dtype=np.int64)
+    simulation = Simulation(
+        tax_benefit_system=tax_benefit_system,
+        dataset=Dataset.from_dataframe(pd.DataFrame(columns), "2024"),
+    )
+
+    first_rent = {}
+    for membership, rent in zip(memberships, rents):
+        first_rent.setdefault(membership, rent)
+    group_ids = sorted(first_rent)
+    assert simulation.persons.count == len(memberships)
+    assert simulation.populations["household"].count == len(group_ids)
+    assert simulation.calculate("rent", "2024-01").tolist() == [
+        first_rent[group_id] for group_id in group_ids
+    ]
+    assert simulation.calculate("rent", "2024-01", map_to="person").tolist() == [
+        first_rent[membership] for membership in memberships
+    ]
+
+
+@settings(max_examples=100, deadline=None)
+@example(memberships=[])
+@example(memberships=[7, 7])
+@given(memberships=st.lists(st.integers(-10, 10), max_size=20))
+def test_default_role_masks_cover_persons_and_preserve_role_projection(memberships):
+    person = build_entity("person", "persons", "", is_person=True)
+    household = build_entity(
+        "household", "households", "", roles=[{"key": "member", "plural": "members"}]
+    )
+    dataframe = pd.DataFrame(
+        {
+            "person_id__2024": np.arange(len(memberships)),
+            "person_household_id__2024": np.array(memberships, dtype=np.int64),
+        }
+    )
+    simulation = Simulation(
+        tax_benefit_system=TaxBenefitSystem([person, household]),
+        dataset=Dataset.from_dataframe(dataframe, "2024"),
+    )
+
+    population = simulation.populations["household"]
+    assert population.members_role.shape == (len(memberships),)
+    assert simulation.persons.has_role(household.MEMBER).tolist() == [
+        True for _ in memberships
+    ]
+    counts = Counter(memberships)
+    group_ids = sorted(counts)
+    assert population.sum(
+        np.ones(len(memberships)), role=household.MEMBER
+    ).tolist() == [counts[group_id] for group_id in group_ids]
+    values = np.arange(len(group_ids)) + 10
+    value_of = dict(zip(group_ids, values.tolist()))
+    assert population.project(values, role=household.MEMBER).tolist() == [
+        value_of[membership] for membership in memberships
+    ]

@@ -37,6 +37,7 @@ def _join(tax_benefit_system, group_ids, persons_group_ids):
 
 def test_person_joins_named_group_when_earlier_group_is_empty(tax_benefit_system):
     # The audit witness: group "a" is empty and sorts before group "b".
+    # "b" is at position 1: group sums are [0, 100], and [10, 20][1] = 20.
     household = _join(tax_benefit_system, ["a", "b"], ["b"])
 
     assert household.members_entity_id.tolist() == [1]
@@ -198,9 +199,9 @@ def test_flat_file_default_roles_cover_every_person():
     )
     dataframe = pd.DataFrame(
         {
-            "person_id": [10, 11],
-            "household_id": [500, 500],
-            "person_household_id": [500, 500],
+            "person_id__2024": [10, 11],
+            "household_id__2024": [500, 500],
+            "person_household_id__2024": [500, 500],
         }
     )
     simulation = Simulation(
@@ -210,9 +211,68 @@ def test_flat_file_default_roles_cover_every_person():
 
     population = simulation.populations["household"]
     assert len(population.members_role) == 2
+    assert simulation.persons.has_role(population.entity.MEMBER).tolist() == [
+        True,
+        True,
+    ]
+    # A single True previously broadcast here; the projected values stay
+    # the same even though has_role now returns one entry per person.
+    assert population.project(
+        np.array([10.0]), role=population.entity.MEMBER
+    ).tolist() == [10.0, 10.0]
+    # Both members contribute: 1 + 2 = 3.
     assert population.sum(
         np.array([1.0, 2.0]), role=population.entity.MEMBER
     ).tolist() == [3.0]
+
+
+@pytest.mark.parametrize("period_suffix", ["", "__2024"])
+def test_empty_flat_file_loads_group_columns(tax_benefit_system, period_suffix):
+    # Zero person rows declare zero households; both ID and rent inputs
+    # must stay empty, without asking for a nonexistent first member.
+    dataframe = pd.DataFrame(
+        {
+            f"person_id{period_suffix}": np.array([], dtype=np.int64),
+            f"household_id{period_suffix}": np.array([], dtype=np.int64),
+            f"person_household_id{period_suffix}": np.array([], dtype=np.int64),
+            "rent__2024-01": np.array([], dtype=np.float64),
+        }
+    )
+    simulation = Simulation(
+        tax_benefit_system=tax_benefit_system,
+        dataset=Dataset.from_dataframe(dataframe, "2024"),
+    )
+
+    household = simulation.populations["household"]
+    assert simulation.persons.count == household.count == 0
+    assert household.members_entity_id.tolist() == []
+    assert simulation.calculate("household_id", "2024").tolist() == []
+    assert simulation.calculate("rent", "2024-01").tolist() == []
+    assert simulation.calculate("rent", "2024-01", map_to="person").tolist() == []
+
+
+def test_subsample_fraction_rounding_to_zero_loads_empty_frame(tax_benefit_system):
+    dataframe = pd.DataFrame(
+        {
+            "person_id__2024": [0, 1, 2],
+            "household_id__2024": [7, 7, 9],
+            "person_household_id__2024": [7, 7, 9],
+            "household_weight__2024": [1.0, 1.0, 1.0],
+            "rent__2024-01": [700.0, 700.0, 900.0],
+        }
+    )
+    simulation = Simulation(
+        tax_benefit_system=tax_benefit_system,
+        dataset=Dataset.from_dataframe(dataframe, "2024"),
+    )
+
+    # int(2 households * 0.1) = int(0.2) = 0 selected households.
+    simulation.subsample(frac=0.1, seed="empty-flat-file", time_period="2024")
+
+    assert simulation.persons.count == simulation.populations["household"].count == 0
+    assert simulation.calculate("household_id", "2024").tolist() == []
+    assert simulation.calculate("rent", "2024-01").tolist() == []
+    assert simulation.calculate("rent", "2024-01", map_to="person").tolist() == []
 
 
 @pytest.mark.parametrize(
@@ -233,6 +293,8 @@ def test_flat_file_group_values_follow_membership_not_row_order(
     # as long as the household count was taken as already per household,
     # in row order, while households are numbered in ID order: each person
     # read another person's rent.
+    # Sorted IDs [7, 8, 9] give positions [2, 0, 1] and group rents
+    # [700, 800, 900], which project back to [900, 700, 800].
     dataframe = pd.DataFrame({**id_columns, "rent__2024-01": [900.0, 700.0, 800.0]})
     simulation = Simulation(
         tax_benefit_system=tax_benefit_system,

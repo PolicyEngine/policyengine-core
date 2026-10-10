@@ -675,7 +675,9 @@ class Simulation:
                 # (Treating a column as already per group whenever its length
                 # matched the group count put values in row order, not group
                 # order, when every group had one person.)
-                if not population.entity.is_person:
+                # With no person rows there are no groups or first members;
+                # pass the empty column through without member extraction.
+                if not population.entity.is_person and population.count > 0:
                     population: GroupPopulation
                     entity_level_data = population.value_from_first_person(
                         data[variable]

@@ -2,18 +2,46 @@ name: Pull request
 on:
   pull_request:
     branches: [master]
+
+# A new push to a pull request supersedes the run on its previous head. Cancel
+# that run instead of letting its 19 jobs (8 Test, 8 smoke, 3 checks) keep
+# holding org-wide shared runners. From 2026-10-06 to 10-08, 21 of 55 PR runs
+# were superseded while still running, and finishing them used 850
+# runner-minutes (26% of this workflow).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   Lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
       - name: Install uv
         uses: astral-sh/setup-uv@v8.1.0
       - name: Check formatting
         run: uvx ruff format --check .
+  lint-workflows:
+    name: Lint workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Run actionlint
+        # rhysd/actionlint 1.7.12. The image bundles shellcheck and pyflakes,
+        # which actionlint runs on `run:` scripts.
+        uses: docker://rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
+        with:
+          args: -color
   check-changelog:
     name: Check changelog fragment
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
       - name: Check for changelog fragment
@@ -32,6 +60,9 @@ jobs:
         python-version: [ "3.11", "3.12", "3.13", "3.14" ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
+    # Slowest observed 2026-10-06..08: 16 minutes (Windows). Fail a hung job
+    # instead of holding a shared runner for the 6-hour default.
+    timeout-minutes: 45
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
@@ -60,6 +91,8 @@ jobs:
     name: Test Core and country packages (${{ matrix.os }}, py${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
     needs: Lint
+    # Slowest observed 2026-10-06..08: 4.5 minutes.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:

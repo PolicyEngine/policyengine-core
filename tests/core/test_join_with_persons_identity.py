@@ -19,6 +19,7 @@ import pytest
 
 from policyengine_core.data import Dataset
 from policyengine_core.entities import build_entity
+from policyengine_core.periods import period
 from policyengine_core.simulations import Simulation, SimulationBuilder
 from policyengine_core.simulations.simulation_builder import group_positions
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
@@ -227,6 +228,34 @@ def test_flat_file_default_roles_cover_every_person():
 
 
 @pytest.mark.parametrize("period_suffix", ["", "__2024"])
+def test_flat_file_explicit_roles_override_defaults(period_suffix):
+    person = build_entity("person", "persons", "", is_person=True)
+    household = build_entity(
+        "household", "households", "", roles=[{"key": "member"}, {"key": "guest"}]
+    )
+    dataframe = pd.DataFrame(
+        {
+            "person_id__2024": [10, 11],
+            "person_household_id__2024": [500, 500],
+            f"person_household_role{period_suffix}": ["member", "guest"],
+        }
+    )
+    simulation = Simulation(
+        tax_benefit_system=TaxBenefitSystem([person, household]),
+        dataset=Dataset.from_dataframe(dataframe, "2024"),
+    )
+
+    population = simulation.populations["household"]
+    assert simulation.persons.has_role(household.MEMBER).tolist() == [True, False]
+    # Only the first person's income belongs to MEMBER: 1 + 0 = 1.
+    assert population.sum(np.array([1.0, 2.0]), role=household.MEMBER).tolist() == [1.0]
+    assert population.project(np.array([10.0]), role=household.MEMBER).tolist() == [
+        10.0,
+        0.0,
+    ]
+
+
+@pytest.mark.parametrize("period_suffix", ["", "__2024"])
 def test_empty_flat_file_loads_group_columns(tax_benefit_system, period_suffix):
     # Zero person rows declare zero households; both ID and rent inputs
     # must stay empty, without asking for a nonexistent first member.
@@ -251,7 +280,10 @@ def test_empty_flat_file_loads_group_columns(tax_benefit_system, period_suffix):
     assert simulation.calculate("rent", "2024-01", map_to="person").tolist() == []
 
 
-def test_subsample_fraction_rounding_to_zero_loads_empty_frame(tax_benefit_system):
+@pytest.mark.parametrize("quantize_weights", [False, True])
+def test_subsample_fraction_rounding_to_zero_rejects_nonzero_weight(
+    tax_benefit_system, quantize_weights
+):
     dataframe = pd.DataFrame(
         {
             "person_id__2024": [0, 1, 2],
@@ -261,18 +293,38 @@ def test_subsample_fraction_rounding_to_zero_loads_empty_frame(tax_benefit_syste
             "rent__2024-01": [700.0, 700.0, 900.0],
         }
     )
-    simulation = Simulation(
-        tax_benefit_system=tax_benefit_system,
-        dataset=Dataset.from_dataframe(dataframe, "2024"),
-    )
+    dataset = Dataset.from_dataframe(dataframe, "2024")
+    simulation = Simulation(tax_benefit_system=tax_benefit_system, dataset=dataset)
+    household = simulation.populations["household"]
+    persons = simulation.persons
 
-    # int(2 households * 0.1) = int(0.2) = 0 selected households.
-    simulation.subsample(frac=0.1, seed="empty-flat-file", time_period="2024")
+    # Native household weights are [1, 1], total 1 + 1 = 2, not the
+    # repeated person-row total 3. int(2 * 0.1) = 0 selects no households;
+    # retained weight 0 cannot preserve 2, so reject before rebuilding.
+    with pytest.raises(ValueError, match="household_weight__2024 total.*zero weight"):
+        simulation.subsample(
+            frac=0.1,
+            seed="empty-flat-file",
+            time_period="2024",
+            quantize_weights=quantize_weights,
+        )
 
-    assert simulation.persons.count == simulation.populations["household"].count == 0
-    assert simulation.calculate("household_id", "2024").tolist() == []
-    assert simulation.calculate("rent", "2024-01").tolist() == []
-    assert simulation.calculate("rent", "2024-01", map_to="person").tolist() == []
+    assert simulation.dataset is dataset
+    assert simulation.persons is persons
+    assert simulation.populations["household"] is household
+    assert simulation.persons.count == 3
+    assert household.count == 2
+    assert household.members_entity_id.tolist() == [0, 0, 1]
+    assert simulation.calculate("household_id", "2024").tolist() == [7, 9]
+    assert simulation.calculate("household_weight", "2024").tolist() == [1.0, 1.0]
+    assert simulation.calculate("rent", "2024-01").tolist() == [700.0, 900.0]
+    assert simulation._get_recorded_input_array(
+        "household_weight", period("2024")
+    ).tolist() == [1.0, 1.0]
+    assert simulation._get_recorded_input_array("rent", period("2024-01")).tolist() == [
+        700.0,
+        900.0,
+    ]
 
 
 @pytest.mark.parametrize(

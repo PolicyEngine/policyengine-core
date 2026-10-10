@@ -1,1 +1,1 @@
-Correct dataset group identity, membership validation, person-sized default roles, and flat-file membership and value loading while preserving empty datasets.
+Correct dataset group identity and membership validation, and load flat-file memberships and group values in group order while preserving empty datasets.

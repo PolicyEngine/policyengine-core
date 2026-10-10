@@ -18,6 +18,10 @@ Flat-file group values match each group's first member, including empty
 frames. Default-role masks have one entry per person, and role-filtered
 sums and projections match independent membership oracles.
 
+Explicit entity roles override defaults with or without a period suffix.
+Zero-household selections reject positive source weight totals without
+replacing the dataset, populations, memberships, or recorded input values.
+
 Examples, including the audit witness, are in
 ``test_join_with_persons_identity.py``.
 """
@@ -39,6 +43,7 @@ from hypothesis import strategies as st  # noqa: E402
 
 from policyengine_core.data import Dataset  # noqa: E402
 from policyengine_core.entities import build_entity  # noqa: E402
+from policyengine_core.periods import period  # noqa: E402
 from policyengine_core.simulations import Simulation  # noqa: E402
 from policyengine_core.simulations.simulation_builder import (  # noqa: E402
     group_positions,
@@ -249,3 +254,106 @@ def test_default_role_masks_cover_persons_and_preserve_role_projection(membershi
     assert population.project(values, role=household.MEMBER).tolist() == [
         value_of[membership] for membership in memberships
     ]
+
+
+@settings(max_examples=100, deadline=None)
+@example(rows=[(7, True), (7, False)], suffixed=True)
+@example(rows=[], suffixed=True)
+@given(
+    rows=st.lists(st.tuples(st.integers(-10, 10), st.booleans()), max_size=20),
+    suffixed=st.booleans(),
+)
+def test_explicit_role_masks_match_person_rows(rows, suffixed):
+    person = build_entity("person", "persons", "", is_person=True)
+    household = build_entity(
+        "household", "households", "", roles=[{"key": "member"}, {"key": "guest"}]
+    )
+    memberships = [membership for membership, _ in rows]
+    role_suffix = "__2024" if suffixed else ""
+    dataframe = pd.DataFrame(
+        {
+            "person_id__2024": np.arange(len(rows)),
+            "person_household_id__2024": np.array(memberships, dtype=np.int64),
+            f"person_household_role{role_suffix}": np.array(
+                ["member" if is_member else "guest" for _, is_member in rows],
+                dtype=str,
+            ),
+        }
+    )
+    simulation = Simulation(
+        tax_benefit_system=TaxBenefitSystem([person, household]),
+        dataset=Dataset.from_dataframe(dataframe, "2024"),
+    )
+
+    population = simulation.populations["household"]
+    assert simulation.persons.has_role(household.MEMBER).tolist() == [
+        is_member for _, is_member in rows
+    ]
+    counts = Counter(membership for membership, is_member in rows if is_member)
+    group_ids = sorted(set(memberships))
+    assert population.sum(np.ones(len(rows)), role=household.MEMBER).tolist() == [
+        counts[group_id] for group_id in group_ids
+    ]
+    value_of = {group_id: index + 10 for index, group_id in enumerate(group_ids)}
+    assert population.project(
+        np.array(list(value_of.values())), role=household.MEMBER
+    ).tolist() == [
+        value_of[membership] if is_member else 0 for membership, is_member in rows
+    ]
+
+
+@settings(max_examples=100, deadline=None)
+@example(memberships=[7, 7, 9], weight=1, quantize_weights=False)
+@example(memberships=[7, 7, 9], weight=1, quantize_weights=True)
+@given(
+    memberships=st.lists(st.integers(-10, 10), min_size=1, max_size=20),
+    weight=st.integers(1, 100),
+    quantize_weights=st.booleans(),
+)
+def test_zero_selection_rejects_positive_weight_without_rebuilding(
+    tax_benefit_system, memberships, weight, quantize_weights
+):
+    dataframe = pd.DataFrame(
+        {
+            "person_id__2024": np.arange(len(memberships)),
+            "household_id__2024": memberships,
+            "person_household_id__2024": memberships,
+            "household_weight__2024": np.full(len(memberships), weight, dtype=float),
+            "rent__2024-01": np.arange(len(memberships), dtype=float),
+        }
+    )
+    dataset = Dataset.from_dataframe(dataframe, "2024")
+    simulation = Simulation(tax_benefit_system=tax_benefit_system, dataset=dataset)
+    household = simulation.populations["household"]
+    persons = simulation.persons
+    before_members = household.members_entity_id.copy()
+    before_rents = simulation.get_holder("rent").get_array(period("2024-01")).copy()
+    before_weights = (
+        simulation.get_holder("household_weight").get_array(period("2024")).copy()
+    )
+    group_count = len(set(memberships))
+
+    # Source total = group_count * weight > 0. For this fraction,
+    # int(group_count * (0.5 / group_count)) = int(0.5) = 0;
+    # the retained total is 0 and cannot conserve the positive source total.
+    with pytest.raises(ValueError, match="household_weight__2024 total.*zero weight"):
+        simulation.subsample(
+            frac=0.5 / group_count,
+            seed="empty-flat-file-property",
+            time_period="2024",
+            quantize_weights=quantize_weights,
+        )
+
+    assert simulation.dataset is dataset
+    assert simulation.persons is persons
+    assert simulation.populations["household"] is household
+    assert simulation.persons.count == len(memberships)
+    assert household.count == group_count
+    np.testing.assert_array_equal(household.members_entity_id, before_members)
+    np.testing.assert_array_equal(
+        simulation._get_recorded_input_array("rent", period("2024-01")), before_rents
+    )
+    np.testing.assert_array_equal(
+        simulation._get_recorded_input_array("household_weight", period("2024")),
+        before_weights,
+    )

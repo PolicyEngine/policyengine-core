@@ -1,3 +1,18 @@
+## [3.33.0] - 2026-10-10
+
+### Added
+
+- Simulation.drop_computed_arrays() deletes every value a simulation holds except inputs, for branches whose policy changes after they are created.
+
+### Changed
+
+- Branch input changes prevent caching stale calculations and rerun outermost `calculate` and `calculate_add` calls up to ten times, with exact repeated input transitions and results in other branches able to settle under the usual cache restrictions; unchanged direct inputs skip invalidation, branch input stores disable macro-cache reads, `apply_reform` preserves surviving supplied input tiers, branch input helpers share overlapping-cache cleanup with ordinary input helpers, and restored calculated values are invalidated conservatively.
+
+### Fixed
+
+- Branch input changes invalidate derived values while preserving supplied inputs, independent caches, guarded retry effects, fixed-point settlement, branch dumps and disk invalidation order, with read-only foreign calculations reused within each attempt only while their captured input and branch-registration dependencies remain current.
+
+
 ## [3.32.29] - 2026-10-09
 
 ### Fixed

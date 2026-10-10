@@ -1,3 +1,100 @@
+## [3.33.2] - 2026-10-10
+
+### Changed
+
+- Add regression coverage for reform and baseline fidelity when subsampling simulations after calculations.
+
+
+## [3.33.1] - 2026-10-10
+
+### Fixed
+
+- Rebuild subsamples from current source inputs and loaded memberships, preserve each input weight column's entity total, select with available requested-period or dataset-period weights, and discard pre-sample calculation branches, including caller-created branches.
+
+
+## [3.33.0] - 2026-10-10
+
+### Added
+
+- Simulation.drop_computed_arrays() deletes every value a simulation holds except inputs, for branches whose policy changes after they are created.
+
+### Changed
+
+- Branch input changes prevent caching stale calculations and rerun outermost `calculate` and `calculate_add` calls up to ten times, with exact repeated input transitions and results in other branches able to settle under the usual cache restrictions; unchanged direct inputs skip invalidation, branch input stores disable macro-cache reads, `apply_reform` preserves surviving supplied input tiers, branch input helpers share overlapping-cache cleanup with ordinary input helpers, and restored calculated values are invalidated conservatively.
+
+### Fixed
+
+- Branch input changes invalidate derived values while preserving supplied inputs, independent caches, guarded retry effects, fixed-point settlement, branch dumps and disk invalidation order, with read-only foreign calculations reused within each attempt only while their captured input and branch-registration dependencies remain current.
+
+
+## [3.32.29] - 2026-10-09
+
+### Fixed
+
+- Period-splitting input helpers now preserve supplied inputs in memory or on disk, replace calculated sub-period values, and invalidate overlapping caches consistently with the supplied-input tier record.
+
+
+## [3.32.28] - 2026-10-09
+
+### Fixed
+
+- Cache `calculate_add` and `calculate_divide` results as derived only where a plain read returns them without changing dtype, preserving visible inputs and allowing explicit aggregate refresh after an input changes or is deleted.
+
+
+## [3.32.27] - 2026-10-09
+
+### Fixed
+
+- Fix compound period disk storage on Windows while preserving legacy filename restores and clone isolation.
+- Keep input records aligned with memory/disk storage across deletion, copies, handlers, subsampling, period aliases, and early years; custom handlers must use `holder._set` or `holder.set_input` for inputs, since `put_in_cache` values are excluded from input export and reform replay and no longer redirected to the input's branch.
+
+
+## [3.32.26] - 2026-10-09
+
+### Fixed
+
+- Give independently created temporary holder storages distinct directories, create caller-supplied storage directories on first use, and clear stale enum metadata when replacing enum values with plain arrays.
+
+
+## [3.32.25] - 2026-10-09
+
+### Changed
+
+- Cancel superseded pull request CI runs and give every test and lint job a timeout, so hung or outdated jobs free shared GitHub Actions runners.
+
+
+## [3.32.24] - 2026-10-08
+
+### Changed
+
+- Restore non-derived dumped values as recorded inputs using derived-period marks and an explicit format marker, warn for ambiguous legacy dumps, evict affected fast-cache entries on holder writes and deletes, reject non-numeric uprating and defined_for conditions, and preserve existing variables when a replacement is rejected.
+
+
+## [3.32.23] - 2026-10-08
+
+### Fixed
+
+- Fix simulation copying and same-process unpickling, preserve `EnumArray` subclasses and enum metadata through pickling, and allow legacy enum arrays to be re-pickled.
+
+
+## [3.32.22] - 2026-10-08
+
+### Changed
+
+- The release workflow deploys the documentation site again, from a Docs job that runs once the tests pass and the release reaches PyPI; the deploy step had been skipped on every release since September 2024 because it checked a matrix the Test job no longer has.
+
+
+## [3.32.21] - 2026-10-07
+
+### Changed
+
+- Pull requests now run actionlint on the GitHub Actions workflows, and the release workflow quotes the version it passes to towncrier and uses the `skip-existing` input of the PyPI publish action.
+
+### Fixed
+
+- A reform simulation's baseline branch now uses the baseline system's entities and variables (a variable the reform neutralized or redefined was neutralized or redefined in the baseline too), including after `subsample`, which also keeps the rebuilt branch traced in the reform simulation, as `__init__` does, and no longer leaves it holding the branch it replaced; a clone of a reform simulation gets a copy of the baseline branch as its own instead of sharing its source's; and each clone and branch records its own cache invalidations, so a spiral in one no longer deletes the other's cached values or inputs.
+
+
 ## [3.32.20] - 2026-10-06
 
 ### Fixed

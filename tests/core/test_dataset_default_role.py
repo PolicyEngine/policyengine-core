@@ -375,3 +375,82 @@ def test_join_rejects_invalid_role_shapes(tax_benefit_system, roles):
 
     with pytest.raises(ValueError, match="household role\\(s\\) for 3 person"):
         builder.join_with_persons(household, [10, 10, 10], roles)
+
+
+def test_three_person_child_default_matches_current_master(tax_benefit_system):
+    simulation = simulate(
+        tax_benefit_system,
+        in_memory_dataset(
+            {
+                "person_id": np.array([1, 2, 3]),
+                "household_id": np.array([10]),
+                "person_household_id": np.array([10, 10, 10]),
+            }
+        ),
+        default_role="child",
+    )
+    assert list(simulation.household.members_role) == [Household.CHILD] * 3
+    # Three memberships in ID 10: 1 + 1 + 1 = 3 children.
+    assert simulation.household.nb_persons(role=Household.CHILD).tolist() == [3]
+
+
+@pytest.mark.parametrize("role_column", [None, "person_unit_role", "role"])
+def test_bounded_default_rejects_previously_queryable_assignment(role_column):
+    unit = build_entity(
+        key="unit",
+        plural="units",
+        label="Unit",
+        roles=[{"key": "member", "max": 2}],
+    )
+    columns = {
+        "person_id": np.array([1, 2, 3]),
+        "unit_id": np.array([10]),
+        "person_unit_id": np.array([10, 10, 10]),
+    }
+    if role_column is not None:
+        columns[role_column] = np.array([0, 0, 0])
+    system = TaxBenefitSystem([entities.Person, unit])
+    dataset = in_memory_dataset(columns)
+    if role_column is None:
+        # Uniform assignment would produce 3 holders, exceeding max=2.
+        with pytest.raises(
+            ValueError, match="default role.*at most 2.*person_unit_role"
+        ):
+            simulate(system, dataset)
+        return
+
+    # Capacity enforcement remains limited to synthesized defaults.
+    simulation = simulate(system, dataset)
+    assert list(simulation.unit.members_role) == [unit.MEMBER] * 3
+    assert simulation.unit.nb_persons(role=unit.MEMBER).tolist() == [3]
+    # All three explicit members contribute: 1 + 2 + 3 = 6.
+    assert simulation.unit.sum(np.array([1, 2, 3]), role=unit.MEMBER).tolist() == [6]
+
+
+@pytest.mark.parametrize("generic_role", [False, True])
+def test_suffixed_entity_role_column_overrides_generic_and_default(
+    tax_benefit_system, generic_role
+):
+    columns = {
+        "person_id": [1, 2, 3],
+        "person_household_id": [0, 0, 0],
+        "person_household_role__2024": [0, 2, 2],
+    }
+    if generic_role:
+        columns["role"] = [2, 2, 2]
+    simulation = simulate(
+        tax_benefit_system,
+        Dataset.from_dataframe(pd.DataFrame(columns), "2024"),
+        # Ignoring the valid explicit roles would exceed this default's max=1.
+        default_role="first_parent",
+    )
+    household = simulation.household
+    assert list(household.members_role) == [
+        Household.FIRST_PARENT,
+        Household.CHILD,
+        Household.CHILD,
+    ]
+    assert household.nb_persons(role=Household.PARENT).tolist() == [1]
+    assert household.nb_persons(role=Household.CHILD).tolist() == [2]
+    # The children contribute 2 + 3 = 5.
+    assert household.sum(np.array([1, 2, 3]), role=Household.CHILD).tolist() == [5]

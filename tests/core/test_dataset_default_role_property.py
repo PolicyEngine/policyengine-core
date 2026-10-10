@@ -323,3 +323,66 @@ def test_join_requires_a_one_dimensional_role_per_person(persons, shape):
 
     with pytest.raises(ValueError, match="give one role per person"):
         builder.join_with_persons(household, np.repeat(10, persons), roles)
+
+
+@settings(max_examples=100, deadline=None)
+@given(
+    st.lists(st.integers(min_value=0, max_value=2), min_size=1, max_size=12),
+    st.booleans(),
+    st.booleans(),
+    st.sampled_from(["2024", "eternity"]),
+)
+@example([0, 2, 2], False, False, "2024")
+@example([0, 0, 0], True, True, "eternity")
+def test_suffixed_entity_roles_preserve_explicit_assignment(
+    role_indices, generic_role, literal_keys, suffix
+):
+    # Independent encoding table: do not derive expected roles from the loader.
+    role_table = {
+        0: ("first_parent", HOUSEHOLD.FIRST_PARENT),
+        1: ("second_parent", HOUSEHOLD.SECOND_PARENT),
+        2: ("child", HOUSEHOLD.CHILD),
+    }
+    persons = len(role_indices)
+    explicit_roles = (
+        [role_table[index][0] for index in role_indices]
+        if literal_keys
+        else role_indices
+    )
+    columns = {
+        "person_id": np.arange(1, persons + 1),
+        # Group zero matches the flat-file loader's synthetic group IDs.
+        "person_household_id": np.zeros(persons, dtype=int),
+        f"person_household_role__{suffix}": explicit_roles,
+    }
+    if generic_role:
+        # Every generic entry conflicts with its entity-specific counterpart.
+        columns["role"] = [(index + 1) % 3 for index in role_indices]
+    simulation = simulate(
+        TaxBenefitSystem([PERSON, HOUSEHOLD]),
+        Dataset.from_dataframe(pd.DataFrame(columns), "2024"),
+        default_role="first_parent",
+    )
+    household = simulation.household
+    assert list(household.members_role) == [
+        role_table[index][1] for index in role_indices
+    ]
+
+    # Explicit columns retain their existing capacity handling: repeated unique
+    # roles remain accepted. Counts and sums still follow the declared roles.
+    values = np.arange(1, persons + 1)
+    query_roles = [
+        (HOUSEHOLD.FIRST_PARENT, {0}),
+        (HOUSEHOLD.SECOND_PARENT, {1}),
+        (HOUSEHOLD.CHILD, {2}),
+        (HOUSEHOLD.PARENT, {0, 1}),
+    ]
+    for role, matching_indices in query_roles:
+        expected_count = sum(index in matching_indices for index in role_indices)
+        expected_sum = sum(
+            value
+            for value, index in zip(values, role_indices)
+            if index in matching_indices
+        )
+        assert household.nb_persons(role=role).tolist() == [expected_count]
+        assert household.sum(values, role=role).tolist() == [expected_sum]

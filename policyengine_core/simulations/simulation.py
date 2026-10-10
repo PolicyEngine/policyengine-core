@@ -2924,7 +2924,13 @@ class Simulation:
         if name == self.branch_name:
             return self
         if name in self.branches:
-            return self.branches[name]
+            branch = self.branches[name]
+            frames = _calculation_frames.get()
+            if frames:
+                # The lookup name can differ from the branch object's own
+                # name, so retain the registration actually resolved.
+                frames[-1].registrations.add((self, name, branch))
+            return branch
         request = _BranchClone(self)
         token = _branch_clone.set(request)
         try:

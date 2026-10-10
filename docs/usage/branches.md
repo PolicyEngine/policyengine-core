@@ -76,10 +76,12 @@ Reuse checks the input-change and input-store counts in the calculating
 simulation and every simulation read, the registrations of named branches, and
 whether activity occurred without the formula's context. Named branch
 registrations, including registered ancestor links, are captured when the
-value's calculation begins or a cached value is read. Replacing a registration
-while the producing formula runs prevents reuse of its earlier read. Nested
-calculations and reused results pass these captured registrations and the
-original dependency reads back to the caller, so a later input change still
+value's calculation begins or a cached value is read. Existing `get_branch`
+lookups also capture the name resolved, including aliases whose names differ
+from the branch object's own name. Replacing a registration while the producing
+formula runs prevents reuse of its earlier read. Nested calculations and reused
+results pass these captured registrations and the original dependency reads
+back to the caller, so a later input change still
 makes that caller stale. Observed mutations, including deletes and raw cache
 writes, and branch creations clear this temporary reuse; mutations, creations
 and untracked activity within a calculation prevent its result from entering it.

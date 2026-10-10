@@ -340,10 +340,12 @@ def test_stale_attempt_reuse_revalidates_foreign_branch_registration():
 @pytest.mark.parametrize("registration_depth", [1, 2])
 @pytest.mark.parametrize("prime_fast_cache", [False, True])
 @pytest.mark.parametrize("read_route", ["direct", "memo", "foreign_formula"])
+@pytest.mark.parametrize("aliased_registration", [False, True])
 def test_registration_replaced_inside_memo_producer_preserves_the_next_read(
     registration_depth,
     prime_fast_cache,
     read_route,
+    aliased_registration,
 ):
     calls = Counter()
     suffix_reads = []
@@ -406,7 +408,11 @@ def test_registration_replaced_inside_memo_producer_preserves_the_next_read(
             "sf_outer": outer,
         },
     )
-    original = simulation.get_branch("worker")
+    original = simulation.get_branch("other" if aliased_registration else "worker")
+    if aliased_registration:
+        # The branch object's own registration remains valid. Only the
+        # actual name resolved by worker() is replaced during the formula.
+        simulation.branches["worker"] = original
     original_worker = worker(simulation)
     replacement = original.clone()
     replacement_worker = (
@@ -428,6 +434,8 @@ def test_registration_replaced_inside_memo_producer_preserves_the_next_read(
     assert suffix_reads == [1.0, 4.0]
     assert calls["outer"] == 2
     assert calls["suffix"] == 2
+    if aliased_registration:
+        assert simulation.branches["other"] is original
     if read_route == "memo":
         assert calls["reader"] == 2
     np.testing.assert_array_equal(sink.calculate("sf_source", "2020"), result)

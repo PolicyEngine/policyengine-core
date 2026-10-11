@@ -1,0 +1,1 @@
+Compile each variable file once per process and run that code object in every system's own module, so tools that keep code objects alive, such as coverage's sys.monitoring core, no longer retain every system built (#607).

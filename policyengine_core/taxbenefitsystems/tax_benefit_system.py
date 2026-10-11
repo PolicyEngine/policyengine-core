@@ -10,6 +10,7 @@ import yaml
 from pathlib import Path
 import sys
 import traceback
+import types
 import typing
 from typing import (
     TYPE_CHECKING,
@@ -54,6 +55,24 @@ from policyengine_core.variables import Variable
 from policyengine_core.variables.variable import NUMERIC_VALUE_TYPES
 
 log = logging.getLogger(__name__)
+
+# Code compiled from each variable file, keyed by the file's absolute path,
+# modification time and size. A file's code object does not depend on the
+# system that runs it, so every system loaded from the same file runs the same
+# code object, in a module of its own. Compiling again for each system would
+# make new code objects every time, which tools that key their records by code
+# object, such as coverage's sys.monitoring core, keep alive forever.
+_variable_file_code: dict[tuple[str, int, int], types.CodeType] = {}
+
+
+def _compiled_variable_file(loader, module_name: str, file_path: str):
+    """The code object for ``file_path``, compiled once per version of the file."""
+    stat = os.stat(file_path)
+    key = (os.path.abspath(file_path), stat.st_mtime_ns, stat.st_size)
+    code = _variable_file_code.get(key)
+    if code is None:
+        code = _variable_file_code[key] = loader.get_code(module_name)
+    return code
 
 
 class TaxBenefitSystem:
@@ -349,7 +368,8 @@ class TaxBenefitSystem:
                 spec = importlib.util.spec_from_file_location(module_name, file_path)
                 module = importlib.util.module_from_spec(spec)
                 sys.modules[module_name] = module
-                spec.loader.exec_module(module)
+                code = _compiled_variable_file(spec.loader, module_name, file_path)
+                exec(code, module.__dict__)
             except NameError as e:
                 logging.error(
                     str(e)

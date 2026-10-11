@@ -11,6 +11,8 @@ import os
 import sys
 import textwrap
 import threading
+import time
+import types
 from importlib.machinery import SourceFileLoader
 
 import pytest
@@ -85,6 +87,19 @@ def test_shared_code_is_compiled_from_the_current_source():
         if hashlib.sha256(source).digest() != digest:
             continue  # a file another test changed after loading it
         assert code == compile(source, path, "exec", dont_inherit=True), path
+        # Code equality ignores the file name, so check it separately.
+        assert code.co_filename == path
+
+
+def test_a_relative_path_compiles_under_its_absolute_path(tmp_path, monkeypatch):
+    (tmp_path / "relative_probe.py").write_text(VARIABLE_FILE.format(value=4))
+    monkeypatch.chdir(tmp_path)
+    by_relative = _system_with_probe("relative_probe.py")
+    by_absolute = _system_with_probe(tmp_path / "relative_probe.py")
+    code = _formula(by_relative, "shared_code_probe").__code__
+
+    assert code.co_filename == str(tmp_path / "relative_probe.py")
+    assert _formula(by_absolute, "shared_code_probe").__code__ is code
 
 
 def test_a_changed_file_is_compiled_again(tmp_path):
@@ -92,6 +107,7 @@ def test_a_changed_file_is_compiled_again(tmp_path):
     path.write_text(VARIABLE_FILE.format(value=1))
     first = _system_with_probe(path)
     second = _system_with_probe(path)
+    old = tbs_module._variable_file_code[str(path)][1]
     # The same size and modification time: only the content tells them apart.
     stat = os.stat(path)
     path.write_text(VARIABLE_FILE.format(value=2))
@@ -108,21 +124,37 @@ def test_a_changed_file_is_compiled_again(tmp_path):
     assert _value(first) == pytest.approx(1)
     assert _value(second) == pytest.approx(1)
     assert _value(third) == pytest.approx(2)
-    cached = [key for key in tbs_module._variable_file_code if key == str(path)]
-    assert cached == [str(path)]
+    # Only the new version is kept.
+    digest, _ = tbs_module._variable_file_code[str(path)]
+    assert digest == hashlib.sha256(path.read_bytes()).digest()
+    assert not any(code is old for _, code in tbs_module._variable_file_code.values())
 
 
-def test_concurrent_loads_share_one_code_object(tmp_path):
+class _CountingLoader(SourceFileLoader):
+    """Counts compilations and sleeps in each, so that threads overlap."""
+
+    compilations = 0
+
+    def source_to_code(self, data, path, *args, **kwargs):
+        type(self).compilations += 1
+        time.sleep(0.05)  # releases the GIL
+        return super().source_to_code(data, path, *args, **kwargs)
+
+
+def test_concurrent_loads_compile_once_and_share_the_code(tmp_path):
     path = tmp_path / "probe.py"
     path.write_text(VARIABLE_FILE.format(value=3))
-    loader = SourceFileLoader("probe", str(path))
+    loader = _CountingLoader("probe", str(path))
     threads = 8
     barrier = threading.Barrier(threads)
-    codes = [None] * threads
+    codes, errors = [None] * threads, []
 
     def load(i):
-        barrier.wait()
-        codes[i] = tbs_module._compiled_variable_file(loader, str(path))
+        try:
+            barrier.wait()
+            codes[i] = tbs_module._compiled_variable_file(loader)
+        except BaseException as error:  # reported below, not lost in a thread
+            errors.append(error)
 
     workers = [threading.Thread(target=load, args=(i,)) for i in range(threads)]
     for worker in workers:
@@ -130,4 +162,7 @@ def test_concurrent_loads_share_one_code_object(tmp_path):
     for worker in workers:
         worker.join()
 
+    assert not errors
+    assert _CountingLoader.compilations == 1
+    assert all(isinstance(code, types.CodeType) for code in codes)
     assert all(code is codes[0] for code in codes)

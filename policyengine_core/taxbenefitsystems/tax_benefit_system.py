@@ -65,20 +65,35 @@ log = logging.getLogger(__name__)
 # each system would make new code objects every time, and tools that keep code
 # objects alive, such as coverage's sys.monitoring core, would then hold a copy
 # of every variable file's code for each system built. Only the latest version
-# of each file is kept.
+# of each file is kept, for the life of the process (entries for files deleted
+# since are not removed). Variable files' .pyc files are not used: the code is
+# compiled from the bytes that were hashed, once per process.
 _variable_file_code: dict[str, tuple[bytes, types.CodeType]] = {}
 _variable_file_code_lock = threading.Lock()
 
 
-def _compiled_variable_file(loader, file_path: str) -> types.CodeType:
-    """The code object for ``file_path``'s current source, compiled once."""
-    source = loader.get_data(file_path)
+def _reset_variable_file_code_lock() -> None:
+    # A child forked while another thread held the lock would otherwise
+    # deadlock on its first variable file.
+    global _variable_file_code_lock
+    _variable_file_code_lock = threading.Lock()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_reset_variable_file_code_lock)
+
+
+def _compiled_variable_file(loader) -> types.CodeType:
+    """The code object for the loader's file's current source, compiled once."""
+    # The loader's path, as exec_module would use: absolute, whatever spelling
+    # the caller passed, so the key and every code object's co_filename agree.
+    path = os.path.abspath(loader.get_filename())
+    source = loader.get_data(path)
     digest = hashlib.sha256(source).digest()
-    path = os.path.abspath(file_path)
     with _variable_file_code_lock:
         cached = _variable_file_code.get(path)
         if cached is None or cached[0] != digest:
-            cached = (digest, loader.source_to_code(source, file_path))
+            cached = (digest, loader.source_to_code(source, path))
             _variable_file_code[path] = cached
     return cached[1]
 
@@ -376,7 +391,7 @@ class TaxBenefitSystem:
                 spec = importlib.util.spec_from_file_location(module_name, file_path)
                 module = importlib.util.module_from_spec(spec)
                 sys.modules[module_name] = module
-                code = _compiled_variable_file(spec.loader, file_path)
+                code = _compiled_variable_file(spec.loader)
                 exec(code, module.__dict__)
             except NameError as e:
                 logging.error(

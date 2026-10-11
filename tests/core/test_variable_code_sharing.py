@@ -176,6 +176,10 @@ def test_a_forked_child_gets_a_free_lock():
     with tbs_module._variable_file_code_lock:
         pid = os.fork()
         if pid == 0:
-            os._exit(1 if tbs_module._variable_file_code_lock.locked() else 0)
+            status = 2
+            try:
+                status = 1 if tbs_module._variable_file_code_lock.locked() else 0
+            finally:
+                os._exit(status)
         _, status = os.waitpid(pid, 0)
     assert os.waitstatus_to_exitcode(status) == 0

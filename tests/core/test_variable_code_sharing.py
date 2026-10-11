@@ -1,12 +1,17 @@
 """Systems loaded from the same variable files run the same code objects.
 
 Each system still gets its own modules, classes and functions; only the code
-compiled from a file is shared, and a changed file is compiled again.
+compiled from a file's source is shared. Any change to the source, even one
+that keeps the file's size and modification time, is compiled again, and only
+the latest version of each file is kept.
 """
 
+import hashlib
 import os
 import sys
 import textwrap
+import threading
+from importlib.machinery import SourceFileLoader
 
 import pytest
 
@@ -72,14 +77,13 @@ def test_systems_share_code_but_not_modules_classes_or_functions():
 def test_shared_code_is_compiled_from_the_current_source():
     CountryTaxBenefitSystem()
     assert tbs_module._variable_file_code
-    for (path, mtime_ns, size), code in tbs_module._variable_file_code.items():
+    for path, (digest, code) in tbs_module._variable_file_code.items():
         if not os.path.exists(path):
             continue  # a temporary file from another test
-        stat = os.stat(path)
-        if (stat.st_mtime_ns, stat.st_size) != (mtime_ns, size):
-            continue  # an older version of a file that changed
-        with open(path, encoding="utf-8") as f:
+        with open(path, "rb") as f:
             source = f.read()
+        if hashlib.sha256(source).digest() != digest:
+            continue  # a file another test changed after loading it
         assert code == compile(source, path, "exec", dont_inherit=True), path
 
 
@@ -88,9 +92,11 @@ def test_a_changed_file_is_compiled_again(tmp_path):
     path.write_text(VARIABLE_FILE.format(value=1))
     first = _system_with_probe(path)
     second = _system_with_probe(path)
-    path.write_text(VARIABLE_FILE.format(value=20))
+    # The same size and modification time: only the content tells them apart.
     stat = os.stat(path)
-    os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000_000))
+    path.write_text(VARIABLE_FILE.format(value=2))
+    os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+    assert os.stat(path).st_size == stat.st_size
     third = _system_with_probe(path)
 
     assert _formula(first, "shared_code_probe").__code__ is (
@@ -101,4 +107,27 @@ def test_a_changed_file_is_compiled_again(tmp_path):
     )
     assert _value(first) == pytest.approx(1)
     assert _value(second) == pytest.approx(1)
-    assert _value(third) == pytest.approx(20)
+    assert _value(third) == pytest.approx(2)
+    cached = [key for key in tbs_module._variable_file_code if key == str(path)]
+    assert cached == [str(path)]
+
+
+def test_concurrent_loads_share_one_code_object(tmp_path):
+    path = tmp_path / "probe.py"
+    path.write_text(VARIABLE_FILE.format(value=3))
+    loader = SourceFileLoader("probe", str(path))
+    threads = 8
+    barrier = threading.Barrier(threads)
+    codes = [None] * threads
+
+    def load(i):
+        barrier.wait()
+        codes[i] = tbs_module._compiled_variable_file(loader, str(path))
+
+    workers = [threading.Thread(target=load, args=(i,)) for i in range(threads)]
+    for worker in workers:
+        worker.start()
+    for worker in workers:
+        worker.join()
+
+    assert all(code is codes[0] for code in codes)

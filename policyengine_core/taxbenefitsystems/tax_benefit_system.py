@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import glob
+import hashlib
 import importlib
 import inspect
 import logging
@@ -9,6 +10,7 @@ import os
 import yaml
 from pathlib import Path
 import sys
+import threading
 import traceback
 import types
 import typing
@@ -56,23 +58,29 @@ from policyengine_core.variables.variable import NUMERIC_VALUE_TYPES
 
 log = logging.getLogger(__name__)
 
-# Code compiled from each variable file, keyed by the file's absolute path,
-# modification time and size. A file's code object does not depend on the
-# system that runs it, so every system loaded from the same file runs the same
-# code object, in a module of its own. Compiling again for each system would
-# make new code objects every time, which tools that key their records by code
-# object, such as coverage's sys.monitoring core, keep alive forever.
-_variable_file_code: dict[tuple[str, int, int], types.CodeType] = {}
+# Code compiled from each variable file, by the file's absolute path, with the
+# SHA-256 of the source it was compiled from. A file's code object does not
+# depend on the system that runs it, so every system loaded from the same
+# source runs the same code object, in a module of its own. Compiling again for
+# each system would make new code objects every time, and tools that keep code
+# objects alive, such as coverage's sys.monitoring core, would then hold a copy
+# of every variable file's code for each system built. Only the latest version
+# of each file is kept.
+_variable_file_code: dict[str, tuple[bytes, types.CodeType]] = {}
+_variable_file_code_lock = threading.Lock()
 
 
-def _compiled_variable_file(loader, module_name: str, file_path: str):
-    """The code object for ``file_path``, compiled once per version of the file."""
-    stat = os.stat(file_path)
-    key = (os.path.abspath(file_path), stat.st_mtime_ns, stat.st_size)
-    code = _variable_file_code.get(key)
-    if code is None:
-        code = _variable_file_code[key] = loader.get_code(module_name)
-    return code
+def _compiled_variable_file(loader, file_path: str) -> types.CodeType:
+    """The code object for ``file_path``'s current source, compiled once."""
+    source = loader.get_data(file_path)
+    digest = hashlib.sha256(source).digest()
+    path = os.path.abspath(file_path)
+    with _variable_file_code_lock:
+        cached = _variable_file_code.get(path)
+        if cached is None or cached[0] != digest:
+            cached = (digest, loader.source_to_code(source, file_path))
+            _variable_file_code[path] = cached
+    return cached[1]
 
 
 class TaxBenefitSystem:
@@ -368,7 +376,7 @@ class TaxBenefitSystem:
                 spec = importlib.util.spec_from_file_location(module_name, file_path)
                 module = importlib.util.module_from_spec(spec)
                 sys.modules[module_name] = module
-                code = _compiled_variable_file(spec.loader, module_name, file_path)
+                code = _compiled_variable_file(spec.loader, file_path)
                 exec(code, module.__dict__)
             except NameError as e:
                 logging.error(

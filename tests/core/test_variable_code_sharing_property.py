@@ -31,19 +31,21 @@ def test_any_writes_and_loads_give_the_current_code(steps):
         path = Path(directory).resolve() / "probe.py"
         path.write_text(VARIABLE_FILE.format(value=0))
         loader = SourceFileLoader("probe", str(path))
-        previous = None
-        for action, value in steps:
-            if action == "write":
-                path.write_text(VARIABLE_FILE.format(value=value))
-                previous = None
-                continue
-            code = tbs_module._compiled_variable_file(loader)
-            source = path.read_bytes()
-            assert code == compile(source, str(path), "exec", dont_inherit=True)
-            assert code.co_filename == str(path)
-            if previous is not None:
-                assert code is previous
-            previous = code
-            digest, cached = tbs_module._variable_file_code[str(path)]
-            assert digest == hashlib.sha256(source).digest() and cached is code
-        tbs_module._variable_file_code.pop(str(path), None)
+        try:
+            previous = None
+            for action, value in steps:
+                if action == "write":
+                    path.write_text(VARIABLE_FILE.format(value=value))
+                    previous = None
+                    continue
+                code = tbs_module._compiled_variable_file(loader)
+                source = path.read_bytes()
+                assert code == compile(source, str(path), "exec", dont_inherit=True)
+                assert code.co_filename == str(path)
+                if previous is not None:
+                    assert code is previous
+                previous = code
+                digest, cached = tbs_module._variable_file_code[str(path)]
+                assert digest == hashlib.sha256(source).digest() and cached is code
+        finally:
+            tbs_module._variable_file_code.pop(str(path), None)

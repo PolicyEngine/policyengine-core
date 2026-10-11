@@ -85,8 +85,8 @@ if hasattr(os, "register_at_fork"):
 
 def _compiled_variable_file(loader) -> types.CodeType:
     """The code object for the loader's file's current source, compiled once."""
-    # The loader's path, as exec_module would use: absolute, whatever spelling
-    # the caller passed, so the key and every code object's co_filename agree.
+    # The loader's path, absolute and normalized whatever spelling the caller
+    # passed, so the key and every code object's co_filename agree.
     path = os.path.abspath(loader.get_filename())
     source = loader.get_data(path)
     digest = hashlib.sha256(source).digest()

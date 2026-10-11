@@ -141,9 +141,10 @@ class _CountingLoader(SourceFileLoader):
         return super().source_to_code(data, path, *args, **kwargs)
 
 
-def test_concurrent_loads_compile_once_and_share_the_code(tmp_path):
+def test_concurrent_loads_compile_once_and_share_the_code(tmp_path, monkeypatch):
     path = tmp_path / "probe.py"
     path.write_text(VARIABLE_FILE.format(value=3))
+    monkeypatch.setattr(_CountingLoader, "compilations", 0)
     loader = _CountingLoader("probe", str(path))
     threads = 8
     barrier = threading.Barrier(threads)
@@ -166,3 +167,15 @@ def test_concurrent_loads_compile_once_and_share_the_code(tmp_path):
     assert _CountingLoader.compilations == 1
     assert all(isinstance(code, types.CodeType) for code in codes)
     assert all(code is codes[0] for code in codes)
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="needs os.fork")
+def test_a_forked_child_gets_a_free_lock():
+    # A child forked while another thread held the lock would deadlock on its
+    # first variable file unless the lock is re-created after fork.
+    with tbs_module._variable_file_code_lock:
+        pid = os.fork()
+        if pid == 0:
+            os._exit(1 if tbs_module._variable_file_code_lock.locked() else 0)
+        _, status = os.waitpid(pid, 0)
+    assert os.waitstatus_to_exitcode(status) == 0

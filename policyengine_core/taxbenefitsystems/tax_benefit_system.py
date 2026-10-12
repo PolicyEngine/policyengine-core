@@ -58,7 +58,7 @@ from policyengine_core.variables.variable import NUMERIC_VALUE_TYPES
 
 log = logging.getLogger(__name__)
 
-# Code compiled from each variable file, by the file's absolute path, with the
+# Code compiled from each variable file, by its absolute loader path, with the
 # SHA-256 of the source it was compiled from. A file's code object does not
 # depend on the system that runs it, so every system loaded from the same
 # source runs the same code object, in a module of its own. Compiling again for
@@ -85,10 +85,12 @@ if hasattr(os, "register_at_fork"):
 
 def _compiled_variable_file(loader) -> types.CodeType:
     """The code object for the loader's file's current source, compiled once."""
-    # The loader's path, absolute and normalized whatever spelling the caller
-    # passed, so the key and every code object's co_filename agree.
-    path = os.path.abspath(loader.get_filename())
-    source = loader.get_data(path)
+    # Read the loader's exact filename: normalizing '..' before following a
+    # symlink can select a different file. Preserve that spelling in the
+    # absolute cache key and co_filename too, so different files cannot collide.
+    filename = loader.get_filename()
+    path = filename if os.path.isabs(filename) else os.path.join(os.getcwd(), filename)
+    source = loader.get_data(filename)
     digest = hashlib.sha256(source).digest()
     with _variable_file_code_lock:
         cached = _variable_file_code.get(path)

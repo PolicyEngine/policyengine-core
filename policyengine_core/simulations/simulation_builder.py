@@ -63,6 +63,16 @@ class SimulationBuilder:
         self.axes_memberships: typing.Dict[Entity.plural, typing.List[int]] = {}
         self.axes_roles: typing.Dict[Entity.plural, typing.List[int]] = {}
 
+        # Leave out, rather than raise for, inputs the tax-benefit system
+        # cannot take: a variable it does not have or defines for another
+        # entity, a value it rejects, an axis over a variable it does not
+        # have (the axis still shapes the population), and an input its
+        # ``set_input`` refuses for the period given. Entities, roles and
+        # periods are still checked. A reform simulation builds its
+        # baseline's inputs this way, from a situation the reform's system
+        # took (see ``Simulation._build_from_situation``).
+        self.skip_rejected_inputs = False
+
     def build_from_dict(
         self,
         tax_benefit_system: "TaxBenefitSystem",
@@ -219,10 +229,14 @@ class SimulationBuilder:
                         [variable],
                         "Can't deal with type: expected object. Input variables should be set for specific periods. For instance: {'salary': {'2017-01': 2000, '2017-02': 2500}}, or {'birth_date': {'ETERNITY': '1980-01-01'}}.",
                     )
-                simulation.set_input(variable, self.default_period, value)
-            else:
-                for period_str, dated_value in value.items():
-                    simulation.set_input(variable, period_str, dated_value)
+                value = {self.default_period: value}
+            for period_str, dated_value in value.items():
+                period = periods.period(period_str)
+                try:
+                    simulation.set_input(variable, period, dated_value)
+                except (VariableNotFoundError, ValueError):
+                    if not self.skip_rejected_inputs:
+                        raise
         return simulation
 
     def build_default_simulation(
@@ -508,8 +522,12 @@ class SimulationBuilder:
             try:
                 entity.check_variable_defined_for_entity(variable_name)
             except ValueError as e:  # The variable is defined for another entity
+                if self.skip_rejected_inputs:
+                    continue
                 raise SituationParsingError(path_in_json, e.args[0])
             except VariableNotFoundError as e:  # The variable doesn't exist
+                if self.skip_rejected_inputs:
+                    continue
                 raise SituationParsingError(path_in_json, str(e), code=404)
 
             instance_index = self.get_ids(entity.plural).index(instance_id)
@@ -554,6 +572,9 @@ class SimulationBuilder:
         try:
             value = variable.check_set_value(value)
         except ValueError as error:
+            if self.skip_rejected_inputs:
+                # The entry is left as if the situation did not give it.
+                return
             raise SituationParsingError(path_in_json, *error.args)
 
         array[instance_index] = value
@@ -591,7 +612,13 @@ class SimulationBuilder:
                 # TODO - this duplicates the check in Simulation.set_input, but
                 # fixing that requires improving Simulation's handling of entities
                 if (variable.end is None) or (period_value.start.date <= variable.end):
-                    holder.set_input(period_value, array)
+                    try:
+                        holder.set_input(period_value, array)
+                    except ValueError:
+                        # ``Holder.set_input`` and core's ``set_input``
+                        # handlers raise before storing any of the input.
+                        if not self.skip_rejected_inputs:
+                            raise
 
     def raise_period_mismatch(self, entity, json, e):
         # This error happens when we try to set a variable value for a period that doesn't match its definition period
@@ -688,11 +715,11 @@ class SimulationBuilder:
         # Now generate input values along the specified axes
         # TODO - factor out the common logic here
         if len(self.axes) == 1 and len(self.axes[0]):
-            parallel_axes = self.axes[0]
-            first_axis = parallel_axes[0]
-            axis_count: int = first_axis["count"]
-            axis_entity = self.get_variable_entity(first_axis["name"])
-            axis_entity_step_size = self.entity_counts[axis_entity.plural]
+            axis_count: int = self.axes[0][0]["count"]
+            parallel_axes = self._axes_to_set(self.axes[0])
+            if parallel_axes:
+                axis_entity = self.get_variable_entity(parallel_axes[0]["name"])
+                axis_entity_step_size = self.entity_counts[axis_entity.plural]
             # Distribute values along axes
             for axis in parallel_axes:
                 axis_index = axis.get("index", 0)
@@ -721,8 +748,11 @@ class SimulationBuilder:
             ]
             axes_meshes = np.meshgrid(*axes_linspaces)
             for parallel_axes, mesh in zip(self.axes, axes_meshes):
+                axis_count = parallel_axes[0]["count"]
+                parallel_axes = self._axes_to_set(parallel_axes)
+                if not parallel_axes:
+                    continue
                 first_axis = parallel_axes[0]
-                axis_count = first_axis["count"]
                 axis_entity = self.get_variable_entity(first_axis["name"])
                 axis_entity_step_size = self.entity_counts[axis_entity.plural]
                 # Distribute values along the grid
@@ -752,6 +782,18 @@ class SimulationBuilder:
                     self.input_buffer[axis_name][str(axis_period)] = array
 
         self.has_axes = True
+
+    def _axes_to_set(self, parallel_axes: list) -> list:
+        """The axes of one dimension whose variable's values are set.
+
+        All of them, except, when skipping rejected inputs, those over a
+        variable the tax-benefit system does not have.
+        """
+        if not self.skip_rejected_inputs:
+            return parallel_axes
+        return [
+            axis for axis in parallel_axes if axis["name"] in self.variable_entities
+        ]
 
     def get_variable_entity(self, variable_name):
         return self.variable_entities[variable_name]

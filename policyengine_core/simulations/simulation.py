@@ -1091,7 +1091,22 @@ class Simulation:
 
         The simulation keeps its tax-benefit system and settings. Its branches
         keep the old populations until :meth:`_rebuild_branches`.
+
+        Raises:
+            ValueError: if the simulation is a branch, which shares its
+                parent's population and baseline.
+            RuntimeError: if a calculation is running in the simulation.
         """
+        if getattr(self, "parent_branch", None) is not None:
+            raise ValueError(
+                f"Cannot replace the population of branch '{self.branch_name}': "
+                "it shares its parent's population and baseline. Write the "
+                "situation into the simulation it was made from, or a new one."
+            )
+        if self._calculations_in_flight:
+            raise RuntimeError(
+                "Cannot replace a simulation's population while it is calculating."
+            )
         self.dataset = None
         self.is_over_dataset = False
         self.situation_input = None
@@ -1099,8 +1114,15 @@ class Simulation:
         self.input_variables = []
         self._store_history = StoreHistory()
         self._user_input_keys = set()
+        self._requested_variables = None
         self.invalidated_caches = set()
         self._fast_cache = {}
+        # A calculation elsewhere that read this simulation does not keep what
+        # it calculated from the old population (``_Frame.is_stale``).
+        self._input_epoch = self._input_epoch + 1
+        if isinstance(getattr(self, "tracer", None), FullTracer):
+            # Its trees hold the old population's values.
+            self.tracer = FullTracer()
         self.build_from_populations(self.tax_benefit_system.instantiate_entities())
 
     def _rebuild_branches(self) -> None:

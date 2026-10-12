@@ -7,7 +7,8 @@ one), neutralized variables (inputs and formulas), a variable only the reform
 has, and a changed tax rate; and for any situation of one to three people in
 one or two households that gives any of those variables, for any of several
 periods, to some people or households and not to others, with no axes, one
-dimension of parallel axes, or two perpendicular dimensions:
+dimension of parallel axes, or two perpendicular dimensions (or that gives
+each variable's values for everyone, without entities):
 
 * Differential: the baseline calculates, for each output and period, what the
   simulation ``SimulationBuilder`` makes of the situation under the baseline
@@ -205,6 +206,36 @@ def situations(draw):
     return situation
 
 
+@st.composite
+def situations_without_entities(draw):
+    """Variables' values for each of one to three people, each in a household.
+
+    The builder takes the number of people from the first value.
+    """
+    count = draw(st.integers(1, 3))
+    inputs = {
+        **PERSON_INPUTS,
+        **HOUSEHOLD_INPUTS,
+        ADDED: (st.integers(0, 1000).map(float), MONTHS),
+    }
+    situation = {}
+    for name in draw(st.permutations(sorted(inputs))):
+        values, periods = inputs[name]
+        dated = draw(
+            st.dictionaries(
+                st.sampled_from(periods),
+                st.lists(values, min_size=count, max_size=count),
+                max_size=2,
+            )
+        )
+        if dated:
+            situation[name] = dated
+    if not set(situation) - {ADDED}:
+        # Left without the added variable, the situation keeps its people.
+        situation["salary"] = {PERIOD: [0.0] * count}
+    return situation
+
+
 def _built(situation, system):
     builder = SimulationBuilder()
     builder.default_period = PERIOD
@@ -213,7 +244,8 @@ def _built(situation, system):
 
 def _without_added(situation):
     stripped = copy.deepcopy(situation)
-    for person in stripped["persons"].values():
+    stripped.pop(ADDED, None)
+    for person in stripped.get("persons", {}).values():
         person.pop(ADDED, None)
     return stripped
 
@@ -252,7 +284,10 @@ PARTIAL_SALARY = {
     deadline=None,
     suppress_health_check=[HealthCheck.too_slow, HealthCheck.data_too_large],
 )
-@given(spec=reform_specs(), situation=situations())
+@given(
+    spec=reform_specs(),
+    situation=situations() | situations_without_entities(),
+)
 # The reproduction in #612: a salary given to one person of two.
 @example(spec=((("salary", 1000.0),), (), False, None), situation=PARTIAL_SALARY)
 # The same along an axis over the other person.
@@ -284,6 +319,11 @@ PARTIAL_SALARY = {
             "h1": {"parents": ["p1"], "rent": {"2022": 6000.0}},
         },
     },
+)
+# Without entities, the builder sets each variable through ``set_input``.
+@example(
+    spec=((("salary", 1000.0),), ("income_tax",), False, None),
+    situation={"salary": {PERIOD: [3000.0, 0.0]}, "income_tax": {PERIOD: [7.0, 9.0]}},
 )
 # An input the reform neutralizes, and one only the reform has.
 @example(

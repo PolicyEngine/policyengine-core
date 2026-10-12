@@ -66,11 +66,15 @@ class SimulationBuilder:
         # Leave out, rather than raise for, inputs the tax-benefit system
         # cannot take: a variable it does not have or defines for another
         # entity, a value it rejects, an axis over a variable it does not
-        # have (the axis still shapes the population), and an input its
-        # ``set_input`` refuses for the period given. Entities, roles and
-        # periods are still checked. A reform simulation builds its
-        # baseline's inputs this way, from a situation the reform's system
-        # took (see ``Simulation._build_from_situation``).
+        # have (the axis still shapes the population), and an array its
+        # ``set_input`` refuses with a ``ValueError`` (for a period the
+        # variable's definition does not take, say, but also for a NaN or
+        # for yearly and monthly inputs that do not add up). Entities,
+        # roles and the syntax of periods are still checked. A reform
+        # simulation builds its baseline's inputs this way, from a situation
+        # the reform's system took (see ``Simulation._build_from_situation``).
+        # That system may define a variable differently, and does not check
+        # inputs for the variables it neutralizes.
         self.skip_rejected_inputs = False
 
     def build_from_dict(

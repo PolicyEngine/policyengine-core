@@ -26,7 +26,7 @@ import pytest
 from policyengine_core.country_template import Simulation
 from policyengine_core.enums import Enum
 from policyengine_core.errors import SituationParsingError, VariableNotFoundError
-from policyengine_core.periods import ETERNITY
+from policyengine_core.periods import ETERNITY, period
 from policyengine_core.reforms import Reform
 from policyengine_core.simulations import SimulationBuilder
 from policyengine_core.variables import Variable
@@ -286,6 +286,19 @@ def test_an_input_the_reform_neutralizes_is_the_baselines(situation):
     np.testing.assert_array_equal(_values(reform, "income_tax"), [0])
     assert "income_tax" in reform.baseline.input_variables
     assert_same(reform.baseline, _built(situation), outputs=["salary", "income_tax"])
+
+
+def test_a_situation_without_entities_is_stored_as_in_a_simulation_built_from_it():
+    """The baseline stores the inputs under ``"default"``, not its own name."""
+    situation = {"salary": {PERIOD: [3000.0, 100.0]}}
+    baseline = Simulation(situation=situation, reform=change_salary_default).baseline
+    expected = Simulation(situation=situation)
+
+    assert baseline.branch_name == "baseline"
+    assert baseline._user_input_keys == expected._user_input_keys
+    np.testing.assert_array_equal(
+        baseline.get_holder("salary").get_array(period(PERIOD)), [3000, 100]
+    )
 
 
 @pytest.mark.filterwarnings("ignore:You cannot set a value")

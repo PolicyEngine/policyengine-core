@@ -1327,7 +1327,8 @@ class Simulation:
         ``SimulationBuilder.skip_rejected_inputs``), as
         ``_bind_to_tax_benefit_system`` drops holders built for the reform's
         definitions. The records of what the old populations held go with
-        them.
+        them. The inputs are stored under ``"default"``, as in a simulation
+        built from the situation, which a branch reads through.
         """
         from policyengine_core.simulations.simulation_builder import (
             SimulationBuilder,
@@ -1342,7 +1343,14 @@ class Simulation:
         builder = SimulationBuilder()
         builder.default_period = self.default_input_period
         builder.skip_rejected_inputs = True
-        builder.build_from_dict(self.tax_benefit_system, situation, self)
+        # A situation without entities is set through ``set_input``, which
+        # stores under the simulation's branch name; one with entities is
+        # stored under ``"default"`` whatever the branch.
+        branch_name, self.branch_name = self.branch_name, "default"
+        try:
+            builder.build_from_dict(self.tax_benefit_system, situation, self)
+        finally:
+            self.branch_name = branch_name
         self.has_axes = builder.has_axes
 
     def create_shortcuts(self) -> None:

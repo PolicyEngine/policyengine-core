@@ -11,7 +11,6 @@ import os
 import sys
 import textwrap
 import threading
-import time
 import types
 from importlib.machinery import SourceFileLoader
 
@@ -172,29 +171,61 @@ def test_a_changed_file_is_compiled_again(tmp_path):
     assert not any(code is old for _, code in tbs_module._variable_file_code.values())
 
 
-class _CountingLoader(SourceFileLoader):
-    """Counts compilations and sleeps in each, so that threads overlap."""
-
-    compilations = 0
-
-    def source_to_code(self, data, path, *args, **kwargs):
-        type(self).compilations += 1
-        time.sleep(0.05)  # releases the GIL
-        return super().source_to_code(data, path, *args, **kwargs)
-
-
 def test_concurrent_loads_compile_once_and_share_the_code(tmp_path, monkeypatch):
     path = tmp_path / "probe.py"
     path.write_text(VARIABLE_FILE.format(value=3))
-    monkeypatch.setattr(_CountingLoader, "compilations", 0)
-    loader = _CountingLoader("probe", str(path))
+    loader = SourceFileLoader("probe", str(path))
     threads = 8
     barrier = threading.Barrier(threads)
+    all_attempted = threading.Event()
+    observations_lock = threading.Lock()
+    attempted = set()
+    compilations = 0
     codes, errors = [None] * threads, []
+
+    def record_attempt():
+        with observations_lock:
+            attempted.add(threading.get_ident())
+            if len(attempted) == threads:
+                all_attempted.set()
+
+    real_lock = tbs_module._variable_file_code_lock
+
+    class ObservedLock:
+        def __enter__(self):
+            # Count followers before they block on the first compiler's lock.
+            record_attempt()
+            return real_lock.__enter__()
+
+        def __exit__(self, *args):
+            return real_lock.__exit__(*args)
+
+    class ObservedCache(dict):
+        def get(self, key, default=None):
+            cached = super().get(key, default)
+            # Without the lock, every thread must capture its miss before the
+            # first compiler is allowed to publish, including the last thread.
+            record_attempt()
+            return cached
+
+    source_to_code = loader.source_to_code
+
+    def compile_when_all_attempted(*args, **kwargs):
+        nonlocal compilations
+        with observations_lock:
+            compilations += 1
+        # The timeout only diagnoses a deadlock; overlap is controlled by the
+        # event, irrespective of the speed or scheduling of the workers.
+        assert all_attempted.wait(10), "not all workers reached the cache"
+        return source_to_code(*args, **kwargs)
+
+    monkeypatch.setattr(tbs_module, "_variable_file_code_lock", ObservedLock())
+    monkeypatch.setattr(tbs_module, "_variable_file_code", ObservedCache())
+    monkeypatch.setattr(loader, "source_to_code", compile_when_all_attempted)
 
     def load(i):
         try:
-            barrier.wait()
+            barrier.wait(timeout=10)
             codes[i] = tbs_module._compiled_variable_file(loader)
         except BaseException as error:  # reported below, not lost in a thread
             errors.append(error)
@@ -203,10 +234,12 @@ def test_concurrent_loads_compile_once_and_share_the_code(tmp_path, monkeypatch)
     for worker in workers:
         worker.start()
     for worker in workers:
-        worker.join()
+        worker.join(timeout=15)
 
+    assert not any(worker.is_alive() for worker in workers)
     assert not errors
-    assert _CountingLoader.compilations == 1
+    assert len(attempted) == threads
+    assert compilations == 1
     assert all(isinstance(code, types.CodeType) for code in codes)
     assert all(code is codes[0] for code in codes)
 

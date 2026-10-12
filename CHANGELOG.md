@@ -1,3 +1,10 @@
+## [3.33.3] - 2026-10-12
+
+### Changed
+
+- - Publish to PyPI with trusted publishing instead of the organisation-wide PyPI token.
+
+
 ## [3.33.2] - 2026-10-10
 
 ### Changed

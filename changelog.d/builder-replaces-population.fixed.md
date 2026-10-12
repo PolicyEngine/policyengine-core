@@ -1,0 +1,1 @@
+Writing a situation into an existing simulation with `SimulationBuilder` now replaces its population: it is no longer over a dataset (`is_over_dataset` is false and `dataset` is `None`), keeps nothing loaded or calculated for the old population, and rebuilds its baseline branch on the situation; `subsample` explains that it needs a dataset instead of failing.

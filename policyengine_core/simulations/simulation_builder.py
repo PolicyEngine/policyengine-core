@@ -73,8 +73,15 @@ class SimulationBuilder:
         Build a simulation from ``input_dict``. Optionally overwrites an existing simulation.
 
         This method uses :any:`build_from_entities` if entities are fully specified, or :any:`build_from_variables` if not.
+
+        Overwriting replaces the simulation's population with the situation's
+        (see :meth:`Simulation._replace_population`): it is no longer over a
+        dataset, and holds nothing loaded or calculated for its old population.
+        It keeps its tax-benefit system and settings, and its baseline branch
+        is rebuilt on the new population.
         """
 
+        replacing = simulation is not None
         input_dict = self.explicit_singular_entities(tax_benefit_system, input_dict)
         if any(
             key in tax_benefit_system.entities_plural() for key in input_dict.keys()
@@ -87,13 +94,28 @@ class SimulationBuilder:
                 tax_benefit_system, input_dict, simulation
             )
 
+        if not replacing:
+            # A replaced simulation's were recorded before its branches were
+            # rebuilt (see ``_finish_replacing``).
+            self._record_input_variables(simulation)
+
+        return simulation
+
+    def _record_input_variables(self, simulation: Simulation) -> None:
         simulation.input_variables = [
             variable.name
             for variable in simulation.tax_benefit_system.variables.values()
             if len(simulation.get_holder(variable.name).get_known_periods()) > 0
         ]
 
-        return simulation
+    def _finish_replacing(self, simulation: Simulation) -> None:
+        """Finish writing a situation into a simulation whose population it replaced."""
+        simulation.has_axes = self.has_axes
+        self._record_input_variables(simulation)
+        # Its branches still hold the old population. Rebuilt after the
+        # inputs are recorded, the baseline records them too, as in
+        # ``Simulation.__init__``.
+        simulation._rebuild_branches()
 
     def build_from_entities(
         self,
@@ -113,6 +135,7 @@ class SimulationBuilder:
         """
         input_dict = copy.deepcopy(input_dict)
 
+        replacing = simulation is not None
         if simulation is None:
             simulation = Simulation(
                 tax_benefit_system=tax_benefit_system,
@@ -177,6 +200,10 @@ class SimulationBuilder:
             self.axes = axes
             self.expand_axes()
 
+        if replacing:
+            # The situation parsed: write it into new populations.
+            simulation._replace_population()
+
         try:
             self.finalize_variables_init(simulation.persons)
         except PeriodMismatchError as e:
@@ -188,6 +215,9 @@ class SimulationBuilder:
                 self.finalize_variables_init(population)
             except PeriodMismatchError as e:
                 self.raise_period_mismatch(population.entity, instances_json, e)
+
+        if replacing:
+            self._finish_replacing(simulation)
 
         return simulation
 
@@ -209,7 +239,8 @@ class SimulationBuilder:
             )
         """
         count = _get_person_count(input_dict)
-        simulation = self.build_default_simulation(
+        replacing = simulation is not None
+        simulation = self._build_default_populations(
             tax_benefit_system, count, simulation
         )
         for variable, value in input_dict.items():
@@ -223,6 +254,8 @@ class SimulationBuilder:
             else:
                 for period_str, dated_value in value.items():
                     simulation.set_input(variable, period_str, dated_value)
+        if replacing:
+            self._finish_replacing(simulation)
         return simulation
 
     def build_default_simulation(
@@ -236,13 +269,31 @@ class SimulationBuilder:
             - There are ``count`` persons
             - There are ``count`` instances of each group entity, containing one person
             - Every person has, in each entity, the first role
-        """
 
+        Given a simulation, replace its population with this one, as
+        :meth:`build_from_dict` does.
+        """
+        replacing = simulation is not None
+        simulation = self._build_default_populations(
+            tax_benefit_system, count, simulation
+        )
+        if replacing:
+            self._finish_replacing(simulation)
+        return simulation
+
+    def _build_default_populations(
+        self,
+        tax_benefit_system: "TaxBenefitSystem",
+        count: int,
+        simulation: Simulation = None,
+    ) -> Simulation:
         if simulation is None:
             simulation = Simulation(
                 tax_benefit_system=tax_benefit_system,
                 populations=tax_benefit_system.instantiate_entities(),
             )
+        else:
+            simulation._replace_population()
         for population in simulation.populations.values():
             population.count = count
             population.ids = np.array(range(count))

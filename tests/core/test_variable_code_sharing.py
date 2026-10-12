@@ -8,6 +8,7 @@ the latest version of each file is kept.
 
 import hashlib
 import os
+import py_compile
 import sys
 import textwrap
 import threading
@@ -88,6 +89,20 @@ def test_shared_code_is_compiled_from_the_current_source():
         assert code == compile(source, path, "exec", dont_inherit=True), path
         # Code equality ignores the file name, so check it separately.
         assert code.co_filename == path
+
+
+def test_sourceless_bytecode_variable_file_loads_and_runs_formula(tmp_path):
+    source = tmp_path / "probe.py"
+    bytecode = source.with_suffix(".pyc")
+    source.write_text(VARIABLE_FILE.format(value=4))
+    try:
+        py_compile.compile(str(source), cfile=str(bytecode), doraise=True)
+    except (OSError, NotImplementedError) as error:
+        pytest.skip(f"Cannot write bytecode: {error}")
+    source.unlink()
+
+    system = _system_with_probe(bytecode)
+    assert _value(system) == pytest.approx(4)
 
 
 def test_a_relative_path_compiles_under_its_absolute_path(tmp_path, monkeypatch):

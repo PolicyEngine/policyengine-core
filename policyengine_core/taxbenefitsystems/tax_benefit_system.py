@@ -4,6 +4,7 @@ import copy
 import glob
 import hashlib
 import importlib
+from importlib.machinery import SourceFileLoader
 import inspect
 import logging
 import os
@@ -66,8 +67,8 @@ log = logging.getLogger(__name__)
 # objects alive, such as coverage's sys.monitoring core, would then hold a copy
 # of every variable file's code for each system built. Only the latest version
 # of each file is kept, for the life of the process (entries for files deleted
-# since are not removed). Variable files' .pyc files are not used: the code is
-# compiled from the bytes that were hashed, once per process.
+# since are not removed). For source loaders, .pyc files are not used: the code
+# is compiled from the bytes that were hashed, once per process.
 _variable_file_code: dict[str, tuple[bytes, types.CodeType]] = {}
 _variable_file_code_lock = threading.Lock()
 
@@ -393,8 +394,11 @@ class TaxBenefitSystem:
                 spec = importlib.util.spec_from_file_location(module_name, file_path)
                 module = importlib.util.module_from_spec(spec)
                 sys.modules[module_name] = module
-                code = _compiled_variable_file(spec.loader)
-                exec(code, module.__dict__)
+                if isinstance(spec.loader, SourceFileLoader):
+                    code = _compiled_variable_file(spec.loader)
+                    exec(code, module.__dict__)
+                else:
+                    spec.loader.exec_module(module)
             except NameError as e:
                 logging.error(
                     str(e)

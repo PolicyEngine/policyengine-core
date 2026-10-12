@@ -268,6 +268,37 @@ def test_a_simulation_cannot_be_overwritten_while_it_calculates(
     assert simulation.is_over_dataset
 
 
+def test_a_calculation_that_read_the_data_does_not_keep_it(
+    isolated_tax_benefit_system,
+):
+    other = Simulation(tax_benefit_system=isolated_tax_benefit_system, dataset=_data())
+
+    class others_salary(Variable):
+        value_type = float
+        entity = Person
+        definition_period = MONTH
+        label = "Total salary in another simulation, which this one replaces"
+
+        def formula(person, period, parameters):
+            total = other.calculate("salary", period).sum()
+            if other.is_over_dataset:
+                SimulationBuilder().build_from_dict(
+                    other.tax_benefit_system, SITUATION, simulation=other
+                )
+            return person("salary", period) * 0 + total
+
+    isolated_tax_benefit_system.add_variable(others_salary)
+    simulation = SimulationBuilder().build_from_dict(
+        isolated_tax_benefit_system, SITUATION
+    )
+
+    # Read from the data (ten salaries of 1,000), the total is stale once the
+    # situation replaces it: the calculation runs again and reads 3,000.
+    np.testing.assert_array_equal(
+        simulation.calculate("others_salary", PERIOD), [SALARY]
+    )
+
+
 class taxed_salary(Variable):
     value_type = float
     entity = Person

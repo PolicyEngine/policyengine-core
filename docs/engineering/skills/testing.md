@@ -46,10 +46,12 @@ process. Its memory is bounded by design, and tests must keep it that way:
   every collected item until the session ends, so anything stored on the item
   lives for the whole run.
 - A case that names `reforms` or `extensions` runs on a system built for
-  that combination: a full copy of the baseline system. The runner caches the
-  `--reform-cache-size` most recently used of them (default 2) plus the
-  reform-free system. Do not add a cache to the runner that grows with the
-  number of cases or combinations.
+  that combination on the reform-free system: a reform copies the parameter
+  tree before it changes it, so each holds one copy of the tree. The runner
+  caches the `--reform-cache-size` most recently used of them (default 2) plus
+  the reform-free system, and drops one before building another when full.
+  Do not add a cache to the runner that grows with the number of cases or
+  combinations.
 - A case that sets a parameter with a dotted input key runs on a system of its
   own (`_ParameterInputReform`) that copies only the nodes on the paths to the
   parameters it sets (`policyengine_core.parameters.path_copy`) and shares the

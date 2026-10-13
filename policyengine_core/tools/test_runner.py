@@ -539,9 +539,9 @@ def _get_tax_benefit_system(
     while len(reform_systems) > cache_size:
         reform_systems.popitem(last=False)
 
+    if cached_systems.reform_free is None:
+        cached_systems.reform_free = baseline.clone()
     if not reforms and not extensions and not reform_key:
-        if cached_systems.reform_free is None:
-            cached_systems.reform_free = baseline.clone()
         return cached_systems.reform_free
 
     # Key: (reforms in order, reform_key, extensions as a frozenset). The
@@ -561,7 +561,23 @@ def _get_tax_benefit_system(
         reform_systems.move_to_end(inner_key)
         return cached
 
-    current_tax_benefit_system = baseline.clone()
+    # Make room before building, not after, so the cache and the system being
+    # built never add up to more than ``cache_size`` reform systems.
+    while reform_systems and len(reform_systems) >= cache_size:
+        reform_systems.popitem(last=False)
+
+    if (reforms or extensions) and all(
+        _copies_its_baseline(reform) for reform in reforms
+    ):
+        # Every reform copies the parameters it changes and leaves the system
+        # it is applied to as it was, and each extension below is loaded into
+        # a clone, so build on the shared reform-free system: what comes back
+        # is a new system either way. A clone of the baseline here doubled
+        # every reform system's size, the clone kept alive as the reform's
+        # ``baseline``.
+        current_tax_benefit_system = cached_systems.reform_free
+    else:
+        current_tax_benefit_system = baseline.clone()
 
     for reform_path in reforms:
         if isinstance(reform_path, str):
@@ -578,10 +594,18 @@ def _get_tax_benefit_system(
 
     if cache_size > 0:
         reform_systems[inner_key] = current_tax_benefit_system
-        while len(reform_systems) > cache_size:
-            reform_systems.popitem(last=False)
 
     return current_tax_benefit_system
+
+
+def _copies_its_baseline(reform) -> bool:
+    """Whether applying ``reform`` leaves the system it is applied to as it
+    was: a reform named by its path (``apply_reform`` requires a ``Reform``)
+    or a ``Reform`` class, whose constructor copies the baseline's parameter
+    tree, entities and variable registry before ``apply`` changes them."""
+    return isinstance(reform, str) or (
+        isinstance(reform, type) and issubclass(reform, Reform)
+    )
 
 
 def assert_near(

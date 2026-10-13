@@ -3,7 +3,8 @@
 For any sequence of requests, each with its own cache size, the cache holds
 at most that call's ``cache_size`` reform systems after the call, returns a cached object exactly when a plain
 LRU of that size would, always hands back a system built for the reforms and
-extensions requested, and keeps one reform-free system throughout.
+extensions requested, and keeps one reform-free system throughout, which no
+reform or extension changes although reforms are built on it.
 ``test_runner_memory.py`` pins the same behaviour with examples.
 """
 
@@ -83,9 +84,12 @@ def test_cache_matches_reference_lru(sequence):
         assert applied_reforms == list(reforms)
         assert applied_extensions == set(extensions)
 
+        cached = _tax_benefit_system_cache[baseline]
+        if reform_free is None:
+            reform_free = cached.reform_free
+        assert cached.reform_free is reform_free
+        assert reform_free.applied == ()
         if not reforms and not extensions and not reform_key:
-            if reform_free is None:
-                reform_free = system
             assert system is reform_free
         else:
             key = (tuple(reforms), reform_key, frozenset(extensions))
@@ -100,7 +104,5 @@ def test_cache_matches_reference_lru(sequence):
                         reference.popitem(last=False)
             last_returned[key] = system
 
-        cached = _tax_benefit_system_cache[baseline]
         assert len(cached.reforms) <= cache_size
         assert list(cached.reforms) == list(reference)
-        assert cached.reform_free is reform_free

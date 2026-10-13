@@ -102,7 +102,13 @@ def get_parser():
             "--reform-cache-size",
             type=non_negative_int,
             default=None,
-            help="how many reform systems (built for tests with reforms, extensions or parameter inputs) to keep cached; each is a full copy of the tax-benefit system. Defaults to 2; 0 caches none.",
+            help="how many reform systems (built for tests with reforms or extensions) to keep cached; each is a full copy of the tax-benefit system. Defaults to 2; 0 caches none.",
+        )
+        parser.add_argument(
+            "--read-only-arrays",
+            action="store_true",
+            default=False,
+            help="store every calculated and input array read-only, so a formula that writes into an array it read from another variable fails at that line instead of changing that variable for later readers",
         )
 
         return parser

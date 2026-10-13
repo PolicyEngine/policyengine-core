@@ -16,12 +16,14 @@ from policyengine_core.tools import (
     eval_expression,
 )
 from policyengine_core.simulations import SimulationBuilder
+from policyengine_core.data_storage import InMemoryStorage
 from policyengine_core.errors import (
     SituationParsingError,
     VariableNotFoundError,
 )
 from policyengine_core.scripts import build_tax_benefit_system
 from policyengine_core.reforms import Reform, set_parameter
+from policyengine_core.parameters.path_copy import copy_paths
 from policyengine_core.populations import ADD, DIVIDE
 
 log = logging.getLogger(__name__)
@@ -71,12 +73,14 @@ from collections import OrderedDict
 
 _tax_benefit_system_cache: "weakref.WeakKeyDictionary" = weakref.WeakKeyDictionary()
 
-# How many reform systems (cases with ``reforms``, ``extensions`` or dotted
-# parameter inputs) each baseline keeps, least recently used evicted first.
-# Every one is a full clone of the baseline's parameters and variables, which
-# is over a gigabyte for policyengine-us, and an unbounded cache made a long run
-# grow by that much for every distinct combination it met. The reform-free
-# system that most cases share is always kept and does not count.
+# How many reform systems (cases with ``reforms`` or ``extensions``) each
+# baseline keeps, least recently used evicted first. Every one is a full clone
+# of the baseline's parameters and variables, which is over a gigabyte for
+# policyengine-us, and an unbounded cache made a long run grow by that much for
+# every distinct combination it met. The reform-free system that most cases
+# share is always kept and does not count. Dotted parameter inputs do not use
+# the cache: each such case gets a ``_ParameterInputReform`` of its own, which
+# shares nearly all of its tree with the cached system it is built on.
 DEFAULT_REFORM_CACHE_SIZE = 2
 
 
@@ -105,15 +109,20 @@ def run_tests(tax_benefit_system, paths, options=None):
     +-------------------------------+-----------+-------------------------------------------+
     | reform_cache_size             | ``int``   | Reform systems kept cached (default 2)    |
     +-------------------------------+-----------+-------------------------------------------+
+    | read_only_arrays              | ``bool``  | Store cached arrays read-only, so a       |
+    |                               |           | formula writing into one it read fails    |
+    +-------------------------------+-----------+-------------------------------------------+
 
-    **Memory**: a case that names ``reforms`` or ``extensions``, or sets a
-    parameter with a dotted input key, runs on a system built for that
-    combination, which is a full copy of ``tax_benefit_system``. The runner
-    keeps the ``reform_cache_size`` most recently used of them and the
-    reform-free system every other case shares, and each case releases its
-    simulation when it finishes, so memory does not grow with the number of
-    cases or of distinct combinations. Each system still caches its
-    parameters at every distinct instant the cases read.
+    **Memory**: a case that names ``reforms`` or ``extensions`` runs on a
+    system built for that combination, which is a full copy of
+    ``tax_benefit_system``. The runner keeps the ``reform_cache_size`` most
+    recently used of them and the reform-free system every other case shares.
+    A case that sets a parameter with a dotted input key runs on a system of
+    its own that copies only the paths to the parameters it sets and shares
+    everything else with the system its reforms select. Each case releases its
+    simulation and that system when it finishes, so memory does not grow with
+    the number of cases or of distinct combinations. Each system still caches
+    its parameters at every distinct instant the cases read.
 
     """
 
@@ -131,10 +140,16 @@ def run_tests(tax_benefit_system, paths, options=None):
     if options is None:
         options = {}
 
-    return pytest.main(
-        [*argv, *paths],
-        plugins=[OpenFiscaPlugin(tax_benefit_system, options)],
-    )
+    previously_read_only = InMemoryStorage.read_only_arrays
+    if options.get("read_only_arrays"):
+        InMemoryStorage.read_only_arrays = True
+    try:
+        return pytest.main(
+            [*argv, *paths],
+            plugins=[OpenFiscaPlugin(tax_benefit_system, options)],
+        )
+    finally:
+        InMemoryStorage.read_only_arrays = previously_read_only
 
 
 class YamlFile(pytest.File):
@@ -228,51 +243,29 @@ class YamlItem(pytest.Item):
             unsafe_input = {}
         period = self.test.get("period")
         input = {}
-        inline_reforms = []
-        parametric_reform_items = []
+        parameter_inputs = []
         for key, value in unsafe_input.items():
             if "." in key:
-                inline_reforms += [
-                    set_parameter(
-                        key,
-                        value,
-                        return_modifier=True,
-                        period=f"year:2000:40",
-                    )
-                ]
-                parametric_reform_items.append((key, value))
+                parameter_inputs.append((key, value))
             else:
                 input[key] = value
-
-        if len(inline_reforms) == 0:
-            inline_reform = []
-        else:
-
-            class inline_reform_class(Reform):
-                def apply(self):
-                    for modifier in inline_reforms:
-                        self.parameters = modifier(self.parameters)
-
-            inline_reform = [inline_reform_class]
 
         reforms = self.test.get("reforms", [])
         if isinstance(reforms, str):
             reforms = [reforms]
 
-        if not inline_reforms:
-            inline_reform = []
-
         self.tax_benefit_system = _get_tax_benefit_system(
             self.baseline_tax_benefit_system,
-            reforms + inline_reform,
+            reforms,
             self.test.get("extensions", []),
-            # ``repr`` keeps 0.2 and "0.2" apart: one is a valid value, the
-            # other is rejected when the system is built.
-            reform_key="=".join(
-                [f"{key}:{value!r}" for key, value in parametric_reform_items]
-            ),
             cache_size=self.options.get("reform_cache_size"),
         )
+        if parameter_inputs:
+            # Built for this case alone, and cheap: it shares every parameter
+            # it does not set with the cached system it is built on.
+            self.tax_benefit_system = _ParameterInputReform(
+                self.tax_benefit_system, parameter_inputs
+            )
         verbose = self.options.get("verbose")
         performance_graph = self.options.get("performance_graph")
         performance_tables = self.options.get("performance_tables")
@@ -481,6 +474,34 @@ class _CachedSystems:
     def __init__(self):
         self.reform_free = None
         self.reforms = OrderedDict()
+
+
+class _ParameterInputReform(Reform):
+    """Sets a case's dotted parameter inputs on top of ``baseline``.
+
+    Each input sets its parameter from 2000 for 40 years, as
+    ``set_parameter`` does. The reform copies only the nodes on the paths of
+    the parameters it sets (see ``policyengine_core.parameters.path_copy``),
+    so it shares the rest of ``baseline``'s tree, including the at-instant
+    values ``baseline`` has cached. A full copy of policyengine-us's tree took
+    seconds and over half a gigabyte for every distinct set of values, and
+    most cases that set parameters use values no other case does.
+    """
+
+    def __init__(self, baseline, parameter_inputs):
+        self.parameter_inputs = list(parameter_inputs)
+        super().__init__(baseline)
+
+    def _copy_parameters(self, baseline_parameters):
+        return copy_paths(
+            baseline_parameters, [key for key, _ in self.parameter_inputs]
+        )
+
+    def apply(self):
+        for key, value in self.parameter_inputs:
+            set_parameter(key, value, period="year:2000:40", return_modifier=True)(
+                self.parameters
+            )
 
 
 def _get_tax_benefit_system(

@@ -157,7 +157,7 @@ class Reform(TaxBenefitSystem):
         # deep-copying, but plenty of reforms mutate ``self.parameters``
         # directly (bug C4).
         if baseline.parameters is not None:
-            self.parameters = baseline.parameters.clone()
+            self.parameters = self._copy_parameters(baseline.parameters)
         else:
             self.parameters = None
         # Use a fresh at-instant cache so reform mutations aren't shadowed
@@ -171,6 +171,15 @@ class Reform(TaxBenefitSystem):
                 "Reform {} must define an `apply` function".format(self.key)
             )
         self.apply()
+
+    def _copy_parameters(self, baseline_parameters: ParameterNode) -> ParameterNode:
+        """The tree ``apply`` starts from and may change in place.
+
+        A full clone of the baseline's tree, since a reform can change any
+        node. A reform that changes only parameters it can name in advance can
+        copy less (see ``policyengine_core.parameters.path_copy``).
+        """
+        return baseline_parameters.clone()
 
     def __getattr__(self, attribute):
         return getattr(self.baseline, attribute)

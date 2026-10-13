@@ -31,6 +31,7 @@ def main(parser):
         "ignore_variables": args.ignore_variables,
         "visualize": args.visualize,
         "reform_cache_size": args.reform_cache_size,
+        "read_only_arrays": args.read_only_arrays,
     }
 
     paths = [os.path.abspath(path) for path in args.path]

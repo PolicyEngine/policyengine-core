@@ -85,6 +85,14 @@ class InMemoryStorage:
     # holder per branch for inputs most branches never change.
     _inputs: Union[Set[str], FrozenSet[str]] = _NO_INPUTS
     is_eternal: bool
+    # Whether every storage stores and hands out read-only views of numpy
+    # arrays, so that code writing into an array it read (``x += y`` on the
+    # result of ``tax_unit("x", period)``) raises at that line instead of
+    # changing ``x`` for every later reader. Off by default; the YAML test
+    # runner turns it on for a run with the ``read_only_arrays`` option. The
+    # caller's own array stays writeable: only the stored view is protected.
+    # Masked arrays are left as they are, since a view shares their mask.
+    read_only_arrays: bool = False
 
     def __init__(self, is_eternal: bool):
         self._arrays = {}
@@ -182,6 +190,8 @@ class InMemoryStorage:
             # First read of an array shared by ``clone``: from here on the
             # caller may write into it, so it needs to be this storage's own.
             values = values.copy()
+            if self.read_only_arrays:
+                values = _read_only_view(values)
             self._arrays[key] = values
             self._stop_sharing(key)
         return values
@@ -304,6 +314,8 @@ class InMemoryStorage:
                 "string form is lossy (see policyengine-core#526)."
             )
         key = f"{branch_name}:{period}"
+        if self.read_only_arrays and _can_share(value):
+            value = _read_only_view(value)
         self._arrays[key] = value
         self._stop_sharing(key)
         if derived:

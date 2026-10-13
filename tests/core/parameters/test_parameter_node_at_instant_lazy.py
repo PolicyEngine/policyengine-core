@@ -314,6 +314,18 @@ def test_traced_nodes_copy_and_pickle(duplicate):
         assert duplicate(node).group.x == 0.1
 
 
+@pytest.mark.parametrize("protocol", range(pickle.HIGHEST_PROTOCOL + 1))
+def test_a_partly_read_node_pickles_under_every_protocol(protocol):
+    """Protocols 0 and 1 refuse an object with ``__slots__`` and no
+    ``__getstate__``, and the lazy state is one."""
+    at_instant = build_tree().get_at_instant("2017-03-01")
+    assert at_instant.group.x == 0.1
+    restored = pickle.loads(pickle.dumps(at_instant, protocol=protocol))
+    assert restored.group.x == 0.1
+    assert restored.flat_rate == 0.1  # not read before pickling
+    assert ordered(materialise(restored)) == ordered(materialise(at_instant))
+
+
 def test_a_child_without_a_value_is_resolved_once():
     tree = ParameterNode("", data={"late": {"values": {"2030-01-01": 1}}})
     held = tree.get_at_instant("2020-01-01")

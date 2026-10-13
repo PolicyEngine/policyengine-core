@@ -52,6 +52,15 @@ class _LazyChildren:
         # Every child in order, once all of ``source`` is resolved.
         self.children = None
 
+    # Pickle protocols 0 and 1 refuse a class with ``__slots__`` that does not
+    # define these, and a parameter tree pickles the nodes it has cached.
+    def __getstate__(self) -> dict:
+        return {name: getattr(self, name) for name in self.__slots__}
+
+    def __setstate__(self, state: dict) -> None:
+        for name, value in state.items():
+            setattr(self, name, value)
+
 
 class ParameterNodeAtInstant:
     """

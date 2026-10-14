@@ -108,6 +108,29 @@ def test_a_node_held_across_a_change_keeps_what_it_read():
     assert tree.get_at_instant(INSTANT).group.x == 0.9
 
 
+@pytest.mark.parametrize(
+    "parent_child",
+    [{"values": {"2010-01-01": 1}}, {"x": {"values": {"2010-01-01": 1}}}],
+    ids=["parameter", "node"],
+)
+def test_a_child_named_parent_does_not_trap_cache_clearing(parent_child):
+    """``add_child`` sets each child as an attribute, so a child named
+    ``parent`` replaces the node's ``parent`` and points back at the node
+    until the node is attached; clearing caches meanwhile must not loop."""
+    tree = ParameterNode(
+        "",
+        data={
+            "group": {"parent": parent_child, "later": {"values": {"2010-01-01": 2}}}
+        },
+    )
+    group = tree.children["group"]
+    assert group.parent is tree
+
+    group.children["later"].update(period="year:2017:1", value=3)
+
+    assert tree.get_at_instant(INSTANT).group.later == 3
+
+
 def test_add_child_still_rejects_a_name_in_use():
     tree = build_tree()
     with pytest.raises(ValueError):

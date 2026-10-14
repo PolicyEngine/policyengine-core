@@ -232,9 +232,22 @@ class ParameterNode(AtInstantLike):
         self.parent = parent
 
     def clear_parent_cache(self):
-        self._at_instant_cache.clear()
-        if self.parent is not None:
-            self.parent.clear_parent_cache()
+        """Clear the nodes at instant cached by this node and every node above
+        it (scales cache nothing and are passed through).
+
+        Walks up without recursing and stops at a node it has already
+        cleared: while a node is loaded, a child named ``parent`` (as
+        policyengine-us's ``gov.hhs.medicaid.eligibility.categories.parent``)
+        replaces its ``parent`` attribute and points back at it until the node
+        is attached to its own parent.
+        """
+        node, cleared = self, set()
+        while node is not None and id(node) not in cleared:
+            cleared.add(id(node))
+            cache = getattr(node, "_at_instant_cache", None)
+            if cache is not None:
+                cache.clear()
+            node = getattr(node, "parent", None)
 
     def mark_as_modified(self):
         self.modified = True

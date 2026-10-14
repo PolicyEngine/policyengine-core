@@ -3,7 +3,11 @@ import warnings
 import pytest
 
 from policyengine_core import periods
+from policyengine_core.country_template import CountryTaxBenefitSystem
 from policyengine_core.country_template.entities import Household, Person
+from policyengine_core.country_template.reforms.modify_social_security_taxation import (
+    modify_social_security_taxation,
+)
 from policyengine_core.model_api import *
 from policyengine_core.parameters import ParameterNode
 from policyengine_core.periods import Instant
@@ -297,6 +301,29 @@ def test_modify_parameters(tax_benefit_system):
     instant = Instant((2013, 1, 1))
     parameters_at_instant = reform.get_parameters_at_instant(instant)
     assert parameters_at_instant.new_node.new_param is True
+
+
+def test_modify_parameters_reads_its_changes_after_the_baseline_cached_them():
+    """``modify_parameters`` gives the modifier a deep copy of the baseline's
+    tree. A copy that kept the values the baseline had cached at each instant
+    read those, not a change the modifier made to values or brackets in
+    place."""
+
+    def contribution_scale(system):
+        return system.get_parameters_at_instant(
+            "2017-01-01"
+        ).taxes.social_security_contribution
+
+    expected = contribution_scale(
+        modify_social_security_taxation(CountryTaxBenefitSystem())
+    )
+    read_baseline = CountryTaxBenefitSystem()
+    baseline_scale = contribution_scale(read_baseline)
+    assert baseline_scale.rates != expected.rates
+
+    reformed = contribution_scale(modify_social_security_taxation(read_baseline))
+    assert reformed.thresholds == expected.thresholds
+    assert reformed.rates == expected.rates
 
 
 def _income_tax_rate(reform, year):

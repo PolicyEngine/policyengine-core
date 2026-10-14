@@ -17,6 +17,13 @@ from policyengine_core.periods import (
 import requests
 
 
+def _clear_instant_caches(parameters: ParameterNode) -> None:
+    """Drop every node's cached values at each instant."""
+    for node in (parameters, *parameters.get_descendants()):
+        if isinstance(node, ParameterNode):
+            node._at_instant_cache = {}
+
+
 class classproperty(object):
     def __init__(self, f):
         self.f = f
@@ -207,6 +214,10 @@ class Reform(TaxBenefitSystem):
         """
         baseline_parameters = self.baseline.parameters
         baseline_parameters_copy = copy.deepcopy(baseline_parameters)
+        # The copy carries the values the baseline has cached at each
+        # instant, which a modifier that changes values or brackets in place
+        # does not clear.
+        _clear_instant_caches(baseline_parameters_copy)
         reform_parameters = modifier_function(baseline_parameters_copy)
         if not isinstance(reform_parameters, ParameterNode):
             return ValueError(

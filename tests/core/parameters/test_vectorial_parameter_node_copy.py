@@ -200,7 +200,7 @@ def test_copied_parameter_tree_keeps_its_cached_vectorial_node(copier):
     assert_near(rate[families][housings].z2, expected)
 
 
-def test_reform_that_modifies_parameters_keeps_the_cached_vectorial_node(
+def test_reform_that_modifies_parameters_reads_the_vectorial_node(
     isolated_tax_benefit_system,
 ):
     system = isolated_tax_benefit_system
@@ -210,10 +210,10 @@ def test_reform_that_modifies_parameters_keeps_the_cached_vectorial_node(
 
     class KeepParameters(Reform):
         def apply(self):
-            # Deep-copies the baseline's tree, cache included.
+            # Deep-copies the baseline's tree, which has cached that node.
             self.modify_parameters(lambda parameters: parameters)
 
     general = KeepParameters(system).get_parameters_at_instant("2017-01-01").general
 
-    assert type(general._vectorial_node) is VectorialParameterNodeAtInstant
     assert_near(general[names], expected)
+    assert type(general._vectorial_node) is VectorialParameterNodeAtInstant

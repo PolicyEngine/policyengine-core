@@ -612,6 +612,12 @@ class TaxBenefitSystem:
 
         parameters = self.parameters
         parameters_at_instant = self._parameters_at_instant_cache.get(instant)
+        if parameters_at_instant is not None and not _tree_still_caches(
+            parameters, str(instant), parameters_at_instant
+        ):
+            # A change to the tree (``Parameter.update``, ``add_child``)
+            # clears the tree's own caches up to its root, not this one.
+            parameters_at_instant = None
         if parameters_at_instant is None and parameters is not None:
             parameters_at_instant = parameters.get_at_instant(str(instant))
             if isinstance(parameters_at_instant, TracingParameterNodeAtInstant):
@@ -798,3 +804,11 @@ class TaxBenefitSystem:
         with open(self.modelled_policies, "r") as f:
             modelled_policies = yaml.load(f, Loader=yaml.FullLoader)
         self.modelled_policies = modelled_policies
+
+
+def _tree_still_caches(parameters, instant_str: str, parameters_at_instant) -> bool:
+    """Whether the root of ``parameters`` still caches this node at instant;
+    ``Parameter.update`` clears the caches from the parameter it changes up to
+    the root."""
+    tree_cache = getattr(parameters, "_at_instant_cache", None)
+    return tree_cache is None or tree_cache.get(instant_str) is parameters_at_instant

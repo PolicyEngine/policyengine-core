@@ -9,7 +9,7 @@ through itself until ``RecursionError``. ``copy.deepcopy`` looks
 ``recarray``.
 
 ``ParameterNodeAtInstant`` caches its vectorial node, and
-``Reform.modify_parameters`` deep-copies the baseline's parameter tree, so a
+``Reform.modify_parameters`` deep-copied the baseline's parameter tree, so a
 reform found a ``recarray`` where its cached node should be.
 """
 
@@ -210,7 +210,8 @@ def test_reform_that_modifies_parameters_reads_the_vectorial_node(
 
     class KeepParameters(Reform):
         def apply(self):
-            # Deep-copies the baseline's tree, which has cached that node.
+            # Given the reform's own copy of the tree, not the baseline's,
+            # which has cached that node.
             self.modify_parameters(lambda parameters: parameters)
 
     general = KeepParameters(system).get_parameters_at_instant("2017-01-01").general

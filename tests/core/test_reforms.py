@@ -304,10 +304,9 @@ def test_modify_parameters(tax_benefit_system):
 
 
 def test_modify_parameters_reads_its_changes_after_the_baseline_cached_them():
-    """``modify_parameters`` gives the modifier a deep copy of the baseline's
-    tree. A copy that kept the values the baseline had cached at each instant
-    read those, not a change the modifier made to values or brackets in
-    place."""
+    """A modifier that changes values or brackets in place is read even where
+    the baseline had cached its parameters. The modifier used to get a deep
+    copy of the baseline's tree that kept those cached values."""
 
     def contribution_scale(system):
         return system.get_parameters_at_instant(
@@ -324,6 +323,76 @@ def test_modify_parameters_reads_its_changes_after_the_baseline_cached_them():
     reformed = contribution_scale(modify_social_security_taxation(read_baseline))
     assert reformed.thresholds == expected.thresholds
     assert reformed.rates == expected.rates
+
+
+def _set_income_tax_rate_in_place(parameters):
+    """Changes values without ``Parameter.update``, which drops cached values."""
+    for value_at_instant in parameters.taxes.income_tax_rate.values_list:
+        value_at_instant.value = 0.5
+    return parameters
+
+
+def _double_basic_income(parameters):
+    basic_income = parameters.benefits.basic_income
+    basic_income.update(period="year:2017:1", value=2 * basic_income("2017-01-01"))
+    return parameters
+
+
+class set_income_tax_rate_in_place(Reform):
+    def apply(self):
+        self.modify_parameters(_set_income_tax_rate_in_place)
+
+
+class update_then_two_modifiers(Reform):
+    def apply(self):
+        self.parameters.taxes.income_tax_rate.update(period="year:2017:1", value=0.2)
+        self.modify_parameters(_double_basic_income)
+        self.modify_parameters(_double_basic_income)
+
+
+def _income_tax_rate_and_basic_income(system):
+    parameters = system.get_parameters_at_instant("2017-01-01")
+    return parameters.taxes.income_tax_rate, parameters.benefits.basic_income
+
+
+def test_an_in_place_reform_reads_its_changes_after_the_system_cached_them():
+    """``apply_reform_set`` runs ``apply`` on the system itself, whose tree
+    may already hold its values at an instant."""
+    system = CountryTaxBenefitSystem()
+    assert _income_tax_rate_and_basic_income(system) == (0.15, 600)
+
+    system.apply_reform_set(set_income_tax_rate_in_place)
+
+    assert _income_tax_rate_and_basic_income(system) == (0.5, 600)
+
+
+def test_modify_parameters_leaves_the_baseline_unchanged():
+    baseline = CountryTaxBenefitSystem()
+
+    reform = set_income_tax_rate_in_place(baseline)
+
+    assert _income_tax_rate_and_basic_income(reform) == (0.5, 600)
+    assert _income_tax_rate_and_basic_income(baseline) == (0.15, 600)
+
+
+def test_modify_parameters_keeps_what_apply_changed_before_it():
+    """The modifier used to get a fresh copy of the baseline's tree, which
+    dropped the update made before it and the first modifier's change."""
+    reform = update_then_two_modifiers(CountryTaxBenefitSystem())
+
+    assert _income_tax_rate_and_basic_income(reform) == (0.2, 2400)
+
+
+def test_a_reform_instance_and_an_in_place_reform_give_the_same_parameters():
+    """``Reform(baseline)`` and ``apply_reform_set`` run the same ``apply``."""
+    in_place = CountryTaxBenefitSystem()
+    in_place.apply_reform_set(update_then_two_modifiers)
+
+    reform = update_then_two_modifiers(CountryTaxBenefitSystem())
+
+    assert _income_tax_rate_and_basic_income(
+        reform
+    ) == _income_tax_rate_and_basic_income(in_place)
 
 
 def _income_tax_rate(reform, year):

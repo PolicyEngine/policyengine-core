@@ -57,6 +57,16 @@ from policyengine_core.variables.variable import NUMERIC_VALUE_TYPES
 log = logging.getLogger(__name__)
 
 
+def _clear_instant_caches(parameters) -> None:
+    """Drop the values every node of a parameter tree has cached at each
+    instant."""
+    if not isinstance(parameters, ParameterNode):
+        return
+    for node in (parameters, *parameters.get_descendants()):
+        if isinstance(node, ParameterNode):
+            node._at_instant_cache = {}
+
+
 class TaxBenefitSystem:
     """
     Represents the legislation.
@@ -765,6 +775,11 @@ class TaxBenefitSystem:
 
         Call this function in `apply()` if the reform asks for legislation parameter modifications.
 
+        The modifier is given this system's own parameter tree, with any
+        change ``apply()`` has made so far, and may change it in place. A
+        reform built with ``Reform(baseline)`` has its own copy of the
+        baseline's tree, so the baseline is left unchanged.
+
         Args:
             modifier_function: A function that takes a :obj:`.ParameterNode` and should return an object of the same type.
         """
@@ -778,6 +793,11 @@ class TaxBenefitSystem:
                     )
         else:
             reform_parameters = modifier_function(self.parameters)
+            # A modifier may change values, brackets or children in place
+            # rather than through ``update``, which is what drops the values a
+            # node has cached at each instant.
+            self._parameters_at_instant_cache = {}
+            _clear_instant_caches(self.parameters)
             if not isinstance(reform_parameters, ParameterNode):
                 return ValueError(
                     "modifier_function {} in module {} must return a ParameterNode".format(
@@ -785,6 +805,8 @@ class TaxBenefitSystem:
                         modifier_function.__module__,
                     )
                 )
+            if reform_parameters is not self.parameters:
+                _clear_instant_caches(reform_parameters)
             self.parameters = reform_parameters
         self._parameters_at_instant_cache = {}
         return self

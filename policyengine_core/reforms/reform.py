@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import copy
-from typing import Callable, Union, TYPE_CHECKING
+from typing import Union, TYPE_CHECKING
 
 from policyengine_core.parameters import ParameterNode, Parameter
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
@@ -15,13 +14,6 @@ from policyengine_core.periods import (
 )
 
 import requests
-
-
-def _clear_instant_caches(parameters: ParameterNode) -> None:
-    """Drop every node's cached values at each instant."""
-    for node in (parameters, *parameters.get_descendants()):
-        if isinstance(node, ParameterNode):
-            node._at_instant_cache = {}
 
 
 class classproperty(object):
@@ -159,10 +151,9 @@ class Reform(TaxBenefitSystem):
         super().__init__(baseline.entities)
         self.baseline = baseline
         # Clone the parameter tree so in-place mutations inside ``apply()``
-        # (``set_parameter(...)`` or ``self.parameters.path.update(...)``)
-        # don't leak into the baseline. ``modify_parameters()`` was already
-        # deep-copying, but plenty of reforms mutate ``self.parameters``
-        # directly (bug C4).
+        # (``set_parameter(...)``, ``self.parameters.path.update(...)`` or a
+        # ``modify_parameters()`` modifier) don't leak into the baseline
+        # (bug C4).
         if baseline.parameters is not None:
             self.parameters = self._copy_parameters(baseline.parameters)
         else:
@@ -180,7 +171,8 @@ class Reform(TaxBenefitSystem):
         self.apply()
 
     def _copy_parameters(self, baseline_parameters: ParameterNode) -> ParameterNode:
-        """The tree ``apply`` starts from and may change in place.
+        """The tree ``apply`` starts from and may change in place, directly or
+        through ``modify_parameters``.
 
         A full clone of the baseline's tree, since a reform can change any
         node. A reform that changes only parameters it can name in advance can
@@ -201,33 +193,6 @@ class Reform(TaxBenefitSystem):
             baseline_full_key = self.baseline.full_key
             key = ".".join([baseline_full_key, key])
         return key
-
-    def modify_parameters(
-        self, modifier_function: Callable[[ParameterNode], ParameterNode]
-    ) -> None:
-        """Make modifications on the parameters of the legislation.
-
-        Call this function in `apply()` if the reform asks for legislation parameter modifications.
-
-        Args:
-            modifier_function: A function that takes a :obj:`.ParameterNode` and should return an object of the same type.
-        """
-        baseline_parameters = self.baseline.parameters
-        baseline_parameters_copy = copy.deepcopy(baseline_parameters)
-        # The copy carries the values the baseline has cached at each
-        # instant, which a modifier that changes values or brackets in place
-        # does not clear.
-        _clear_instant_caches(baseline_parameters_copy)
-        reform_parameters = modifier_function(baseline_parameters_copy)
-        if not isinstance(reform_parameters, ParameterNode):
-            return ValueError(
-                "modifier_function {} in module {} must return a ParameterNode".format(
-                    modifier_function.__name__,
-                    modifier_function.__module__,
-                )
-            )
-        self.parameters = reform_parameters
-        self._parameters_at_instant_cache = {}
 
     @staticmethod
     def from_dict(

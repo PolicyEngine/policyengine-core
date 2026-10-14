@@ -1,0 +1,1 @@
+`Reform.modify_parameters` no longer deep-copies the baseline's parameter tree. The modifier changes the reform's own copy, as it already did for a reform applied with `apply_reform_set`, so changes made earlier in `apply` are kept and building such a reform skips a full copy of the tree.

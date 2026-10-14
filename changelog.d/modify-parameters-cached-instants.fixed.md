@@ -1,1 +1,1 @@
-`Reform.modify_parameters` reads a modifier's in-place changes to values or brackets even when the baseline had already cached its parameters at that instant.
+`modify_parameters` drops the values a parameter tree has cached at each instant once its modifier has run, so a modifier's in-place changes to values, brackets or children are read even where the system had already read those parameters.

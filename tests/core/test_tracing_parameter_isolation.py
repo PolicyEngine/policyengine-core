@@ -16,7 +16,7 @@ switched it off. From then on:
 - ``ParameterNode.clone`` copies ``trace`` and ``tracer``, so every clone of
   the system traced as well;
 - copying a ``TracingParameterNodeAtInstant`` (``copy``, ``deepcopy`` or
-  ``pickle``, as ``Reform.modify_parameters`` does when it deep-copies the
+  ``pickle``, as ``Reform.modify_parameters`` did when it deep-copied the
   tree) recursed without end, because ``__getattr__`` read
   ``parameter_node_at_instant`` from an instance the copy protocol had not
   filled in yet.
@@ -81,7 +81,8 @@ def test_traced_calculation_leaves_the_system_untraced(isolated_tax_benefit_syst
 def test_reform_after_a_traced_calculation_can_copy_the_parameters(
     isolated_tax_benefit_system,
 ):
-    """``Reform.modify_parameters`` deep-copies the baseline's parameter tree."""
+    """A reform built after a traced calculation reads its own parameters
+    and leaves the system's unchanged."""
     system = isolated_tax_benefit_system
     simulation = build_simulation(system, trace=True)
     simulation.calculate("income_tax", JANUARY)

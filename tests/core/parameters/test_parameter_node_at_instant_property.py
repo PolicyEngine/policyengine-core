@@ -17,7 +17,7 @@ hypothesis = pytest.importorskip("hypothesis")
 st = hypothesis.strategies
 
 from policyengine_core.errors import ParameterNotFoundError
-from policyengine_core.parameters import ParameterNodeAtInstant
+from policyengine_core.parameters import Parameter, ParameterNodeAtInstant
 from tests.fixtures.parameter_nodes_at_instant import (
     INSTANTS,
     build_tree,
@@ -89,3 +89,65 @@ def test_reads_in_any_order_match_the_up_front_build(instant, sequence):
             )
 
     assert ordered(materialise(root)) == ordered(expected_root)
+
+
+# Parameters a change can update: plain values, a value deep in the tree, a
+# zone of a vectorisable node, and a scale's brackets.
+UPDATABLE = [
+    lambda tree: tree.children["flat_rate"],
+    lambda tree: tree.children["group"].children["x"],
+    lambda tree: tree.children["group"].children["inner"].children["2"],
+    lambda tree: tree.children["by_zone"].children["z2"].children["amount"],
+    lambda tree: tree.children["scale"].brackets[0].children["threshold"],
+    lambda tree: tree.children["scale"].brackets[1].children["rate"],
+]
+# Nodes a change can add a child to.
+EXTENDABLE = [(), ("group",), ("group", "inner")]
+
+steps = st.one_of(
+    st.tuples(st.just("read"), st.sampled_from(PATHS), st.sampled_from(NAMES)),
+    st.tuples(
+        st.just("update"),
+        st.integers(0, len(UPDATABLE) - 1),
+        st.sampled_from([0.5, 7, 2000]),
+    ),
+    st.tuples(st.just("add_child"), st.sampled_from(EXTENDABLE), st.just(None)),
+)
+
+
+@hypothesis.given(
+    instant=st.sampled_from(INSTANTS), sequence=st.lists(steps, max_size=25)
+)
+@hypothesis.settings(max_examples=300, deadline=None)
+def test_a_node_requested_after_changes_reads_the_tree_as_it_is(instant, sequence):
+    """Reads, ``Parameter.update`` (scale brackets included) and
+    ``ParameterNode.add_child`` in any order: a node requested after the last
+    change reads exactly what the tree holds, whatever earlier reads resolved."""
+    tree = build_tree()
+    added = 0
+    for step, target, argument in sequence:
+        if step == "read":
+            node = tree.get_at_instant(instant)
+            expected = snapshot(tree, instant)
+            for name in target:
+                if name not in expected:
+                    break
+                node, expected = node[name], expected[name]
+            else:
+                if argument in expected:
+                    assert _comparable(getattr(node, argument)) == expected[argument]
+        elif step == "update":
+            UPDATABLE[target](tree).update(period="year:2000:100", value=argument)
+        else:
+            parent = tree
+            for name in target:
+                parent = parent.children[name]
+            added += 1
+            parent.add_child(
+                f"added_{added}",
+                Parameter(f"added_{added}", data={"values": {"2000-01-01": added}}),
+            )
+
+    assert ordered(materialise(tree.get_at_instant(instant))) == ordered(
+        snapshot(tree, instant)
+    )

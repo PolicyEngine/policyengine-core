@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Iterable, Union
 
 import numpy
 
-from policyengine_core import parameters, tools
+from policyengine_core import parameters, periods, tools
 from policyengine_core.errors import ParameterNotFoundError
 from policyengine_core.parameters import helpers
 
@@ -29,6 +29,18 @@ _MISSING = object()
 # a resolved child never take it. Reentrant because resolving a child can
 # build that child's own node.
 _RESOLUTION_LOCK = threading.RLock()
+
+
+def _reset_resolution_lock() -> None:
+    """Give a forked child a lock no thread holds. A thread of the parent that
+    held it at the fork does not exist in the child, so nothing would release
+    it, and the child's first resolution would wait for ever."""
+    global _RESOLUTION_LOCK
+    _RESOLUTION_LOCK = threading.RLock()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_reset_resolution_lock)
 
 
 class _LazyChildren:
@@ -55,6 +67,12 @@ class _LazyChildren:
     # Pickle protocols 0 and 1 refuse a class with ``__slots__`` that does not
     # define these, and a parameter tree pickles the nodes it has cached.
     def __getstate__(self) -> dict:
+        # A pickle or a deep copy is a snapshot, as when every child was built
+        # up front. Resolving what is left drops ``source``, whose parameter
+        # nodes reach the whole tree through their parents: the copy would
+        # otherwise carry the tree with it.
+        if self.source is not None:
+            _resolve_remaining(self)
         return {name: getattr(self, name) for name in self.__slots__}
 
     def __setstate__(self, state: dict) -> None:
@@ -75,6 +93,14 @@ class ParameterNodeAtInstant:
     held across an in-place change to its parameters reads the changed value
     for a child it has not read yet; once read (including found to have no
     value), a child keeps what that read found.
+
+    A node requested after a change reads the change: ``Parameter.update`` and
+    ``ParameterNode.add_child`` clear the cached nodes at instant of every
+    node above the one they change. After changing ``values_list``, a scale's
+    ``brackets`` or ``children`` directly, call
+    ``ParameterNode.clear_instant_caches``. A pickle or deep copy of a node
+    resolves every child first, so it is a snapshot that does not carry the
+    parameter tree.
     """
 
     def __init__(self, name: str, node: "ParameterNode", instant_str: str):
@@ -83,6 +109,12 @@ class ParameterNodeAtInstant:
         :param node: Original :any:`ParameterNode` instance.
         :param instant_str: A date in the format `YYYY-MM-DD`.
         """
+
+        # Built up front, a node at an instant that is not a date (such as
+        # ``parameters(None)``, which reads "None") failed on its first scale
+        # and was never cached. Built lazily, it would be cached and fail, or
+        # read the latest values, only when a child is read or copied.
+        periods.instant(instant_str)
 
         # The "technical" attributes are hidden, so that the node children can be easily browsed with auto-completion without pollution
         self._name = name
@@ -251,8 +283,8 @@ def _complete(state: _LazyChildren):
     state.absent = set()
 
 
-def _materialise(node_at_instant: ParameterNodeAtInstant, state: _LazyChildren):
-    """Resolve every child and set ``_children``."""
+def _resolve_remaining(state: _LazyChildren):
+    """Resolve every child not read yet, and complete the state."""
     with _RESOLUTION_LOCK:
         if state.children is None:
             for child_name in list(state.source):
@@ -261,6 +293,12 @@ def _materialise(node_at_instant: ParameterNodeAtInstant, state: _LazyChildren):
                 _resolve(state, child_name)
             if state.children is None:
                 _complete(state)
+
+
+def _materialise(node_at_instant: ParameterNodeAtInstant, state: _LazyChildren):
+    """Resolve every child and set ``_children``."""
+    with _RESOLUTION_LOCK:
+        _resolve_remaining(state)
         children = state.children
     if "_children" not in node_at_instant.__dict__:
         # Unless a child named ``_children`` took the name.

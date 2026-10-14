@@ -9,7 +9,10 @@ everything read is what the up-front build held.
 
 import copy
 import gc
+import os
 import pickle
+import select
+import signal
 import threading
 import weakref
 
@@ -188,12 +191,29 @@ def test_deep_copied_tree_keeps_its_own_nodes_at_instant():
     tree.get_at_instant("2017-03-01").group.x  # cache a partly read node
     clone = copy.deepcopy(tree)
     cached = clone._at_instant_cache["2017-03-01"]
+    # The copy's cached node is a snapshot: a change to the original tree
+    # does not reach it.
+    tree.flat_rate.update(value=0.5, period="year:2010:30")
+    assert cached.flat_rate == 0.1
+    # A node requested from the copy after a change to the copy reads the
+    # copy, and the original is untouched.
     clone.group.y.update(value=0.9, period="year:2010:30")
     clone.flat_rate.update(value=0.7, period="year:2010:30")
-    # The copy's cached node reads the copy, not the original tree.
-    assert cached.flat_rate == 0.7
-    assert tree.get_at_instant("2017-03-01").flat_rate == 0.1
+    assert clone.get_at_instant("2017-03-01").flat_rate == 0.7
+    assert clone.get_at_instant("2017-03-01").group.y == 0.9
+    assert tree.get_at_instant("2017-03-01").flat_rate == 0.5
     assert not hasattr(tree.get_at_instant("2017-03-01").group, "y")
+
+
+def test_a_node_is_built_only_at_a_date():
+    """Built up front, a node at "None" (``parameters(None)``) failed on its
+    first scale and was never cached; ``Simulation._calculate`` relies on
+    that when it checks an eternal variable's abolition."""
+    tree = build_tree()
+    with pytest.raises(ValueError):
+        tree(None)
+    assert "None" not in tree._at_instant_cache
+    copy.deepcopy(tree)
 
 
 def test_copy_of_a_node_at_instant_reads_the_same_values():
@@ -324,6 +344,83 @@ def test_a_partly_read_node_pickles_under_every_protocol(protocol):
     assert restored.group.x == 0.1
     assert restored.flat_rate == 0.1  # not read before pickling
     assert ordered(materialise(restored)) == ordered(materialise(at_instant))
+
+
+@pytest.mark.parametrize(
+    "duplicate", [copy.deepcopy, lambda node: pickle.loads(pickle.dumps(node))]
+)
+def test_a_copied_node_is_a_snapshot_without_the_parameter_tree(duplicate):
+    """Unread children hold parameter nodes, whose parents reach the root: a
+    copy that kept them would carry, and keep alive, the whole tree."""
+    tree = ParameterNode(
+        "",
+        data={
+            "small": {
+                "x": {"values": {"2010-01-01": 1}},
+                "y": {"values": {"2010-01-01": 2}},
+            },
+            "large": {
+                f"parameter_{index}": {"values": {"2010-01-01": index}}
+                for index in range(2000)
+            },
+        },
+    )
+    small = tree.get_at_instant("2017-01-01").small
+    assert small.x == 1
+
+    copied = duplicate(small)
+
+    assert copied.__dict__[_STATE].source is None
+    assert (copied.x, copied.y, list(copied)) == (1, 2, ["x", "y"])
+    assert len(pickle.dumps(small)) * 20 < len(pickle.dumps(tree))
+    tree_reference = weakref.ref(tree)
+    del tree, small
+    gc.collect()
+    assert tree_reference() is None
+    assert copied.y == 2
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="needs os.fork")
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
+def test_a_forked_child_resolves_while_another_thread_was_resolving():
+    """A thread holding the resolution lock at the fork does not exist in the
+    child, so the child needs a lock of its own."""
+    resolving, release = threading.Event(), threading.Event()
+
+    class SlowChild:
+        def _get_at_instant(self, instant):
+            resolving.set()
+            release.wait(10)
+            return 1
+
+    tree = ParameterNode("", data={"other": {"values": {"2010-01-01": 7}}})
+    tree.children = {"slow": SlowChild(), **tree.children}
+    held = tree.get_at_instant("2017-01-01")
+    reader = threading.Thread(target=lambda: held.slow)
+    reader.start()
+    assert resolving.wait(10)
+    unrelated = ParameterNode("", data={"x": {"values": {"2010-01-01": 3}}})
+
+    read_end, write_end = os.pipe()
+    child = os.fork()
+    if child == 0:  # pragma: no cover - runs in the forked child
+        try:
+            value = unrelated.get_at_instant("2017-01-01").x
+            os.write(write_end, str(value).encode())
+        finally:
+            os._exit(0)
+    os.close(write_end)
+    try:
+        ready, _, _ = select.select([read_end], [], [], 10)
+        received = os.read(read_end, 16) if ready else b""
+    finally:
+        release.set()
+        reader.join()
+        if not received:
+            os.kill(child, signal.SIGKILL)
+        os.waitpid(child, 0)
+        os.close(read_end)
+    assert received == b"3"
 
 
 def test_a_child_without_a_value_is_resolved_once():

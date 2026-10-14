@@ -154,6 +154,10 @@ class TaxBenefitSystem:
             self.parameters = uprate_parameters(self.parameters)
             self.parameters = propagate_parameter_metadata(self.parameters)
             self.add_abolition_parameters()
+            # The operations above change values in place, after the reforms
+            # have run and possibly read the parameters.
+            self.parameters.clear_instant_caches()
+            self._parameters_at_instant_cache = {}
 
         self.add_modelled_policy_metadata()
 

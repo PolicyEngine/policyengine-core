@@ -182,6 +182,8 @@ class ParameterNode(AtInstantLike):
         self.children[name] = child
         setattr(self, name, child)
         child.parent = self
+        # Nodes at instant cached here and above were built without it.
+        self.clear_parent_cache()
 
     def __repr__(self) -> str:
         result = os.linesep.join(
@@ -238,6 +240,20 @@ class ParameterNode(AtInstantLike):
         self.modified = True
         if self.parent is not None:
             self.parent.mark_as_modified()
+
+    def clear_instant_caches(self) -> None:
+        """Drop the nodes at instant cached by this node, every node below it
+        and every node above it.
+
+        ``Parameter.update`` and ``add_child`` clear what they change. Call
+        this after changing ``values_list``, a scale's ``brackets`` or
+        ``children`` directly, so that nodes at instant requested afterwards
+        read the change.
+        """
+        self.clear_parent_cache()
+        for descendant in self.get_descendants():
+            if isinstance(descendant, ParameterNode):
+                descendant._at_instant_cache.clear()
 
     def get_child(self, path: str) -> "ParameterNode":
         node = self

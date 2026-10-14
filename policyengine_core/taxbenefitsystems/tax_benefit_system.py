@@ -58,13 +58,9 @@ log = logging.getLogger(__name__)
 
 
 def _clear_instant_caches(parameters) -> None:
-    """Drop the values every node of a parameter tree has cached at each
-    instant."""
-    if not isinstance(parameters, ParameterNode):
-        return
-    for node in (parameters, *parameters.get_descendants()):
-        if isinstance(node, ParameterNode):
-            node._at_instant_cache = {}
+    """Drop the nodes at instant every node of a parameter tree has cached."""
+    if isinstance(parameters, ParameterNode):
+        parameters.clear_instant_caches()
 
 
 class TaxBenefitSystem:

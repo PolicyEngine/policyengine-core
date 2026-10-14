@@ -1,0 +1,1 @@
+`Parameter.update` on a bracket of a freshly loaded scale and `ParameterNode.add_child` clear the cached parameters of every node above them, `ParameterNode.clear_instant_caches` clears them after direct edits to values, brackets or children, and a tax-benefit system clears them once its parameter operations have run.

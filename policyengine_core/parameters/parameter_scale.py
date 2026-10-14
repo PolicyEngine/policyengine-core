@@ -53,6 +53,9 @@ class ParameterScale(AtInstantLike):
             bracket = parameters.ParameterScaleBracket(
                 name=bracket_name, data=bracket_data, file_path=file_path
             )
+            # As ``clone`` does, so that ``Parameter.update`` on a bracket's
+            # rate or threshold clears the caches above the scale.
+            bracket.parent = self
             brackets.append(bracket)
         self.brackets: typing.List[parameters.ParameterScaleBracket] = brackets
         self.propagate_uprating()

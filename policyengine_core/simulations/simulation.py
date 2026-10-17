@@ -918,7 +918,16 @@ class Simulation:
             # looked variables up there, and its holders kept the reform's
             # variables, so a variable the reform neutralized read as the
             # default in the baseline too.
-            self.baseline._bind_to_tax_benefit_system()
+            if (
+                situation is not None
+                and populations is None
+                and self.baseline.tax_benefit_system is not None
+            ):
+                # So were its inputs: people the situation gives no value
+                # held the reform's default.
+                self.baseline._build_from_situation(situation)
+            else:
+                self.baseline._bind_to_tax_benefit_system()
         else:
             self.baseline = None
 
@@ -1302,6 +1311,47 @@ class Simulation:
             }
         if getattr(self, "input_variables", None) is not None:
             self.input_variables = [name for name in self.input_variables if kept(name)]
+
+    def _build_from_situation(self, situation: dict) -> None:
+        """Give this simulation the inputs its own system makes of ``situation``.
+
+        For a reform simulation's baseline branch, which starts as a copy of
+        the reform simulation: the situation builder made that simulation's
+        inputs under the reform's system. A stored input is a whole array, so
+        a person the situation gives no value for a variable it gives others
+        held the reform's default for it, and the reform's system ignored
+        inputs for the variables it neutralizes. Here the simulation gets new
+        populations from its own system, and the situation is built into
+        them as the builder builds it under that system, except that inputs
+        the system cannot take are left out (see
+        ``SimulationBuilder.skip_rejected_inputs``), as
+        ``_bind_to_tax_benefit_system`` drops holders built for the reform's
+        definitions. The records of what the old populations held go with
+        them. The inputs are stored under ``"default"``, as in a simulation
+        built from the situation, which a branch reads through.
+        """
+        from policyengine_core.simulations.simulation_builder import (
+            SimulationBuilder,
+        )  # Import here to avoid circular dependency
+
+        self.build_from_populations(self.tax_benefit_system.instantiate_entities())
+        self._user_input_keys = set()
+        self._store_history = StoreHistory()
+        self._requested_variables = set()
+        self.invalidated_caches = set()
+        self._fast_cache = {}
+        builder = SimulationBuilder()
+        builder.default_period = self.default_input_period
+        builder.skip_rejected_inputs = True
+        # A situation without entities is set through ``set_input``, which
+        # stores under the simulation's branch name; one with entities is
+        # stored under ``"default"`` whatever the branch.
+        branch_name, self.branch_name = self.branch_name, "default"
+        try:
+            builder.build_from_dict(self.tax_benefit_system, situation, self)
+        finally:
+            self.branch_name = branch_name
+        self.has_axes = builder.has_axes
 
     def create_shortcuts(self) -> None:
         for _key, population in self.populations.items():

@@ -28,6 +28,104 @@ if TYPE_CHECKING:
     )
 
 from policyengine_core.variables import Variable
+
+
+def group_positions(
+    group_ids: ArrayLike, persons_group_ids: ArrayLike, entity_key: str = "group"
+) -> np.ndarray:
+    """Return the position in ``group_ids`` of each person's group.
+
+    ``members_entity_id`` indexes the arrays of a group population, which
+    follow the order ``group_ids`` were declared in. A person belongs to the
+    group whose declared ID equals theirs, wherever that group sits in the
+    declared order and whether or not other groups have members.
+
+    IDs match only when they are equal as values: IDs of different kinds
+    (say, 64-bit integers and floats, or signed and unsigned integers) are
+    compared one by one, because converting them to a common NumPy type can
+    make different IDs equal.
+
+    Raises:
+        ValueError: if the declared IDs repeat, or a person belongs to an ID
+            that was not declared.
+    """
+    group_ids = np.asarray(group_ids)
+    persons_group_ids = np.asarray(persons_group_ids)
+    if (
+        group_ids.dtype.kind == persons_group_ids.dtype.kind
+        and group_ids.dtype.kind in "biufUS"
+    ):
+        # Within one kind, NumPy compares without losing precision.
+        return _group_positions_by_sorting(group_ids, persons_group_ids, entity_key)
+    return _group_positions_by_lookup(group_ids, persons_group_ids, entity_key)
+
+
+def _group_positions_by_sorting(
+    group_ids: np.ndarray, persons_group_ids: np.ndarray, entity_key: str
+) -> np.ndarray:
+    sorter = np.argsort(group_ids, kind="stable")
+    sorted_ids = group_ids[sorter]
+    repeated = sorted_ids[1:][sorted_ids[1:] == sorted_ids[:-1]]
+    if len(repeated) > 0:
+        _raise_repeated_group_ids(entity_key, np.unique(repeated).tolist())
+    positions = np.searchsorted(sorted_ids, persons_group_ids)
+    declared = positions < len(sorted_ids)
+    declared[declared] = sorted_ids[positions[declared]] == persons_group_ids[declared]
+    if not declared.all():
+        _raise_undeclared_group_ids(
+            entity_key,
+            int((~declared).sum()),
+            np.unique(persons_group_ids[~declared]).tolist(),
+        )
+    return sorter[positions]
+
+
+def _group_positions_by_lookup(
+    group_ids: np.ndarray, persons_group_ids: np.ndarray, entity_key: str
+) -> np.ndarray:
+    position_of = {}
+    repeated = []
+    try:
+        for position, group_id in enumerate(group_ids.tolist()):
+            if group_id in position_of:
+                repeated.append(group_id)
+            else:
+                position_of[group_id] = position
+        if repeated:
+            _raise_repeated_group_ids(entity_key, list(dict.fromkeys(repeated)))
+        positions = np.fromiter(
+            (position_of.get(group_id, -1) for group_id in persons_group_ids.tolist()),
+            dtype=np.intp,
+            count=len(persons_group_ids),
+        )
+    except TypeError as error:
+        raise ValueError(
+            f"Person {entity_key} IDs ({persons_group_ids.dtype}) cannot be "
+            f"matched with the declared {entity_key} IDs ({group_ids.dtype})."
+        ) from error
+    undeclared = positions < 0
+    if undeclared.any():
+        _raise_undeclared_group_ids(
+            entity_key,
+            int(undeclared.sum()),
+            list(dict.fromkeys(persons_group_ids[undeclared].tolist())),
+        )
+    return positions
+
+
+def _raise_repeated_group_ids(entity_key: str, repeated: list) -> None:
+    raise ValueError(
+        f"{entity_key} IDs must be unique, but these repeat: {repeated[:5]}."
+    )
+
+
+def _raise_undeclared_group_ids(entity_key: str, count: int, undeclared: list) -> None:
+    raise ValueError(
+        f"{count} person(s) belong to {entity_key} IDs that were not "
+        f"declared: {undeclared[:5]}."
+    )
+
+
 from datetime import datetime
 
 
@@ -281,13 +379,23 @@ class SimulationBuilder:
         persons_group_assignment: ArrayLike,
         roles: typing.Iterable[str],
     ) -> None:
-        # Maps group's identifiers to a 0-based integer range, for indexing into members_roles (see PR#876)
-        group_sorted_indices = np.unique(persons_group_assignment, return_inverse=True)[
-            1
-        ]
-        group_population.members_entity_id = np.argsort(group_population.ids)[
-            group_sorted_indices
-        ]
+        """Join persons to the groups named by their membership IDs.
+
+        Memberships and roles are supplied in person order. Each membership
+        must match a unique declared group ID by value; equal numeric IDs
+        may have different dtypes. ``members_entity_id`` indexes the declared
+        group order, including groups with no members. An empty assignment
+        is supported. Roles are interpreted as role keys or integer indices.
+
+        Raises:
+            ValueError: if declared group IDs repeat or a membership names
+                an undeclared group.
+        """
+        group_population.members_entity_id = group_positions(
+            group_population.ids,
+            persons_group_assignment,
+            group_population.entity.key,
+        )
 
         flattened_roles = group_population.entity.flattened_roles
         roles_array = np.array(roles)

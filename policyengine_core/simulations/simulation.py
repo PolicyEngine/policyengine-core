@@ -1078,7 +1078,19 @@ class Simulation:
         self.create_shortcuts()
 
     def build_from_dataset(self) -> None:
-        """Build a simulation from a dataset."""
+        """Build a simulation from a dataset.
+
+        Entity-specific role columns take precedence over a generic ``role``
+        column, including period-suffixed entity role columns in flat files.
+        Without either, each person receives the literal ``default_role``
+        key. Only flattened-role keys match: unmatched and compound keys remain
+        unrecognized rather than selecting a first role or subrole.
+
+        A recognized implicit default with a finite role maximum must fit every
+        group's membership count. Otherwise an explicit role column is required.
+        Explicit dataset role columns do not validate role capacity.
+        ``default_role=None`` requires a role column.
+        """
         self.build_from_populations(self.tax_benefit_system.instantiate_entities())
         from policyengine_core.simulations.simulation_builder import (
             SimulationBuilder,
@@ -1155,6 +1167,26 @@ class Simulation:
             elif "role" in data:
                 person_roles = get_eternity_array("role")
             elif self.default_role is not None:
+                default_role = next(
+                    (
+                        role
+                        for role in group_entity.flattened_roles
+                        if role.key == self.default_role
+                    ),
+                    None,
+                )
+                if default_role is not None and default_role.max is not None:
+                    membership_counts = np.unique(
+                        person_membership_ids, return_counts=True
+                    )[1]
+                    if np.any(membership_counts > default_role.max):
+                        raise ValueError(
+                            f"Cannot assign default role {self.default_role!r} "
+                            f"to every person in {group_entity.key}: at most "
+                            f"{default_role.max} member(s) per group may hold it; "
+                            f"provide an explicit {person_role_field} column."
+                        )
+                # Preserve master's one literal default key per declared person.
                 person_roles = np.full(self.persons.count, self.default_role)
             else:
                 raise ValueError(

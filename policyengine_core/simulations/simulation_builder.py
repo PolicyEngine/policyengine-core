@@ -281,6 +281,13 @@ class SimulationBuilder:
         persons_group_assignment: ArrayLike,
         roles: typing.Iterable[str],
     ) -> None:
+        """Join persons to groups with one role per membership.
+
+        ``roles`` must be one dimensional and match the membership array's length.
+        Integers index the entity's flattened roles; strings match flattened-role
+        keys literally, with unmatched keys represented as unrecognized roles.
+        This method does not validate role capacity.
+        """
         # Maps group's identifiers to a 0-based integer range, for indexing into members_roles (see PR#876)
         group_sorted_indices = np.unique(persons_group_assignment, return_inverse=True)[
             1
@@ -291,6 +298,14 @@ class SimulationBuilder:
 
         flattened_roles = group_population.entity.flattened_roles
         roles_array = np.array(roles)
+        if roles_array.ndim != 1 or len(roles_array) != len(persons_group_assignment):
+            # ``members_role`` is indexed like ``members_entity_id``: one entry
+            # per membership. Other shapes can make queries fail or broadcast incorrectly.
+            raise ValueError(
+                f"Got {roles_array.size} {group_population.entity.key} role(s) "
+                f"for {len(persons_group_assignment)} person(s); give one role "
+                "per person."
+            )
         if np.issubdtype(roles_array.dtype, np.integer):
             group_population.members_role = np.array(flattened_roles)[roles_array]
         else:

@@ -1,4 +1,5 @@
 import datetime
+import copy
 from typing import Iterable
 
 import pytest
@@ -93,6 +94,71 @@ def test_explicit_singular_entities(tax_benefit_system):
         "persons": {"Javier": {}},
         "households": {"household": {"parents": ["Javier"]}},
     }
+
+
+def test_country_preprocessing_preserves_caller_input_and_group_provenance(
+    tax_benefit_system, monkeypatch
+):
+    seen_periods = []
+
+    def preprocess(situation, default_period):
+        seen_periods.append(default_period)
+        situation.setdefault(
+            "households", {"inferred": {"parents": ["Alicia", "Javier"]}}
+        )
+        return situation
+
+    monkeypatch.setattr(tax_benefit_system, "preprocess_situation", preprocess)
+    situation = {"persons": {"Alicia": {}, "Javier": {}}}
+    original = copy.deepcopy(situation)
+    builder = SimulationBuilder()
+    builder.set_default_period("2024-01")
+    inferred = builder.build_from_dict(tax_benefit_system, situation)
+    assert list(inferred.household.ids) == ["inferred"]
+    assert inferred.input_group_entities == frozenset()
+    assert situation == original
+    assert seen_periods == ["2024-01"]
+
+    # Singular aliases are normalized before the hook; explicit membership
+    # remains distinguishable even if it has the same shape as the default.
+    explicit = builder.build_from_dict(
+        tax_benefit_system,
+        {**situation, "household": {"parents": ["Alicia", "Javier"]}},
+    )
+    assert explicit.input_group_entities == frozenset({"household"})
+    assert explicit.clone().input_group_entities == explicit.input_group_entities
+
+    # Reusing a simulation for variable-only construction resets provenance
+    # and does not run entity preprocessing.
+    calls = len(seen_periods)
+    builder.build_default_simulation(tax_benefit_system, 2, explicit)
+    assert explicit.input_group_entities == frozenset()
+    assert len(seen_periods) == calls
+
+
+def test_country_preprocessing_applies_to_simulation_api(
+    tax_benefit_system, monkeypatch
+):
+    def preprocess(situation, default_period):
+        situation["households"] = {
+            name: {"parents": [name]} for name in situation["persons"]
+        }
+        return situation
+
+    monkeypatch.setattr(tax_benefit_system, "preprocess_situation", preprocess)
+    simulation = Simulation(
+        tax_benefit_system=tax_benefit_system,
+        situation={"persons": {"Alicia": {}, "Javier": {}}},
+    )
+    assert simulation.household.members_entity_id.tolist() == [0, 1]
+    assert simulation.input_group_entities == frozenset()
+
+
+def test_explicit_empty_group_mapping_is_recorded(tax_benefit_system):
+    simulation = SimulationBuilder().build_from_dict(
+        tax_benefit_system, {"persons": {"Alicia": {}}, "households": {}}
+    )
+    assert simulation.input_group_entities == frozenset({"household"})
 
 
 def test_add_person_entity(persons):

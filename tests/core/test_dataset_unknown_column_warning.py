@@ -38,6 +38,7 @@ def test__given_unknown_dataset_column__then_warns_and_still_loads(caplog):
 
     # And the known columns still load normally
     np.testing.assert_array_equal(salary.values, np.array([100.0, 200.0, 300.0]))
+    assert simulation.input_group_entities == frozenset({"household"})
 
 
 def test__given_only_known_columns__then_no_unknown_column_warning(caplog):

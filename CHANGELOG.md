@@ -1,3 +1,10 @@
+## [3.33.7] - 2026-10-18
+
+### Fixed
+
+- Correct dataset group identity and membership validation, and load flat-file memberships and group values in group order while preserving empty datasets.
+
+
 ## [3.33.6] - 2026-10-18
 
 ### Fixed

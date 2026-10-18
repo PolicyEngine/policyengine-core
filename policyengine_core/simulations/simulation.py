@@ -1101,8 +1101,12 @@ class Simulation:
 
         person_entity = self.tax_benefit_system.person_entity
         entity_id_field = f"{person_entity.key}_id"
+        # Columns read to build the populations are used even when no
+        # variable has their name, so they are not reported as ignored.
+        structural_columns = set()
 
         def get_eternity_array(name):
+            structural_columns.add(name)
             if self.dataset.data_format == Dataset.FLAT_FILE:
                 # Look for any column with variablename__timeperiod
                 for col in data:
@@ -1187,7 +1191,7 @@ class Simulation:
                         self.set_input(
                             variable, self.dataset.time_period, data[variable]
                         )
-                else:
+                elif variable not in structural_columns:
                     unknown_columns.append(variable)
         else:
             for variable in data:
@@ -1198,7 +1202,8 @@ class Simulation:
                     time_period = self.dataset.time_period or self.default_input_period
 
                 if variable_name not in self.tax_benefit_system.variables:
-                    unknown_columns.append(variable)
+                    if variable_name not in structural_columns:
+                        unknown_columns.append(variable)
                     continue
 
                 variable_meta = self.tax_benefit_system.get_variable(variable_name)
@@ -3375,6 +3380,11 @@ class Simulation:
         If structural inputs are absent, loaded population IDs, memberships
         and roles supply the leaves needed to rebuild the same partition.
         This also supports structural variables whose IDs have formulas.
+        These leaves are carried whether or not the system defines a variable
+        for them, and roles are carried by key, so every kept member keeps
+        the role it was loaded with instead of the default role. An integer
+        role variable cannot represent a member with no role; subsampling
+        raises ``ValueError`` before changing anything in that case.
 
         Args:
             n (int, optional): The number of households to sample. Defaults to 10_000.
@@ -3404,12 +3414,15 @@ class Simulation:
         df = self._to_person_dataframe(self._get_set_input_periods)
 
         def retain_structure(name, values):
-            variable = self.tax_benefit_system.get_variable(name)
-            if variable is None or any(column.split("__")[0] == name for column in df):
+            if any(column.split("__")[0] == name for column in df):
                 return
+            # The loader reads structural columns by name, so a leaf that no
+            # variable backs (a role column the system does not define, for
+            # instance) is still carried. It has no period of its own.
+            variable = self.tax_benefit_system.get_variable(name)
             structural_period = (
                 ETERNITY
-                if variable.definition_period == ETERNITY
+                if variable is None or variable.definition_period == ETERNITY
                 else periods.period(self.dataset.time_period).start.period(
                     variable.definition_period
                 )
@@ -3427,18 +3440,35 @@ class Simulation:
                 population.ids[population.members_entity_id],
             )
             role_name = f"{person_key}_{entity.key}_role"
+            if any(column.split("__")[0] == role_name for column in df):
+                continue
+            # Carry each member's own role by key; the rebuild otherwise
+            # gives everyone the default. Members the loader matched to no
+            # role hold 0, and an empty key reloads them the same way.
             role_variable = self.tax_benefit_system.get_variable(role_name)
-            roles = np.broadcast_to(population.members_role, self.persons.count)
+            roles = np.broadcast_to(
+                np.asarray(population.members_role, dtype=object),
+                self.persons.count,
+            )
+            role_keys = [getattr(role, "key", "") for role in roles]
             if role_variable is not None and role_variable.value_type == int:
-                role_values = [
-                    entity.flattened_roles.index(role)
-                    if role in entity.flattened_roles
-                    else 0
-                    for role in roles
-                ]
+                # An integer role column indexes flattened roles, so it has
+                # no value for "no role". Stop before anything is replaced.
+                index_of = {
+                    role.key: index for index, role in enumerate(entity.flattened_roles)
+                }
+                unindexed = sorted({key for key in role_keys if key not in index_of})
+                if unindexed:
+                    raise ValueError(
+                        f"Cannot subsample: {role_name} is an integer role "
+                        f"variable, so it can only hold the {entity.key} roles "
+                        f"{[role.key for role in entity.flattened_roles]}, but "
+                        "some members hold "
+                        f"{[key or '(no role)' for key in unindexed]}."
+                    )
+                retain_structure(role_name, [index_of[key] for key in role_keys])
             else:
-                role_values = [getattr(role, "key", "") for role in roles]
-            retain_structure(role_name, role_values)
+                retain_structure(role_name, role_keys)
 
         # Flat-file loading can infer households from membership IDs even
         # when the household ID variable has a formula. Use the same leaves

@@ -1,3 +1,10 @@
+## [3.33.6] - 2026-10-18
+
+### Fixed
+
+- `LinearAverageRateTaxScale.calc` now taxes a base at or above the last threshold at the last average rate. It used to return 0 for such bases unless the last threshold was infinity, as `MarginalRateTaxScale.to_average` sets it.
+
+
 ## [3.33.5] - 2026-10-18
 
 ### Fixed

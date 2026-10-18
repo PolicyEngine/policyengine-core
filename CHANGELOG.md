@@ -1,3 +1,10 @@
+## [3.33.9] - 2026-10-18
+
+### Fixed
+
+- `MarginalRateTaxScale.to_average` now keeps a first threshold other than 0, so the average scale levies the marginal tax at every threshold and `to_marginal` gives the scale back; it raises `ValueError`, instead of returning a wrong scale or raising `ZeroDivisionError`, when no average rate scale can levy the tax, and it converts one bracket with surplus rates as it converts the paired bracket.
+
+
 ## [3.33.8] - 2026-10-18
 
 ### Fixed

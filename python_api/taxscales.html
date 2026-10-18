@@ -675,6 +675,34 @@ bases.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.linear_average_rate_tax_scale.LinearAverageRateTaxScale.calc">
+<span class="sig-name descname"><span class="pre">calc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tax_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">NumericalArray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">right</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.float_</span></span></span><a class="headerlink" href="#policyengine_core.taxscales.linear_average_rate_tax_scale.LinearAverageRateTaxScale.calc" title="Permalink to this definition">#</a></dt>
+<dd><p>Compute the tax amount for the given tax bases by applying a taxscale.</p>
+<p>Each bracket’s rate is the average rate at its threshold. Between two
+thresholds the average rate moves linearly from one rate to the next.
+From the last threshold up it stays at the last rate. Below the first
+threshold the tax is 0, except that a scale with a single bracket
+applies its rate to every tax base.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>tax_base</strong> (<em>ndarray</em>) – Array of the tax bases.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Float array with tax amount for the given tax bases.</p>
+</dd>
+</dl>
+<p>For instance:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span> <span class="o">=</span> <span class="n">LinearAverageRateTaxScale</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">add_bracket</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_base</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">150</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tax_scale</span><span class="o">.</span><span class="n">calc</span><span class="p">(</span><span class="n">tax_base</span><span class="p">)</span>
+<span class="go">[2.5, 10.0, 15.0]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.taxscales.linear_average_rate_tax_scale.LinearAverageRateTaxScale.threshold_from_tax_base">
 <span class="sig-name descname"><span class="pre">threshold_from_tax_base</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tax_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">NumericalArray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">NumericalArray</span></span></span><a class="headerlink" href="#policyengine_core.taxscales.linear_average_rate_tax_scale.LinearAverageRateTaxScale.threshold_from_tax_base" title="Permalink to this definition">#</a></dt>
 <dd><p>Compute the relevant thresholds for the given tax bases.</p>

@@ -264,20 +264,23 @@ class MarginalRateTaxScale(RateTaxScaleLike):
         """
         Convert the scale to a LinearAverageRateTaxScale.
 
-        Each threshold gets the average rate there: the tax at it divided by
-        it. So the two scales levy the same tax at every threshold. A last
-        threshold of infinity carries the top rate, so ``to_marginal`` gives
-        this scale back.
+        The average scale has the same thresholds, then a last threshold of
+        infinity that carries the top rate, so ``to_marginal`` gives this
+        scale back. Its rate at each threshold is the tax there divided by
+        the threshold, or 0 where both are 0. So the two scales levy the same
+        tax at every threshold.
 
-        A single bracket from 0 has the same average rate at every base, so
-        the average scale levies the same tax at every base. With two or more
-        brackets, ``LinearAverageRateTaxScale.calc`` keeps the average rate of
-        the last finite threshold above it. That matches this scale's tax only
-        when the top rate is that average rate.
+        One bracket from 0 instead gets its rate at both thresholds. Its
+        average rate is the same at every base, so the two scales levy the
+        same tax at every base. With two or more brackets,
+        ``LinearAverageRateTaxScale.calc`` keeps the average rate of the last
+        finite threshold above it. That matches this scale's tax only when
+        the top rate is that average rate.
 
-        :raises ValueError: if no average rate scale can levy the tax. This is
-            so for one bracket with a nonzero rate whose threshold is not 0,
-            and for a threshold of 0 at which the tax is not 0.
+        :raises ValueError: if no average rate scale levies the tax at every
+            threshold or, for one bracket, at every base. This is so for one
+            bracket with a nonzero rate whose threshold is not 0, and for a
+            threshold of 0 at which the tax is not 0.
         """
         average_tax_scale = taxscales.LinearAverageRateTaxScale(
             name=self.name,
@@ -305,8 +308,9 @@ class MarginalRateTaxScale(RateTaxScaleLike):
                     f"{rate}: no linear average rate scale levies its tax. "
                     "Only one bracket with threshold 0 or rate 0 converts."
                 )
-            # From 0, the average rate is the rate at every base. Starting at
-            # a rate of 0 and interpolating toward infinity would levy no tax.
+            # From 0, the average rate is the rate at every base. At rate 0 it
+            # is 0 at every base. Starting at a rate of 0 and interpolating
+            # toward infinity would levy no tax.
             average_tax_scale.add_bracket(first_threshold, rate)
             average_tax_scale.add_bracket(float("Inf"), rate)
             return average_tax_scale

@@ -26,6 +26,7 @@ ROLE = "person_household_role"
 FLATTENED_KEYS = ("first_parent", "second_parent", "child")
 # How these helpers report a member the loader gave no role.
 NO_ROLE = ""
+UNKNOWN_COLUMN_WARNING = "do not match any variable"
 
 
 class integer_role(Variable):
@@ -157,3 +158,28 @@ def role_counts(simulation) -> dict:
         role.key: household.nb_persons(role).tolist()
         for role in household.entity.flattened_roles
     }
+
+
+def assert_roles_kept(simulation, households):
+    """Every kept household is a whole source household with its roles."""
+    source = source_households(households)
+    kept = households_by_members(simulation)
+    assert kept, "subsample kept no household"
+    for members, roles in kept.items():
+        assert members in source, f"{sorted(members)} is not a source household"
+        assert roles == source[members]
+    expected = source_roles(households)
+    assert roles_by_person(simulation) == {
+        person: expected[person] for person in simulation.persons.ids.tolist()
+    }
+    # The projector counts the same roles the members hold.
+    household_order = [
+        frozenset(
+            simulation.persons.ids[
+                simulation.household.members_entity_id == index
+            ].tolist()
+        )
+        for index in range(simulation.household.count)
+    ]
+    for key, counts in role_counts(simulation).items():
+        assert counts == [kept[members][key] for members in household_order]

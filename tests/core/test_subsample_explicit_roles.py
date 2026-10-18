@@ -19,14 +19,14 @@ from tests.fixtures.subsample_roles import (
     DATASET_YEAR,
     NO_ROLE,
     ROLE,
-    households_by_members,
+    UNKNOWN_COLUMN_WARNING,
+    assert_roles_kept,
     load,
     load_dataframe,
     role_counts,
     role_keys,
     role_system,
     roles_by_person,
-    source_households,
     source_roles,
 )
 
@@ -39,32 +39,6 @@ HOUSEHOLDS = [
 ]
 # Shuffled so that a household's members are not adjacent rows.
 ORDER = [7, 0, 12, 3, 9, 1, 5, 10, 2, 8, 11, 4, 6]
-UNKNOWN_COLUMN_WARNING = "do not match any variable"
-
-
-def assert_roles_kept(simulation, households):
-    """Every kept household is a whole source household with its roles."""
-    source = source_households(households)
-    kept = households_by_members(simulation)
-    assert kept, "subsample kept no household"
-    for members, roles in kept.items():
-        assert members in source, f"{sorted(members)} is not a source household"
-        assert roles == source[members]
-    expected = source_roles(households)
-    assert roles_by_person(simulation) == {
-        person: expected[person] for person in simulation.persons.ids.tolist()
-    }
-    # The projector counts the same roles the members hold.
-    household_order = [
-        frozenset(
-            simulation.persons.ids[
-                simulation.household.members_entity_id == index
-            ].tolist()
-        )
-        for index in range(simulation.household.count)
-    ]
-    for key, counts in role_counts(simulation).items():
-        assert counts == [kept[members][key] for members in household_order]
 
 
 def test_review_reproduction_keeps_explicit_roles():

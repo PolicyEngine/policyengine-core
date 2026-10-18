@@ -1,9 +1,12 @@
-# Existing releases for country initialization against the Core checkout.
-# US 1.824.1 imports the legacy SPM forecast/geography APIs and declares only
-# spm-calculator>=0.2.0, so the explicit SPM pin is required on every rebuild.
+# Country releases installed with the Core checkout for the smoke tests,
+# resolved together so that no later install replaces the Core under test.
 # These country releases declare support for Python 3.11-3.14;
 # neither a --no-deps workaround nor policyengine-us-data is required.
-# Keep this legacy bundle when adding a separately qualified canonical bundle.
-policyengine-us==1.824.1
+# Pinned exactly so that CI is reproducible. Old policyengine-us releases are
+# deleted from PyPI as space is needed (1.824.1, pinned here until October
+# 2026, was), so move the US pin to a current release when it stops resolving.
+# US 2.42.13 requires spm-calculator>=1.0.0,<=1.0.0.post1; the SPM pin is the
+# release it resolves to.
+policyengine-us==2.42.13
 policyengine-uk==2.90.2
-spm-calculator==0.3.1
+spm-calculator==1.0.0.post1

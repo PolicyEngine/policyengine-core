@@ -1,9 +1,14 @@
-from typing import Dict, FrozenSet, Set, Union
+from typing import Dict, FrozenSet, List, Optional, Set, Tuple, Union
 
 import numpy
 from numpy.typing import ArrayLike
 
 from policyengine_core import periods
+from policyengine_core.data_storage.store_history import (
+    _period_from_storage_key,
+    advance_sequence_past,
+    next_sequence_number,
+)
 from policyengine_core.periods import Period
 
 
@@ -83,6 +88,10 @@ class InMemoryStorage:
 
     def __init__(self, is_eternal: bool):
         self._arrays = {}
+        # When each array was stored (see ``store_history``). A number
+        # describes the stored value, as its input mark does, so ``clone``
+        # copies the numbers with the arrays.
+        self._sequence_numbers: Dict[str, int] = {}
         self.is_eternal = is_eternal
 
     def __getstate__(self) -> dict:
@@ -100,7 +109,13 @@ class InMemoryStorage:
             inputs = set(state.get("_arrays", {})).difference(derived)
             if inputs:
                 state["_inputs"] = inputs
+        # Pickled before stores were numbered: no value has a number.
+        state.setdefault("_sequence_numbers", {})
         self.__dict__.update(state)
+        # Numbers from the process that pickled this storage must stay below
+        # those of stores made after unpickling it.
+        if self._sequence_numbers:
+            advance_sequence_past(max(self._sequence_numbers.values()))
 
     def clone(self, share_arrays: bool = False) -> "InMemoryStorage":
         """Copy this storage.
@@ -152,6 +167,7 @@ class InMemoryStorage:
                 held = inputs.intersection(clone._arrays)
                 if held:
                     clone._inputs = frozenset(held)
+        clone._sequence_numbers = dict(self._sequence_numbers)
         return clone
 
     def get(self, period: Period, branch_name: str = "default") -> ArrayLike:
@@ -260,7 +276,14 @@ class InMemoryStorage:
         period: Period,
         branch_name: str = "default",
         derived: bool = False,
+        sequence_number: Optional[int] = None,
     ) -> None:
+        """Store ``value`` for ``period`` on ``branch_name``.
+
+        ``derived`` marks a value the simulation calculated rather than took
+        as input (see ``_inputs``), and ``sequence_number`` records when the
+        value was stored (a new number by default); see :meth:`drop_computed`.
+        """
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
@@ -287,6 +310,58 @@ class InMemoryStorage:
             self._unmark_input(key)
         else:
             self._mark_input(key)
+        self._sequence_numbers[key] = (
+            next_sequence_number() if sequence_number is None else sequence_number
+        )
+
+    def drop_computed(self, *, since: Optional[int] = None) -> int:
+        """Delete stored values that are not inputs, and return how many.
+
+        With ``since``, only values stored with that sequence number or a
+        later one are deleted (a value with no recorded number counts as
+        later). Inputs, which ``put`` received without ``derived``, are kept
+        whatever their number.
+        """
+        inputs = self._inputs
+        numbers = self._sequence_numbers
+        dropped = [
+            key
+            for key in self._arrays
+            if key not in inputs and (since is None or numbers.get(key, since) >= since)
+        ]
+        for key in dropped:
+            del self._arrays[key]
+            numbers.pop(key, None)
+            self._stop_sharing(key)
+        return len(dropped)
+
+    def inputs_since(self, since: Optional[int] = None) -> List[Tuple[Period, int]]:
+        """The period and number of each input stored at ``since`` or later (or ever)."""
+        numbers = self._sequence_numbers
+        return [
+            (_period_from_storage_key(key.split(":", 1)[1]), numbers[key])
+            for key in self._inputs
+            if key in self._arrays
+            and key in numbers
+            and (since is None or numbers[key] >= since)
+        ]
+
+    def mark_derived_except(self, keys: Set[str]) -> None:
+        """Mark every stored value derived except those stored for ``keys``."""
+        for key in [key for key in self._inputs if key not in keys]:
+            self._unmark_input(key)
+
+    def has_unnumbered_values(self) -> bool:
+        """Whether a value was stored without ``put`` (so without a number)."""
+        return any(key not in self._sequence_numbers for key in self._arrays)
+
+    def _forget_dropped_numbers(self) -> None:
+        """Forget the numbers of keys ``_arrays`` no longer has."""
+        numbers = self._sequence_numbers
+        if not numbers.keys() <= self._arrays.keys():
+            self._sequence_numbers = {
+                key: number for key, number in numbers.items() if key in self._arrays
+            }
 
     def delete(self, period: Period = None, branch_name: str = "default") -> None:
         if period is None:
@@ -300,6 +375,7 @@ class InMemoryStorage:
             }
             self._stop_sharing_dropped_keys()
             self._unmark_dropped_keys()
+            self._forget_dropped_numbers()
             return
 
         if self.is_eternal:
@@ -319,6 +395,7 @@ class InMemoryStorage:
         }
         self._stop_sharing_dropped_keys()
         self._unmark_dropped_keys()
+        self._forget_dropped_numbers()
 
     def get_known_periods(self) -> list:
         # Split on the first colon only: an anchored period's string form

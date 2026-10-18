@@ -367,12 +367,14 @@ def test_role_column_overrides_the_default(tax_benefit_system, role_column):
 
 
 @pytest.mark.parametrize("roles", [["first_parent"], [["first_parent"]] * 3, "child"])
-def test_join_rejects_invalid_role_shapes(tax_benefit_system, roles):
+@pytest.mark.parametrize("group_ids", [[10], [10, 10], [20]])
+def test_join_rejects_invalid_role_shapes(tax_benefit_system, roles, group_ids):
     builder = SimulationBuilder()
     builder.create_entities(tax_benefit_system)
     builder.declare_person_entity("person", [1, 2, 3])
-    household = builder.declare_entity("household", [10])
+    household = builder.declare_entity("household", group_ids)
 
+    # Role errors take precedence even over repeated or undeclared group IDs.
     with pytest.raises(ValueError, match="household role\\(s\\) for 3 person"):
         builder.join_with_persons(household, [10, 10, 10], roles)
 

@@ -2,12 +2,14 @@
 
 For any number of groups (1 to 6), any assignment of 0 to 30 persons to them
 (so groups may be empty, and there may be no persons at all), given as an
-integer array or a plain list, and any values:
+integer array or a plain list, and any values, with counts given as ``int``,
+``np.int32``, ``np.int64`` or ``np.uint64``:
 
 * ``sum``, ``nb_persons``, ``any``, ``all``, ``max`` and ``min`` equal the
   oracle, with 0, False, True, -inf and inf for groups with no members;
 * ``Population.get_rank`` gives each person the position of their value among
   their group's values, ties going to the person listed first.
+* Default simulations preserve integer IDs and project group values correctly.
 
 Examples, including the empty-population witness, are in
 ``test_group_population_empty.py``.
@@ -24,7 +26,13 @@ pytest.importorskip("hypothesis")
 from hypothesis import given, settings  # noqa: E402
 from hypothesis import strategies as st  # noqa: E402
 
-from tests.core.test_group_population_empty import populations  # noqa: E402
+from policyengine_core.simulations import SimulationBuilder  # noqa: E402
+from policyengine_core.taxbenefitsystems import TaxBenefitSystem  # noqa: E402
+from tests.core.test_group_population_empty import (  # noqa: E402
+    HOUSEHOLD,
+    PERSON,
+    populations,
+)
 
 
 @st.composite
@@ -39,7 +47,8 @@ def _groups(draw):
         )
     )
     as_list = draw(st.booleans())
-    return count, members_entity_id, values, as_list
+    count_type = draw(st.sampled_from([int, np.int32, np.int64, np.uint64]))
+    return count_type(count), members_entity_id, values, as_list
 
 
 @settings(max_examples=300, deadline=None)
@@ -78,3 +87,16 @@ def test_reductions_and_ranks_match_oracle(case):
         for rank, person in enumerate(ordered):
             expected_rank[person] = rank
     assert persons.get_rank(households, array).tolist() == expected_rank
+
+    simulation = SimulationBuilder().build_default_simulation(
+        TaxBenefitSystem([PERSON, HOUSEHOLD]), count=count
+    )
+    expected_ids = np.array(range(count))
+    for population in simulation.populations.values():
+        assert np.issubdtype(population.ids.dtype, np.integer)
+        assert population.ids.dtype == expected_ids.dtype
+        np.testing.assert_array_equal(population.ids, expected_ids)
+    group_array = np.array([sum(v) for v in group_values], dtype=float)
+    np.testing.assert_array_equal(
+        simulation.populations["household"].project(group_array), group_array
+    )

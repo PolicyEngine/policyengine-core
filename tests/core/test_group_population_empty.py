@@ -12,6 +12,7 @@ which NumPy cannot index with.
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from policyengine_core.entities import build_entity
 from policyengine_core.populations import GroupPopulation, Population
@@ -81,3 +82,24 @@ def test_default_simulation_of_no_one():
     assert households.project(no_values).tolist() == []
     assert persons.household.max(no_values).tolist() == []
     assert households.all(no_values > 0).tolist() == []
+
+
+@pytest.mark.parametrize("count_type", [int, np.int32, np.int64, np.uint64])
+@pytest.mark.parametrize("count_value", [0, 1, 4])
+def test_default_simulation_keeps_integer_ids(count_type, count_value):
+    count = count_type(count_value)
+    simulation = SimulationBuilder().build_default_simulation(
+        TaxBenefitSystem([PERSON, HOUSEHOLD]), count=count
+    )
+    expected_ids = np.array(range(count))
+
+    for population in simulation.populations.values():
+        assert np.issubdtype(population.ids.dtype, np.integer)
+        np.testing.assert_array_equal(population.ids, expected_ids)
+        if count_value:
+            assert population.ids.dtype == expected_ids.dtype
+
+    values = np.full(count_value, 5.0)
+    np.testing.assert_array_equal(
+        simulation.populations["household"].project(values), values
+    )

@@ -245,7 +245,7 @@ class SimulationBuilder:
             )
         for population in simulation.populations.values():
             population.count = count
-            population.ids = np.arange(count)  # integers even when count is 0
+            population.ids = np.arange(count, dtype=np.int64)
             if not population.entity.is_person:
                 population.members_entity_id = (
                     population.ids

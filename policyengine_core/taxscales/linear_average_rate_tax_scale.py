@@ -22,6 +22,28 @@ class LinearAverageRateTaxScale(RateTaxScaleLike):
         tax_base: NumericalArray,
         right: bool = False,
     ) -> numpy.float_:
+        """
+        Compute the tax amount for the given tax bases by applying a taxscale.
+
+        Each bracket's rate is the average rate at its threshold. Between two
+        thresholds the average rate moves linearly from one rate to the next.
+        From the last threshold up it stays at the last rate. Below the first
+        threshold the tax is 0, except that a scale with a single bracket
+        applies its rate to every tax base.
+
+        :param ndarray tax_base: Array of the tax bases.
+
+        :returns: Float array with tax amount for the given tax bases.
+
+        For instance:
+
+        >>> tax_scale = LinearAverageRateTaxScale()
+        >>> tax_scale.add_bracket(0, 0)
+        >>> tax_scale.add_bracket(100, 0.1)
+        >>> tax_base = array([50, 100, 150])
+        >>> tax_scale.calc(tax_base)
+        [2.5, 10.0, 15.0]
+        """
         if len(self.rates) == 1:
             return tax_base * self.rates[0]
 
@@ -47,9 +69,15 @@ class LinearAverageRateTaxScale(RateTaxScaleLike):
         log.info(f"bracket_average_start_rate :  {bracket_average_start_rate}")
         log.info(f"average_rate_slope:  {average_rate_slope}")
 
+        # The brackets above end at the last threshold, so bases from there up
+        # fall in none of them. With no next rate to move toward, their average
+        # rate stays at the last rate.
+        above_last_threshold = numpy.asarray(tax_base) >= thresholds_array[-1]
+
         return tax_base * (
             +bracket_average_start_rate
             + (tax_base - bracket_threshold) * average_rate_slope
+            + above_last_threshold * rates_array[-1]
         )
 
     def to_marginal(self) -> MarginalRateTaxScale:

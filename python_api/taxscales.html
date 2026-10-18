@@ -621,6 +621,31 @@ for the given tax bases.</p>
 </div>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.to_average">
+<span class="sig-name descname"><span class="pre">to_average</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#policyengine_core.taxscales.linear_average_rate_tax_scale.LinearAverageRateTaxScale" title="policyengine_core.taxscales.linear_average_rate_tax_scale.LinearAverageRateTaxScale"><span class="pre">LinearAverageRateTaxScale</span></a></span></span><a class="headerlink" href="#policyengine_core.taxscales.marginal_rate_tax_scale.MarginalRateTaxScale.to_average" title="Permalink to this definition">#</a></dt>
+<dd><p>Convert the scale to a LinearAverageRateTaxScale.</p>
+<p>The average scale has the same thresholds, then a last threshold of
+infinity that carries the top rate, so <code class="docutils literal notranslate"><span class="pre">to_marginal</span></code> gives this
+scale back. Its rate at each threshold is the tax there divided by
+the threshold, or 0 where both are 0. So the two scales levy the same
+tax at every threshold.</p>
+<p>One bracket from 0 instead gets its rate at both thresholds. Its
+average rate is the same at every base, so the two scales levy the
+same tax at every base. With two or more brackets,
+<code class="docutils literal notranslate"><span class="pre">LinearAverageRateTaxScale.calc</span></code> keeps the average rate of the last
+finite threshold above it. That matches this scale’s tax only when
+the top rate is that average rate.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – if no average rate scale levies the tax at every
+threshold or, for one bracket, at every base. This is so for one
+bracket with a nonzero rate whose threshold is not 0, and for a
+threshold of 0 at which the tax is not 0.</p>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 </section>

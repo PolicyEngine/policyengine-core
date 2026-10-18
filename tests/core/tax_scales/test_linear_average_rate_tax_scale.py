@@ -222,6 +222,29 @@ def test_to_marginal_uses_last_paired_rate_at_infinity(rates_type):
     assert result.rates == [0.2, 0.3]
 
 
+@pytest.mark.parametrize("first_threshold", [50, -50])
+def test_to_marginal_starts_at_a_first_threshold_with_rate_0(first_threshold):
+    # The scale taxes nothing up to and at its first threshold, so the
+    # marginal scale starts there. It used to start at 0, which from 50 taxed
+    # a base of 50 at 50 * 0.2 = 10 instead of 0.
+    tax_base = numpy.array([first_threshold, 100, 1_000])
+    tax_scale = taxscales.LinearAverageRateTaxScale()
+    tax_scale.add_bracket(first_threshold, 0)
+    tax_scale.add_bracket(100, 0.2)
+
+    result = tax_scale.to_marginal()
+
+    # Tax at 100 is 100 * 0.2 = 20, spread over the bracket from the first
+    # threshold.
+    assert result.thresholds == [first_threshold, 100]
+    tools.assert_near(
+        result.rates, [20 / (100 - first_threshold), 0.2], absolute_error_margin=1e-12
+    )
+    tools.assert_near(
+        result.calc(tax_base), tax_scale.calc(tax_base), absolute_error_margin=1e-10
+    )
+
+
 def test_to_marginal_of_no_brackets():
     result = taxscales.LinearAverageRateTaxScale().to_marginal()
 

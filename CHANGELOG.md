@@ -1,3 +1,38 @@
+## [3.33.6] - 2026-10-18
+
+### Fixed
+
+- `LinearAverageRateTaxScale.calc` now taxes a base at or above the last threshold at the last average rate. It used to return 0 for such bases unless the last threshold was infinity, as `MarginalRateTaxScale.to_average` sets it.
+
+
+## [3.33.5] - 2026-10-18
+
+### Fixed
+
+- Converting a one-bracket rate scale no longer raises `UnboundLocalError`, zero-origin marginal singletons preserve their tax calculations, and converting an empty linear-average scale gives an empty marginal scale.
+
+
+## [3.33.4] - 2026-10-15
+
+### Changed
+
+- Core's country smoke CI installs policyengine-us 2.42.13 with spm-calculator 1.0.0.post1, since the pinned policyengine-us 1.824.1 is no longer on PyPI.
+
+
+## [3.33.3] - 2026-10-12
+
+### Changed
+
+- - Publish to PyPI with trusted publishing instead of the organisation-wide PyPI token.
+
+
+## [3.33.2] - 2026-10-10
+
+### Changed
+
+- Add regression coverage for reform and baseline fidelity when subsampling simulations after calculations.
+
+
 ## [3.33.1] - 2026-10-10
 
 ### Fixed

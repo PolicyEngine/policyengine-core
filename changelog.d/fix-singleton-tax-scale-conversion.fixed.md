@@ -1,1 +1,0 @@
-Converting a one-bracket rate scale no longer raises `UnboundLocalError`, zero-origin marginal singletons preserve their tax calculations, and converting an empty linear-average scale gives an empty marginal scale.

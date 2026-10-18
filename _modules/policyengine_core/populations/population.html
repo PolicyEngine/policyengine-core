@@ -493,17 +493,22 @@
         <span class="p">)</span>
 
         <span class="n">positions</span> <span class="o">=</span> <span class="n">entity</span><span class="o">.</span><span class="n">members_position</span>
-        <span class="n">biggest_entity_size</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">positions</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">biggest_entity_size</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">positions</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">positions</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
         <span class="n">filtered_criteria</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">condition</span><span class="p">,</span> <span class="n">criteria</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
         <span class="n">ids</span> <span class="o">=</span> <span class="n">entity</span><span class="o">.</span><span class="n">members_entity_id</span>
 
         <span class="c1"># Matrix: the value in line i and column j is the value of criteria for the jth person of the ith entity</span>
-        <span class="n">matrix</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
-            <span class="p">[</span>
-                <span class="n">entity</span><span class="o">.</span><span class="n">value_nth_person</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">filtered_criteria</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">numpy</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
-                <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">biggest_entity_size</span><span class="p">)</span>
-            <span class="p">]</span>
-        <span class="p">)</span><span class="o">.</span><span class="n">transpose</span><span class="p">()</span>
+        <span class="c1"># (``reshape`` keeps it two-dimensional when there are no persons)</span>
+        <span class="n">matrix</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
+                <span class="p">[</span>
+                    <span class="n">entity</span><span class="o">.</span><span class="n">value_nth_person</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">filtered_criteria</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">numpy</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">biggest_entity_size</span><span class="p">)</span>
+                <span class="p">]</span>
+            <span class="p">)</span>
+            <span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">biggest_entity_size</span><span class="p">,</span> <span class="n">entity</span><span class="o">.</span><span class="n">count</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">transpose</span><span class="p">()</span>
+        <span class="p">)</span>
 
         <span class="c1"># We double-argsort all lines of the matrix.</span>
         <span class="c1"># Double-argsorting gets the rank of each value once sorted</span>

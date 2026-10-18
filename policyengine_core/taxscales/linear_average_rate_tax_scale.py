@@ -92,6 +92,12 @@ class LinearAverageRateTaxScale(RateTaxScaleLike):
 
         previous_i = 0
         previous_threshold = 0
+        if len(self.thresholds) > 1 and self.thresholds[0] != 0 and self.rates[0] == 0:
+            # The tax is 0 below the first threshold and, at a rate of 0, at
+            # it too, so the marginal scale starts there. With another rate
+            # the tax jumps at a first threshold other than 0, which no
+            # marginal scale can do, so the marginal scale starts at 0.
+            previous_threshold = self.thresholds[0]
         terminal_rate = self.rates[0]
 
         for threshold, rate in zip(self.thresholds[1:], self.rates[1:]):

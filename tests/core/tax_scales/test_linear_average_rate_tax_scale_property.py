@@ -9,8 +9,9 @@ For any scale with 1 to 6 brackets and finite thresholds, and any tax base:
 * at each threshold the tax is the threshold times its rate, and above the
   first threshold the tax has no jump there;
 * adding a last threshold of infinity, at any rate, does not change the tax;
-* when the first threshold is 0, ``to_marginal`` levies the same tax at each
-  threshold and above the last one, within accumulated floating-point error.
+* when the first threshold or its rate is 0, so that the tax does not jump at
+  the first threshold, ``to_marginal`` levies the same tax at each threshold
+  and above the last one, within accumulated floating-point error.
 
 Examples are in ``test_linear_average_rate_tax_scale.py``.
 """
@@ -141,15 +142,34 @@ def test_infinite_last_threshold_changes_nothing(brackets, top_rate, extra_bases
     )
 
 
+@st.composite
+def _brackets_without_a_jump(draw):
+    # The tax jumps from 0 at the first threshold unless it or its rate is 0.
+    thresholds, rates = draw(
+        _brackets(
+            first_threshold=st.one_of(
+                st.just(0), st.integers(min_value=-1_000, max_value=1_000)
+            )
+        )
+    )
+    if thresholds[0] != 0:
+        rates[0] = 0.0
+    return thresholds, rates
+
+
 @settings(max_examples=300, deadline=None)
-@given(_brackets(first_threshold=st.just(0), min_size=2))
+@given(_brackets_without_a_jump())
 @example(brackets=([0, 999_999, 1_000_000], [0, 1, 0]))
+@example(brackets=([0], [0.37]))
+@example(brackets=([0], [-1.0]))
+@example(brackets=([50, 100], [0.0, 0.2]))
+@example(brackets=([-50, 100], [0.0, 0.2]))
 def test_calc_agrees_with_to_marginal_at_thresholds_and_above(brackets):
-    # One bracket is left out: ``to_marginal`` cannot convert it yet.
     thresholds, rates = brackets
     tax_scale = _scale(thresholds, rates)
+    last = thresholds[-1]
     tax_base = numpy.array(
-        thresholds + [thresholds[-1] + 1, 2 * thresholds[-1] + 1, 1e9], dtype=float
+        thresholds + [last + 1, last + abs(last) + 1, 1e9], dtype=float
     )
 
     marginal_scale = tax_scale.to_marginal()
@@ -158,7 +178,7 @@ def test_calc_agrees_with_to_marginal_at_thresholds_and_above(brackets):
     # Marginal calc shifts thresholds by 1 + eps. Each active bracket's
     # endpoint magnitudes bound this shift and width subtraction; weighting
     # by |marginal rate| also covers cancellation between large bracket taxes.
-    endpoints = lower + numpy.minimum(tax_base[:, None], upper)
+    endpoints = numpy.abs(lower) + numpy.abs(numpy.minimum(tax_base[:, None], upper))
     endpoints = numpy.where(tax_base[:, None] >= lower, endpoints, 0)
     # The stored threshold*rate taxes telescope in exact arithmetic. Allow
     # rounding in secant conversion, widths, products and the bracket sum.

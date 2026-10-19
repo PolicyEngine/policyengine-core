@@ -154,6 +154,14 @@ class _SpiralDeferrals:
     # (``_do_not_store``, ``opt_out_cache``) and whether or not the
     # calculation is traced. It goes when the calculation ends.
     finished: dict = field(default_factory=dict)
+    # Mutations invalidate temporary results just as they invalidate holder
+    # caches. Reopen completed keys only; pending keys still guard cycles.
+    input_generation: int = field(default_factory=lambda: _spiral_input_generation)
+    input_restarts: int = 0
+    current_key: Optional[tuple] = None
+    completed_frame: Any = None
+    # Every cut-touched key, including those with a pending explicit invalidation.
+    invalidated: dict = field(default_factory=dict)
     # How many recursions have been cut so far.
     cuts: int = 0
     # Requests raised and not yet back in the outermost ``calculate``: a
@@ -172,13 +180,53 @@ class _SpiralDeferrals:
         entry = self.finished.get(id(simulation))
         if entry is None:
             entry = self.finished[id(simulation)] = (simulation, {})
-        entry[1][(deferral.variable, deferral.period)] = value
+        frame = self.completed_frame
+        entry[1][(deferral.variable, deferral.period)] = (
+            value,
+            tuple(frame.reads.items()) if frame is not None else (),
+            tuple(frame.registrations) if frame is not None else (),
+        )
+        self.completed_frame = None
+
+    def refresh_inputs(self) -> bool:
+        """Discard temporary values after writes, without reopening active cycles.
+
+        The retry limit applies only to input mutations, as in ``_Frame``;
+        stable anchored chains retain their unlimited iterative scheduling.
+        """
+        generation = _spiral_input_generation
+        if generation == self.input_generation:
+            return False
+        self.input_generation = generation
+        keys = {
+            (identity, variable, period)
+            for identity, (_, values) in self.finished.items()
+            for variable, period in values
+        }
+        if keys:
+            if self.input_restarts < _RERUNS_AFTER_INPUT_CHANGE:
+                self.started.difference_update(keys)
+                self.done.difference_update(keys)
+            self.input_restarts += 1
+        self.finished.clear()
+        return True
 
     def finished_value(
         self, simulation: "Simulation", variable: str, period: Period
     ) -> Optional[ArrayLike]:
         entry = self.finished.get(id(simulation))
-        return None if entry is None else entry[1].get((variable, period))
+        completed = None if entry is None else entry[1].get((variable, period))
+        if completed is None:
+            return None
+        value, reads, registrations = completed
+        frames = _calculation_frames.get()
+        if frames:
+            frame = frames[-1]
+            for other, epoch in reads:
+                if other is not frame.simulation:
+                    frame.reads.setdefault(other, epoch)
+            frame.registrations.update(registrations)
+        return value
 
 
 _spiral_deferrals: ContextVar[Optional[_SpiralDeferrals]] = ContextVar(
@@ -318,6 +366,18 @@ _calculation_frames: ContextVar[tuple] = ContextVar("_calculation_frames", defau
 # changing ordinary frames' scoped read tracking or convergence decisions.
 _restricted_frames = set()
 _restricted_frames_lock = Lock()
+# Dedicated generations exclude ordinary reads and completed calculations.
+# Process-wide counters also observe writes/cuts in context-free worker calls.
+_spiral_input_generation = 0
+_spiral_cut_generation = 0
+
+
+def _note_spiral_input_change() -> None:
+    global _spiral_input_generation
+    with _restricted_frames_lock:
+        _spiral_input_generation += 1
+
+
 # Activity between restricted calculations must also invalidate their shared
 # attempt cache, even when no restricted child is currently running.
 _unobserved_activity_generation = 0
@@ -738,6 +798,7 @@ def _note_input_change(
     value: Optional[ArrayLike] = None,
 ) -> None:
     """Record actual stores and deletes in each frame observing this context."""
+    _note_spiral_input_change()
     frames = _calculation_frames.get()
     if not frames:
         _taint_waiting_frames(simulation)
@@ -1587,7 +1648,10 @@ class Simulation:
             # Deeper periods to calculate before the request, deepest last.
             pending = []
             while True:
+                state.refresh_inputs()
                 deferral = pending[-1] if pending else None
+                state.current_key = None if deferral is None else deferral.key
+                state.completed_frame = None
                 if deferral is not None:
                     if deferral.key in state.done:
                         # Requested twice before it started (see ``_defer``).
@@ -1596,6 +1660,8 @@ class Simulation:
                     state.started.add(deferral.key)
                 state.callers = frozenset() if deferral is None else deferral.callers
                 cuts = state.cuts
+                input_generation = _spiral_input_generation
+                input_restarts = state.input_restarts
                 attempt_tracer = (
                     self.tracer if deferral is None else deferral.simulation.tracer
                 )
@@ -1637,9 +1703,24 @@ class Simulation:
                     ):
                         attempt_tracer.trees[attempt_index]._spiral_provisional = False
                     return result
+                changed = input_generation != _spiral_input_generation
+                state.refresh_inputs()
+                if changed:
+                    # Refresh may already have counted this mutation wave.
+                    if state.input_restarts == input_restarts:
+                        state.input_restarts += 1
+                    if state.input_restarts <= _RERUNS_AFTER_INPUT_CHANGE:
+                        # Finish the pending request at settled inputs. A result
+                        # from an exhausted input retry is never reusable.
+                        continue
                 pending.pop()
                 state.done.add(deferral.key)
-                if state.cuts == cuts:
+                completed = state.completed_frame
+                if (
+                    state.cuts == cuts
+                    and not changed
+                    and (completed is None or completed.may_keep())
+                ):
                     state.finish(deferral, result)
                 # Otherwise a recursion was cut on the way, so the value
                 # depends on where. Starting again reaches this period again,
@@ -1751,6 +1832,13 @@ class Simulation:
                     variable_name
                 ).entity.key
                 result = self.map_result(result, source_entity, map_to)
+            if state is not None and state.current_key == (
+                id(self),
+                variable_name,
+                period,
+            ):
+                frames = _calculation_frames.get()
+                state.completed_frame = frames[-1] if frames else None
             return result
         finally:
             try:
@@ -1875,6 +1963,9 @@ class Simulation:
         """
         if variable_name not in self.tax_benefit_system.variables:
             raise ValueError(f"Variable {variable_name} does not exist.")
+        state = _spiral_deferrals.get()
+        if state is not None:
+            state.refresh_inputs()
         input_state = self._calculation_start()
         # Lets a custom ``set_input`` handler tell whether it calculated.
         self._calculations_started = self._calculations_started + 1
@@ -2247,6 +2338,8 @@ class Simulation:
         array: ArrayLike,
         period: Period,
         input_state: Tuple[int, int, int],
+        *,
+        allow_store: bool = True,
     ) -> ArrayLike:
         """Cache a calculated value, and return the value to use for it.
 
@@ -2262,6 +2355,9 @@ class Simulation:
             stored_input = self._input_set_meanwhile(holder, period, started_at)
             if stored_input is not None:
                 return stored_input
+        if not allow_store:
+            holder._record_store(period, next_sequence_number())
+            return array
         frames = _calculation_frames.get()
         may_keep = not frames or frames[-1].may_keep()
         if epoch == self._input_epoch and may_keep:
@@ -2295,11 +2391,15 @@ class Simulation:
         if invalidated_caches is None:
             return
         branch_name = getattr(self, "branch_name", "default")
-        spiral_invalidations = getattr(self, "_spiral_invalidated_caches", ())
-        purged = set(spiral_invalidations if spiral_only else invalidated_caches)
+        spiral_invalidations = set(getattr(self, "_spiral_invalidated_caches", ()))
+        state = _spiral_deferrals.get()
+        touched = set() if state is None else state.invalidated.pop(self, set())
+        purged = (
+            spiral_invalidations | touched if spiral_only else set(invalidated_caches)
+        )
         for _name, _period in purged:
             holder = self.get_holder(_name)
-            if (_name, _period) in spiral_invalidations:
+            if spiral_only or (_name, _period) in spiral_invalidations:
                 # A cut only invalidates its calculated value, at exactly
                 # this period and under the calculating branch's name.
                 holder.delete_array(_period, branch_name, derived_only=True)
@@ -2328,7 +2428,8 @@ class Simulation:
                             )
                         ):
                             _fast_cache.pop(key, None)
-        self.invalidated_caches = invalidated_caches - purged
+        consumed = spiral_invalidations if spiral_only else purged
+        self.invalidated_caches = invalidated_caches - consumed
         self._spiral_invalidated_caches = set()
 
     def calculate_add(
@@ -2381,6 +2482,7 @@ class Simulation:
         try:
             with frame if frame is not None else nullcontext():
                 input_state = self._calculation_start()
+                cut_generation = _spiral_cut_generation
                 result = total()
                 previous_transition = None
                 for _ in range(_RERUNS_AFTER_INPUT_CHANGE if outermost else 0):
@@ -2395,8 +2497,11 @@ class Simulation:
                     # obsolete (see ``calculate``). Sum again.
                     frame.restart()
                     input_state = self._calculation_start()
+                    cut_generation = _spiral_cut_generation
                     result = total()
-                return self._cache_option_result(variable, period, result, input_state)
+                return self._cache_option_result(
+                    variable, period, result, input_state, cut_generation
+                )
         finally:
             self._calculations_in_flight -= 1
 
@@ -2431,8 +2536,11 @@ class Simulation:
             with frame if frame is not None else nullcontext():
                 input_state = self._calculation_start()
                 computation_period = period.this_year
+                cut_generation = _spiral_cut_generation
                 result = self.calculate(variable_name, period=computation_period) / 12.0
-                return self._cache_option_result(variable, period, result, input_state)
+                return self._cache_option_result(
+                    variable, period, result, input_state, cut_generation
+                )
         elif period.unit == periods.YEAR:
             return self.calculate(variable_name, period)
 
@@ -2448,6 +2556,7 @@ class Simulation:
         period: Period,
         result: ArrayLike,
         input_state: Tuple[int, int, int],
+        cut_generation: int,
     ) -> ArrayLike:
         """Cache an ADD or DIVIDE result at ``period`` if a plain read would return it.
 
@@ -2491,8 +2600,14 @@ class Simulation:
         )
         if not routed or np.asarray(result).dtype != variable.dtype:
             return result
+        # A direct option outlives each term's scheduler. Skip storing a cut
+        # aggregate, retaining the input-set-meanwhile rule in ``_cache_result``.
         return self._cache_result(
-            self.get_holder(variable.name), result, period, input_state
+            self.get_holder(variable.name),
+            result,
+            period,
+            input_state,
+            allow_store=cut_generation == _spiral_cut_generation,
         )
 
     def calculate_output(self, variable_name: str, period: Period = None) -> ArrayLike:
@@ -2865,6 +2980,9 @@ class Simulation:
     def _invalidate_spiral_cache_entry(self, variable: str, period: Period) -> None:
         """Mark an exact calculated value, preserving explicit invalidations."""
         key = (variable, period)
+        state = _spiral_deferrals.get()
+        if state is not None:
+            state.invalidated.setdefault(self, set()).add(key)
         invalidated_caches = getattr(self, "invalidated_caches", None)
         if invalidated_caches is None:
             invalidated_caches = self.invalidated_caches = set()
@@ -2887,6 +3005,9 @@ class Simulation:
         each active stack empties is marked as it is cached (see
         ``_note_cached_value``). They are still reused until then.
         """
+        global _spiral_cut_generation
+        with _restricted_frames_lock:
+            _spiral_cut_generation += 1
         for frame in reversed(self.tracer.stack):
             # A traced branch shares its parent's stack, so a frame can be
             # the parent's (or another ancestor's).
@@ -3198,6 +3319,7 @@ class Simulation:
 
     def _drop_computed(self, since: Optional[int] = None) -> int:
         """Drop every non-input value numbered ``since`` or later (all, without it)."""
+        _note_spiral_input_change()
         dropped = 0
         for population in self.populations.values():
             for holder in population._holders.values():
@@ -3450,7 +3572,10 @@ class Simulation:
         changes; ``source`` purges its own values when its calculation ends.
         Inputs stay, as they do in ``source``.
         """
-        invalidated_caches = getattr(source, "_spiral_invalidated_caches", None)
+        spiral_invalidations = set(getattr(source, "_spiral_invalidated_caches", ()))
+        state = _spiral_deferrals.get()
+        touched = set() if state is None else state.invalidated.get(source, set())
+        invalidated_caches = spiral_invalidations | touched
         if not invalidated_caches:
             return
         branch_name = getattr(source, "branch_name", "default")
@@ -3461,8 +3586,8 @@ class Simulation:
             holder = self.populations[variable.entity.key]._holders.get(name)
             if holder is not None:
                 holder.delete_array(invalid_period, branch_name, derived_only=True)
-        self.invalidated_caches.difference_update(invalidated_caches)
-        self._spiral_invalidated_caches.difference_update(invalidated_caches)
+        self.invalidated_caches.difference_update(spiral_invalidations)
+        self._spiral_invalidated_caches.difference_update(spiral_invalidations)
 
     def get_branch(
         self, name: str = "branch", clone_system: bool = False

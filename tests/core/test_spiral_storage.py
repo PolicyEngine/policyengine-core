@@ -11,6 +11,7 @@ import pytest
 
 from policyengine_core import periods
 from policyengine_core.data_storage import InMemoryStorage, OnDiskStorage
+from tests.fixtures.disk_storage import build_simulation
 
 
 @pytest.fixture(params=["memory", "shared-memory", "disk"])
@@ -63,8 +64,10 @@ def _assert_metadata(storage):
     if isinstance(storage, InMemoryStorage):
         assert storage._shared <= storage._arrays.keys()
         assert storage._inputs <= storage._arrays.keys()
+        assert storage._sequence_numbers.keys() <= storage._arrays.keys()
     else:
         assert storage._derived <= storage._files.keys()
+        assert storage._sequence_numbers.keys() <= storage._files.keys()
 
 
 def test_exact_cleanup_keeps_descendant_inputs_and_contained_periods(storage_family):
@@ -182,3 +185,59 @@ def test_eternal_exact_cleanup_normalizes_the_period_and_isolates_branches(
     _assert_metadata(copy)
     _assert_snapshot(copy, {}, probes)
     _assert_snapshot(source, original, probes)
+
+
+@pytest.mark.parametrize("on_disk", [False, True])
+def test_holder_exact_cleanup_drops_only_its_cached_period(on_disk):
+    simulation = build_simulation(on_disk=on_disk)
+    january = periods.period("2021-01")
+    february = periods.period("2021-02")
+    simulation.set_input("salary", january, [1000])
+    simulation.set_input("salary", february, [2000])
+    first = simulation.calculate("income_tax", january)
+    other = simulation.calculate("income_tax", february)
+    holder = simulation.get_holder("income_tax")
+
+    holder.delete_array(january, derived_only=True)
+
+    assert holder.get_array(january) is None
+    assert holder._stored_sequence_number(january) is None
+    assert ("income_tax", january) not in simulation._fast_cache
+    assert simulation._fast_cache[("income_tax", february)] is other
+    np.testing.assert_array_equal(holder.get_array(february), other)
+    np.testing.assert_array_equal(simulation.calculate("income_tax", january), first)
+
+
+@pytest.mark.parametrize("on_disk", [False, True])
+def test_holder_exact_deletion_forgets_only_an_input_it_removes(on_disk):
+    simulation = build_simulation(on_disk=on_disk)
+    january = periods.period("2021-01")
+    february = periods.period("2021-02")
+    simulation.set_input("income_tax", january, [7])
+    simulation.set_input("income_tax", february, [11])
+    simulation.calculate("income_tax", january)
+    holder = simulation.get_holder("income_tax")
+    january_key = ("income_tax", "default", january)
+    february_key = ("income_tax", "default", february)
+
+    holder.delete_array(january, derived_only=True)
+
+    np.testing.assert_array_equal(holder.get_array(january), [7])
+    assert january_key in simulation._user_input_keys
+    assert holder._stores_user_input(january, "default")
+
+    holder.delete_array(january)
+
+    assert holder.get_array(january) is None
+    assert january_key not in simulation._user_input_keys
+    assert ("income_tax", january) not in simulation._fast_cache
+    assert february_key in simulation._user_input_keys
+    assert holder._stores_user_input(february, "default")
+    simulation.calculate("income_tax", january)
+    assert holder.is_derived(january)
+    assert january_key not in simulation._user_input_keys
+
+    simulation._invalidate_all_caches()
+
+    assert holder.get_array(january) is None
+    np.testing.assert_array_equal(holder.get_array(february), [11])

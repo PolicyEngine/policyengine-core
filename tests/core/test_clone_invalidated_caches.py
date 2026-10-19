@@ -173,3 +173,43 @@ def test_parent_purge_preserves_a_descendants_explicit_invalidation(
     branch.calculate("salary", MONTH)
     assert branch.invalidated_caches == set()
     assert holder.get_array(MONTH) is None
+
+
+@pytest.mark.parametrize("clone_after_cut", [False, True])
+def test_branch_cut_cleanup_preserves_an_overlapping_explicit_invalidation(
+    clone_after_cut,
+):
+    copies = []
+
+    class from_branch(Variable):
+        value_type = float
+        entity = entities.Person
+        definition_period = periods.MONTH
+        label = "Reads a cut recursion on a traced branch"
+
+        def formula(person, period):
+            branch = person.simulation.get_branch("other")
+            value = branch.calculate("spiral_a", period)
+            if clone_after_cut:
+                # The shared tracer still holds the parent's formula, so
+                # the branch has not yet purged its cut-derived values.
+                copies.append(branch.clone())
+            return value
+
+    system = CountryTaxBenefitSystem()
+    system.add_variables(spiral_a, spiral_b, from_branch)
+    source = _simulation(system)
+    source.trace = True
+    branch = source.get_branch("other")
+    pending = ("spiral_a", MONTH)
+    branch.invalidate_cache_entry(*pending)
+
+    np.testing.assert_array_equal(source.calculate("from_branch", MONTH), [22.0])
+
+    # Keeping the explicit request pending must not keep the calculated
+    # value reached by the cut, even when both concern exactly the same key.
+    for simulation in [branch, *copies]:
+        assert simulation.invalidated_caches == {pending}
+        holder = simulation.get_holder("spiral_a")
+        assert holder._memory_storage.get(MONTH, simulation.branch_name) is None
+        assert pending not in simulation._fast_cache

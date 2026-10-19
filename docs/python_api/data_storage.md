@@ -5,7 +5,18 @@ The `policyengine_core.data_storage` module contains the classes that are used t
 Both storage classes provide `delete_exact(period, branch_name, derived_only)`
 to remove a single stored period, leaving contained periods in place.
 With `derived_only=True`, an input at that key remains stored; this is
-used to discard provisional results from cut period recursions.
+used to discard provisional results from cut period recursions. Exact holder
+deletion also evicts the corresponding fast-cache entry and storage sequence
+metadata. An explicit invalidation remains owned by its simulation: a parent's
+cleanup discards only a descendant's cut-derived values, leaving its explicit
+invalidation pending even when both refer to the same key.
+
+The period-recursion scheduler's temporary results are discarded after input
+writes or computed-value invalidation. Retried calculations retain foreign
+input dependencies, and repeated input changes use the existing calculation
+retry limit; stable anchored chains have no scheduling count limit. ADD and
+DIVIDE aggregates derived from a recursion cut are returned without being
+cached, while inputs supplied during the calculation still take precedence.
 
 ## InMemoryStorage
 

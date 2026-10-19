@@ -385,12 +385,26 @@ class SimulationBuilder:
         must match a unique declared group ID by value; equal numeric IDs
         may have different dtypes. ``members_entity_id`` indexes the declared
         group order, including groups with no members. An empty assignment
-        is supported. Roles are interpreted as role keys or integer indices.
+        is supported. ``roles`` must be one dimensional and match the
+        membership array's length. Integers index the entity's flattened
+        roles; strings match flattened-role keys literally, with unmatched
+        keys represented as unrecognized roles. This method does not validate
+        role capacity.
 
         Raises:
-            ValueError: if declared group IDs repeat or a membership names
-                an undeclared group.
+            ValueError: if roles are not one dimensional with one entry per
+                membership, declared group IDs repeat, or a membership cannot
+                be matched by value to a declared group.
         """
+        roles_array = np.array(roles)
+        if roles_array.ndim != 1 or len(roles_array) != len(persons_group_assignment):
+            # ``members_role`` is indexed like ``members_entity_id``: one entry
+            # per membership. Other shapes can make queries fail or broadcast incorrectly.
+            raise ValueError(
+                f"Got {roles_array.size} {group_population.entity.key} role(s) "
+                f"for {len(persons_group_assignment)} person(s); give one role "
+                "per person."
+            )
         group_population.members_entity_id = group_positions(
             group_population.ids,
             persons_group_assignment,
@@ -398,7 +412,6 @@ class SimulationBuilder:
         )
 
         flattened_roles = group_population.entity.flattened_roles
-        roles_array = np.array(roles)
         if np.issubdtype(roles_array.dtype, np.integer):
             group_population.members_role = np.array(flattened_roles)[roles_array]
         else:

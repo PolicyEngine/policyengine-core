@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -144,13 +145,167 @@ def test_release_tag_script_propagates_push_failure(tmp_path: Path):
     assert "origin" in result.stderr
 
 
-def test_publish_workflow_tags_only_after_pypi_succeeds():
-    workflow = PUSH_WORKFLOW.read_text()
-    publish_job = workflow.split("  Publish:\n", maxsplit=1)[1]
-    publish_step = "uses: pypa/gh-action-pypi-publish@release/v1"
-    tag_step = "run: bash .github/publish-git-tag.sh"
+def only_step(steps: list[dict], matches, description: str) -> int:
+    indices = [index for index, step in enumerate(steps) if matches(step)]
+    assert len(indices) == 1, f"expected one {description} step, found {indices}"
+    return indices[0]
 
-    assert "permissions:\n      contents: write" in publish_job
-    assert "fetch-depth: 0" in publish_job
-    assert publish_job.index(tag_step) > publish_job.index(publish_step)
-    assert "publish-git-tag.sh || true" not in publish_job
+
+def assert_publish_tags_only_after_pypi_succeeds(publish: dict) -> None:
+    steps = publish["steps"]
+    checkout = steps[
+        only_step(
+            steps,
+            lambda step: step.get("uses", "").startswith("actions/checkout@"),
+            "checkout",
+        )
+    ]
+    pypi_index = only_step(
+        steps,
+        lambda step: step.get("uses", "").startswith("pypa/gh-action-pypi-publish@"),
+        "PyPI publish",
+    )
+    tag_index = only_step(
+        steps,
+        lambda step: ".github/publish-git-tag.sh" in step.get("run", ""),
+        "git tag",
+    )
+    pypi_step = steps[pypi_index]
+    tag_step = steps[tag_index]
+
+    # The tag script pushes a tag, so Publish itself needs write access.
+    # Permissions granted to any other job do not apply to it.
+    permissions = publish.get("permissions", {})
+    assert permissions == "write-all" or (
+        isinstance(permissions, dict) and permissions.get("contents") == "write"
+    ), "Publish lacks contents: write"
+    # The script looks for an existing tag locally, and a checkout with
+    # fetch-depth 0 fetches every tag. Action inputs are strings, so 0 and "0"
+    # are the same input.
+    assert str(checkout.get("with", {}).get("fetch-depth")) == "0", (
+        "checkout is not fetch-depth 0"
+    )
+    # Steps run in order and a failure skips the rest, so the tag step runs
+    # only after a successful upload. A condition on either step, or
+    # continue-on-error on the upload, could let it run anyway: a skipped
+    # step does not fail the job.
+    assert pypi_index < tag_index, "tag step precedes the PyPI step"
+    assert "if" not in pypi_step, "PyPI step has a condition"
+    assert "if" not in tag_step, "tag step has a condition"
+    assert pypi_step.get("continue-on-error", False) is False, (
+        "PyPI step continues on error"
+    )
+    # A failed tag push must fail the job, not leave an untagged release, so
+    # the step runs the script alone: nothing such as `|| true` may follow it.
+    assert tag_step.get("continue-on-error", False) is False, (
+        "tag step continues on error"
+    )
+    assert tag_step["run"].strip() == "bash .github/publish-git-tag.sh", (
+        "tag step runs more than the tag script"
+    )
+
+
+def test_publish_workflow_tags_only_after_pypi_succeeds():
+    publish = yaml.safe_load(PUSH_WORKFLOW.read_text())["jobs"]["Publish"]
+
+    assert_publish_tags_only_after_pypi_succeeds(publish)
+
+
+def drop_publish_permissions_and_add_later_writer(jobs: dict) -> None:
+    # A text slice from "  Publish:" to the end of the file read the later
+    # job's permissions as Publish's and passed this workflow.
+    del jobs["Publish"]["permissions"]
+    jobs["Docs"] = {
+        "runs-on": "ubuntu-latest",
+        "permissions": {"contents": "write"},
+        "steps": [{"run": "make documentation"}],
+    }
+
+
+def find_step(jobs: dict, fragment: str) -> dict:
+    return next(
+        step
+        for step in jobs["Publish"]["steps"]
+        if fragment in step.get("uses", "") + step.get("run", "")
+    )
+
+
+def shallow_checkout(jobs: dict) -> None:
+    del find_step(jobs, "actions/checkout@")["with"]["fetch-depth"]
+
+
+def tag_before_pypi(jobs: dict) -> None:
+    steps = jobs["Publish"]["steps"]
+    tag_step = find_step(jobs, "publish-git-tag.sh")
+    steps.remove(tag_step)
+    steps.insert(steps.index(find_step(jobs, "gh-action-pypi-publish")), tag_step)
+
+
+def ignore_tag_failure(jobs: dict) -> None:
+    find_step(jobs, "publish-git-tag.sh")["run"] += " || true"
+
+
+def continue_after_tag_failure(jobs: dict) -> None:
+    find_step(jobs, "publish-git-tag.sh")["continue-on-error"] = True
+
+
+def continue_after_pypi_failure(jobs: dict) -> None:
+    find_step(jobs, "gh-action-pypi-publish")["continue-on-error"] = True
+
+
+def tag_even_if_pypi_fails(jobs: dict) -> None:
+    find_step(jobs, "publish-git-tag.sh")["if"] = "always()"
+
+
+def skip_pypi_on_this_branch(jobs: dict) -> None:
+    # The default branch is master, so this skips the upload on every release.
+    find_step(jobs, "gh-action-pypi-publish")["if"] = "github.ref == 'refs/heads/main'"
+
+
+@pytest.mark.parametrize(
+    ("mutate", "violation"),
+    [
+        pytest.param(mutate, violation, id=mutate.__name__)
+        for mutate, violation in [
+            (
+                drop_publish_permissions_and_add_later_writer,
+                "Publish lacks contents: write",
+            ),
+            (shallow_checkout, "checkout is not fetch-depth 0"),
+            (tag_before_pypi, "tag step precedes the PyPI step"),
+            (skip_pypi_on_this_branch, "PyPI step has a condition"),
+            (tag_even_if_pypi_fails, "tag step has a condition"),
+            (continue_after_pypi_failure, "PyPI step continues on error"),
+            (continue_after_tag_failure, "tag step continues on error"),
+            (ignore_tag_failure, "tag step runs more than the tag script"),
+        ]
+    ],
+)
+def test_publish_workflow_check_rejects_unsafe_release_order(mutate, violation):
+    jobs = yaml.safe_load(PUSH_WORKFLOW.read_text())["jobs"]
+    mutate(jobs)
+
+    with pytest.raises(AssertionError, match=violation):
+        assert_publish_tags_only_after_pypi_succeeds(jobs["Publish"])
+
+
+def grant_write_all(jobs: dict) -> None:
+    jobs["Publish"]["permissions"] = "write-all"
+
+
+def quote_fetch_depth(jobs: dict) -> None:
+    find_step(jobs, "actions/checkout@")["with"]["fetch-depth"] = "0"
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(mutate, id=mutate.__name__)
+        for mutate in [grant_write_all, quote_fetch_depth]
+    ],
+)
+def test_publish_workflow_check_accepts_equivalent_settings(mutate):
+    jobs = yaml.safe_load(PUSH_WORKFLOW.read_text())["jobs"]
+    mutate(jobs)
+
+    assert_publish_tags_only_after_pypi_succeeds(jobs["Publish"])

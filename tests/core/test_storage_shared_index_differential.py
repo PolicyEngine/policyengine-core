@@ -1,12 +1,16 @@
 """A storage without a set of its own behaves like one that always had one.
 
 ``_EagerIndexStorage`` below is ``InMemoryStorage`` as it was when every
-storage owned a set of shared keys. Random sequences of operations run on
-both, and after every step the two must hold the same arrays and the same
-shared keys; at the end every read must agree. The storage under test must
-also keep its own invariants: it refers to the one shared-nothing object
-exactly when it shares nothing, and no two storages hold the same set.
-``test_storage_shared_index.py`` pins the same behaviour with examples.
+storage owned a set of shared keys and a set of derived keys. The storage
+under test records its inputs instead, and has each set only while it is
+not empty. Random sequences of operations, storing inputs and derived
+values, run on both, and after every step the two must hold the same arrays,
+the same shared keys, and the same stored values marked derived; at the end
+every read and every ``is_derived`` must agree. The storage under test must
+also keep its own invariants: it refers to the one shared-nothing (no-inputs)
+object exactly when it shares nothing (holds no input), and no two storages
+hold the same mutable set. ``test_storage_shared_index.py`` and
+``test_storage_input_index.py`` pin the same behaviour with examples.
 """
 
 from __future__ import annotations
@@ -21,6 +25,7 @@ st = hypothesis.strategies
 from policyengine_core import periods
 from policyengine_core.data_storage import InMemoryStorage
 from policyengine_core.data_storage.in_memory_storage import (
+    _NO_INPUTS,
     _NOTHING_SHARED,
     _can_share,
     _read_only_view,
@@ -28,11 +33,13 @@ from policyengine_core.data_storage.in_memory_storage import (
 
 
 class _EagerIndexStorage:
-    """The storage with an empty set of shared keys in every instance."""
+    """The storage with an empty set of shared keys and an empty set of
+    derived keys in every instance."""
 
     def __init__(self, is_eternal):
         self._arrays = {}
         self._shared = set()
+        self._derived = set()
         self.is_eternal = is_eternal
 
     def clone(self, share_arrays=False):
@@ -46,7 +53,14 @@ class _EagerIndexStorage:
                     clone._arrays[key] = array.copy()
         else:
             clone._arrays = {key: array.copy() for key, array in self._arrays.items()}
+        clone._derived = set(self._derived)
         return clone
+
+    def is_derived(self, period, branch_name="default"):
+        if self.is_eternal:
+            period = periods.period(periods.ETERNITY)
+        key = f"{branch_name}:{periods.period(period)}"
+        return key in self._derived and key in self._arrays
 
     def get(self, period, branch_name="default"):
         if self.is_eternal:
@@ -62,13 +76,17 @@ class _EagerIndexStorage:
             self._shared.discard(key)
         return values
 
-    def put(self, value, period, branch_name="default"):
+    def put(self, value, period, branch_name="default", derived=False):
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
         key = f"{branch_name}:{period}"
         self._arrays[key] = value
         self._shared.discard(key)
+        if derived:
+            self._derived.add(key)
+        else:
+            self._derived.discard(key)
 
     def delete(self, period=None, branch_name="default"):
         if period is None:
@@ -79,6 +97,7 @@ class _EagerIndexStorage:
                 if not period_item.startswith(branch_prefix)
             }
             self._shared.intersection_update(self._arrays)
+            self._derived.intersection_update(self._arrays)
             return
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
@@ -92,6 +111,7 @@ class _EagerIndexStorage:
             )
         }
         self._shared.intersection_update(self._arrays)
+        self._derived.intersection_update(self._arrays)
 
 
 PERIODS = ["2017-01", "2017-02", "2017"]
@@ -121,6 +141,7 @@ _operation = st.one_of(
         _branch,
         st.sampled_from(ARRAY_KINDS),
         _seed,
+        st.booleans(),
     ),
     st.tuples(st.just("get"), _storage, _period, _branch),
     st.tuples(st.just("write"), _storage, _period, _branch, _seed),
@@ -147,8 +168,8 @@ def _apply(storages, operation):
     kind, index = operation[0], operation[1] % len(storages)
     storage = storages[index]
     if kind == "put":
-        _, _, period, branch, array_kind, seed = operation
-        storage.put(_make_array(array_kind, seed), period, branch)
+        _, _, period, branch, array_kind, seed, derived = operation
+        storage.put(_make_array(array_kind, seed), period, branch, derived=derived)
         return None
     if kind == "get":
         _, _, period, branch = operation
@@ -181,6 +202,12 @@ def _assert_same_state(tested, reference):
         for key, array in storage._arrays.items():
             assert _same_array(array, expected._arrays[key]), (index, key)
         assert storage._shared == expected._shared, index
+        # The stored values marked derived. A storage emptied from outside
+        # keeps the marks of keys it no longer holds, which the reference
+        # copies into clones; they never count.
+        assert storage._arrays.keys() - storage._inputs == (
+            expected._derived & expected._arrays.keys()
+        ), index
 
 
 def _assert_index_invariants(storages, cleared):
@@ -198,9 +225,19 @@ def _assert_index_invariants(storages, cleared):
         for key in shared & storage._arrays.keys():
             # A shared array cannot be written through.
             assert not storage._arrays[key].flags.writeable, (index, key)
-    # A set belongs to one storage.
-    assert len({id(shared) for shared in own_sets}) == len(own_sets)
+        inputs = storage._inputs
+        assert (inputs is _NO_INPUTS) == (not inputs), index
+        assert ("_inputs" in vars(storage)) == bool(inputs), index
+        # Inputs are a set of the storage's own, or a frozenset it may share
+        # with storages cloned from it or it from them.
+        if isinstance(inputs, set):
+            own_sets.append(inputs)
+        if index not in cleared:
+            assert inputs <= storage._arrays.keys(), index
+    # A set belongs to one storage, and to one of its two indexes.
+    assert len({id(own) for own in own_sets}) == len(own_sets)
     assert not _NOTHING_SHARED
+    assert not _NO_INPUTS
 
 
 @hypothesis.settings(
@@ -230,6 +267,9 @@ def test_storage_without_its_own_set_matches_storage_with_one(is_eternal, operat
     for index, (storage, expected) in enumerate(zip(tested, reference)):
         for branch in BRANCHES:
             for period in PERIODS:
+                assert storage.is_derived(period, branch) == expected.is_derived(
+                    period, branch
+                ), (index, branch, period)
                 assert _same_array(
                     storage.get(period, branch), expected.get(period, branch)
                 ), (index, branch, period)

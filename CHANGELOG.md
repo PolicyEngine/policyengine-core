@@ -1,3 +1,217 @@
+## [3.33.11] - 2026-10-19
+
+### Fixed
+
+- Reject implicit dataset defaults that exceed their recognized role's capacity per group and role arrays that are not one dimensional or do not match the membership count.
+
+
+## [3.33.10] - 2026-10-18
+
+### Fixed
+
+- Group `all`, `max` and `min`, `members_position` and `Population.get_rank` now work when a simulation has no persons, giving the neutral element (True, -inf, inf) for each group instead of raising "zero-size array to reduction"; empty memberships and default simulation IDs (including for NumPy unsigned counts) are kept as integers so ranks and projections work.
+
+
+## [3.33.9] - 2026-10-18
+
+### Fixed
+
+- `MarginalRateTaxScale.to_average` now keeps a first threshold other than 0, so the average scale levies the marginal tax at every threshold and `to_marginal` gives the scale back; it raises `ValueError`, instead of returning a wrong scale or raising `ZeroDivisionError`, when no average rate scale can levy the tax, and it converts one bracket with surplus rates as it converts the paired bracket.
+
+
+## [3.33.8] - 2026-10-18
+
+### Fixed
+
+- Looking up parameters with empty key arrays now returns an empty array at every level of a chained lookup, instead of raising `IndexError` once a level holds numeric values; after such a selection a one-element key gives no rows if it names a child and raises `ParameterNotFoundError` if it does not.
+
+
+## [3.33.7] - 2026-10-18
+
+### Fixed
+
+- Correct dataset group identity and membership validation, and load flat-file memberships and group values in group order while preserving empty datasets.
+
+
+## [3.33.6] - 2026-10-18
+
+### Fixed
+
+- `LinearAverageRateTaxScale.calc` now taxes a base at or above the last threshold at the last average rate. It used to return 0 for such bases unless the last threshold was infinity, as `MarginalRateTaxScale.to_average` sets it.
+
+
+## [3.33.5] - 2026-10-18
+
+### Fixed
+
+- Converting a one-bracket rate scale no longer raises `UnboundLocalError`, zero-origin marginal singletons preserve their tax calculations, and converting an empty linear-average scale gives an empty marginal scale.
+
+
+## [3.33.4] - 2026-10-15
+
+### Changed
+
+- Core's country smoke CI installs policyengine-us 2.42.13 with spm-calculator 1.0.0.post1, since the pinned policyengine-us 1.824.1 is no longer on PyPI.
+
+
+## [3.33.3] - 2026-10-12
+
+### Changed
+
+- - Publish to PyPI with trusted publishing instead of the organisation-wide PyPI token.
+
+
+## [3.33.2] - 2026-10-10
+
+### Changed
+
+- Add regression coverage for reform and baseline fidelity when subsampling simulations after calculations.
+
+
+## [3.33.1] - 2026-10-10
+
+### Fixed
+
+- Rebuild subsamples from current source inputs and loaded memberships, preserve each input weight column's entity total, select with available requested-period or dataset-period weights, and discard pre-sample calculation branches, including caller-created branches.
+
+
+## [3.33.0] - 2026-10-10
+
+### Added
+
+- Simulation.drop_computed_arrays() deletes every value a simulation holds except inputs, for branches whose policy changes after they are created.
+
+### Changed
+
+- Branch input changes prevent caching stale calculations and rerun outermost `calculate` and `calculate_add` calls up to ten times, with exact repeated input transitions and results in other branches able to settle under the usual cache restrictions; unchanged direct inputs skip invalidation, branch input stores disable macro-cache reads, `apply_reform` preserves surviving supplied input tiers, branch input helpers share overlapping-cache cleanup with ordinary input helpers, and restored calculated values are invalidated conservatively.
+
+### Fixed
+
+- Branch input changes invalidate derived values while preserving supplied inputs, independent caches, guarded retry effects, fixed-point settlement, branch dumps and disk invalidation order, with read-only foreign calculations reused within each attempt only while their captured input and branch-registration dependencies remain current.
+
+
+## [3.32.29] - 2026-10-09
+
+### Fixed
+
+- Period-splitting input helpers now preserve supplied inputs in memory or on disk, replace calculated sub-period values, and invalidate overlapping caches consistently with the supplied-input tier record.
+
+
+## [3.32.28] - 2026-10-09
+
+### Fixed
+
+- Cache `calculate_add` and `calculate_divide` results as derived only where a plain read returns them without changing dtype, preserving visible inputs and allowing explicit aggregate refresh after an input changes or is deleted.
+
+
+## [3.32.27] - 2026-10-09
+
+### Fixed
+
+- Fix compound period disk storage on Windows while preserving legacy filename restores and clone isolation.
+- Keep input records aligned with memory/disk storage across deletion, copies, handlers, subsampling, period aliases, and early years; custom handlers must use `holder._set` or `holder.set_input` for inputs, since `put_in_cache` values are excluded from input export and reform replay and no longer redirected to the input's branch.
+
+
+## [3.32.26] - 2026-10-09
+
+### Fixed
+
+- Give independently created temporary holder storages distinct directories, create caller-supplied storage directories on first use, and clear stale enum metadata when replacing enum values with plain arrays.
+
+
+## [3.32.25] - 2026-10-09
+
+### Changed
+
+- Cancel superseded pull request CI runs and give every test and lint job a timeout, so hung or outdated jobs free shared GitHub Actions runners.
+
+
+## [3.32.24] - 2026-10-08
+
+### Changed
+
+- Restore non-derived dumped values as recorded inputs using derived-period marks and an explicit format marker, warn for ambiguous legacy dumps, evict affected fast-cache entries on holder writes and deletes, reject non-numeric uprating and defined_for conditions, and preserve existing variables when a replacement is rejected.
+
+
+## [3.32.23] - 2026-10-08
+
+### Fixed
+
+- Fix simulation copying and same-process unpickling, preserve `EnumArray` subclasses and enum metadata through pickling, and allow legacy enum arrays to be re-pickled.
+
+
+## [3.32.22] - 2026-10-08
+
+### Changed
+
+- The release workflow deploys the documentation site again, from a Docs job that runs once the tests pass and the release reaches PyPI; the deploy step had been skipped on every release since September 2024 because it checked a matrix the Test job no longer has.
+
+
+## [3.32.21] - 2026-10-07
+
+### Changed
+
+- Pull requests now run actionlint on the GitHub Actions workflows, and the release workflow quotes the version it passes to towncrier and uses the `skip-existing` input of the PyPI publish action.
+
+### Fixed
+
+- A reform simulation's baseline branch now uses the baseline system's entities and variables (a variable the reform neutralized or redefined was neutralized or redefined in the baseline too), including after `subsample`, which also keeps the rebuilt branch traced in the reform simulation, as `__init__` does, and no longer leaves it holding the branch it replaced; a clone of a reform simulation gets a copy of the baseline branch as its own instead of sharing its source's; and each clone and branch records its own cache invalidations, so a spiral in one no longer deletes the other's cached values or inputs.
+
+
+## [3.32.20] - 2026-10-06
+
+### Fixed
+
+- A cloned simulation or branch now calculates on itself through `calc` and `df`: `Simulation.clone` binds every method alias it copies (`calc`, `df`, and any a subclass keeps on the instance) to the copy, where before they stayed bound to the source, so `clone.calc(...)` returned the source's values and kept the source alive. A clone given its own copy of the tax-benefit system (the default for `clone`, and `get_branch(clone_system=True)`) now names the clone as that copy's simulation, and the clone's populations look variables up in the copy, so a clone can calculate a variable a reform added to its own system (it raised `VariableNotFoundError`). Holders the clone copied from its source keep the source's variable definitions, as holders do after `apply_reform`. A clone of a plain simulation given its own copy of the system no longer keeps its source alive. One sharing the system still does, through the system's `simulation`; so does a clone of a branch, through the branch's parent (`parent_branch`), and a clone of a reform simulation, through the `baseline` branch it shares.
+
+
+## [3.32.19] - 2026-10-06
+
+### Fixed
+
+- A simulation's temporary on-disk storage folder (`openfisca_*`) is now removed, instead of being left behind, once the simulation and everything in the same process that reads files in it or stores values in a folder inside it have been garbage-collected, or at interpreter exit, except the subfolders of disk storages that preserve theirs (`preserve_storage_dir`). Clones, and processes forked from the one that made the folder, make the disk storages they need themselves in folders of their own, and disk storages cloned, copied, pickled or forked from one another write a new file rather than over a file another of them reads, including files one of them read back with `restore` before they were cloned, copied or forked (a later `restore` reads whatever files are there). A disk storage no longer removes the folder containing its own, such as a folder the caller chose as `_data_storage_dir`. Between processes the folder still belongs to the process that made it: removing it there removes everything in it, including a folder a forked process made inside it, even while that process reads it.
+
+
+## [3.32.18] - 2026-10-06
+
+### Fixed
+
+- When two earlier inputs in a variable's own unit start on the same day (such as `2012` and `year:2012:2` for a yearly variable), uprating now starts from the one that ends last, the input auto-carry-over would carry, so the uprated value no longer depends on which input was stored first or on whether it is in memory or on disk.
+
+
+## [3.32.17] - 2026-10-05
+
+### Fixed
+
+- Simulations and storages cloned from one another no longer write over each other's values in on-disk storage: a value stored for a key whose file a clone also reads goes to a new file of its own. Each cloned simulation also keeps its own record of user inputs, so `apply_reform` on one no longer keeps, as an input, a value it calculated for a period the other was given as input.
+- Uprating now starts from the latest earlier input in the variable's own unit and skips periods the simulation calculated, and a yearly input given through a `set_input` helper now replaces months already calculated instead of keeping them, so calculating intermediate periods first no longer compounds rounding or truncation, or carries an eligibility mask, a default or a calculated month into later uprated values.
+
+
+## [3.32.16] - 2026-10-03
+
+### Fixed
+
+- Auto-carry-over now carries only inputs, taking the latest one stored for a period that starts no later than the requested period, so a carried value no longer depends on which periods were calculated first or on a later input.
+
+
+## [3.32.15] - 2026-10-03
+
+### Fixed
+
+- Let vectorial parameter nodes be copied, deep-copied and pickled, so a reform that calls `modify_parameters` keeps a cached fancy-indexing node as a node, and stop reading a child node by name (`node.owner`) from raising `TypeError`.
+
+
+## [3.32.14] - 2026-10-03
+
+### Changed
+
+- The dev dependency on pytest-rerunfailures now requires 16.2 or later, whose reruns no longer leave a module-scoped fixture cached for later test modules.
+
+### Fixed
+
+- Tracing a simulation no longer switches tracing on in the parameter tree of its tax-benefit system, so other simulations, branches and clones of the system stay untraced, every traced simulation and branch records the parameters its formulas read under its own tracer and branch name, and traced parameter nodes can be copied, deep-copied, pickled, iterated and converted to arrays like untraced ones.
+
+
 ## [3.32.13] - 2026-10-03
 
 ### Fixed

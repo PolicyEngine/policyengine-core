@@ -51,6 +51,47 @@ def _unify_structured_dtypes(values):
     return unified_dtype, all_fields, casted_values
 
 
+# Copying and pickling look these names up on an instance. Answered by the
+# vector, they would copy or restore the vector, not the node. Pickle
+# protocols 0 and 1 read ``__slots__`` to decide whether the node can be
+# pickled at all.
+_COPY_PROTOCOL = frozenset(
+    {
+        "__copy__",
+        "__deepcopy__",
+        "__getstate__",
+        "__setstate__",
+        "__reduce__",
+        "__reduce_ex__",
+        "__getnewargs__",
+        "__getnewargs_ex__",
+        "__slots__",
+    }
+)
+
+
+def _wrapped(wrapper: object, attribute: str, key: str) -> object:
+    """Return the object ``wrapper`` delegates the lookup of ``key`` to.
+
+    ``__getattr__`` only runs when normal lookup fails. Two such lookups must
+    not reach the wrapped object:
+
+    - the copy and pickle protocol (``__deepcopy__``, ``__setstate__``, ...);
+    - any name on an instance ``copy`` or ``pickle`` has created with
+      ``__new__`` and not filled in yet. It has no ``attribute``, so reading
+      it here would call ``__getattr__`` again, without end.
+
+    Every other name is delegated, special names included: NumPy reads its
+    array protocol (``__array_struct__``, ...) from a vectorial node this way.
+    """
+    if key in _COPY_PROTOCOL:
+        raise AttributeError(key)
+    try:
+        return wrapper.__dict__[attribute]
+    except KeyError:
+        raise AttributeError(key) from None
+
+
 class VectorialParameterNodeAtInstant:
     """
     Parameter node of the legislation at a given instant which has been vectorized.
@@ -209,10 +250,22 @@ class VectorialParameterNodeAtInstant:
         self._instant_str = instant_str
 
     def __getattr__(self, attribute: str) -> Any:
-        result = getattr(self.vector, attribute)
+        result = getattr(_wrapped(self, "vector", attribute), attribute)
         if isinstance(result, numpy.recarray):
-            return VectorialParameterNodeAtInstant(result)
+            # A child that is itself a node, such as ``node.owner`` when
+            # ``owner`` has children. Like ``__getitem__``, keep this node's
+            # name and instant.
+            return VectorialParameterNodeAtInstant(
+                self._name, result, self._instant_str
+            )
         return result
+
+    def __getstate__(self) -> dict:
+        # ``_enum_lut_cache`` is keyed by ``id(enum)``. In another process that
+        # id can belong to a different enum, so copies rebuild the cache.
+        state = self.__dict__.copy()
+        state.pop("_enum_lut_cache", None)
+        return state
 
     def __getitem__(self, key: str) -> Any:
         # If the key is a string, just get the subnode
@@ -288,7 +341,18 @@ class VectorialParameterNodeAtInstant:
                 dtypes_match = all(val.dtype == values[0].dtype for val in values)
                 v0_len = len(values[0])
 
-                if v0_len <= 1:
+                if v0_len == 0:
+                    # An earlier selection left no rows. Broadcast the key
+                    # over them as the leaf path does: no rows, or an error
+                    # for a key of two or more.
+                    numpy.broadcast_shapes(numpy.shape(idx), (0,))
+                    if dtypes_match:
+                        result = values[0][:0]
+                    else:
+                        result = numpy.zeros(
+                            0, dtype=_unify_structured_dtypes(values)[0]
+                        )
+                elif v0_len == 1:
                     # 1-element structured arrays: simple concat + index
                     if not dtypes_match:
                         unified_dtype, all_fields, values_cast = (
@@ -356,7 +420,7 @@ class VectorialParameterNodeAtInstant:
                 # or N-element vectors (after prior vectorial indexing).
                 if values:
                     v0 = numpy.asarray(values[0])
-                    if v0.ndim == 0 or v0.shape[0] <= 1:
+                    if v0.ndim == 0 or v0.shape[0] == 1:
                         # Scalar per child: 1D lookup
                         scalar_vals = numpy.empty(len(values) + 1, dtype=numpy.float64)
                         for i, v in enumerate(values):
@@ -364,7 +428,8 @@ class VectorialParameterNodeAtInstant:
                         scalar_vals[-1] = numpy.nan
                         result = scalar_vals[idx]
                     else:
-                        # N-element vectors: stack into (K+1, N) matrix
+                        # N-element vectors (N may be 0 after an empty
+                        # selection): stack into (K+1, N) matrix
                         m = v0.shape[0]
                         stacked = numpy.empty((len(values) + 1, m), dtype=numpy.float64)
                         for i, v in enumerate(values):
@@ -374,8 +439,10 @@ class VectorialParameterNodeAtInstant:
                 else:
                     result = numpy.full(n, numpy.nan)
 
-            # Check for unexpected keys
-            if helpers.contains_nan(result):
+            # Check for unexpected keys. A key that names no child points at
+            # the NaN sentinel, but the result can hide it: a one-element key
+            # broadcast over zero rows selects nothing.
+            if helpers.contains_nan(result) or (idx == SENTINEL).any():
                 unexpected_keys = set(
                     numpy.asarray(key, dtype=str)
                     if not numpy.issubdtype(numpy.asarray(key).dtype, numpy.str_)

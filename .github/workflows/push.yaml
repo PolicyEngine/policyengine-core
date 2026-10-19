@@ -5,6 +5,7 @@ on:
 jobs:
   Lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: |
       (github.repository == 'PolicyEngine/policyengine-core')
       && (github.event.head_commit.message == 'Update PolicyEngine Core')
@@ -56,6 +57,10 @@ jobs:
           fetch: false
   Test:
     runs-on: ubuntu-latest
+    # Slowest observed 2026-10-06..08: 4 minutes. Docs waits on this job
+    # (Publish does not). Fail a hang instead of holding a shared runner for
+    # the 6-hour default.
+    timeout-minutes: 45
     if: |
       (github.repository == 'PolicyEngine/policyengine-core')
       && (github.event.head_commit.message == 'Update PolicyEngine Core')
@@ -110,8 +115,12 @@ jobs:
     if: |
       (github.repository == 'PolicyEngine/policyengine-core')
       && (github.event.head_commit.message == 'Update PolicyEngine Core')
+    # PyPI trusted publishing: PyPI accepts uploads only from this workflow in
+    # the pypi environment, which is limited to master. No stored PyPI token.
+    environment: pypi
     permissions:
       contents: write
+      id-token: write
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
@@ -130,8 +139,6 @@ jobs:
       - name: Publish a Python distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          user: __token__
-          password: ${{ secrets.PYPI }}
           skip-existing: true
       - name: Publish a git tag
         run: bash .github/publish-git-tag.sh

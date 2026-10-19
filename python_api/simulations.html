@@ -261,6 +261,15 @@
 <dt class="sig sig-object py" id="policyengine_core.simulations.simulation.Simulation.build_from_dataset">
 <span class="sig-name descname"><span class="pre">build_from_dataset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#policyengine_core.simulations.simulation.Simulation.build_from_dataset" title="Permalink to this definition">#</a></dt>
 <dd><p>Build a simulation from a dataset.</p>
+<p>Entity-specific role columns take precedence over a generic <code class="docutils literal notranslate"><span class="pre">role</span></code>
+column, including period-suffixed entity role columns in flat files.
+Without either, each person receives the literal <code class="docutils literal notranslate"><span class="pre">default_role</span></code>
+key. Only flattened-role keys match: unmatched and compound keys remain
+unrecognized rather than selecting a first role or subrole.</p>
+<p>A recognized implicit default with a finite role maximum must fit every
+group’s membership count. Otherwise an explicit role column is required.
+Explicit dataset role columns do not validate role capacity.
+<code class="docutils literal notranslate"><span class="pre">default_role=None</span></code> requires a role column.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -913,6 +922,15 @@ a known period, matching the historical unsafe behavior.</p>
 <dt class="sig sig-object py" id="policyengine_core.simulations.microsimulation.Microsimulation.build_from_dataset">
 <span class="sig-name descname"><span class="pre">build_from_dataset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#policyengine_core.simulations.microsimulation.Microsimulation.build_from_dataset" title="Permalink to this definition">#</a></dt>
 <dd><p>Build a simulation from a dataset.</p>
+<p>Entity-specific role columns take precedence over a generic <code class="docutils literal notranslate"><span class="pre">role</span></code>
+column, including period-suffixed entity role columns in flat files.
+Without either, each person receives the literal <code class="docutils literal notranslate"><span class="pre">default_role</span></code>
+key. Only flattened-role keys match: unmatched and compound keys remain
+unrecognized rather than selecting a first role or subrole.</p>
+<p>A recognized implicit default with a finite role maximum must fit every
+group’s membership count. Otherwise an explicit role column is required.
+Explicit dataset role columns do not validate role capacity.
+<code class="docutils literal notranslate"><span class="pre">default_role=None</span></code> requires a role column.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1725,11 +1743,16 @@ a known period, matching the historical unsafe behavior.</p>
 must match a unique declared group ID by value; equal numeric IDs
 may have different dtypes. <code class="docutils literal notranslate"><span class="pre">members_entity_id</span></code> indexes the declared
 group order, including groups with no members. An empty assignment
-is supported. Roles are interpreted as role keys or integer indices.</p>
+is supported. <code class="docutils literal notranslate"><span class="pre">roles</span></code> must be one dimensional and match the
+membership array’s length. Integers index the entity’s flattened
+roles; strings match flattened-role keys literally, with unmatched
+keys represented as unrecognized roles. This method does not validate
+role capacity.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>ValueError</strong> – if declared group IDs repeat or a membership names
-    an undeclared group.</p>
+<dd class="field-odd"><p><strong>ValueError</strong> – if roles are not one dimensional with one entry per
+    membership, declared group IDs repeat, or a membership cannot
+    be matched by value to a declared group.</p>
 </dd>
 </dl>
 </dd></dl>

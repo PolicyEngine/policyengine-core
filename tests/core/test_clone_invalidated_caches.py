@@ -139,3 +139,37 @@ def test_a_pending_invalidation_purges_each_copy_once(system, make):
     assert source.invalidated_caches == {("salary", MONTH)}
     source.purge_cache_of_invalid_values()
     assert source.get_holder("salary").get_array(MONTH) is None
+
+
+@pytest.mark.parametrize("depth", [1, 2])
+@pytest.mark.parametrize("trace", [False, True])
+@pytest.mark.parametrize("spiral_pending", [False, True])
+def test_parent_purge_preserves_a_descendants_explicit_invalidation(
+    system, depth, trace, spiral_pending
+):
+    source = _simulation(system)
+    source.trace = trace
+    source.set_input("salary", MONTH, [INPUT])
+    branch = source
+    for index in range(depth):
+        branch = branch.get_branch(f"branch_{index}")
+    holder = branch.get_holder("income_tax")
+    value = np.array([42.0], dtype=holder.variable.dtype)
+    holder.put_in_cache(value, MONTH, derived=True)
+    pending = ("income_tax", MONTH)
+    branch.invalidate_cache_entry(*pending)
+    if spiral_pending:
+        cut_holder = branch.get_holder("spiral_a")
+        cut_holder.put_in_cache(value, MONTH, branch.branch_name, derived=True)
+        branch._invalidate_spiral_cache_entry("spiral_a", MONTH)
+
+    source.calculate("income_tax", MONTH)
+
+    assert branch.invalidated_caches == {pending}
+    np.testing.assert_array_equal(holder.get_array(MONTH), value)
+    if spiral_pending:
+        assert cut_holder._memory_storage.get(MONTH, branch.branch_name) is None
+    # The branch still consumes its explicit invalidation when it calculates.
+    branch.calculate("salary", MONTH)
+    assert branch.invalidated_caches == set()
+    assert holder.get_array(MONTH) is None

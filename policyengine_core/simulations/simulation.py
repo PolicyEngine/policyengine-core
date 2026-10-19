@@ -2279,20 +2279,25 @@ class Simulation:
         return array
 
     def purge_cache_of_invalid_values(self) -> None:
+        self._purge_invalid_values(spiral_only=False)
+
+    def _purge_invalid_values(self, *, spiral_only: bool) -> None:
         # We wait for the end of calculate(), signalled by an empty stack, before purging the cache
         if self.tracer.stack:
             return
-        # A traced branch shares this simulation's stack, so its frames can
-        # only be purged now that the stack is empty.
+        # A traced branch shares this simulation's stack, so its cut values
+        # can only be purged now that the stack is empty. Explicit invalidations
+        # belong to that branch and wait for its own calculation or purge.
         for branch in list(getattr(self, "branches", {}).values()):
-            branch.purge_cache_of_invalid_values()
+            branch._purge_invalid_values(spiral_only=True)
         _fast_cache = getattr(self, "_fast_cache", None)
         invalidated_caches = getattr(self, "invalidated_caches", None)
         if invalidated_caches is None:
             return
         branch_name = getattr(self, "branch_name", "default")
         spiral_invalidations = getattr(self, "_spiral_invalidated_caches", ())
-        for _name, _period in invalidated_caches:
+        purged = set(spiral_invalidations if spiral_only else invalidated_caches)
+        for _name, _period in purged:
             holder = self.get_holder(_name)
             if (_name, _period) in spiral_invalidations:
                 # A cut only invalidates its calculated value, at exactly
@@ -2323,7 +2328,7 @@ class Simulation:
                             )
                         ):
                             _fast_cache.pop(key, None)
-        self.invalidated_caches = set()
+        self.invalidated_caches = invalidated_caches - purged
         self._spiral_invalidated_caches = set()
 
     def calculate_add(

@@ -85,6 +85,49 @@ def test_triple_fancy_indexing():
     )
 
 
+def test_empty_fancy_indexing_at_every_level():
+    # Selecting no rows used to raise IndexError at the third level: the
+    # numeric leaf held zero values and the lookup read its first one.
+    none = np.asarray([], dtype=str)
+    for result in [
+        P.single.owner[none],
+        P.single[none][none],
+        P[none][none][none],
+    ]:
+        assert result.shape == (0,)
+        assert result.dtype == np.float64
+
+
+def test_empty_fancy_indexing_on_a_single_path():
+    # The audit witness: one leaf a.b.c and three empty key arrays.
+    node = ParameterNode(data={"a": {"b": {"c": {"2020-01-01": 0}}}})("2020-01-01")
+    none = np.asarray([], dtype=str)
+    assert node[none][none][none].shape == (0,)
+
+
+def test_one_key_after_an_empty_selection():
+    # A one-element key broadcasts over the zero rows an empty selection
+    # leaves. A key naming a child gives no rows, at a node or a leaf; one
+    # naming no child raises, as it does for rows that exist. (At a node, a
+    # valid key used to return one row of NaN.)
+    node = ParameterNode(
+        data={"a": {"b": {"c": {"2020-01-01": 7}}, "d": {"c": {"2020-01-01": 8}}}}
+    )("2020-01-01")
+    none = np.asarray([], dtype=str)
+
+    at_node = node[none][np.asarray(["b"])]
+    assert len(at_node.vector) == 0
+    assert at_node[np.asarray(["c"])].shape == (0,)
+    assert node[none][none][np.asarray(["c"])].shape == (0,)
+    for lookup in (
+        lambda: node[none][np.asarray(["missing"])],
+        lambda: node[none][none][np.asarray(["missing"])],
+    ):
+        with pytest.raises(ParameterNotFoundError) as e:
+            lookup()
+        assert "missing' was not found" in get_message(e.value)
+
+
 def test_wrong_key():
     zone = np.asarray(["z1", "z2", "z2", "toto"])
     with pytest.raises(ParameterNotFoundError) as e:

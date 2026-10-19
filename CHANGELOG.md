@@ -1,3 +1,66 @@
+## [3.33.11] - 2026-10-19
+
+### Fixed
+
+- Reject implicit dataset defaults that exceed their recognized role's capacity per group and role arrays that are not one dimensional or do not match the membership count.
+
+
+## [3.33.10] - 2026-10-18
+
+### Fixed
+
+- Group `all`, `max` and `min`, `members_position` and `Population.get_rank` now work when a simulation has no persons, giving the neutral element (True, -inf, inf) for each group instead of raising "zero-size array to reduction"; empty memberships and default simulation IDs (including for NumPy unsigned counts) are kept as integers so ranks and projections work.
+
+
+## [3.33.9] - 2026-10-18
+
+### Fixed
+
+- `MarginalRateTaxScale.to_average` now keeps a first threshold other than 0, so the average scale levies the marginal tax at every threshold and `to_marginal` gives the scale back; it raises `ValueError`, instead of returning a wrong scale or raising `ZeroDivisionError`, when no average rate scale can levy the tax, and it converts one bracket with surplus rates as it converts the paired bracket.
+
+
+## [3.33.8] - 2026-10-18
+
+### Fixed
+
+- Looking up parameters with empty key arrays now returns an empty array at every level of a chained lookup, instead of raising `IndexError` once a level holds numeric values; after such a selection a one-element key gives no rows if it names a child and raises `ParameterNotFoundError` if it does not.
+
+
+## [3.33.7] - 2026-10-18
+
+### Fixed
+
+- Correct dataset group identity and membership validation, and load flat-file memberships and group values in group order while preserving empty datasets.
+
+
+## [3.33.6] - 2026-10-18
+
+### Fixed
+
+- `LinearAverageRateTaxScale.calc` now taxes a base at or above the last threshold at the last average rate. It used to return 0 for such bases unless the last threshold was infinity, as `MarginalRateTaxScale.to_average` sets it.
+
+
+## [3.33.5] - 2026-10-18
+
+### Fixed
+
+- Converting a one-bracket rate scale no longer raises `UnboundLocalError`, zero-origin marginal singletons preserve their tax calculations, and converting an empty linear-average scale gives an empty marginal scale.
+
+
+## [3.33.4] - 2026-10-15
+
+### Changed
+
+- Core's country smoke CI installs policyengine-us 2.42.13 with spm-calculator 1.0.0.post1, since the pinned policyengine-us 1.824.1 is no longer on PyPI.
+
+
+## [3.33.3] - 2026-10-12
+
+### Changed
+
+- - Publish to PyPI with trusted publishing instead of the organisation-wide PyPI token.
+
+
 ## [3.33.2] - 2026-10-10
 
 ### Changed

@@ -1078,7 +1078,19 @@ class Simulation:
         self.create_shortcuts()
 
     def build_from_dataset(self) -> None:
-        """Build a simulation from a dataset."""
+        """Build a simulation from a dataset.
+
+        Entity-specific role columns take precedence over a generic ``role``
+        column, including period-suffixed entity role columns in flat files.
+        Without either, each person receives the literal ``default_role``
+        key. Only flattened-role keys match: unmatched and compound keys remain
+        unrecognized rather than selecting a first role or subrole.
+
+        A recognized implicit default with a finite role maximum must fit every
+        group's membership count. Otherwise an explicit role column is required.
+        Explicit dataset role columns do not validate role capacity.
+        ``default_role=None`` requires a role column.
+        """
         self.build_from_populations(self.tax_benefit_system.instantiate_entities())
         from policyengine_core.simulations.simulation_builder import (
             SimulationBuilder,
@@ -1124,30 +1136,44 @@ class Simulation:
 
         for group_entity in self.tax_benefit_system.group_entities:
             entity_id_field = f"{group_entity.key}_id"
+            person_membership_id_field = f"{person_entity.key}_{group_entity.key}_id"
             if self.dataset.data_format != Dataset.FLAT_FILE:
                 assert entity_id_field in data, (
                     f"Missing {entity_id_field} column in the dataset. Each group entity must have an ID array defined for ETERNITY."
                 )
                 entity_ids = get_eternity_array(entity_id_field)
-            elif entity_id_field not in data:
-                entity_id_field_values = get_eternity_array(
-                    f"person_{group_entity.key}_id"
-                )
-                if entity_id_field_values is not None:
-                    entity_ids = np.arange(len(np.unique(entity_id_field_values)))
-                else:
-                    entity_ids = np.arange(len(data[list(data.keys())[0]]))
-
-            builder.declare_entity(group_entity.key, entity_ids)
-
-            person_membership_id_field = f"{person_entity.key}_{group_entity.key}_id"
-            if self.dataset.data_format != Dataset.FLAT_FILE:
                 assert person_membership_id_field in data, (
                     f"Missing {person_membership_id_field} column in the dataset. Each group entity must have a person membership array defined for ETERNITY."
                 )
-            elif person_membership_id_field not in data:
-                data[person_membership_id_field] = np.arange(len(data))
-            person_membership_ids = get_eternity_array(person_membership_id_field)
+                person_membership_ids = get_eternity_array(person_membership_id_field)
+            else:
+                # A flat file has one row per person, so it declares each
+                # group only through its members' rows: their membership
+                # column or, failing that, the group's ID column repeated on
+                # each member's row. Number the distinct IDs 0, 1, ... and
+                # give each person their group's number.
+                membership_field = next(
+                    (
+                        field
+                        for field in (person_membership_id_field, entity_id_field)
+                        if any(column.split("__")[0] == field for column in data)
+                    ),
+                    person_membership_id_field,
+                )
+                membership_values = get_eternity_array(membership_field)
+                if pd.isna(membership_values).any():
+                    # np.unique would merge every missing membership into one
+                    # group.
+                    raise ValueError(
+                        f"{int(pd.isna(membership_values).sum())} person(s) "
+                        f"have no {membership_field} in the dataset."
+                    )
+                distinct_ids, person_membership_ids = np.unique(
+                    membership_values, return_inverse=True
+                )
+                entity_ids = np.arange(len(distinct_ids))
+
+            builder.declare_entity(group_entity.key, entity_ids)
 
             person_role_field = f"{person_entity.key}_{group_entity.key}_role"
             if any(column.split("__")[0] == person_role_field for column in data):
@@ -1155,6 +1181,26 @@ class Simulation:
             elif "role" in data:
                 person_roles = get_eternity_array("role")
             elif self.default_role is not None:
+                default_role = next(
+                    (
+                        role
+                        for role in group_entity.flattened_roles
+                        if role.key == self.default_role
+                    ),
+                    None,
+                )
+                if default_role is not None and default_role.max is not None:
+                    membership_counts = np.unique(
+                        person_membership_ids, return_counts=True
+                    )[1]
+                    if np.any(membership_counts > default_role.max):
+                        raise ValueError(
+                            f"Cannot assign default role {self.default_role!r} "
+                            f"to every person in {group_entity.key}: at most "
+                            f"{default_role.max} member(s) per group may hold it; "
+                            f"provide an explicit {person_role_field} column."
+                        )
+                # Preserve master's one literal default key per declared person.
                 person_roles = np.full(self.persons.count, self.default_role)
             else:
                 raise ValueError(
@@ -1205,8 +1251,14 @@ class Simulation:
                 entity = variable_meta.entity
                 population = self.get_population(entity.plural)
 
-                # All data should be person level
-                if len(data[variable]) != len(population.ids):
+                # A flat file has one row per person, so a group variable's
+                # column holds each member's copy: take the first member's.
+                # (Treating a column as already per group whenever its length
+                # matched the group count put values in row order, not group
+                # order, when every group had one person.)
+                # With no person rows there are no groups or first members;
+                # pass the empty column through without member extraction.
+                if not population.entity.is_person and population.count > 0:
                     population: GroupPopulation
                     entity_level_data = population.value_from_first_person(
                         data[variable]

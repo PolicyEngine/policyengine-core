@@ -7,6 +7,7 @@ the latest version of each file is kept.
 """
 
 import hashlib
+import ntpath
 import os
 import py_compile
 import sys
@@ -129,33 +130,85 @@ def test_a_symlink_then_parent_path_reads_the_os_resolved_file(
         link.symlink_to(other / "subdir", target_is_directory=True)
     except (OSError, NotImplementedError) as error:
         pytest.skip(f"Cannot create directory symlinks: {error}")
-    intended = other / "probe.py"
-    intended.write_text(VARIABLE_FILE.format(value=1))
-    decoy = repo / "probe.py"
-    decoy.write_text(VARIABLE_FILE.format(value=9))
+    posix_target = other / "probe.py"
+    posix_target.write_text(VARIABLE_FILE.format(value=1))
+    lexical_target = repo / "probe.py"
+    lexical_target.write_text(VARIABLE_FILE.format(value=9))
     linked_path = link / ".." / "probe.py"
     if relative:
         monkeypatch.chdir(tmp_path)
         linked_path = linked_path.relative_to(tmp_path)
 
+    # The oracle is open(), as used by the importer: POSIX follows the link
+    # before '..', whereas Windows collapses '..' before following the link.
+    source_values = {VARIABLE_FILE.format(value=value): value for value in (1, 9)}
+    with open(linked_path) as source_file:
+        expected_value = source_values[source_file.read()]
+    if os.name == "posix":
+        assert expected_value == 1
+    elif os.name == "nt":
+        assert expected_value == 9
+    other_path = lexical_target if expected_value == 1 else posix_target
+    other_value = 9 if expected_value == 1 else 1
+
     first = _system_with_probe(linked_path)
-    assert _value(first) == pytest.approx(1)
-    intended.write_text(VARIABLE_FILE.format(value=2))
+    assert _value(first) == pytest.approx(expected_value)
+    with open(linked_path, "w") as source_file:
+        source_file.write(VARIABLE_FILE.format(value=2))
     second = _system_with_probe(linked_path)
     assert _value(second) == pytest.approx(2)
-    assert _value(first) == pytest.approx(1)
-    assert _value(_system_with_probe(decoy)) == pytest.approx(9)
+    assert _value(first) == pytest.approx(expected_value)
+    assert _value(_system_with_probe(other_path)) == pytest.approx(other_value)
     assert _formula(first, "shared_code_probe").__code__ is not (
         _formula(second, "shared_code_probe").__code__
     )
-    # Even identical sources at these different paths need separate entries:
-    # collapsing '..' would give both files the decoy's cache key.
-    decoy.write_text(VARIABLE_FILE.format(value=2))
-    by_decoy = _system_with_probe(decoy)
-    assert _value(by_decoy) == pytest.approx(2)
-    assert _formula(by_decoy, "shared_code_probe").__code__ is not (
+    # Distinct OS-selected files need separate entries even with equal source.
+    # On POSIX, collapsing '..' would give these two files the same cache key.
+    other_path.write_text(VARIABLE_FILE.format(value=2))
+    by_other_path = _system_with_probe(other_path)
+    assert _value(by_other_path) == pytest.approx(2)
+    assert _formula(by_other_path, "shared_code_probe").__code__ is not (
         _formula(second, "shared_code_probe").__code__
     )
+
+
+@pytest.mark.parametrize("relative", [False, True])
+def test_windows_loader_paths_keep_the_os_selected_source(monkeypatch, relative):
+    directory = r"C:\project"
+    filename = r"repo\link\..\probe.py"
+    if not relative:
+        filename = ntpath.join(directory, filename)
+    absolute_path = ntpath.join(directory, filename)
+    lexical_target = r"C:\project\repo\probe.py"
+    assert ntpath.normpath(absolute_path) == lexical_target
+    sources = {
+        lexical_target: b"value = 9\n",
+        r"C:\project\other\probe.py": b"value = 1\n",
+    }
+    reads = []
+
+    def windows_get_data(path):
+        # Model ordinary Windows open() normalization, without a Windows host.
+        reads.append(path)
+        return sources[ntpath.normpath(ntpath.join(directory, path))]
+
+    loader = SourceFileLoader("probe", filename)
+    monkeypatch.setattr(loader, "get_data", windows_get_data)
+    monkeypatch.setattr(
+        tbs_module, "os", types.SimpleNamespace(path=ntpath, getcwd=lambda: directory)
+    )
+    monkeypatch.setattr(tbs_module, "_variable_file_code", {})
+
+    code = tbs_module._compiled_variable_file(loader)
+    namespace = {}
+    exec(code, namespace)
+    assert namespace["value"] == 9
+    assert code.co_filename == absolute_path
+    assert tbs_module._variable_file_code == {
+        absolute_path: (hashlib.sha256(sources[lexical_target]).digest(), code)
+    }
+    assert tbs_module._compiled_variable_file(loader) is code
+    assert reads == [filename, filename]
 
 
 def test_a_changed_file_is_compiled_again(tmp_path):

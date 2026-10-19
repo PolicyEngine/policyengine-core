@@ -86,9 +86,10 @@ if hasattr(os, "register_at_fork"):
 
 def _compiled_variable_file(loader) -> types.CodeType:
     """The code object for the loader's file's current source, compiled once."""
-    # Read the loader's exact filename: normalizing '..' before following a
-    # symlink can select a different file. Preserve that spelling in the
-    # absolute cache key and co_filename too, so different files cannot collide.
+    # Read the loader's exact filename so the OS resolves it as for an import.
+    # POSIX follows symlinks before '..'; Windows normally collapses '..' first.
+    # Preserve the loader's spelling in the absolute cache key and co_filename
+    # too, so files that the OS opens differently cannot collide.
     filename = loader.get_filename()
     path = filename if os.path.isabs(filename) else os.path.join(os.getcwd(), filename)
     source = loader.get_data(filename)

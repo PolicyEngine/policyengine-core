@@ -1,3 +1,10 @@
+## [3.33.11] - 2026-10-19
+
+### Fixed
+
+- Reject implicit dataset defaults that exceed their recognized role's capacity per group and role arrays that are not one dimensional or do not match the membership count.
+
+
 ## [3.33.10] - 2026-10-18
 
 ### Fixed

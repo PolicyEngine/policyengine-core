@@ -1,3 +1,11 @@
+## [3.33.12] - 2026-10-19
+
+### Fixed
+
+- `set_input` for one of a variable's own periods (one month, or one year) now drops the sums and twelfths the simulation calculated for that variable over overlapping periods, so a later `calculate` adds up or divides the new input instead of returning the old result (#579).
+- Compile each variable source file once per process for each source version, reusing that code object in each system's own module so tools such as coverage's sys.monitoring core retain fewer copies (#607), while keeping variable modules in sys.modules (#520) and preserving the original execution path for bytecode-only and other loaders.
+
+
 ## [3.33.11] - 2026-10-19
 
 ### Fixed

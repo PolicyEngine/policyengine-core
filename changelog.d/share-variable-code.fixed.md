@@ -1,1 +1,0 @@
-Compile each variable source file once per process for each source version, reusing that code object in each system's own module so tools such as coverage's sys.monitoring core retain fewer copies (#607), while keeping variable modules in sys.modules (#520) and preserving the original execution path for bytecode-only and other loaders.

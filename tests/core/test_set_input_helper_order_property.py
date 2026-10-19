@@ -17,11 +17,11 @@ Outside the properties, because they are other order dependences:
 - ``calculate_add`` and ``calculate_divide`` called directly, whose results
   are cached where a plain read does not return them (#571): the requests
   are plain ``calculate`` calls.
-- An input set for one of the variable's own periods (one month, or one
-  year) after a sum or a twelfth of the variable was calculated: the helpers
-  are not involved and that sum stays cached (policyengine-core#579). The
-  periods of another size are compared only for variables given no such
-  input after the calculations.
+
+An input set for one of the variable's own periods (one month, or one year)
+after a sum or a twelfth of the variable was calculated involves no helper,
+but follows the same rule (policyengine-core#579), so the periods of another
+size are compared for every variable.
 """
 
 from __future__ import annotations
@@ -158,14 +158,8 @@ def test_inputs_do_not_depend_on_what_was_calculated_before(
     assert outcomes == fresh_outcomes == expected
     assert input_record(calculated) == input_record(fresh)
 
-    # A sum or a twelfth calculated before an input for one of the
-    # variable's own periods stays cached (policyengine-core#579).
-    given_own_period_input = {
-        name for name, period, _ in later_inputs if period in OWN_PERIODS[name]
-    }
-    other_periods_of = [name for name in NAMES if name not in given_own_period_input]
-    values = read_all(calculated, other_periods_of=other_periods_of, on_disk=on_disk)
-    fresh_values = read_all(fresh, other_periods_of=other_periods_of, on_disk=on_disk)
+    values = read_all(calculated, on_disk=on_disk)
+    fresh_values = read_all(fresh, on_disk=on_disk)
     assert values.keys() == fresh_values.keys()
     for key in values:
         assert same_arrays(values[key], fresh_values[key]), (

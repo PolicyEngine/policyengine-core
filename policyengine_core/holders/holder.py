@@ -652,7 +652,14 @@ class Holder:
                         simulation._drop_values_that_may_depend_on(
                             self.variable.name, period
                         )
-            return self._set(period, array, branch_name, validate_nan=True)
+            self._set(period, array, branch_name, validate_nan=True)
+            if self.variable.definition_period != periods.ETERNITY:
+                # Imported here because the helpers module imports this one.
+                from policyengine_core.holders.helpers import (
+                    _drop_calculated_over_own_period,
+                )
+
+                _drop_calculated_over_own_period(self, period, branch_name)
         finally:
             if simulation is not None:
                 simulation._user_input_contexts.pop()

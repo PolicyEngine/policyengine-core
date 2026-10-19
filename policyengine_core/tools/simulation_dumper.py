@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
+import operator
 import os
 import warnings
 
@@ -27,11 +28,12 @@ DERIVED_PERIODS_FILE = "derived_periods.txt"
 DUMP_FORMAT_FILE = "dump_format.txt"
 DUMP_FORMAT_VERSION = 1
 
-# In each population's directory in ``__entities__``: its count, which its
-# ids and memberships do not always give (a group with no members holds no
-# membership, and some simulations never set ids). ``restore_simulation``
-# infers the count of a population whose dump lacks this file (see
-# ``_restore_count``); earlier versions ignore the file.
+# In each population's directory in ``__entities__``: its count as an int64
+# scalar, which its ids and memberships do not always give (a group with no
+# members holds no membership, and some simulations never set ids).
+# ``restore_simulation`` infers the count of a population whose dump lacks
+# this file (see ``_restore_count``), as for a count that is not an integer;
+# earlier versions ignore the file.
 COUNT_FILE = "count.npy"
 
 
@@ -172,7 +174,15 @@ def _dump_entity(population, directory):
     path = os.path.join(directory, population.entity.key)
     os.mkdir(path)
     np.save(os.path.join(path, "id.npy"), population.ids)
-    np.save(os.path.join(path, COUNT_FILE), population.count)
+    try:
+        # Any integer, such as a NumPy one or a 0-d or masked array, as int64.
+        count = np.int64(operator.index(population.count))
+    except TypeError:
+        # A count that is not an integer can only be set by hand: restore
+        # infers it, as it does for an older dump.
+        count = None
+    if count is not None:
+        np.save(os.path.join(path, COUNT_FILE), count)
 
     if population.entity.is_person:
         return

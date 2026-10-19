@@ -163,16 +163,25 @@ def _structure(simulation):
 
 
 def _stored(simulation):
-    """Every value and its derived mark, as bytes, keyed by variable and period."""
+    """Every value and its derived mark, as bytes, keyed by variable and period.
+
+    An Enum value also keeps its enum class.
+    """
     stored = {}
     for population in simulation.populations.values():
         for name, holder in population._holders.items():
             for period in holder.get_known_periods():
                 value = holder.get_array(period)
+                array_type = type(value).__name__
+                possible_values = None
                 if isinstance(value, EnumArray):
+                    possible_values = value.possible_values
                     value = value.view(np.ndarray)
                 stored[(name, str(period))] = (
+                    array_type,
+                    possible_values,
                     value.dtype.str,
+                    value.shape,
                     value.tobytes(),
                     holder.is_derived(period),
                 )
@@ -203,6 +212,8 @@ def test_dump_then_restore_keeps_structure_and_values(case, without_counts):
         dump_simulation(dumped, str(dump_directory))
         count_files = list(dump_directory.glob(f"__entities__/*/{COUNT_FILE}"))
         assert len(count_files) == len(dumped.populations)
+        for path in count_files:
+            assert np.load(path).dtype == np.int64
         if without_counts:
             for path in count_files:
                 path.unlink()

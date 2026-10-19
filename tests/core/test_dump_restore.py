@@ -2,6 +2,7 @@ import shutil
 import tempfile
 
 import numpy as np
+import pytest
 from numpy import testing
 
 from policyengine_core.country_template import situation_examples
@@ -212,6 +213,59 @@ def test_dump_keeps_a_count_its_ids_and_memberships_do_not_give(
 
     assert restored.household.count == 3
     testing.assert_array_equal(restored.calculate("rent", "2018-01"), [1, 2, 3])
+
+
+class _IntegerLike:
+    """An integer only through ``__index__``, as ``range`` takes it."""
+
+    def __init__(self, value):
+        self.value = value
+
+    def __index__(self):
+        return self.value
+
+
+@pytest.mark.parametrize(
+    "count",
+    [np.uint8(2), np.array(2), np.ma.array(2, dtype=np.int64), _IntegerLike(2)],
+    ids=["uint8", "0-d array", "masked array", "__index__"],
+)
+def test_dump_writes_any_integer_count_as_int64(tax_benefit_system, tmp_path, count):
+    # ``np.save`` of the count itself failed for a masked array and wrote an
+    # object array, which restoring refuses, for an ``__index__`` object.
+    simulation = SimulationBuilder().build_default_simulation(
+        tax_benefit_system, count=count
+    )
+
+    restored = _round_trip(simulation, tax_benefit_system, tmp_path / "dump")
+
+    count_files = list(
+        (tmp_path / "dump").glob(f"__entities__/*/{simulation_dumper.COUNT_FILE}")
+    )
+    assert len(count_files) == 2
+    for path in count_files:
+        assert np.load(path).dtype == np.int64
+    for population in restored.populations.values():
+        assert type(population.count) is int and population.count == 2
+        testing.assert_array_equal(population.ids, [0, 1])
+
+
+def test_dump_of_a_count_that_is_not_an_integer_infers_it(tax_benefit_system, tmp_path):
+    # Only set by hand: the dump records no count, and restoring infers it
+    # from the ids, as for an older dump.
+    simulation = SimulationBuilder().build_default_simulation(
+        tax_benefit_system, count=2
+    )
+    simulation.household.count = 2.0
+    simulation.set_input("rent", "2018-01", np.array([1.0, 2.0]))
+
+    restored = _round_trip(simulation, tax_benefit_system, tmp_path / "dump")
+
+    assert not (
+        tmp_path / "dump" / "__entities__" / "household" / simulation_dumper.COUNT_FILE
+    ).exists()
+    assert restored.household.count == 2
+    testing.assert_array_equal(restored.calculate("rent", "2018-01"), [1, 2])
 
 
 def test_dump_restore_without_group_entities(tmp_path):

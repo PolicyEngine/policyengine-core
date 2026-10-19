@@ -185,6 +185,10 @@ class _SpiralDeferrals:
             value,
             tuple(frame.reads.items()) if frame is not None else (),
             tuple(frame.registrations) if frame is not None else (),
+            tuple(
+                (other, other._spiral_input_generation)
+                for other in {simulation, *(frame.reads if frame is not None else ())}
+            ),
         )
         self.completed_frame = None
 
@@ -198,18 +202,29 @@ class _SpiralDeferrals:
         if generation == self.input_generation:
             return False
         self.input_generation = generation
-        keys = {
-            (identity, variable, period)
-            for identity, (_, values) in self.finished.items()
-            for variable, period in values
-        }
+        keys = set()
+        for identity, (_, values) in self.finished.items():
+            stale = [
+                key
+                for key, (_, _, registrations, inputs) in values.items()
+                if any(
+                    other._spiral_input_generation != version
+                    for other, version in inputs
+                )
+                or any(
+                    parent.branches.get(name) is not branch
+                    for parent, name, branch in registrations
+                )
+            ]
+            for variable, period in stale:
+                del values[(variable, period)]
+                keys.add((identity, variable, period))
         if keys:
             if self.input_restarts < _RERUNS_AFTER_INPUT_CHANGE:
                 self.started.difference_update(keys)
                 self.done.difference_update(keys)
             self.input_restarts += 1
-        self.finished.clear()
-        return True
+        return bool(keys)
 
     def finished_value(
         self, simulation: "Simulation", variable: str, period: Period
@@ -218,7 +233,19 @@ class _SpiralDeferrals:
         completed = None if entry is None else entry[1].get((variable, period))
         if completed is None:
             return None
-        value, reads, registrations = completed
+        value, reads, registrations, _ = completed
+        if any(
+            parent.branches.get(name) is not branch
+            for parent, name, branch in registrations
+        ):
+            # Registrations can change without writing an input.
+            del entry[1][(variable, period)]
+            key = (id(simulation), variable, period)
+            if self.input_restarts < _RERUNS_AFTER_INPUT_CHANGE:
+                self.started.discard(key)
+                self.done.discard(key)
+            self.input_restarts += 1
+            return None
         frames = _calculation_frames.get()
         if frames:
             frame = frames[-1]
@@ -372,9 +399,10 @@ _spiral_input_generation = 0
 _spiral_cut_generation = 0
 
 
-def _note_spiral_input_change() -> None:
+def _note_spiral_input_change(simulation: "Simulation") -> None:
     global _spiral_input_generation
     with _restricted_frames_lock:
+        simulation._spiral_input_generation += 1
         _spiral_input_generation += 1
 
 
@@ -798,7 +826,7 @@ def _note_input_change(
     value: Optional[ArrayLike] = None,
 ) -> None:
     """Record actual stores and deletes in each frame observing this context."""
-    _note_spiral_input_change()
+    _note_spiral_input_change(simulation)
     frames = _calculation_frames.get()
     if not frames:
         _taint_waiting_frames(simulation)
@@ -867,6 +895,7 @@ class Simulation:
     # Counters read on every calculation (see ``set_input``). Class defaults,
     # so a subclass that skips ``__init__`` reads them too; incrementing one
     # gives the simulation its own.
+    _spiral_input_generation: int = 0  # writes/deletes affecting temporary results
     _input_epoch: int = 0  # drops on this simulation
     _inputs_set: int = 0  # inputs stored through ``Holder.set_input``
     _calculations_in_flight: int = 0  # ``calculate``/``calculate_add`` running
@@ -1660,7 +1689,8 @@ class Simulation:
                     state.started.add(deferral.key)
                 state.callers = frozenset() if deferral is None else deferral.callers
                 cuts = state.cuts
-                input_generation = _spiral_input_generation
+                calculating = self if deferral is None else deferral.simulation
+                input_generation = calculating._spiral_input_generation
                 input_restarts = state.input_restarts
                 attempt_tracer = (
                     self.tracer if deferral is None else deferral.simulation.tracer
@@ -1703,7 +1733,7 @@ class Simulation:
                     ):
                         attempt_tracer.trees[attempt_index]._spiral_provisional = False
                     return result
-                changed = input_generation != _spiral_input_generation
+                changed = input_generation != calculating._spiral_input_generation
                 state.refresh_inputs()
                 if changed:
                     # Refresh may already have counted this mutation wave.
@@ -2272,7 +2302,8 @@ class Simulation:
 
         except SpiralError:
             array = holder.default_array()
-            # Not stored, but what reads it is (see ``set_input``).
+            # Record this source even though cut-derived caches are purged
+            # when the calculation ends (see ``set_input``).
             holder._record_store(period, next_sequence_number())
         except RecursionError as e:
             if isinstance(self.tracer, FullTracer):
@@ -3319,7 +3350,7 @@ class Simulation:
 
     def _drop_computed(self, since: Optional[int] = None) -> int:
         """Drop every non-input value numbered ``since`` or later (all, without it)."""
-        _note_spiral_input_change()
+        _note_spiral_input_change(self)
         dropped = 0
         for population in self.populations.values():
             for holder in population._holders.values():

@@ -10,6 +10,43 @@ from tests.fixtures.spirals import build
 
 
 @pytest.mark.parametrize("traced", [False, True])
+@pytest.mark.parametrize("storage", ["drop", "blacklist"])
+def test_unrelated_input_writes_do_not_spend_the_recursion_input_retry_budget(
+    traced, storage
+):
+    class scratch_input(Variable):
+        value_type = float
+        entity = Person
+        definition_period = periods.YEAR
+        label = "Input in an independent temporary simulation"
+
+    class recursive(Variable):
+        value_type = float
+        entity = Person
+        definition_period = periods.YEAR
+        label = "Anchored recurrence independent of scratch inputs"
+
+        def formula_2010(person, period):
+            # This temporary simulation is never read by the recurrence.
+            # Its writes must not discard completed periods or exhaust the
+            # retry budget of an unchanged simulation's anchored chain.
+            build([scratch_input], {("scratch_input", 2010): 1})
+            return person("recursive", period.last_year) + 1
+
+    simulation = build([recursive], max_spiral_loops=1)
+    simulation.trace = traced
+    if storage == "drop":
+        simulation.get_holder("recursive")._do_not_store = True
+    else:
+        simulation.opt_out_cache = True
+        simulation.tax_benefit_system.cache_blacklist = {"recursive"}
+
+    np.testing.assert_array_equal(simulation.calculate("recursive", "2024"), [15.0])
+    assert simulation.tracer.stack == []
+    assert simulation._calculations_in_flight == 0
+
+
+@pytest.mark.parametrize("traced", [False, True])
 @pytest.mark.parametrize("store", [True, False])
 def test_finished_deeper_periods_follow_an_input_changed_by_their_caller(traced, store):
     class source(Variable):

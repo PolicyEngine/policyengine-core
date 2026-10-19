@@ -199,12 +199,22 @@ def _drop_calculated_over_own_period(
             if cached_name == name
             and isinstance(cached_period, Period)
             and cached_period.unit != periods.ETERNITY
-            and not (
-                cached_period.start > period.stop or cached_period.stop < period.start
-            )
+            and _periods_overlap(cached_period, period)
         ],
         branch_name,
     )
+
+
+def _periods_overlap(first: Period, second: Period) -> bool:
+    """Compare extents even when a period ends beyond datetime's last date."""
+    try:
+        return not (first.start > second.stop or first.stop < second.start)
+    except OverflowError:
+        from policyengine_core.simulations.simulation import _end_order
+
+        return first.start.date.toordinal() < _end_order(
+            second
+        ) and second.start.date.toordinal() < _end_order(first)
 
 
 def _is_calculated_overlapping(
@@ -224,7 +234,7 @@ def _is_calculated_overlapping(
         return False
     if stored_period.unit == periods.ETERNITY:
         return False
-    if stored_period.start > period.stop or stored_period.stop < period.start:
+    if not _periods_overlap(stored_period, period):
         return False
     return not _is_input(holder, stored_period, stored_branch_name, storage_name)
 

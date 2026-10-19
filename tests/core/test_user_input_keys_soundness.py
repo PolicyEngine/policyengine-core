@@ -174,7 +174,7 @@ def test_memory_input_wins_over_a_conflicting_disk_cache(invalidate):
 @pytest.mark.parametrize("variable_type", [raw_year, raw_month, raw_day])
 @pytest.mark.parametrize("entrypoint", ["simulation", "holder"])
 @pytest.mark.parametrize("on_disk", [False, True])
-def test_early_year_input_is_stored_and_recorded(
+def test_early_year_input_respects_storage_period_validation(
     year, variable_type, entrypoint, on_disk
 ):
     system = CountryTaxBenefitSystem()
@@ -190,6 +190,21 @@ def test_early_year_input_is_stored_and_recorded(
         period = periods.Period((periods.MONTH, periods.instant((year, 3, 1)), 1))
     else:
         period = periods.Period((periods.DAY, periods.instant((year, 3, 17)), 2))
+
+    if year < 1000:
+        input_keys = simulation._user_input_keys.copy()
+        with pytest.raises(ValueError, match="string form cannot be parsed"):
+            if entrypoint == "simulation":
+                simulation.set_input(variable, period, [120.0])
+            else:
+                holder.set_input(period, [120.0])
+        storage = holder._disk_storage if on_disk else holder._memory_storage
+        assert not storage.has(period)
+        assert not storage._sequence_numbers
+        assert simulation._user_input_keys == input_keys
+        assert not hasattr(holder, "_user_input_storage")
+        assert simulation._user_input_contexts == []
+        return
 
     if entrypoint == "simulation":
         simulation.set_input(variable, period, [120.0])
@@ -210,19 +225,23 @@ def test_early_year_input_is_stored_and_recorded(
 
 
 @pytest.mark.parametrize("on_disk", [False, True])
-def test_zero_padded_early_year_string_records_the_stored_period(on_disk):
+def test_zero_padded_early_year_string_is_rejected_before_recording(on_disk):
     system = CountryTaxBenefitSystem()
     system.add_variable(raw_year)
     simulation = _simulation(system)
     if on_disk:
         _store_on_disk(simulation, "raw_year")
 
-    simulation.set_input("raw_year", "0999", [123.0])
+    input_keys = simulation._user_input_keys.copy()
+    holder = simulation.get_holder("raw_year")
+    with pytest.raises(ValueError, match="string form cannot be parsed"):
+        simulation.set_input("raw_year", "0999", [123.0])
 
-    assert _key("raw_year", periods.period(999)) in simulation._user_input_keys
-    np.testing.assert_array_equal(
-        simulation.get_holder("raw_year").get_array(periods.period(999)), [123.0]
-    )
+    storage = holder._disk_storage if on_disk else holder._memory_storage
+    assert not storage.has(periods.period(999))
+    assert not storage._sequence_numbers
+    assert simulation._user_input_keys == input_keys
+    assert not hasattr(holder, "_user_input_storage")
     assert simulation._user_input_contexts == []
 
 
@@ -250,7 +269,7 @@ def test_deleted_memory_input_does_not_turn_a_disk_calculation_into_an_input():
     assert _key("rent", JANUARY) not in simulation._user_input_keys
 
 
-def test_deleted_memory_input_keeps_a_surviving_real_disk_input():
+def test_contained_deletion_forgets_both_real_input_tiers():
     simulation = _simulation()
     _store_on_disk(simulation, "rent")
     holder = simulation.get_holder("rent")
@@ -263,15 +282,16 @@ def test_deleted_memory_input_keeps_a_surviving_real_disk_input():
     simulation.delete_arrays("rent", "2025")
 
     assert holder._memory_storage.get(JANUARY) is None
-    assert _key("rent", JANUARY) in simulation._user_input_keys
-    assert simulation.to_input_dataframe()["rent__2025-01"].tolist() == [500.0]
+    assert holder._disk_storage.get(JANUARY) is None
+    assert _key("rent", JANUARY) not in simulation._user_input_keys
+    assert "rent__2025-01" not in simulation.to_input_dataframe().columns
 
     simulation.apply_reform(NoopReform)
 
     assert holder._memory_storage.get(JANUARY) is None
-    np.testing.assert_array_equal(holder._disk_storage.get(JANUARY), [500.0])
-    assert _key("rent", JANUARY) in simulation._user_input_keys
-    assert simulation.to_input_dataframe()["rent__2025-01"].tolist() == [500.0]
+    assert holder._disk_storage.get(JANUARY) is None
+    assert _key("rent", JANUARY) not in simulation._user_input_keys
+    assert "rent__2025-01" not in simulation.to_input_dataframe().columns
 
 
 @pytest.mark.parametrize("on_disk", [False, True])
@@ -296,7 +316,7 @@ def test_reform_does_not_replay_an_unrecorded_carry_over_input(on_disk):
     )
 
 
-def test_registered_disk_input_survives_a_new_memory_input_and_clone_deletion():
+def test_registered_disk_input_is_forgotten_on_contained_clone_deletion():
     """Restoration can register an input without holder tier metadata (#576)."""
     simulation = _simulation()
     _store_on_disk(simulation, "rent")
@@ -310,18 +330,19 @@ def test_registered_disk_input_survives_a_new_memory_input_and_clone_deletion():
     clone = simulation.clone()
     clone.delete_arrays("rent", "2025")
 
-    assert _key("rent", JANUARY) in clone._user_input_keys
-    assert clone.to_input_dataframe()["rent__2025-01"].tolist() == [500.0]
+    assert _key("rent", JANUARY) not in clone._user_input_keys
+    assert "rent__2025-01" not in clone.to_input_dataframe().columns
+    assert clone.get_holder("rent")._disk_storage.get(JANUARY) is None
+    np.testing.assert_array_equal(holder._memory_storage.get(JANUARY), [700.0])
+    np.testing.assert_array_equal(holder._disk_storage.get(JANUARY), [500.0])
     assert simulation.to_input_dataframe()["rent__2025-01"].tolist() == [700.0]
     simulation.delete_arrays("rent", "2025")
     for sim in (simulation, clone):
-        assert _key("rent", JANUARY) in sim._user_input_keys
-        assert sim.to_input_dataframe()["rent__2025-01"].tolist() == [500.0]
+        assert _key("rent", JANUARY) not in sim._user_input_keys
+        assert "rent__2025-01" not in sim.to_input_dataframe().columns
         sim.apply_reform(NoopReform)
         assert sim.get_holder("rent")._memory_storage.get(JANUARY) is None
-        np.testing.assert_array_equal(
-            sim.get_holder("rent")._disk_storage.get(JANUARY), [500.0]
-        )
+        assert sim.get_holder("rent")._disk_storage.get(JANUARY) is None
 
 
 def test_positional_derived_argument_keeps_masters_meaning():
@@ -347,22 +368,22 @@ if hypothesis is not None:
 
     @hypothesis.settings(max_examples=30, deadline=None)
     @hypothesis.example(
-        disk_is_input=False, delete_memory=True, disk_value=0, memory_value=500
+        disk_is_input=False, delete_period=True, disk_value=0, memory_value=500
     )
     @hypothesis.example(
-        disk_is_input=True, delete_memory=True, disk_value=500, memory_value=700
+        disk_is_input=True, delete_period=True, disk_value=500, memory_value=700
     )
     @hypothesis.example(
-        disk_is_input=False, delete_memory=False, disk_value=99, memory_value=42
+        disk_is_input=False, delete_period=False, disk_value=99, memory_value=42
     )
     @hypothesis.given(
         disk_is_input=st.booleans(),
-        delete_memory=st.booleans(),
+        delete_period=st.booleans(),
         disk_value=st.integers(min_value=0, max_value=1_000),
         memory_value=st.integers(min_value=0, max_value=1_000),
     )
     def test_tier_provenance_replays_the_same_inputs_as_a_fresh_simulation(
-        disk_is_input, delete_memory, disk_value, memory_value
+        disk_is_input, delete_period, disk_value, memory_value
     ):
         simulation = _simulation()
         _store_on_disk(simulation, "rent")
@@ -373,12 +394,10 @@ if hypothesis is not None:
             holder.put_in_cache(np.array([float(disk_value)]), JANUARY)
         simulation.memory_config.max_memory_occupation_pc = 101
         simulation.set_input("rent", JANUARY, [memory_value])
-        if delete_memory:
+        if delete_period:
             simulation.delete_arrays("rent", "2025")
 
-        expected = (
-            (disk_value if disk_is_input else None) if delete_memory else memory_value
-        )
+        expected = None if delete_period else memory_value
         reference = _simulation()
         if expected is not None:
             reference.set_input("rent", JANUARY, [expected])

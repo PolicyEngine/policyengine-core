@@ -1,0 +1,1 @@
+Restore dumped simulations that have no persons, or groups with no members, by recording each population's count in the dump; `build_default_simulation` again refuses a count that is not an integer when building.

@@ -24,6 +24,7 @@ class TraceNode:
     value: typing.Optional[Array] = None
     start: float = 0
     end: float = 0
+    _spiral_provisional: bool = False
 
     def calculation_time(self, round_: bool = True) -> Time:
         result = self.end - self.start

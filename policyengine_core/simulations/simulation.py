@@ -1791,12 +1791,13 @@ class Simulation:
             finally:
                 _formula_simulation.reset(token)
 
-            # If no result, use the default value and cache it
+            # If no result, carry/uprate an input or use the default value.
             if array is None:
-                if variable.uprating is not None or (
+                cross_period_fallback = variable.uprating is not None or (
                     self.tax_benefit_system.auto_carry_over_input_variables
                     and variable.calculate_output is None
-                ):
+                )
+                if cross_period_fallback:
                     # The value is uprated or carried over from another
                     # period, or defaults for lack of one: an input set later
                     # for another period of the variable can change it.
@@ -1928,10 +1929,20 @@ class Simulation:
                         # above skips derived periods, so it would not uprate
                         # from one.)
                         return holder.default_array()
-                    else:
-                        array = holder.default_array()
-                else:
+                if array is None:
                     array = holder.default_array()
+                    if (
+                        cross_period_fallback
+                        and getattr(self, "parent_branch", None) is None
+                    ):
+                        # Root inputs do not invalidate dependent values.
+                        # Leave this fallback out of every cache so a later
+                        # input for an earlier period takes effect. An input
+                        # set by the formula for this period still wins.
+                        stored_input = self._input_set_meanwhile(
+                            holder, period, input_state[2]
+                        )
+                        return array if stored_input is None else stored_input
 
             if variable.defined_for is not None:
                 array = np.where(mask, array, variable.default_value)

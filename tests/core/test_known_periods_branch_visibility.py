@@ -35,6 +35,8 @@ import math
 import os
 import tempfile
 import warnings
+from types import SimpleNamespace
+from unittest.mock import Mock
 
 import numpy as np
 import pytest
@@ -46,6 +48,7 @@ from policyengine_core.data_storage import OnDiskStorage
 from policyengine_core.experimental import MemoryConfig
 from policyengine_core.model_api import YEAR, Variable
 from policyengine_core.parameters import ParameterNode
+from policyengine_core.reforms import Reform
 from policyengine_core.simulations import SimulationBuilder
 from policyengine_core.tools import simulation_dumper
 
@@ -187,6 +190,69 @@ def test_carry_over_ignores_later_period_on_unrelated_branch(carry_over_system):
     store(simulation, "carried_income", 2022, 9_000.0, "other")
 
     assert only(simulation.calculate("carried_income", 2020)) == 1_000
+
+
+def test_root_default_before_unreadable_future_input_does_not_hide_later_input(
+    carry_over_system,
+):
+    simulation = new_simulation(carry_over_system)
+    store(simulation, "carried_income", 2022, 9_000.0, "other")
+
+    assert only(simulation.calculate("carried_income", 2020)) == 0
+
+    simulation.set_input("carried_income", 2019, [123])
+
+    assert only(simulation.calculate("carried_income", 2020)) == 123
+
+
+@pytest.mark.parametrize(
+    "variable, auto_carry_over",
+    [("carried_income", True), ("uprated_income", False)],
+)
+def test_root_fallback_default_is_not_kept_in_any_cache(
+    variable, auto_carry_over, monkeypatch, tmp_path
+):
+    import policyengine_core.simulations.simulation as simulation_module
+
+    simulation = new_simulation(build_system(auto_carry_over))
+    simulation.dataset = SimpleNamespace(file_path=tmp_path / "dataset.h5", name="test")
+    cache = Mock()
+    cache.get_cache_path.return_value = tmp_path / "missing-cache.h5"
+    monkeypatch.setattr(simulation_module, "SimulationMacroCache", lambda system: cache)
+    monkeypatch.setattr(simulation, "check_macro_cache", lambda *args: True)
+
+    assert only(simulation.calculate(variable, 2020)) == 0
+
+    period = periods.period(2020)
+    assert simulation.get_holder(variable).get_array(period) is None
+    assert (variable, period) not in simulation._fast_cache
+    cache.set_cache_value.assert_not_called()
+
+    simulation.set_input(variable, 2019, [123])
+    expected = 123 * growth(2019, 2020) if variable == "uprated_income" else 123
+    assert only(simulation.calculate(variable, 2020)) == pytest.approx(expected)
+    assert simulation.get_holder(variable).get_array(period) is not None
+    cache.set_cache_value.assert_called_once()
+
+
+def test_root_uprating_fallback_uses_input_set_during_formula():
+    class self_supplied_income(Reform):
+        def apply(self):
+            class uprated_income(Variable):
+                value_type = float
+                entity = Person
+                definition_period = YEAR
+
+                def formula(person, period):
+                    person.simulation.set_input("uprated_income", period, [123])
+
+            self.update_variable(uprated_income)
+
+    simulation = new_simulation(self_supplied_income(build_system()))
+
+    assert only(simulation.calculate("uprated_income", 2020)) == 123
+    holder = simulation.get_holder("uprated_income")
+    assert not holder.is_derived(periods.period(2020))
 
 
 # Invariant: values stored only under branches a simulation cannot read do not

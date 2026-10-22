@@ -1,1 +1,1 @@
-Removed `policyengine_core.charts.api` and the chart functions it exported through `policyengine_core.charts` (`get_api_chart_data`, `intra_decile_chart` and `decile_chart`), which requested society-wide results from the PolicyEngine Public API.
+Removed `Reform.from_api`, `Reform.api_id` and `policyengine_core.charts.api` (with the chart functions `get_api_chart_data`, `intra_decile_chart` and `decile_chart` that `policyengine_core.charts` exported from it), which sent HTTP requests to the PolicyEngine Public API; build reforms with `Reform.from_dict` instead.

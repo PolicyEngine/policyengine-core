@@ -14,17 +14,6 @@ from policyengine_core.periods import (
     Period,
 )
 
-import requests
-
-
-class classproperty(object):
-    def __init__(self, f):
-        self.f = f
-
-    def __get__(self, obj, owner):
-        return self.f(owner)
-
-
 # ---------------------------------------------------------------------------
 # Reform period-key handling.
 #
@@ -88,23 +77,6 @@ def _update_start_instant(update_kwargs: dict):
     return instant_("0001-01-01")
 
 
-def _api_period_range(start: str, stop: str) -> str:
-    """Clamp an API policy's ``[start, stop]`` to the supported window and
-    return an explicit ``"start.stop"`` key, so :meth:`Reform.from_dict`
-    treats every API policy as bounded. (A single-civil-year intersection
-    would otherwise stringify to a bare ``"YYYY"`` which, under the
-    from-onward rule, would extend the change past the policy's end.)"""
-    clamped = period_(_SCALAR_REFORM_PERIOD).intersection(
-        instant_(start), instant_(stop)
-    )
-    if clamped is None:
-        raise ValueError(
-            f"Policy period '{start}.{stop}' does not overlap the supported "
-            f"reform window ({_SCALAR_REFORM_PERIOD})."
-        )
-    return f"{clamped.start}.{clamped.stop}"
-
-
 class Reform(TaxBenefitSystem):
     """A modified TaxBenefitSystem
 
@@ -138,10 +110,10 @@ class Reform(TaxBenefitSystem):
     """The name of the reform. This is used to identify the reform in the UI."""
 
     country_id: str = None
-    """The country id of the reform. This is used to inform any calls to the PolicyEngine API."""
+    """The country id of the reform, if one was given."""
 
     parameter_values: dict = None
-    """The parameter values of the reform. This is used to inform any calls to the PolicyEngine API."""
+    """The parameter values a reform created by :meth:`Reform.from_dict` applies."""
 
     simulation: "Simulation" = None
 
@@ -280,80 +252,6 @@ class Reform(TaxBenefitSystem):
         reform.name = name
 
         return reform
-
-    @staticmethod
-    def from_api(
-        api_id: str,
-        country_id: str = None,
-    ) -> Reform:
-        """Create a reform from a dictionary of parameters.
-
-        Args:
-            parameters: A dictionary of parameter -> { period -> value } pairs.
-
-        Returns:
-            A reform.
-        """
-
-        data = requests.get(
-            f"https://api.policyengine.org/{country_id}/policy/{api_id}",
-            # Timeout so a stalled API can't hang the caller forever
-            # (bug M11).
-            timeout=30,
-        ).json()
-
-        parameter_values = data.get("result", {}).get("policy_json", {})
-
-        for path in parameter_values:
-            keys_to_remove = []
-            for start_stop_str in list(parameter_values[path].keys()):
-                start, stop = start_stop_str.split(".")
-                time_period = _api_period_range(start, stop)
-                parameter_values[path][time_period] = parameter_values[path][
-                    start_stop_str
-                ]
-                keys_to_remove.append(start_stop_str)
-            for key in keys_to_remove:
-                del parameter_values[path][key]
-
-        return Reform.from_dict(
-            parameter_values,
-            country_id,
-            data.get("result", {}).get("label", None),
-        )
-
-    @classproperty
-    def api_id(self):
-        if self.country_id is None:
-            raise ValueError(
-                "`country_id` is not set. This is required to use the API."
-            )
-        if self.parameter_values is None:
-            raise ValueError(
-                "`parameter_values` is not set. This is required to use the API."
-            )
-
-        sanitised_parameter_values = {}
-
-        for path, period_values in self.parameter_values.items():
-            sanitised_period_values = {}
-            for period, value in period_values.items():
-                period = period_(period)
-                sanitised_period_values[f"{period.start}.{period.stop}"] = value
-            sanitised_parameter_values[path] = sanitised_period_values
-
-        response = requests.post(
-            f"https://api.policyengine.org/{self.country_id}/policy",
-            json={
-                "data": sanitised_parameter_values,
-                "name": self.name,
-            },
-            # Timeout so a stalled API can't hang the caller forever
-            # (bug M11).
-            timeout=30,
-        )
-
-        return response.json().get("result", {}).get("policy_id")
 
 
 def set_parameter(

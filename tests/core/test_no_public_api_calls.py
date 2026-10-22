@@ -23,8 +23,12 @@ REMOVED_CHART_FUNCTION_NAMES = [
 
 REMOVED_REFORM_ATTRIBUTE_NAMES = ["from_api", "api_id"]
 
+ATTRIBUTE_NOT_FOUND = object()
+
 
 def test_package_source_does_not_name_the_public_api_host():
+    # Fail instead of passing with nothing scanned if the package moves.
+    assert (PACKAGE_SOURCE_DIRECTORY / "reforms" / "reform.py").is_file()
     files_naming_host = sorted(
         str(path.relative_to(PACKAGE_SOURCE_DIRECTORY))
         for path in PACKAGE_SOURCE_DIRECTORY.rglob("*")
@@ -41,7 +45,8 @@ def test_reform_has_no_public_api_functions():
     remaining_names = [
         name
         for name in REMOVED_REFORM_ATTRIBUTE_NAMES
-        if inspect.getattr_static(Reform, name, None) is not None
+        if inspect.getattr_static(Reform, name, ATTRIBUTE_NOT_FOUND)
+        is not ATTRIBUTE_NOT_FOUND
     ]
     assert remaining_names == []
 

@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import contextvars
 import threading
+from types import SimpleNamespace
+from unittest.mock import Mock
 
 import numpy as np
 import pytest
@@ -162,6 +164,117 @@ def _input_first_result(values):
     branch = fresh.get_branch("input_first")
     branch.set_input("fp_cap", "2020", maximum)
     return branch.calculate("fp_capped", "2020")
+
+
+def _fallback_simulation(cache_mode="memory"):
+    """The review's branch reset, whose formula selects cross-period fallback."""
+    calls = []
+
+    def cap(person, period):
+        return np.full(person.count, 1000.0)
+
+    def work(person, period):
+        return np.full(person.count, 5.0)
+
+    def carried(person, period):
+        calls.append(str(period))
+        person("cap", period)
+        branch = person.simulation.get_branch("worker")
+        branch.delete_arrays("cap")
+        maximum = branch.calculate("work", period)
+        branch.set_input("cap", period, maximum)
+        # Returning None selects the default or a real input to carry.
+
+    system = CountryTaxBenefitSystem()
+    system.auto_carry_over_input_variables = True
+    system.add_variables(
+        _variable("cap", periods.YEAR, cap),
+        _variable("work", periods.YEAR, work),
+        _variable("carried", periods.YEAR, carried),
+    )
+    simulation = SimulationBuilder().build_default_simulation(system)
+    if cache_mode == "disk":
+        simulation.memory_config = MemoryConfig(0)
+        for population in simulation.populations.values():
+            population._holders = {}
+    elif cache_mode == "drop":
+        simulation.memory_config = MemoryConfig(1, variables_to_drop=["carried"])
+        for population in simulation.populations.values():
+            population._holders = {}
+    elif cache_mode == "blacklist":
+        system.cache_blacklist = ["carried"]
+        simulation.opt_out_cache = True
+    return simulation, calls
+
+
+@pytest.mark.parametrize("cache_mode", ["memory", "disk", "drop", "blacklist"])
+@pytest.mark.parametrize("future_input", [False, True])
+def test_fixed_point_fallback_does_not_hide_later_input(cache_mode, future_input):
+    simulation, calls = _fallback_simulation(cache_mode)
+    if future_input:
+        simulation.set_input("carried", "2022", [999])
+
+    assert simulation.calculate("carried", "2020").tolist() == [0.0]
+    assert len(calls) == 2
+
+    simulation.set_input("carried", "2019", [123])
+    assert simulation.calculate("carried", "2020").tolist() == [123.0]
+
+
+def test_fixed_point_fallback_is_absent_from_every_cache(monkeypatch, tmp_path):
+    simulation, calls = _fallback_simulation()
+    simulation.dataset = SimpleNamespace(file_path=tmp_path / "dataset.h5", name="test")
+    cache = Mock()
+    cache.get_cache_path.return_value = tmp_path / "missing-cache.h5"
+    monkeypatch.setattr(simulation_module, "SimulationMacroCache", lambda system: cache)
+    monkeypatch.setattr(
+        simulation, "check_macro_cache", lambda variable, period: variable == "carried"
+    )
+
+    assert simulation.calculate("carried", "2020").tolist() == [0.0]
+    assert len(calls) == 2
+    assert simulation.get_array("carried", "2020") is None
+    assert ("carried", periods.period("2020")) not in simulation._fast_cache
+    cache.set_cache_value.assert_not_called()
+
+    simulation.set_input("carried", "2019", [123])
+    assert simulation.calculate("carried", "2020").tolist() == [123.0]
+    assert simulation.get_array("carried", "2020").tolist() == [123.0]
+    cache.set_cache_value.assert_called_once()
+
+
+def test_formula_using_uncached_fallback_still_keeps_its_fixed_point():
+    simulation, calls = _fallback_simulation()
+
+    def outer(person, period):
+        return person("carried", period) + 1
+
+    simulation.tax_benefit_system.add_variable(
+        _variable("fp_fallback_outer", periods.YEAR, outer)
+    )
+    assert simulation.calculate("fp_fallback_outer", "2020").tolist() == [1.0]
+    assert len(calls) == 2
+    assert simulation.get_array("carried", "2020") is None
+    assert simulation.get_array("fp_fallback_outer", "2020").tolist() == [1.0]
+
+
+def test_retry_can_cache_a_formula_result_after_an_uncached_fallback():
+    simulation, calls = _fallback_simulation()
+    original = simulation.tax_benefit_system.get_variable("carried").get_formula("2020")
+
+    def carried(person, period):
+        original(person, period)
+        if len(calls) > 1:
+            return np.full(person.count, 7.0)
+
+    simulation.tax_benefit_system.update_variable(
+        _variable("carried", periods.YEAR, carried)
+    )
+    assert simulation.calculate("carried", "2020").tolist() == [7.0]
+    assert len(calls) == 3
+    assert simulation.get_array("carried", "2020").tolist() == [7.0]
+    assert simulation.calculate("carried", "2020").tolist() == [7.0]
+    assert len(calls) == 3
 
 
 def _assert_settled(simulation, calls, expected, kept_in_holder=True):

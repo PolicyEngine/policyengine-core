@@ -238,8 +238,9 @@ depend on the input is calculated again) but not less, within these limits:
   variable they write. A formula's input for its own period is still returned
   as described above, and results calculated while an input is being set do not
   enter the fast cache. When uprating or automatic carry-over finds no source
-  input, the root returns the fallback default without caching it. Setting an
-  earlier input can therefore change the next calculation of that period.
+  input, the root returns the fallback default without caching it, including
+  when repeated branch mutations converge to a fixed point. Setting an earlier
+  input can therefore change the next calculation of that period.
   Branches can cache these defaults because later inputs invalidate them.
 - **Existing child branches keep their values.** An input set on a branch does
   not reach branches already created from it.

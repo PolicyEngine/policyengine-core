@@ -7,9 +7,52 @@ from hypothesis import given, settings, strategies as st
 
 from tests.core.test_branch_input_fixed_point import (
     _assert_settled,
+    _fallback_simulation,
     _input_first_result,
     _simulation,
 )
+
+
+@given(
+    operations=st.lists(
+        st.one_of(
+            st.tuples(st.just("set"), st.integers(2018, 2022), st.integers(-500, 500)),
+            st.tuples(st.just("calculate"), st.integers(2018, 2022), st.none()),
+        ),
+        min_size=1,
+        max_size=25,
+    ),
+    cache_mode=st.sampled_from(["memory", "disk", "drop", "blacklist"]),
+)
+@settings(max_examples=100, deadline=None)
+def test_fixed_point_fallback_never_shadows_later_input(operations, cache_mode):
+    simulation, _ = _fallback_simulation(cache_mode)
+    inputs = {}
+    kept = {}
+    # Always include the reviewed calculate -> earlier input -> calculate
+    # witness, followed by arbitrary interleavings and repeated writes/reads.
+    operations = [
+        ("calculate", 2020, None),
+        ("set", 2019, 123),
+        ("calculate", 2020, None),
+        *operations,
+    ]
+    for action, year, value in operations:
+        if action == "set":
+            simulation.set_input("carried", str(year), [value])
+            inputs[year] = value
+            kept[year] = value
+            continue
+
+        source = max((known for known in inputs if known <= year), default=None)
+        # Root inputs keep previous input-derived calculations. Defaults
+        # without a source must never acquire that persistent cache status.
+        if year not in kept and source is not None:
+            kept[year] = inputs[source]
+        expected = kept.get(year, 0)
+        assert simulation.calculate("carried", str(year)).tolist() == [expected]
+        if source is None:
+            assert simulation.get_array("carried", str(year)) is None
 
 
 @given(

@@ -283,6 +283,7 @@ class _Frame:
         "stale_parent",
         "unobserved_activity",
         "attempt_cache",
+        "uncached_fallbacks",
     )
 
     def __init__(self, simulation: "Simulation", stale_parent: bool = False):
@@ -307,6 +308,9 @@ class _Frame:
         # Restricted children share this dictionary only until this attempt
         # restarts. Foreign results never enter persistent caches this way.
         self.attempt_cache = {}
+        # Cache eligibility belongs to the requested value, not to every
+        # formula sharing this frame. A retry may find a real source input.
+        self.uncached_fallbacks = set()
         # Retain only creations whose original registration still names
         # the same object. Saved or replaced snapshots keep their identities.
         self.carried_branches = _registered_creations(
@@ -1487,6 +1491,8 @@ class Simulation:
                 transition = frame.transition_signature(result)
                 if transition is not None and transition == previous_transition:
                     frame.settle_reads()
+                    if (variable_name, period) in frame.uncached_fallbacks:
+                        break
                     # This run repeated the complete input transition and its
                     # result. Preserve holder input/blacklist rules and the
                     # existing fast-cache guard when keeping the fixed point.
@@ -1657,6 +1663,10 @@ class Simulation:
         if variable_name not in self.tax_benefit_system.variables:
             raise ValueError(f"Variable {variable_name} does not exist.")
         input_state = self._calculation_start()
+        frames = _calculation_frames.get()
+        frame = frames[-1] if frames and frames[-1].simulation is self else None
+        if frame is not None:
+            frame.uncached_fallbacks.discard((variable_name, period))
         # Lets a custom ``set_input`` handler tell whether it calculated.
         self._calculations_started = self._calculations_started + 1
         population = self.get_variable_population(variable_name)
@@ -1682,7 +1692,6 @@ class Simulation:
         if cached_array is not None:
             return cached_array
 
-        frames = _calculation_frames.get()
         if frames and frames[-1].simulation is self:
             cached_array = frames[-1].recall(variable_name, period)
             if cached_array is not None:
@@ -1928,9 +1937,8 @@ class Simulation:
                         # whether a value is stored sees. (The uprating path
                         # above skips derived periods, so it would not uprate
                         # from one.)
-                        return holder.default_array()
+                        return self._uncached_fallback(holder, period, input_state)
                 if array is None:
-                    array = holder.default_array()
                     if (
                         cross_period_fallback
                         and getattr(self, "parent_branch", None) is None
@@ -1939,10 +1947,8 @@ class Simulation:
                         # Leave this fallback out of every cache so a later
                         # input for an earlier period takes effect. An input
                         # set by the formula for this period still wins.
-                        stored_input = self._input_set_meanwhile(
-                            holder, period, input_state[2]
-                        )
-                        return array if stored_input is None else stored_input
+                        return self._uncached_fallback(holder, period, input_state)
+                    array = holder.default_array()
 
             if variable.defined_for is not None:
                 array = np.where(mask, array, variable.default_value)
@@ -1998,6 +2004,18 @@ class Simulation:
         """When a calculation begins: how many drops ran here (``_input_epoch``)
         and inputs were set here (``_inputs_set``), and a sequence number."""
         return self._input_epoch, self._inputs_set, next_sequence_number()
+
+    def _uncached_fallback(
+        self, holder: Holder, period: Period, input_state: Tuple[int, int, int]
+    ) -> ArrayLike:
+        """Return a default that must stay uncached even after convergence."""
+        stored_input = self._input_set_meanwhile(holder, period, input_state[2])
+        if stored_input is not None:
+            return stored_input
+        frames = _calculation_frames.get()
+        if frames and frames[-1].simulation is self:
+            frames[-1].uncached_fallbacks.add((holder.variable.name, period))
+        return holder.default_array()
 
     def _input_set_meanwhile(
         self, holder: Holder, period: Period, started_at: int

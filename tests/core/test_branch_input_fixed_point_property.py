@@ -3,7 +3,7 @@
 import pytest
 
 pytest.importorskip("hypothesis")
-from hypothesis import given, settings, strategies as st
+from hypothesis import example, given, settings, strategies as st
 
 from tests.core.test_branch_input_fixed_point import (
     _assert_settled,
@@ -13,6 +13,14 @@ from tests.core.test_branch_input_fixed_point import (
 )
 
 
+@example(
+    operations=[
+        ("calculate", 2020, None),
+        ("set", 2019, 123),
+        ("calculate", 2020, None),
+    ],
+    cache_mode="memory",
+)
 @given(
     operations=st.lists(
         st.one_of(
@@ -29,14 +37,6 @@ def test_fixed_point_fallback_never_shadows_later_input(operations, cache_mode):
     simulation, _ = _fallback_simulation(cache_mode)
     inputs = {}
     kept = {}
-    # Always include the reviewed calculate -> earlier input -> calculate
-    # witness, followed by arbitrary interleavings and repeated writes/reads.
-    operations = [
-        ("calculate", 2020, None),
-        ("set", 2019, 123),
-        ("calculate", 2020, None),
-        *operations,
-    ]
     for action, year, value in operations:
         if action == "set":
             simulation.set_input("carried", str(year), [value])

@@ -1,0 +1,1 @@
+Removed `policyengine_core.charts.api` and the chart functions it exported through `policyengine_core.charts` (`get_api_chart_data`, `intra_decile_chart` and `decile_chart`), which requested society-wide results from the PolicyEngine Public API.

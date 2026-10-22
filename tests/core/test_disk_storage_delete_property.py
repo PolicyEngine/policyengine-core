@@ -10,8 +10,9 @@ storages reject it, with the same error; ``delete(period, branch_name)``
 removes the branch's values for every period that ``period`` contains,
 ``delete(None, branch_name)`` removes all of the branch's values, and eternal
 storage keeps one ``ETERNITY`` value per branch. After every step both
-storages hold exactly the model's (branch, period) keys, with the values last
-put there.
+storages hold exactly the model's (branch, period) keys, with the values,
+input/derived provenance and sequence numbers last put there. Deleting one
+period must preserve all three for a derived value surviving in another.
 
 A second property restores a disk storage's directory, holding the files of
 random keys and of names that are not keys, and checks that ``restore`` reads
@@ -58,14 +59,10 @@ def period_strategy(draw):
         return periods.period(periods.ETERNITY)
     unit = draw(st.sampled_from([periods.YEAR, periods.MONTH, periods.DAY]))
     year = draw(st.one_of(st.sampled_from([999, 1000]), st.integers(2023, 2026)))
-    if os.name == "nt":
-        # Windows file names cannot contain the ``:`` of a multi-unit or
-        # rolling-year period's string form.
-        month = 1 if unit == periods.YEAR else draw(st.integers(1, 12))
-        size = 1
-    else:
-        month = draw(st.integers(1, 12))
-        size = draw(st.sampled_from([1, 2, 3, 12]))
+    # Disk filenames encode compound periods' colons as semicolons, so these
+    # periods are supported on Windows too.
+    month = draw(st.integers(1, 12))
+    size = draw(st.sampled_from([1, 2, 3, 12]))
     # Both storages reject years and months anchored mid-month, whose string
     # form drops the day (before writing a file, so on Windows too).
     if unit == periods.DAY:
@@ -86,13 +83,21 @@ def storable(branch_name, period):
     return ":" not in branch_name and parsed.start == periods.period(period).start
 
 
-def put_both(memory, disk, value, period, branch_name):
+def put_both(
+    memory, disk, value, period, branch_name, *, derived=False, sequence_number=None
+):
     """Put ``value`` in both storages; whether both stored it. Both store it,
     or both raise the same ``ValueError``, as the model says."""
     errors = []
     for storage in (memory, disk):
         try:
-            storage.put(np.array([float(value)]), period, branch_name)
+            storage.put(
+                np.array([float(value)]),
+                period,
+                branch_name,
+                derived=derived,
+                sequence_number=sequence_number,
+            )
             errors.append(None)
         except ValueError as error:
             errors.append(str(error))
@@ -108,11 +113,13 @@ put_step = st.tuples(
     period_strategy(),
     st.sampled_from(BRANCH_NAMES),
     st.integers(0, 1_000),
+    st.booleans(),
 )
 delete_step = st.tuples(
     st.just("delete"),
     st.one_of(st.none(), period_strategy()),
     st.sampled_from(BRANCH_NAMES),
+    st.none(),
     st.none(),
 )
 
@@ -125,10 +132,30 @@ def stored(storage):
     }
 
 
+def provenance(storage):
+    """Map each stored key to its derived mark and original sequence number."""
+    separator = ":" if isinstance(storage, InMemoryStorage) else "_"
+    return {
+        (branch_name, str(period)): (
+            storage.is_derived(period, branch_name),
+            storage._sequence_numbers[f"{branch_name}{separator}{period}"],
+        )
+        for branch_name, period in storage.get_known_branch_periods()
+    }
+
+
 @hypothesis.settings(
     max_examples=200,
     deadline=None,
     suppress_health_check=[hypothesis.HealthCheck.too_slow],
+)
+@hypothesis.example(
+    is_eternal=False,
+    steps=[
+        ("put", periods.period(2025), "default", 7, False),
+        ("put", periods.period(2026), "default", 9, True),
+        ("delete", periods.period(2025), "default", None, None),
+    ],
 )
 @hypothesis.given(
     is_eternal=st.booleans(),
@@ -141,12 +168,26 @@ def test_disk_and_memory_storage_delete_the_same_keys(is_eternal, steps):
         disk = OnDiskStorage(
             directory, is_eternal=is_eternal, preserve_storage_dir=True
         )
-        for action, period, branch_name, value in steps:
+        for sequence_number, (action, period, branch_name, value, derived) in enumerate(
+            steps, start=1
+        ):
             if period is not None and is_eternal:
                 period = periods.period(periods.ETERNITY)
             if action == "put":
-                if put_both(memory, disk, value, period, branch_name):
-                    model[(branch_name, str(period))] = float(value)
+                if put_both(
+                    memory,
+                    disk,
+                    value,
+                    period,
+                    branch_name,
+                    derived=derived,
+                    sequence_number=sequence_number,
+                ):
+                    model[(branch_name, str(period))] = (
+                        float(value),
+                        derived,
+                        sequence_number,
+                    )
             else:
                 memory.delete(period, branch_name)
                 disk.delete(period, branch_name)
@@ -160,7 +201,19 @@ def test_disk_and_memory_storage_delete_the_same_keys(is_eternal, steps):
                     )
                 }
 
-            assert stored(disk) == stored(memory) == model
+            assert (
+                stored(disk)
+                == stored(memory)
+                == {key: value for key, (value, _, _) in model.items()}
+            )
+            assert (
+                provenance(disk)
+                == provenance(memory)
+                == {
+                    key: (derived, sequence_number)
+                    for key, (_, derived, sequence_number) in model.items()
+                }
+            )
 
 
 # Names of ``.npy`` files that are not keys: no ``_``, no period after the last
@@ -168,6 +221,8 @@ def test_disk_and_memory_storage_delete_the_same_keys(is_eternal, steps):
 # case-insensitive file system that is the ``ETERNITY`` key's file.)
 NON_CANONICAL_PERIODS = ["2025-3", "2025-03-1", "999", "x", ""]
 if os.name != "nt":
+    # These are deliberately malformed raw filenames, written without the
+    # storage encoder. Windows cannot create literal-colon filenames.
     NON_CANONICAL_PERIODS += ["year:2025", "month:2025-01:12", "day:2025-03-01"]
 not_key_names = st.one_of(
     st.text(alphabet="abcxyz0123456789-", min_size=1, max_size=8),
@@ -201,8 +256,8 @@ def test_restore_reads_back_the_keys_and_only_the_keys(
         disk = OnDiskStorage(
             directory, is_eternal=is_eternal, preserve_storage_dir=True
         )
-        for _, period, branch_name, value in puts:
-            put_both(memory, disk, value, period, branch_name)
+        for _, period, branch_name, value, derived in puts:
+            put_both(memory, disk, value, period, branch_name, derived=derived)
         for name in not_keys:
             np.save(os.path.join(directory, name), np.array([-1.0]))
 
@@ -221,7 +276,7 @@ def test_restore_reads_back_the_keys_and_only_the_keys(
         else:
             assert caught == []
 
-        for _, period, branch_name, _ in deletes:
+        for _, period, branch_name, _, _ in deletes:
             memory.delete(period, branch_name)
             restored.delete(period, branch_name)
             assert stored(restored) == stored(memory)

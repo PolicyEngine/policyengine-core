@@ -27,16 +27,6 @@ from policyengine_core.simulations import SimulationBuilder
 
 BACKENDS = ("memory", "disk")
 
-# On Windows a ``:`` in a file name is invalid or names an alternate data
-# stream, so disk storage cannot keep periods whose string form has one
-# (``month:2025-01:3``, ``year:2025-03``). That predates this fix; tests of
-# such periods run elsewhere.
-skip_colon_periods_on_windows = pytest.mark.skipif(
-    os.name == "nt",
-    reason="On-disk keys for multi-unit periods contain ':', which Windows "
-    "file names cannot.",
-)
-
 
 @pytest.fixture
 def make_storage(tmp_path):
@@ -195,7 +185,6 @@ def test_deleting_eternity_deletes_every_period_of_the_branch(make_storage, back
     assert known(storage) == [("reform", "2025-01")]
 
 
-@skip_colon_periods_on_windows
 @pytest.mark.parametrize("backend", BACKENDS)
 def test_delete_multi_unit_periods(make_storage, backend):
     storage = make_storage(backend)
@@ -237,9 +226,10 @@ PERIODS = [
     "2025-02-01",
     "2026-01",
     "ETERNITY",
+    "month:2025-01:2",
+    "year:2025-03",
+    "year:2024:2",
 ]
-if os.name != "nt":
-    PERIODS += ["month:2025-01:2", "year:2025-03", "year:2024:2"]
 BRANCH_NAMES = ["default", "pre_tcja", "pre_tcja_ctc"]
 
 
@@ -402,8 +392,6 @@ def test_put_rejects_unparseable_period_without_changing_values(
 @pytest.mark.parametrize("month", [1, 3])
 def test_twelve_month_alias_remains_storable(make_storage, backend, month):
     period = periods.Period((periods.MONTH, periods.Instant((2025, month, 1)), 12))
-    if os.name == "nt" and ":" in str(period):
-        pytest.skip("Windows file names cannot contain ':'")
     storage = make_storage(backend)
 
     storage.put(np.array([500.0]), period, "no_salt", derived=True)
@@ -425,7 +413,8 @@ def test_twelve_month_alias_remains_storable(make_storage, backend, month):
 # is not a key ``put`` writes (no ``_``, no period after the last ``_``, or a
 # period not in its string form) names no value, and deleting any period of
 # any branch then raised parsing it, leaving the value it was to delete.
-# Names without ``:``, which Windows file names cannot hold.
+# The raw filenames below bypass storage's semicolon encoder. Only literal
+# colon filenames remain excluded on Windows, which cannot create them.
 NOT_KEYS = [
     "stray.npy",
     "default_garbage.npy",
@@ -468,9 +457,9 @@ def test_restore_reads_back_every_key_without_warning(tmp_path):
         ("no_salt", "2025-03"),
         ("y_2019", "2025-03-05"),
         ("trailing_", "ETERNITY"),
+        ("pre_tcja", "year:2025-03"),
+        ("default", "month:2025-01:3"),
     ]
-    if os.name != "nt":
-        keys += [("pre_tcja", "year:2025-03"), ("default", "month:2025-01:3")]
     storage = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
     put_all(storage, keys)
 

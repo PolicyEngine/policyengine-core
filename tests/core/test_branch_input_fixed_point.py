@@ -21,7 +21,7 @@ from policyengine_core.country_template import CountryTaxBenefitSystem, entities
 from policyengine_core.experimental import MemoryConfig
 from policyengine_core.simulations import SimulationBuilder
 import policyengine_core.simulations.simulation as simulation_module
-from policyengine_core.variables import Variable
+from policyengine_core.variables import QuantityType, Variable
 
 
 def _variable(name, definition_period, formula=None):
@@ -166,7 +166,7 @@ def _input_first_result(values):
     return branch.calculate("fp_capped", "2020")
 
 
-def _fallback_simulation(cache_mode="memory"):
+def _fallback_simulation(cache_mode="memory", definition_period=periods.YEAR):
     """The review's branch reset, whose formula selects cross-period fallback."""
     calls = []
 
@@ -188,9 +188,9 @@ def _fallback_simulation(cache_mode="memory"):
     system = CountryTaxBenefitSystem()
     system.auto_carry_over_input_variables = True
     system.add_variables(
-        _variable("cap", periods.YEAR, cap),
-        _variable("work", periods.YEAR, work),
-        _variable("carried", periods.YEAR, carried),
+        _variable("cap", definition_period, cap),
+        _variable("work", definition_period, work),
+        _variable("carried", definition_period, carried),
     )
     simulation = SimulationBuilder().build_default_simulation(system)
     if cache_mode == "disk":
@@ -243,6 +243,73 @@ def test_fixed_point_fallback_is_absent_from_every_cache(monkeypatch, tmp_path):
     cache.set_cache_value.assert_called_once()
 
 
+@pytest.mark.parametrize("cache_mode", ["memory", "disk", "drop", "blacklist"])
+@pytest.mark.parametrize(
+    "definition_period,quantity_type,method,requested,source,expected",
+    [
+        (periods.YEAR, QuantityType.FLOW, "calculate", "2020-01", "2019", 10.25),
+        (periods.YEAR, QuantityType.FLOW, "calculate_divide", "2020-01", "2019", 10.25),
+        (periods.YEAR, QuantityType.STOCK, "calculate", "2020-01", "2019", 123),
+        (periods.MONTH, QuantityType.FLOW, "calculate", "2020", "2019-12", 1476),
+        (
+            periods.MONTH,
+            QuantityType.FLOW,
+            "calculate_add",
+            "year:2020:2",
+            "2019-12",
+            2952,
+        ),
+        (periods.MONTH, QuantityType.STOCK, "calculate", "2020", "2019-12", 123),
+    ],
+)
+def test_converted_fixed_point_fallback_stays_out_of_every_cache(
+    cache_mode,
+    definition_period,
+    quantity_type,
+    method,
+    requested,
+    source,
+    expected,
+    monkeypatch,
+    tmp_path,
+):
+    simulation, _ = _fallback_simulation(cache_mode, definition_period)
+    simulation.tax_benefit_system.get_variable("carried").quantity_type = quantity_type
+    simulation.dataset = SimpleNamespace(file_path=tmp_path / "dataset.h5", name="test")
+    cache = Mock()
+    cache.get_cache_path.return_value = tmp_path / "missing-cache.h5"
+    monkeypatch.setattr(simulation_module, "SimulationMacroCache", lambda system: cache)
+    monkeypatch.setattr(
+        simulation, "check_macro_cache", lambda variable, period: variable == "carried"
+    )
+
+    assert getattr(simulation, method)("carried", requested).tolist() == [0.0]
+    holder = simulation.get_holder("carried")
+    assert holder.get_known_periods(simulation.branch_name) == []
+    assert not any(name == "carried" for name, _ in simulation._fast_cache)
+    cache.set_cache_value.assert_not_called()
+    assert not simulation._open_frames
+
+    simulation.set_input("carried", source, [123])
+    fresh, _ = _fallback_simulation(cache_mode, definition_period)
+    fresh.tax_benefit_system.get_variable("carried").quantity_type = quantity_type
+    fresh.set_input("carried", source, [123])
+    assert getattr(fresh, method)("carried", requested).tolist() == [expected]
+    assert getattr(simulation, method)("carried", requested).tolist() == [expected]
+
+
+@pytest.mark.parametrize("method", ["calculate", "calculate_add"])
+def test_sum_with_some_real_inputs_does_not_cache_its_fallback_terms(method):
+    simulation, _ = _fallback_simulation(definition_period=periods.MONTH)
+    simulation.set_input("carried", "2020-06", [12])
+    assert getattr(simulation, method)("carried", "2020").tolist() == [84.0]
+    assert simulation.get_array("carried", "2020") is None
+    assert ("carried", periods.period("2020")) not in simulation._fast_cache
+
+    simulation.set_input("carried", "2019-12", [6])
+    assert getattr(simulation, method)("carried", "2020").tolist() == [114.0]
+
+
 def test_formula_using_uncached_fallback_still_keeps_its_fixed_point():
     simulation, calls = _fallback_simulation()
 
@@ -275,6 +342,47 @@ def test_retry_can_cache_a_formula_result_after_an_uncached_fallback():
     assert simulation.get_array("carried", "2020").tolist() == [7.0]
     assert simulation.calculate("carried", "2020").tolist() == [7.0]
     assert len(calls) == 3
+
+
+@pytest.mark.parametrize("method", ["calculate", "calculate_divide"])
+def test_converted_retry_can_cache_a_real_result_after_fallback(method):
+    simulation, calls = _fallback_simulation()
+    original = simulation.tax_benefit_system.get_variable("carried").get_formula("2020")
+
+    def carried(person, period):
+        original(person, period)
+        if len(calls) > 1:
+            return np.full(person.count, 84.0)
+
+    simulation.tax_benefit_system.update_variable(
+        _variable("carried", periods.YEAR, carried)
+    )
+    assert getattr(simulation, method)("carried", "2020-01").tolist() == [7.0]
+    assert len(calls) == 3
+    assert simulation.get_array("carried", "2020-01").tolist() == [7.0]
+    assert simulation.calculate("carried", "2020-01").tolist() == [7.0]
+    assert len(calls) == 3
+
+
+@pytest.mark.parametrize("method", ["calculate", "calculate_add"])
+def test_sum_retains_fallback_status_if_a_later_term_recalculates_its_source(method):
+    simulation, _ = _fallback_simulation(definition_period=periods.MONTH)
+
+    def carried(person, period):
+        if period.start.month == 2:
+            # January's already-returned fallback remains a term of the sum,
+            # even though its current calculation now reads a real input.
+            person.simulation.set_input("carried", "2020-01", [12])
+            person.simulation.calculate("carried", "2020-01")
+
+    simulation.tax_benefit_system.update_variable(
+        _variable("carried", periods.MONTH, carried)
+    )
+    assert getattr(simulation, method)("carried", "2020").tolist() == [132.0]
+    assert simulation.get_array("carried", "2020") is None
+    assert ("carried", periods.period("2020")) not in simulation._fast_cache
+    assert getattr(simulation, method)("carried", "2020").tolist() == [144.0]
+    assert simulation.get_array("carried", "2020").tolist() == [144.0]
 
 
 def _assert_settled(simulation, calls, expected, kept_in_holder=True):

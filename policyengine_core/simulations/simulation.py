@@ -1664,9 +1664,7 @@ class Simulation:
             raise ValueError(f"Variable {variable_name} does not exist.")
         input_state = self._calculation_start()
         frames = _calculation_frames.get()
-        frame = frames[-1] if frames and frames[-1].simulation is self else None
-        if frame is not None:
-            frame.uncached_fallbacks.discard((variable_name, period))
+        self._set_fallback_cache_status(variable_name, period, uncached=False)
         # Lets a custom ``set_input`` handler tell whether it calculated.
         self._calculations_started = self._calculations_started + 1
         population = self.get_variable_population(variable_name)
@@ -1750,7 +1748,13 @@ class Simulation:
         if variable.definition_period == MONTH and period.unit == YEAR:
             if variable.quantity_type == QuantityType.STOCK:
                 contained_months = period.get_subperiods(MONTH)
-                values = self._calculate(variable_name, contained_months[-1])
+                source = contained_months[-1]
+                values = self._calculate(variable_name, source)
+                self._set_fallback_cache_status(
+                    variable_name,
+                    period,
+                    uncached=self._fallback_is_uncached(variable_name, source),
+                )
             else:
                 values = self.calculate_add(variable_name, period)
             alternate_period_handling = True
@@ -1758,11 +1762,22 @@ class Simulation:
             alternate_period_handling = True
             if variable.quantity_type == QuantityType.STOCK:
                 values = self._calculate(variable_name, period.this_year)
+                self._set_fallback_cache_status(
+                    variable_name,
+                    period,
+                    uncached=self._fallback_is_uncached(
+                        variable_name, period.this_year
+                    ),
+                )
             else:
                 values = self.calculate_divide(variable_name, period)
 
         if alternate_period_handling:
-            if is_cache_available and self._may_keep(input_state):
+            if (
+                is_cache_available
+                and not self._fallback_is_uncached(variable_name, period)
+                and self._may_keep(input_state)
+            ):
                 smc.set_cache_value(cache_path, values)
             return values
 
@@ -2012,10 +2027,29 @@ class Simulation:
         stored_input = self._input_set_meanwhile(holder, period, input_state[2])
         if stored_input is not None:
             return stored_input
-        frames = _calculation_frames.get()
-        if frames and frames[-1].simulation is self:
-            frames[-1].uncached_fallbacks.add((holder.variable.name, period))
+        self._set_fallback_cache_status(holder.variable.name, period, uncached=True)
         return holder.default_array()
+
+    def _set_fallback_cache_status(
+        self, variable_name: str, period: Period, *, uncached: bool
+    ) -> None:
+        # A conversion helper or a stale caller can have its own frame. Keep
+        # the returned value's eligibility visible after a nested frame exits,
+        # including when a retry replaces a fallback with a real result.
+        key = (variable_name, period)
+        for frame in _calculation_frames.get():
+            if frame.simulation is self:
+                if uncached:
+                    frame.uncached_fallbacks.add(key)
+                else:
+                    frame.uncached_fallbacks.discard(key)
+
+    def _fallback_is_uncached(self, variable_name: str, period: Period) -> bool:
+        key = (variable_name, period)
+        return any(
+            frame.simulation is self and key in frame.uncached_fallbacks
+            for frame in _calculation_frames.get()
+        )
 
     def _input_set_meanwhile(
         self, holder: Holder, period: Period, started_at: int
@@ -2124,9 +2158,15 @@ class Simulation:
         sub_periods = list(period.get_subperiods(variable.definition_period))
 
         def total():
-            return sum(
-                self.calculate(variable_name, sub_period) for sub_period in sub_periods
-            )
+            result = 0
+            uncached = False
+            for sub_period in sub_periods:
+                result = result + self.calculate(variable_name, sub_period)
+                # Preserve each returned term's status: a later term can
+                # recalculate an earlier period without changing this sum.
+                uncached |= self._fallback_is_uncached(variable_name, sub_period)
+            self._set_fallback_cache_status(variable_name, period, uncached=uncached)
+            return result
 
         # As in ``calculate``: only an outermost sum runs again, and while it
         # sums it is in flight, so its terms do not run again on their own
@@ -2188,6 +2228,13 @@ class Simulation:
                 input_state = self._calculation_start()
                 computation_period = period.this_year
                 result = self.calculate(variable_name, period=computation_period) / 12.0
+                self._set_fallback_cache_status(
+                    variable_name,
+                    period,
+                    uncached=self._fallback_is_uncached(
+                        variable_name, computation_period
+                    ),
+                )
                 return self._cache_option_result(variable, period, result, input_state)
         elif period.unit == periods.YEAR:
             return self.calculate(variable_name, period)
@@ -2240,7 +2287,9 @@ class Simulation:
         and raw holder inputs need not be registered there. Accepted cache
         writes never register the aggregate as a supplied input.
         """
-        if variable.quantity_type == QuantityType.STOCK:
+        if variable.quantity_type == QuantityType.STOCK or self._fallback_is_uncached(
+            variable.name, period
+        ):
             return result
         routed = (variable.definition_period == MONTH and period.unit == YEAR) or (
             variable.definition_period == YEAR and period.unit == MONTH

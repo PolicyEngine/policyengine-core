@@ -5,6 +5,8 @@ import pytest
 pytest.importorskip("hypothesis")
 from hypothesis import example, given, settings, strategies as st
 
+from policyengine_core import periods
+
 from tests.core.test_branch_input_fixed_point import (
     _assert_settled,
     _fallback_simulation,
@@ -21,11 +23,37 @@ from tests.core.test_branch_input_fixed_point import (
     ],
     cache_mode="memory",
 )
+@example(
+    operations=[
+        ("calculate", "2020-01", None),
+        ("set", 2019, 123),
+        ("calculate", "2020-01", None),
+    ],
+    cache_mode="memory",
+)
+@example(
+    operations=[
+        ("set", 2018, 0),
+        ("calculate", "2018-01", None),
+        ("set", 2018, 1),
+        ("calculate", "2018-01", None),
+    ],
+    cache_mode="memory",
+)
 @given(
     operations=st.lists(
         st.one_of(
             st.tuples(st.just("set"), st.integers(2018, 2022), st.integers(-500, 500)),
-            st.tuples(st.just("calculate"), st.integers(2018, 2022), st.none()),
+            st.tuples(
+                st.just("calculate"),
+                st.one_of(
+                    st.integers(2018, 2022),
+                    st.tuples(st.integers(2018, 2022), st.integers(1, 12)).map(
+                        lambda value: f"{value[0]}-{value[1]:02d}"
+                    ),
+                ),
+                st.none(),
+            ),
         ),
         min_size=1,
         max_size=25,
@@ -37,22 +65,37 @@ def test_fixed_point_fallback_never_shadows_later_input(operations, cache_mode):
     simulation, _ = _fallback_simulation(cache_mode)
     inputs = {}
     kept = {}
-    for action, year, value in operations:
+    for action, requested, value in operations:
+        period = periods.period(requested)
+        year = period.start.year
         if action == "set":
-            simulation.set_input("carried", str(year), [value])
+            simulation.set_input("carried", period, [value])
             inputs[year] = value
-            kept[year] = value
+            # Writing an annual input removes overlapping calculated months
+            # of this variable, even on the root (independent of branch
+            # dependency invalidation).
+            kept = {
+                known: result
+                for known, result in kept.items()
+                if known.start.year != year
+            }
+            kept[period] = value
             continue
 
         source = max((known for known in inputs if known <= year), default=None)
-        # Root inputs keep previous input-derived calculations. Defaults
-        # without a source must never acquire that persistent cache status.
-        if year not in kept and source is not None:
-            kept[year] = inputs[source]
-        expected = kept.get(year, 0)
-        assert simulation.calculate("carried", str(year)).tolist() == [expected]
+        # Root inputs keep previous input-derived calculations, including a
+        # converted month. A monthly request does not itself retain the year
+        # while the branch reset makes its underlying calculation stale.
+        if period not in kept and source is not None:
+            annual = kept.get(period.this_year, inputs[source])
+            kept[period] = annual / 12 if period.unit == periods.MONTH else annual
+        expected = kept.get(period, 0)
+        assert simulation.calculate("carried", period).tolist() == pytest.approx(
+            [expected]
+        )
         if source is None:
-            assert simulation.get_array("carried", str(year)) is None
+            assert simulation.get_array("carried", period) is None
+            assert simulation.get_array("carried", period.this_year) is None
 
 
 @given(

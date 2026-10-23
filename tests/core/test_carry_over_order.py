@@ -154,6 +154,10 @@ def test_an_input_ending_after_the_last_date_drops_overlapping_defaults(
     holder = built.get_holder(name)
     requested = periods.period("9999-12-31")
     holder._do_not_store = cache_only
+    # Seed existing caches: root carry-over fallbacks no longer store defaults.
+    default = holder.default_array()
+    holder.put_in_cache(default, requested, derived=True)
+    built._fast_cache[(name, requested)] = default
     np.testing.assert_array_equal(built.calculate(name, requested), [0, 0])
     assert (name, requested) in built._fast_cache
     assert holder._memory_storage.has(requested) == (not cache_only)
@@ -259,21 +263,27 @@ def test_input_set_after_a_period_defaulted_still_carries(system):
     np.testing.assert_array_equal(built.calculate("carried", "2014"), [7, 8])
 
 
-def test_defaults_are_cached_as_before(system):
-    """With nothing stored, or only earlier calculated values, the default is
-    cached (as master cached the value it carried); before a later stored
-    period it is not (as master returned it)."""
+@pytest.mark.parametrize("on_branch", [False, True], ids=["root", "branch"])
+def test_fallback_defaults_are_cached_only_on_branches(system, on_branch):
+    """Only branches invalidate these defaults when earlier inputs arrive.
+    Before a later stored period, neither root nor branch caches them."""
     built = simulation(system, {})
+    if on_branch:
+        built = built.get_branch("fallback_defaults")
     holder = built.get_holder("carried_monthly")
     for month in range(1, 13):
         for _ in range(2):
             built.calculate("carried_monthly", f"2012-{month:02d}")
     for month in range(1, 13):
-        assert holder.get_array(periods.period(f"2012-{month:02d}")) is not None
+        period = periods.period(f"2012-{month:02d}")
+        assert (holder.get_array(period, built.branch_name) is not None) == on_branch
+        assert (("carried_monthly", period) in built._fast_cache) == on_branch
     built = simulation(system, {"carried_monthly": {"2013-06": [1, 2]}})
+    if on_branch:
+        built = built.get_branch("fallback_defaults")
     holder = built.get_holder("carried_monthly")
     np.testing.assert_array_equal(built.calculate("carried_monthly", "2012-03"), [0, 0])
-    assert holder.get_array(periods.period("2012-03")) is None
+    assert holder.get_array(periods.period("2012-03"), built.branch_name) is None
 
 
 def test_branch_input_is_not_hidden_by_a_value_the_parent_carried(system):
@@ -609,19 +619,21 @@ def test_a_period_stored_only_on_another_branch_does_not_carry(system):
 
 
 def test_marks_are_cleared_with_the_values_apply_reform_wipes(system):
-    built = simulation(system, {})
+    built = simulation(system, {"carried": {"2009": [7, 8]}})
     built.memory_config = MemoryConfig(max_memory_occupation=0)
     holder = built.get_holder("carried")
     holder._disk_storage = holder.create_disk_storage()
     holder._on_disk_storable = True
     for year in range(2010, 2020):
         built.calculate("carried", str(year))
+        assert holder.is_derived(periods.period(year))
         built.apply_reform(_noop)
-    assert not holder._memory_storage._inputs
+    assert holder.get_known_periods() == [periods.period("2009")]
+    assert holder.get_input_periods() == [periods.period("2009")]
     assert not holder._disk_storage._derived
     # A file written for a period whose value was derived, then read back
     # by rebuilding the index, is an input.
-    built = simulation(system, {})
+    built = simulation(system, {"carried": {"2011": [7, 8]}})
     built.memory_config = MemoryConfig(max_memory_occupation=0)
     holder = built.get_holder("carried")
     holder._disk_storage = holder.create_disk_storage()
@@ -637,17 +649,19 @@ def test_marks_are_cleared_with_the_values_apply_reform_wipes(system):
 
 
 def test_marks_are_cleared_with_in_memory_values_apply_reform_wipes(system):
-    built = simulation(system, {})
+    built = simulation(system, {"carried": {"2009": [7, 8]}})
     holder = built.get_holder("carried")
     for year in range(2010, 2020):
         built.calculate("carried", str(year))
+        assert holder.is_derived(periods.period(year))
         built.apply_reform(_noop)
-    assert not holder._memory_storage._inputs
+    assert holder.get_known_periods() == [periods.period("2009")]
+    assert holder.get_input_periods() == [periods.period("2009")]
 
 
 def test_rebuilding_a_disk_index_reads_files_as_inputs(system):
     """A derived file replaced by an input, then re-indexed, is an input."""
-    built = simulation(system, {})
+    built = simulation(system, {"carried": {"2011": [7, 8]}})
     built.memory_config = MemoryConfig(max_memory_occupation=0)
     holder = built.get_holder("carried")
     holder._disk_storage = holder.create_disk_storage()

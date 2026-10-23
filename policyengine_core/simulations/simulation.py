@@ -1773,6 +1773,13 @@ class Simulation:
                 values = self.calculate_divide(variable_name, period)
 
         if alternate_period_handling:
+            # A formula for the source period can supply the requested
+            # period itself, including during STOCK selection. That input
+            # wins even when the converted fallback must stay uncached.
+            stored_input = self._input_set_meanwhile(holder, period, input_state[2])
+            if stored_input is not None:
+                values = stored_input
+                self._set_fallback_cache_status(variable_name, period, uncached=False)
             if (
                 is_cache_available
                 and not self._fallback_is_uncached(variable_name, period)
@@ -2177,6 +2184,7 @@ class Simulation:
         try:
             with frame if frame is not None else nullcontext():
                 input_state = self._calculation_start()
+                started_at = input_state[2]
                 result = total()
                 previous_transition = None
                 for _ in range(_RERUNS_AFTER_INPUT_CHANGE if outermost else 0):
@@ -2192,7 +2200,9 @@ class Simulation:
                     frame.restart()
                     input_state = self._calculation_start()
                     result = total()
-                return self._cache_option_result(variable, period, result, input_state)
+                return self._cache_option_result(
+                    variable, period, result, input_state, started_at=started_at
+                )
         finally:
             self._calculations_in_flight -= 1
 
@@ -2251,6 +2261,8 @@ class Simulation:
         period: Period,
         result: ArrayLike,
         input_state: Tuple[int, int, int],
+        *,
+        started_at: Optional[int] = None,
     ) -> ArrayLike:
         """Cache an ADD or DIVIDE result at ``period`` if a plain read would return it.
 
@@ -2286,7 +2298,20 @@ class Simulation:
         and export; it can name a disk input hidden by a derived memory value,
         and raw holder inputs need not be registered there. Accepted cache
         writes never register the aggregate as a supplied input.
+
+        ``started_at`` preserves the full sum's input window across retries;
+        ``input_state`` controls cache eligibility for the final attempt.
         """
+        holder = self.get_holder(variable.name)
+        # Resolve formula-time inputs before any cache rejection: returning
+        # an uncached fallback (or a result of another dtype) must not hide
+        # an input supplied for the requested period during conversion.
+        stored_input = self._input_set_meanwhile(
+            holder, period, input_state[2] if started_at is None else started_at
+        )
+        if stored_input is not None:
+            self._set_fallback_cache_status(variable.name, period, uncached=False)
+            return stored_input
         if variable.quantity_type == QuantityType.STOCK or self._fallback_is_uncached(
             variable.name, period
         ):
@@ -2296,9 +2321,7 @@ class Simulation:
         )
         if not routed or np.asarray(result).dtype != variable.dtype:
             return result
-        return self._cache_result(
-            self.get_holder(variable.name), result, period, input_state
-        )
+        return self._cache_result(holder, result, period, input_state)
 
     def calculate_output(self, variable_name: str, period: Period = None) -> ArrayLike:
         """

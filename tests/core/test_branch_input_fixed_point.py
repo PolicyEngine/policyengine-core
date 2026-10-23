@@ -310,6 +310,182 @@ def test_sum_with_some_real_inputs_does_not_cache_its_fallback_terms(method):
     assert getattr(simulation, method)("carried", "2020").tolist() == [114.0]
 
 
+@pytest.mark.parametrize("method", ["calculate", "calculate_divide"])
+def test_divided_fallback_yields_to_input_supplied_during_calculation(method):
+    class supplied_during_conversion(Variable):
+        value_type = float
+        entity = entities.Person
+        label = "Input supplied while dividing a fallback"
+        definition_period = periods.YEAR
+        quantity_type = QuantityType.FLOW
+        set_input = None
+
+        def formula(person, period):
+            person.simulation.set_input("supplied_during_conversion", "2020-02", [123])
+            return None
+
+    system = CountryTaxBenefitSystem()
+    system.auto_carry_over_input_variables = True
+    system.add_variable(supplied_during_conversion)
+    simulation = SimulationBuilder().build_default_simulation(system)
+
+    assert getattr(simulation, method)(
+        "supplied_during_conversion", "2020-02"
+    ).tolist() == [123.0]
+    holder = simulation.get_holder("supplied_during_conversion")
+    assert holder._is_input(periods.period("2020-02"), simulation.branch_name)
+    assert simulation.get_array("supplied_during_conversion", "2020-02").tolist() == [
+        123.0
+    ]
+    assert simulation.get_array("supplied_during_conversion", "2020") is None
+    assert ("supplied_during_conversion", periods.period("2020")) not in (
+        simulation._fast_cache
+    )
+    assert not simulation._open_frames
+
+
+@pytest.mark.parametrize("method", ["calculate", "calculate_add"])
+def test_summed_fallback_yields_to_input_supplied_during_calculation(method):
+    class supplied_during_conversion(Variable):
+        value_type = float
+        entity = entities.Person
+        label = "Input supplied while summing fallbacks"
+        definition_period = periods.MONTH
+        quantity_type = QuantityType.FLOW
+        set_input = None
+
+        def formula(person, period):
+            if period.start.month == 6:
+                person.simulation.set_input("supplied_during_conversion", "2020", [120])
+            return None
+
+    system = CountryTaxBenefitSystem()
+    system.auto_carry_over_input_variables = True
+    system.add_variable(supplied_during_conversion)
+    simulation = SimulationBuilder().build_default_simulation(system)
+
+    assert getattr(simulation, method)(
+        "supplied_during_conversion", "2020"
+    ).tolist() == [120.0]
+    holder = simulation.get_holder("supplied_during_conversion")
+    assert holder._is_input(periods.period("2020"), simulation.branch_name)
+    assert simulation.get_array("supplied_during_conversion", "2020").tolist() == [
+        120.0
+    ]
+    for month in range(1, 6):
+        fallback_period = periods.period(f"2020-{month:02d}")
+        assert (
+            simulation.get_array("supplied_during_conversion", fallback_period) is None
+        )
+        assert ("supplied_during_conversion", fallback_period) not in (
+            simulation._fast_cache
+        )
+    assert not simulation._open_frames
+
+
+@pytest.mark.parametrize(
+    "definition_period,quantity_type,value_type,method,formula_result",
+    [
+        pytest.param(
+            periods.YEAR, QuantityType.STOCK, float, "calculate", None, id="stock-month"
+        ),
+        pytest.param(
+            periods.YEAR,
+            QuantityType.STOCK,
+            float,
+            "calculate_divide",
+            None,
+            id="stock-divide",
+        ),
+        pytest.param(
+            periods.MONTH, QuantityType.STOCK, float, "calculate", 7, id="stock-year"
+        ),
+        pytest.param(
+            periods.YEAR,
+            QuantityType.FLOW,
+            int,
+            "calculate",
+            None,
+            id="int-fallback-month",
+        ),
+        pytest.param(
+            periods.YEAR,
+            QuantityType.FLOW,
+            int,
+            "calculate_divide",
+            None,
+            id="int-fallback-divide",
+        ),
+        pytest.param(
+            periods.YEAR,
+            QuantityType.FLOW,
+            int,
+            "calculate",
+            84,
+            id="int-formula-month",
+        ),
+        pytest.param(
+            periods.YEAR,
+            QuantityType.FLOW,
+            int,
+            "calculate_divide",
+            84,
+            id="int-formula-divide",
+        ),
+    ],
+)
+def test_conversion_boundaries_preserve_input_supplied_during_calculation(
+    definition_period, quantity_type, value_type, method, formula_result
+):
+    requested = "2020" if definition_period == periods.MONTH else "2020-02"
+    supplied = 120 if definition_period == periods.MONTH else 123
+
+    def formula(person, period):
+        if definition_period == periods.YEAR or period.start.month == 12:
+            person.simulation.set_input(
+                "supplied_at_conversion_boundary", requested, [supplied]
+            )
+        # A real result distinguishes STOCK's selected December value and
+        # integer DIVIDE's floating result from the newly supplied input.
+        if formula_result is not None:
+            return np.full(person.count, formula_result)
+        return None
+
+    system = CountryTaxBenefitSystem()
+    system.auto_carry_over_input_variables = True
+    system.add_variable(
+        type(
+            "supplied_at_conversion_boundary",
+            (Variable,),
+            {
+                "value_type": value_type,
+                "entity": entities.Person,
+                "label": "Input supplied at a period conversion boundary",
+                "definition_period": definition_period,
+                "quantity_type": quantity_type,
+                "set_input": None,
+                "formula": formula,
+            },
+        )
+    )
+    simulation = SimulationBuilder().build_default_simulation(system)
+
+    assert getattr(simulation, method)(
+        "supplied_at_conversion_boundary", requested
+    ).tolist() == [supplied]
+    holder = simulation.get_holder("supplied_at_conversion_boundary")
+    assert holder._is_input(periods.period(requested), simulation.branch_name)
+    assert simulation.get_array(
+        "supplied_at_conversion_boundary", requested
+    ).tolist() == [supplied]
+    if formula_result is None:
+        assert simulation.get_array("supplied_at_conversion_boundary", "2020") is None
+        assert ("supplied_at_conversion_boundary", periods.period("2020")) not in (
+            simulation._fast_cache
+        )
+    assert not simulation._open_frames
+
+
 def test_formula_using_uncached_fallback_still_keeps_its_fixed_point():
     simulation, calls = _fallback_simulation()
 

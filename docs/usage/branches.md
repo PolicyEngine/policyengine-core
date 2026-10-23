@@ -241,8 +241,10 @@ depend on the input is calculated again) but not less, within these limits:
   input, the root returns the fallback default without caching it, including
   when repeated branch mutations converge to a fixed point. Period conversion
   preserves this rule: a divided, summed or stock-selected value containing
-  such a fallback also stays uncached. Setting an earlier input can therefore
-  change the next calculation of the requested period.
+  such a fallback also stays uncached. If a formula supplies an input for the
+  requested period during conversion, that input is returned on the first
+  call, before deciding whether to cache the converted result. Setting an
+  earlier input can therefore change the next calculation of the requested period.
   Branches can cache these defaults because later inputs invalidate them.
 - **Existing child branches keep their values.** An input set on a branch does
   not reach branches already created from it.

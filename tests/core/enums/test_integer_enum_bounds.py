@@ -148,3 +148,32 @@ def test_existing_name_and_item_routes_keep_their_positions(values):
 def test_integer_bounds_do_not_add_new_dtype_coercions(values):
     with pytest.raises(ValueError, match="Unsupported array dtype"):
         PositionChoice.encode(values)
+
+
+def test_foreign_bound_array_valid_for_its_owner_retains_identity():
+    class LongChoice(Enum):
+        FIRST = "First"
+        SECOND = "Second"
+        THIRD = "Third"
+        FOURTH = "Fourth"
+
+    values = EnumArray(np.array([3], dtype=np.int16), LongChoice)
+    assert PositionChoice.encode(values) is values
+    assert values.possible_values is LongChoice
+    assert values.dtype == np.dtype(np.int16)
+    np.testing.assert_array_equal(values.view(np.ndarray), [3])
+    np.testing.assert_array_equal(values.decode_to_str(), ["FOURTH"])
+
+
+def test_foreign_bound_array_invalid_for_its_owner_is_rejected():
+    class ShortChoice(Enum):
+        FIRST = "First"
+        SECOND = "Second"
+
+    values = EnumArray(np.array([2], dtype=np.int16), ShortChoice)
+    with pytest.raises(ValueError, match="ShortChoice") as error:
+        PositionChoice.encode(values)
+    assert "2" in str(error.value)
+    assert values.possible_values is ShortChoice
+    assert values.dtype == np.dtype(np.int16)
+    np.testing.assert_array_equal(values.view(np.ndarray), [2])

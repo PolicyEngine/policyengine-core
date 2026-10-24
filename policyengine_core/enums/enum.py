@@ -82,6 +82,8 @@ class Enum(enum.Enum):
 
         Returns:
             An EnumArray containing the encoded values.
+            An existing EnumArray keeps its identity and attached enum; positions
+            are validated against that enum, or the receiving enum when unbound.
 
         Raises:
             ValueError: An integer position or string identifier is invalid.
@@ -102,7 +104,9 @@ class Enum(enum.Enum):
             [0, 1, 2]
         """
         if isinstance(array, EnumArray):
-            cls._validate_integer_indices(array)
+            possible_values = getattr(array, "possible_values", None)
+            owner = cls if possible_values is None else possible_values
+            owner._validate_integer_indices(array)
             return array
 
         # Handle Enum item arrays by extracting indices directly

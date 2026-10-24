@@ -159,6 +159,31 @@ def test_a_tax_benefit_system_interpolates_its_baseline_copy(tmp_path):
     assert system.parameters.baseline.amount("2016-06-01") == 110
 
 
+def test_every_parameter_a_node_propagates_interpolation_to_is_interpolated():
+    """Propagation gives each child the node's ``interpolation`` dict.
+
+    Marking that one dict complete in place skipped every child after the
+    first.
+    """
+    root = ParameterNode(
+        data={
+            "node": {
+                "metadata": {
+                    "propagate_metadata_to_children": True,
+                    "interpolation": {"interval": "year"},
+                },
+                "a": {"values": {"2015-01-01": 100, "2019-01-01": 140}},
+                "b": {"values": {"2015-01-01": 200, "2019-01-01": 280}},
+            }
+        }
+    )
+
+    interpolate_parameters(propagate_parameter_metadata(root))
+
+    assert root.node.a("2016-06-01") == 110
+    assert root.node.b("2016-06-01") == 220
+
+
 def test_interpolating_a_clone_leaves_its_source_uninterpolated():
     source = build()
     clone = source.clone()

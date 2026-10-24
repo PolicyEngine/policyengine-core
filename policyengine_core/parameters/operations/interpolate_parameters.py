@@ -56,5 +56,10 @@ def interpolate_parameters(root: ParameterNode) -> ParameterNode:
                 for entry in interpolated_entries:
                     parameter.values_list.append(entry)
                 parameter.values_list.sort(key=lambda x: x.instant_str, reverse=True)
-                parameter.metadata["interpolation"]["completed"] = True
+                # Replace the dict rather than edit it: a clone of this
+                # parameter shares it (see ParameterAtInstant.clone).
+                parameter.metadata["interpolation"] = {
+                    **parameter.metadata["interpolation"],
+                    "completed": True,
+                }
     return root

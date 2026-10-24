@@ -1,0 +1,1 @@
+Parameter clones copy each metadata dict without deep-copying the values in it, which makes cloning a large tax-benefit system faster and smaller. `interpolate_parameters` now replaces the `interpolation` dict it marks complete instead of editing it, so it also interpolates every parameter a node propagates `interpolation` to, not only the first.

@@ -57,6 +57,16 @@ metadata:
           href: https://www.gov.uk/government/publications/child-benefit-rates-and-thresholds/child-benefit-rates-and-thresholds
 ```
 
+### Metadata in copies
+
+`clone()` on a parameter tree, which `TaxBenefitSystem.clone()`, reforms and simulation clones use, gives every node, parameter, dated value and scale in the copy its own metadata dict. The values in that dict are the same objects as in the source. Setting, updating or removing a key changes only the tree it is made on. To change a nested value, such as one entry of a `reference` list, replace the key with a new value instead of editing the list or dict in place, which would change every copy that shares it:
+
+```python
+parameter.metadata["reference"] = [*parameter.metadata["reference"], new_reference]
+```
+
+The same holds within one tree: a parameter's dated values hold the parameter's metadata values, and `propagate_parameter_metadata` gives a node's descendants the node's values.
+
 ### Metadata for parameters
 
 ```{eval-rst}

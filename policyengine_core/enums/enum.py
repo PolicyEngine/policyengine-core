@@ -40,29 +40,69 @@ class Enum(enum.Enum):
         return sorted_names_arr, sorted_indices
 
     @classmethod
+    def _validate_integer_indices(cls, values) -> None:
+        """Validate zero-based positions before a scalar or array is narrowed."""
+        if isinstance(values, (int, np.integer)):
+            if isinstance(values, (bool, np.bool_)):
+                return
+            if 0 <= values < len(cls):
+                return
+            invalid_values = [int(values)]
+        else:
+            raw = (
+                values.view(np.ndarray)
+                if isinstance(values, EnumArray)
+                else np.asarray(values)
+            )
+            if raw.dtype.kind not in {"i", "u"}:
+                return
+            invalid = (raw < 0) | (raw >= len(cls))
+            if not np.any(invalid):
+                return
+            invalid_values = np.unique(raw[invalid]).tolist()
+
+        shown = invalid_values[:5]
+        remainder = len(invalid_values) - len(shown)
+        suffix = f" (and {remainder} more)" if remainder else ""
+        raise ValueError(
+            f"Invalid position(s) {shown}{suffix} for enum {cls.__name__}. "
+            f"Integer positions are zero-based and must be in [0, {len(cls)})."
+        )
+
+    @classmethod
     def encode(cls, array: Union[EnumArray, np.ndarray]) -> EnumArray:
         """
-        Encode an array of enum items or string identifiers into an EnumArray.
+        Encode enum items, names, or zero-based integer positions into an EnumArray.
 
         Args:
             array: The input array to encode. Can be an EnumArray, a NumPy array
-                of enum items, or a NumPy array of string identifiers.
+                of enum items, string identifiers, or integer positions. Integer
+                positions follow declaration order, from zero through one less
+                than the number of members; they are not survey source codes.
 
         Returns:
             An EnumArray containing the encoded values.
 
+        Raises:
+            ValueError: An integer position or string identifier is invalid.
+
         Examples:
+            >>> class MyEnum(Enum):
+            ...     ITEM_1 = "First"
+            ...     ITEM_2 = "Second"
+            ...     ITEM_3 = "Third"
             >>> string_array = np.array(["ITEM_1", "ITEM_2", "ITEM_3"])
             >>> encoded_array = MyEnum.encode(string_array)
-            >>> encoded_array
-            EnumArray([1, 2, 3], dtype=int8)
+            >>> encoded_array.view(np.ndarray).tolist()
+            [0, 1, 2]
 
             >>> item_array = np.array([MyEnum.ITEM_1, MyEnum.ITEM_2, MyEnum.ITEM_3])
             >>> encoded_array = MyEnum.encode(item_array)
-            >>> encoded_array
-            EnumArray([1, 2, 3], dtype=int8)
+            >>> encoded_array.view(np.ndarray).tolist()
+            [0, 1, 2]
         """
         if isinstance(array, EnumArray):
+            cls._validate_integer_indices(array)
             return array
 
         # Handle Enum item arrays by extracting indices directly
@@ -104,6 +144,7 @@ class Enum(enum.Enum):
                 )
         elif array.dtype.kind in {"i", "u"}:
             # Integer array - already indices
+            cls._validate_integer_indices(array)
             indices = array
         else:
             raise ValueError(f"Unsupported array dtype: {array.dtype}")

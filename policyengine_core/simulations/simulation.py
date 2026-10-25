@@ -1077,6 +1077,90 @@ class Simulation:
         self.link_to_entities_instances()
         self.create_shortcuts()
 
+    def _replace_population(self) -> None:
+        """Give this simulation new, empty populations, and forget the old ones.
+
+        ``SimulationBuilder`` calls this before it writes a situation into a
+        simulation it was given, which may hold a population loaded from a
+        dataset and values calculated for it. Writing the situation into the
+        old populations kept the old population's arrays for every variable
+        the situation did not set, the fast cache and the input record kept
+        answering for it, and ``dataset`` and ``is_over_dataset`` still named
+        the dataset, so the macro cache, and country models that treat a
+        simulation over data differently, treated the situation as data.
+
+        The simulation keeps its tax-benefit system and settings. Its branches
+        keep the old populations until :meth:`_rebuild_branches`.
+
+        Raises:
+            ValueError: if the simulation is a branch, which shares its
+                parent's population and baseline.
+            RuntimeError: if a calculation is running in the simulation.
+        """
+        if getattr(self, "parent_branch", None) is not None:
+            raise ValueError(
+                f"Cannot replace the population of branch '{self.branch_name}': "
+                "it shares its parent's population and baseline. Write the "
+                "situation into the simulation it was made from, or a new one."
+            )
+        if self._calculations_in_flight:
+            raise RuntimeError(
+                "Cannot replace a simulation's population while it is calculating."
+            )
+        self.dataset = None
+        self.is_over_dataset = False
+        self.situation_input = None
+        self.has_axes = False
+        self.input_variables = []
+        self._store_history = StoreHistory()
+        self._user_input_keys = set()
+        self._requested_variables = None
+        self.invalidated_caches = set()
+        self._fast_cache = {}
+        # A calculation elsewhere that read this simulation does not keep what
+        # it calculated from the old population (``_Frame.is_stale``).
+        self._input_epoch = self._input_epoch + 1
+        if isinstance(getattr(self, "tracer", None), FullTracer):
+            # Its trees hold the old population's values.
+            self.tracer = FullTracer()
+        self.build_from_populations(self.tax_benefit_system.instantiate_entities())
+
+    def _rebuild_branches(self) -> None:
+        """Recreate this simulation's branches on its current populations.
+
+        Called after the populations are replaced in place (``subsample``, or
+        ``SimulationBuilder`` writing a situation into this simulation).
+        """
+        # Other branches still contain the old populations. Forget them so a
+        # formula's next ``get_branch`` starts from the new ones. Keep the
+        # baseline long enough to preserve its policy below.
+        self.branches = {
+            name: branch for name, branch in self.branches.items() if name == "baseline"
+        }
+
+        # Ensure the baseline branch has the new data: rebuild it from this
+        # simulation through ``get_branch`` (the same wiring ``__init__``
+        # uses), then restore the saved baseline tax-benefit system.
+        # Previously ``subsample`` assigned the saved system to
+        # ``self.branches["tax_benefit_system"]`` — a stray dict key — so the
+        # rebuilt baseline branch kept the reform system and reform-vs-baseline
+        # comparisons after ``subsample`` compared the reform against itself.
+        if "baseline" in self.branches:
+            baseline_tax_benefit_system = self.branches["baseline"].tax_benefit_system
+            del self.branches["baseline"]
+            baseline = self.get_branch("baseline")
+            # As in ``__init__``, the branch is traced in this simulation,
+            # uses the baseline system's entities and variables, and has no
+            # baseline of its own: ``get_branch`` gave it this simulation's,
+            # the branch it replaces, which kept the old population alive.
+            baseline.trace = self.trace
+            baseline.tracer = self.tracer
+            baseline.tax_benefit_system = baseline_tax_benefit_system
+            baseline._bind_to_tax_benefit_system()
+            baseline.baseline = None
+            if getattr(self, "baseline", None) is not None:
+                self.baseline = baseline
+
     def build_from_dataset(self) -> None:
         """Build a simulation from a dataset.
 
@@ -3436,7 +3520,19 @@ class Simulation:
 
         Returns:
             Simulation: The quantized simulation.
+
+        Raises:
+            ValueError: if the simulation has no dataset, as one built from a
+                situation, or whose data a situation replaced, has none.
         """
+        if getattr(self, "dataset", None) is None:
+            # The sample is rebuilt as a dataset in the dataset's period, and
+            # seeded with its name by default.
+            raise ValueError(
+                "Only a simulation with a dataset can be subsampled. This one "
+                "has none: it was built from a situation or populations, or a "
+                "situation replaced its data."
+            )
         default_calculation_period = self.default_calculation_period
         # Set default key if not provided
         if seed is None:
@@ -3619,35 +3715,8 @@ class Simulation:
         # as "size X != Y = count" projection errors.
         self._invalidate_all_caches()
 
-        # Other branches still contain the pre-subsample populations. Forget
-        # them so a formula's next ``get_branch`` starts from the new sample.
-        # Keep the baseline long enough to preserve its policy below.
-        self.branches = {
-            name: branch for name, branch in self.branches.items() if name == "baseline"
-        }
-
-        # Ensure the baseline branch has the new data: rebuild it from the
-        # subsampled simulation through ``get_branch`` (the same wiring
-        # ``__init__`` uses), then restore the saved baseline tax-benefit
-        # system. Previously the saved system was assigned to
-        # ``self.branches["tax_benefit_system"]`` — a stray dict key — so the
-        # rebuilt baseline branch kept the reform system and reform-vs-baseline
-        # comparisons after ``subsample`` compared the reform against itself.
-        if "baseline" in self.branches:
-            baseline_tax_benefit_system = self.branches["baseline"].tax_benefit_system
-            del self.branches["baseline"]
-            baseline = self.get_branch("baseline")
-            # As in ``__init__``, the branch is traced in this simulation,
-            # uses the baseline system's entities and variables, and has no
-            # baseline of its own: ``get_branch`` gave it this simulation's,
-            # the branch it replaces, which kept the old population alive.
-            baseline.trace = self.trace
-            baseline.tracer = self.tracer
-            baseline.tax_benefit_system = baseline_tax_benefit_system
-            baseline._bind_to_tax_benefit_system()
-            baseline.baseline = None
-            if getattr(self, "baseline", None) is not None:
-                self.baseline = baseline
+        # Branches still contain the pre-subsample populations.
+        self._rebuild_branches()
 
         self.default_calculation_period = default_calculation_period
         return self

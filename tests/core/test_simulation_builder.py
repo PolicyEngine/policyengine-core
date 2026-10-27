@@ -1,6 +1,9 @@
 import datetime
+from decimal import Decimal
+from fractions import Fraction
 from typing import Iterable
 
+import numpy as np
 import pytest
 
 from policyengine_core import periods, tools
@@ -83,6 +86,33 @@ def test_build_default_simulation(tax_benefit_system):
         several_persons_simulation.household.members_role
         == entities.Household.FIRST_PARENT
     ).all()
+
+
+@pytest.mark.parametrize(
+    "count",
+    [
+        2.5,
+        2.0,
+        np.float64(2.0),
+        np.float32(1.0),
+        np.array(2.0),
+        np.True_,
+        "2",
+        None,
+        Decimal(2),
+        Fraction(2),
+    ],
+    ids=repr,
+)
+def test_build_default_simulation_refuses_a_count_that_is_not_an_integer(
+    tax_benefit_system, count
+):
+    # ``range(count)`` refused these when building. ``np.arange`` took the
+    # floats, and the simulation then failed in ``sum`` or ``calculate``.
+    with pytest.raises(TypeError):
+        range(count)
+    with pytest.raises(TypeError, match="cannot be interpreted as an integer|index"):
+        SimulationBuilder().build_default_simulation(tax_benefit_system, count)
 
 
 def test_explicit_singular_entities(tax_benefit_system):

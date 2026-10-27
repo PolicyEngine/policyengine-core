@@ -272,8 +272,9 @@
 <dt class="sig sig-object py" id="policyengine_core.tools.simulation_dumper.dump_simulation">
 <span class="sig-prename descclassname"><span class="pre">policyengine_core.tools.simulation_dumper.</span></span><span class="sig-name descname"><span class="pre">dump_simulation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">directory</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.tools.simulation_dumper.dump_simulation" title="Permalink to this definition">#</a></dt>
 <dd><p>Write simulation data to directory, so that it can be restored later.</p>
-<p>Writes the simulation’s branch values, including inherited values, and
-lists the periods it calculated (see <code class="docutils literal notranslate"><span class="pre">restore_simulation</span></code>).</p>
+<p>Writes each population’s ids and count and each group’s memberships,
+positions and roles; the simulation’s branch values, including inherited
+values; and the periods it calculated (see <code class="docutils literal notranslate"><span class="pre">restore_simulation</span></code>).</p>
 </dd></dl>
 
 </section>
@@ -299,6 +300,10 @@ value, so every value in it is restored as an input. A dump without a
 format marker that lists none may be one of those, so restoring it
 warns: <code class="docutils literal notranslate"><span class="pre">apply_reform</span></code> then keeps any calculated value in it as dumped
 instead of recalculating it.</p>
+<p>Each population gets the count the dump records, which may be zero. A
+dump written before counts were recorded gives each count as the
+smallest its ids and memberships allow: that is the count when the ids
+are set, one per instance, as <code class="docutils literal notranslate"><span class="pre">SimulationBuilder</span></code> sets them.</p>
 </dd></dl>
 
 </section>

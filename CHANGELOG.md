@@ -1,3 +1,10 @@
+## [3.33.13] - 2026-10-27
+
+### Fixed
+
+- Restore dumped simulations that have no persons, or groups with no members, by recording each population's count in the dump; `build_default_simulation` again refuses a count that is not an integer when building.
+
+
 ## [3.33.12] - 2026-10-19
 
 ### Fixed

@@ -4,10 +4,10 @@ on:
     branches: [master]
 
 # A new push to a pull request supersedes the run on its previous head. Cancel
-# that run instead of letting its 19 jobs (8 Test, 8 smoke, 3 checks) keep
-# holding org-wide shared runners. From 2026-10-06 to 10-08, 21 of 55 PR runs
-# were superseded while still running, and finishing them used 850
-# runner-minutes (26% of this workflow).
+# that run instead of letting its 20 jobs (8 Test, 8 smoke, 1 policyengine-us
+# main, 3 checks) keep holding org-wide shared runners. From 2026-10-06 to
+# 10-08, 21 of 55 PR runs were superseded while still running, and finishing
+# them used 850 runner-minutes (26% of this workflow).
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -121,3 +121,57 @@ jobs:
         env:
           RUN_SMOKE_TESTS: "0"
           POLICYENGINE_GITHUB_MICRODATA_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  PolicyEngineUSMain:
+    name: Test policyengine-us main against this Core
+    runs-on: ubuntu-latest
+    needs: Lint
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      PYTHONUNBUFFERED: 1
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+        with:
+          path: core
+          persist-credentials: false
+      - name: Checkout policyengine-us main
+        uses: actions/checkout@v6
+        with:
+          repository: PolicyEngine/policyengine-us
+          ref: main
+          path: policyengine-us
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+      # As policyengine-us's own CI does: its lock with the newest Core release.
+      - name: Install policyengine-us main with the Core release
+        working-directory: policyengine-us
+        run: |
+          uv lock --upgrade-package policyengine-core
+          uv sync --locked --extra dev
+          bash ./update_itemization.sh
+      - name: Select the policyengine-us tests
+        run: python core/.github/country_main_tests.py select core/.github/requirements/policyengine-us-main-tests.txt policyengine-us > selected.txt
+      # Both runs draw the same Hypothesis examples, so a difference between
+      # them comes from Core. A failing run still writes its report.
+      - name: Run them with the Core release
+        working-directory: policyengine-us
+        run: |
+          uv pip list | grep -i '^policyengine-core '
+          xargs uv run --no-sync python -m pytest -p no:cacheprovider --hypothesis-seed=0 --junitxml=../released.xml < ../selected.txt || true
+      - name: Install this Core
+        working-directory: policyengine-us
+        run: |
+          uv pip install --python .venv/bin/python --reinstall-package policyengine-core ../core
+          uv run --no-sync python -c "import json; from importlib.metadata import distribution; url = json.loads(distribution('policyengine-core').read_text('direct_url.json'))['url']; print(url); assert url.startswith('file://'), url"
+      - name: Run them with this Core
+        working-directory: policyengine-us
+        run: xargs uv run --no-sync python -m pytest -p no:cacheprovider --hypothesis-seed=0 --junitxml=../candidate.xml < ../selected.txt || true
+      - name: Fail on tests this Core breaks
+        run: python core/.github/country_main_tests.py compare released.xml candidate.xml

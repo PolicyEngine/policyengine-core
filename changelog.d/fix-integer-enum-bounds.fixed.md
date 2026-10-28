@@ -1,0 +1,1 @@
+- Validate zero-based integer enum positions before narrowing, including encoded arrays and situation inputs, and report the enum in invalid-position errors.

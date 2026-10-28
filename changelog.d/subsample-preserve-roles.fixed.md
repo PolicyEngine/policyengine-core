@@ -1,0 +1,1 @@
+`Simulation.subsample` now keeps each member's loaded role (and person and membership IDs) when the tax-benefit system has no variable for them, instead of rebuilding everyone with the default role, and the dataset loader no longer reports the structural columns it reads as ignored.

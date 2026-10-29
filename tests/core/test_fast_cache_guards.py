@@ -72,7 +72,8 @@ def test_purge_cache_of_invalid_values_without_fast_cache_attribute():
     sim.tracer = types.SimpleNamespace(stack=[])
     sim.invalidated_caches = {("variable_name", "2024")}
     sim.get_holder = lambda name: types.SimpleNamespace(
-        delete_arrays=lambda period: None
+        delete_arrays=lambda period: None,
+        delete_array=lambda period, branch_name="default", derived_only=False: None,
     )
 
     sim.purge_cache_of_invalid_values()

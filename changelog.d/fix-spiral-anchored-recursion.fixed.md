@@ -1,0 +1,1 @@
+Evaluate finite anchored period recursions in full regardless of earlier calculations, tracing or cache policy, and discard calculated values from cut recursions without deleting inputs or retaining invalid values in clones, preserving branch-owned explicit invalidations and input and option-cache safety after merging master.

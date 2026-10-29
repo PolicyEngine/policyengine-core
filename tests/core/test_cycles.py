@@ -145,9 +145,16 @@ def test_spiral_heuristic(simulation: Simulation, reference_period):
 
 
 def test_spiral_cache(simulation, reference_period):
-    simulation.calculate("variable7", period=reference_period)
+    # variable7 reads variable5, whose recursion is cut, so its value depends
+    # on where the cut fell. It is not kept once the calculation ends, so
+    # that a later request gets the same value whatever ran before it.
+    variable7 = simulation.calculate("variable7", period=reference_period)
     cached_variable7 = simulation.get_holder("variable7").get_array(reference_period)
-    assert cached_variable7 is not None
+    assert cached_variable7 is None
+    simulation.calculate("variable5", period=reference_period.last_month)
+    tools.assert_near(
+        simulation.calculate("variable7", period=reference_period), variable7
+    )
 
 
 def test_cotisation_1_level(simulation, reference_period):

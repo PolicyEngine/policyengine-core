@@ -439,6 +439,23 @@ class OnDiskStorage:
             }
             self._forget_dropped_keys()
 
+    def delete_exact(
+        self,
+        period: Period,
+        branch_name: str = "default",
+        derived_only: bool = False,
+    ) -> None:
+        """Drop the file recorded for exactly ``period``. With
+        ``derived_only``, an input stored there stays."""
+        if self.is_eternal:
+            period = periods.period(periods.ETERNITY)
+        key = f"{branch_name}_{periods.period(period)}"
+        if derived_only and key in self._files and key not in self._derived:
+            return
+        self._files.pop(key, None)
+        self._derived.discard(key)
+        self._sequence_numbers.pop(key, None)
+
     def get_known_periods(self) -> list:
         return list([periods.period(x.split("_")[1]) for x in self._files.keys()])
 

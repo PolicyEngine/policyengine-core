@@ -283,6 +283,7 @@ class _Frame:
         "stale_parent",
         "unobserved_activity",
         "attempt_cache",
+        "uncached_fallbacks",
     )
 
     def __init__(self, simulation: "Simulation", stale_parent: bool = False):
@@ -307,6 +308,9 @@ class _Frame:
         # Restricted children share this dictionary only until this attempt
         # restarts. Foreign results never enter persistent caches this way.
         self.attempt_cache = {}
+        # Cache eligibility belongs to the requested value, not to every
+        # formula sharing this frame. A retry may find a real source input.
+        self.uncached_fallbacks = set()
         # Retain only creations whose original registration still names
         # the same object. Saved or replaced snapshots keep their identities.
         self.carried_branches = _registered_creations(
@@ -1487,6 +1491,8 @@ class Simulation:
                 transition = frame.transition_signature(result)
                 if transition is not None and transition == previous_transition:
                     frame.settle_reads()
+                    if (variable_name, period) in frame.uncached_fallbacks:
+                        break
                     # This run repeated the complete input transition and its
                     # result. Preserve holder input/blacklist rules and the
                     # existing fast-cache guard when keeping the fixed point.
@@ -1657,6 +1663,8 @@ class Simulation:
         if variable_name not in self.tax_benefit_system.variables:
             raise ValueError(f"Variable {variable_name} does not exist.")
         input_state = self._calculation_start()
+        frames = _calculation_frames.get()
+        self._set_fallback_cache_status(variable_name, period, uncached=False)
         # Lets a custom ``set_input`` handler tell whether it calculated.
         self._calculations_started = self._calculations_started + 1
         population = self.get_variable_population(variable_name)
@@ -1682,7 +1690,6 @@ class Simulation:
         if cached_array is not None:
             return cached_array
 
-        frames = _calculation_frames.get()
         if frames and frames[-1].simulation is self:
             cached_array = frames[-1].recall(variable_name, period)
             if cached_array is not None:
@@ -1741,7 +1748,13 @@ class Simulation:
         if variable.definition_period == MONTH and period.unit == YEAR:
             if variable.quantity_type == QuantityType.STOCK:
                 contained_months = period.get_subperiods(MONTH)
-                values = self._calculate(variable_name, contained_months[-1])
+                source = contained_months[-1]
+                values = self._calculate(variable_name, source)
+                self._set_fallback_cache_status(
+                    variable_name,
+                    period,
+                    uncached=self._fallback_is_uncached(variable_name, source),
+                )
             else:
                 values = self.calculate_add(variable_name, period)
             alternate_period_handling = True
@@ -1749,11 +1762,29 @@ class Simulation:
             alternate_period_handling = True
             if variable.quantity_type == QuantityType.STOCK:
                 values = self._calculate(variable_name, period.this_year)
+                self._set_fallback_cache_status(
+                    variable_name,
+                    period,
+                    uncached=self._fallback_is_uncached(
+                        variable_name, period.this_year
+                    ),
+                )
             else:
                 values = self.calculate_divide(variable_name, period)
 
         if alternate_period_handling:
-            if is_cache_available and self._may_keep(input_state):
+            # A formula for the source period can supply the requested
+            # period itself, including during STOCK selection. That input
+            # wins even when the converted fallback must stay uncached.
+            stored_input = self._input_set_meanwhile(holder, period, input_state[2])
+            if stored_input is not None:
+                values = stored_input
+                self._set_fallback_cache_status(variable_name, period, uncached=False)
+            if (
+                is_cache_available
+                and not self._fallback_is_uncached(variable_name, period)
+                and self._may_keep(input_state)
+            ):
                 smc.set_cache_value(cache_path, values)
             return values
 
@@ -1791,20 +1822,25 @@ class Simulation:
             finally:
                 _formula_simulation.reset(token)
 
-            # If no result, use the default value and cache it
+            # If no result, carry/uprate an input or use the default value.
             if array is None:
-                if variable.uprating is not None or (
+                cross_period_fallback = variable.uprating is not None or (
                     self.tax_benefit_system.auto_carry_over_input_variables
                     and variable.calculate_output is None
-                ):
+                )
+                if cross_period_fallback:
                     # The value is uprated or carried over from another
                     # period, or defaults for lack of one: an input set later
                     # for another period of the variable can change it.
                     self._get_store_history().record_derived(
                         variable_name, next_sequence_number()
                     )
-                # Check if the variable has a previously defined value
-                known_periods = holder.get_known_periods()
+                # Check if the variable has a previously defined value.
+                # Only periods this branch can read count: a value stored
+                # only under a branch this one cannot read must not change
+                # what it calculates or caches (below, a later stored period
+                # leaves the default uncached).
+                known_periods = holder.get_known_periods(self.branch_name)
                 earlier_known_periods = [
                     known_period
                     for known_period in known_periods
@@ -1923,10 +1959,17 @@ class Simulation:
                         # whether a value is stored sees. (The uprating path
                         # above skips derived periods, so it would not uprate
                         # from one.)
-                        return holder.default_array()
-                    else:
-                        array = holder.default_array()
-                else:
+                        return self._uncached_fallback(holder, period, input_state)
+                if array is None:
+                    if (
+                        cross_period_fallback
+                        and getattr(self, "parent_branch", None) is None
+                    ):
+                        # Root inputs do not invalidate dependent values.
+                        # Leave this fallback out of every cache so a later
+                        # input for an earlier period takes effect. An input
+                        # set by the formula for this period still wins.
+                        return self._uncached_fallback(holder, period, input_state)
                     array = holder.default_array()
 
             if variable.defined_for is not None:
@@ -1983,6 +2026,37 @@ class Simulation:
         """When a calculation begins: how many drops ran here (``_input_epoch``)
         and inputs were set here (``_inputs_set``), and a sequence number."""
         return self._input_epoch, self._inputs_set, next_sequence_number()
+
+    def _uncached_fallback(
+        self, holder: Holder, period: Period, input_state: Tuple[int, int, int]
+    ) -> ArrayLike:
+        """Return a default that must stay uncached even after convergence."""
+        stored_input = self._input_set_meanwhile(holder, period, input_state[2])
+        if stored_input is not None:
+            return stored_input
+        self._set_fallback_cache_status(holder.variable.name, period, uncached=True)
+        return holder.default_array()
+
+    def _set_fallback_cache_status(
+        self, variable_name: str, period: Period, *, uncached: bool
+    ) -> None:
+        # A conversion helper or a stale caller can have its own frame. Keep
+        # the returned value's eligibility visible after a nested frame exits,
+        # including when a retry replaces a fallback with a real result.
+        key = (variable_name, period)
+        for frame in _calculation_frames.get():
+            if frame.simulation is self:
+                if uncached:
+                    frame.uncached_fallbacks.add(key)
+                else:
+                    frame.uncached_fallbacks.discard(key)
+
+    def _fallback_is_uncached(self, variable_name: str, period: Period) -> bool:
+        key = (variable_name, period)
+        return any(
+            frame.simulation is self and key in frame.uncached_fallbacks
+            for frame in _calculation_frames.get()
+        )
 
     def _input_set_meanwhile(
         self, holder: Holder, period: Period, started_at: int
@@ -2091,9 +2165,15 @@ class Simulation:
         sub_periods = list(period.get_subperiods(variable.definition_period))
 
         def total():
-            return sum(
-                self.calculate(variable_name, sub_period) for sub_period in sub_periods
-            )
+            result = 0
+            uncached = False
+            for sub_period in sub_periods:
+                result = result + self.calculate(variable_name, sub_period)
+                # Preserve each returned term's status: a later term can
+                # recalculate an earlier period without changing this sum.
+                uncached |= self._fallback_is_uncached(variable_name, sub_period)
+            self._set_fallback_cache_status(variable_name, period, uncached=uncached)
+            return result
 
         # As in ``calculate``: only an outermost sum runs again, and while it
         # sums it is in flight, so its terms do not run again on their own
@@ -2104,6 +2184,7 @@ class Simulation:
         try:
             with frame if frame is not None else nullcontext():
                 input_state = self._calculation_start()
+                started_at = input_state[2]
                 result = total()
                 previous_transition = None
                 for _ in range(_RERUNS_AFTER_INPUT_CHANGE if outermost else 0):
@@ -2119,7 +2200,9 @@ class Simulation:
                     frame.restart()
                     input_state = self._calculation_start()
                     result = total()
-                return self._cache_option_result(variable, period, result, input_state)
+                return self._cache_option_result(
+                    variable, period, result, input_state, started_at=started_at
+                )
         finally:
             self._calculations_in_flight -= 1
 
@@ -2155,6 +2238,13 @@ class Simulation:
                 input_state = self._calculation_start()
                 computation_period = period.this_year
                 result = self.calculate(variable_name, period=computation_period) / 12.0
+                self._set_fallback_cache_status(
+                    variable_name,
+                    period,
+                    uncached=self._fallback_is_uncached(
+                        variable_name, computation_period
+                    ),
+                )
                 return self._cache_option_result(variable, period, result, input_state)
         elif period.unit == periods.YEAR:
             return self.calculate(variable_name, period)
@@ -2171,6 +2261,8 @@ class Simulation:
         period: Period,
         result: ArrayLike,
         input_state: Tuple[int, int, int],
+        *,
+        started_at: Optional[int] = None,
     ) -> ArrayLike:
         """Cache an ADD or DIVIDE result at ``period`` if a plain read would return it.
 
@@ -2206,17 +2298,30 @@ class Simulation:
         and export; it can name a disk input hidden by a derived memory value,
         and raw holder inputs need not be registered there. Accepted cache
         writes never register the aggregate as a supplied input.
+
+        ``started_at`` preserves the full sum's input window across retries;
+        ``input_state`` controls cache eligibility for the final attempt.
         """
-        if variable.quantity_type == QuantityType.STOCK:
+        holder = self.get_holder(variable.name)
+        # Resolve formula-time inputs before any cache rejection: returning
+        # an uncached fallback (or a result of another dtype) must not hide
+        # an input supplied for the requested period during conversion.
+        stored_input = self._input_set_meanwhile(
+            holder, period, input_state[2] if started_at is None else started_at
+        )
+        if stored_input is not None:
+            self._set_fallback_cache_status(variable.name, period, uncached=False)
+            return stored_input
+        if variable.quantity_type == QuantityType.STOCK or self._fallback_is_uncached(
+            variable.name, period
+        ):
             return result
         routed = (variable.definition_period == MONTH and period.unit == YEAR) or (
             variable.definition_period == YEAR and period.unit == MONTH
         )
         if not routed or np.asarray(result).dtype != variable.dtype:
             return result
-        return self._cache_result(
-            self.get_holder(variable.name), result, period, input_state
-        )
+        return self._cache_result(holder, result, period, input_state)
 
     def calculate_output(self, variable_name: str, period: Period = None) -> ArrayLike:
         """

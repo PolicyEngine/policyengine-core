@@ -67,8 +67,17 @@ yaml, Loader = import_yaml()
 # reuses after GC — a collected baseline could produce the same id as a
 # completely unrelated new baseline and hit a stale cache entry (bug H9).
 import weakref
+from collections import OrderedDict
 
 _tax_benefit_system_cache: "weakref.WeakKeyDictionary" = weakref.WeakKeyDictionary()
+
+# How many reform systems (cases with ``reforms``, ``extensions`` or dotted
+# parameter inputs) each baseline keeps, least recently used evicted first.
+# Every one is a full clone of the baseline's parameters and variables, which
+# is over a gigabyte for policyengine-us, and an unbounded cache made a long run
+# grow by that much for every distinct combination it met. The reform-free
+# system that most cases share is always kept and does not count.
+DEFAULT_REFORM_CACHE_SIZE = 2
 
 
 def run_tests(tax_benefit_system, paths, options=None):
@@ -94,6 +103,17 @@ def run_tests(tax_benefit_system, paths, options=None):
     +-------------------------------+-----------+ See :any:`openfisca_test` options doc +
     | name_filter                   | ``str``   |                                           |
     +-------------------------------+-----------+-------------------------------------------+
+    | reform_cache_size             | ``int``   | Reform systems kept cached (default 2)    |
+    +-------------------------------+-----------+-------------------------------------------+
+
+    **Memory**: a case that names ``reforms`` or ``extensions``, or sets a
+    parameter with a dotted input key, runs on a system built for that
+    combination, which is a full copy of ``tax_benefit_system``. The runner
+    keeps the ``reform_cache_size`` most recently used of them and the
+    reform-free system every other case shares, and each case releases its
+    simulation when it finishes, so memory does not grow with the number of
+    cases or of distinct combinations. Each system still caches its
+    parameters at every distinct instant the cases read.
 
     """
 
@@ -183,6 +203,7 @@ class YamlItem(pytest.Item):
         self.test = test
         self.simulation = None
         self.tax_benefit_system = None
+        self._system_simulation = None
 
     def runtest(self):
         self.name = self.test.get("name", "")
@@ -245,15 +266,22 @@ class YamlItem(pytest.Item):
             self.baseline_tax_benefit_system,
             reforms + inline_reform,
             self.test.get("extensions", []),
+            # ``repr`` keeps 0.2 and "0.2" apart: one is a valid value, the
+            # other is rejected when the system is built.
             reform_key="=".join(
-                [f"{key}:{value}" for key, value in parametric_reform_items]
+                [f"{key}:{value!r}" for key, value in parametric_reform_items]
             ),
+            cache_size=self.options.get("reform_cache_size"),
         )
         verbose = self.options.get("verbose")
         performance_graph = self.options.get("performance_graph")
         performance_tables = self.options.get("performance_tables")
         visualize = self.options.get("visualize")
 
+        # ``Simulation.__init__`` registers itself on the system before the
+        # builder returns, so note what was there to restore it at teardown
+        # even if building fails.
+        self._system_simulation = getattr(self.tax_benefit_system, "simulation", None)
         try:
             builder.set_default_period(period)
             self.simulation = builder.build_from_dict(self.tax_benefit_system, input)
@@ -287,6 +315,33 @@ class YamlItem(pytest.Item):
                 self.generate_performance_tables(tracer)
             if visualize:
                 self.generate_variable_graph(tracer)
+
+    def teardown(self):
+        # pytest keeps every collected item until the session ends, so a
+        # finished case must not keep its simulation, or the system it ran on,
+        # alive: over a run of thousands of cases that retained every
+        # simulation and every reform system any case used.
+        system, simulation = self.tax_benefit_system, self.simulation
+        if system is not None:
+            if getattr(system, "simulation", None) is not self._system_simulation:
+                # A simulation built for this case, including one whose build
+                # failed, registered itself on the cached system.
+                system.simulation = self._system_simulation
+            tracer = getattr(simulation, "tracer", None)
+            parameters = getattr(system, "parameters", None)
+            if tracer is not None and getattr(parameters, "tracer", None) is tracer:
+                # Core's simulations trace through a per-call view and leave
+                # the tree unmarked, but code outside core can mark the cached
+                # system's tree with this case's tracer (policyengine-us's
+                # ``isolate_parameter_tracing`` does). Left marked, the tree
+                # would keep this case's tracer alive, and later untraced
+                # cases would record their parameter reads in it.
+                parameters.trace = False
+                parameters.tracer = None
+                parameters.branch_name = None
+        self.simulation = None
+        self.tax_benefit_system = None
+        self._system_simulation = None
 
     def print_computation_log(self, tracer):
         print("Computation log:")  # noqa T001
@@ -419,30 +474,71 @@ class OpenFiscaPlugin(object):
             )
 
 
+class _CachedSystems:
+    """One baseline's cached systems: the reform-free one, kept for the
+    baseline's lifetime, and an LRU of reform systems."""
+
+    def __init__(self):
+        self.reform_free = None
+        self.reforms = OrderedDict()
+
+
 def _get_tax_benefit_system(
     baseline,
     reforms,
     extensions,
     reform_key=None,
+    cache_size=None,
 ):
+    """Return the system a YAML case runs on.
+
+    ``cache_size`` bounds how many reform systems stay cached for ``baseline``
+    (default ``DEFAULT_REFORM_CACHE_SIZE``; 0 caches none). The reform-free
+    system is always cached.
+    """
+    if cache_size is None:
+        cache_size = DEFAULT_REFORM_CACHE_SIZE
+    if cache_size < 0:
+        raise ValueError(f"cache_size must be 0 or more, got {cache_size}")
     if not isinstance(reforms, list):
         reforms = [reforms]
     if not isinstance(extensions, list):
         extensions = [extensions]
 
-    # Inner key is (reforms in order, reform_key, extensions as a frozenset).
-    # The outer cache is keyed on the baseline *object* so its entries are
-    # tied to the baseline's lifetime (see bug H9 above).
+    # The cache is keyed on the baseline *object* so its entries are tied to
+    # the baseline's lifetime (see bug H9 above).
+    cached_systems = _tax_benefit_system_cache.get(baseline)
+    if cached_systems is None:
+        cached_systems = _CachedSystems()
+        _tax_benefit_system_cache[baseline] = cached_systems
+
+    # This call's bound applies to what earlier calls cached under a larger
+    # one, least recently used first.
+    reform_systems = cached_systems.reforms
+    while len(reform_systems) > cache_size:
+        reform_systems.popitem(last=False)
+
+    if not reforms and not extensions and not reform_key:
+        if cached_systems.reform_free is None:
+            cached_systems.reform_free = baseline.clone()
+        return cached_systems.reform_free
+
+    # Key: (reforms in order, reform_key, extensions as a frozenset). The
+    # runner rebuilds its inline reform class for every case, so with a
+    # ``reform_key`` (the parameter values it sets) a class reform keys by
+    # that; without one, by the class itself.
     inner_key = (
-        ":".join([reform if isinstance(reform, str) else "" for reform in reforms]),
+        tuple(
+            reform if isinstance(reform, str) or not reform_key else ""
+            for reform in reforms
+        ),
         reform_key,
         frozenset(extensions),
     )
-    baseline_entry = _tax_benefit_system_cache.get(baseline)
-    if baseline_entry is not None:
-        cached = baseline_entry.get(inner_key)
-        if cached is not None:
-            return cached
+    cached = reform_systems.get(inner_key)
+    if cached is not None:
+        reform_systems.move_to_end(inner_key)
+        return cached
 
     current_tax_benefit_system = baseline.clone()
 
@@ -459,10 +555,10 @@ def _get_tax_benefit_system(
         current_tax_benefit_system = current_tax_benefit_system.clone()
         current_tax_benefit_system.load_extension(extension)
 
-    if baseline_entry is None:
-        baseline_entry = {}
-        _tax_benefit_system_cache[baseline] = baseline_entry
-    baseline_entry[inner_key] = current_tax_benefit_system
+    if cache_size > 0:
+        reform_systems[inner_key] = current_tax_benefit_system
+        while len(reform_systems) > cache_size:
+            reform_systems.popitem(last=False)
 
     return current_tax_benefit_system
 

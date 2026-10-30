@@ -1,1 +1,1 @@
-Pause automatic garbage collection while the YAML test runner builds the system for a reform combination, and restore the caller's setting afterwards: full collections that freed almost nothing had taken about half of each build on policyengine-us.
+Pause automatic garbage collection while the YAML test runner builds the system for a reform combination, run one full collection when the build returns, and restore the caller's setting, so a cache-miss build no longer spends most of its time in repeated full collections that free almost nothing.

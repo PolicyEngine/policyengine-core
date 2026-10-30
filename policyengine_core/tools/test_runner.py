@@ -423,18 +423,25 @@ class OpenFiscaPlugin(object):
 
 @contextmanager
 def _automatic_gc_paused():
-    """Pause automatic garbage collection, then restore the caller's setting.
+    """Pause automatic garbage collection for a build, then collect once.
 
-    Building a reform system copies the whole baseline. Its allocations
-    trigger full collections that walk every object the baseline and its
-    copies hold and free almost nothing: on policyengine-us they took about
-    half of each build. Collection resumes as before once the build returns
-    or raises, and a caller that had disabled it keeps it disabled.
+    Building a reform system copies the whole baseline. On policyengine-us
+    the copy's allocations set off six or seven full collections per build,
+    each walking every object in the process and freeing almost nothing.
+    With collection only paused, the copy's objects were walked three times
+    once it resumed: by a young, a middle and a full collection. One full
+    collection at the end of a build that returns walks them once.
+
+    The caller's setting is restored when the build returns or raises. A
+    caller that had disabled collection gets no collection and keeps it
+    disabled.
     """
     was_enabled = gc.isenabled()
     gc.disable()
     try:
         yield
+        if was_enabled:
+            gc.collect()
     finally:
         if was_enabled:
             gc.enable()
@@ -465,7 +472,7 @@ def _get_tax_benefit_system(
         if cached is not None:
             return cached
 
-    # Only a cache miss builds a system, so only a miss pauses collection.
+    # Only a cache miss builds a system, so only a miss touches collection.
     with _automatic_gc_paused():
         current_tax_benefit_system = baseline.clone()
 

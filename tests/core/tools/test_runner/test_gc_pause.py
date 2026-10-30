@@ -1,12 +1,13 @@
 """The YAML runner pauses automatic collection while it builds a reform system.
 
 A cache miss in ``_get_tax_benefit_system`` builds with automatic collection
-paused and leaves ``gc.isenabled()`` as it found it, whether the build
-returns or raises and whether the caller had collection on or off. A cache
-hit does not touch collection. The pause changes no result: the cache still
-returns the identical system for a key it has seen and builds a new one for
-any other key, and YAML cases produce the same outcomes and values with or
-without it.
+paused, then, if the caller had collection on and the build returned, runs
+one full collection. It leaves ``gc.isenabled()`` as it found it, whether the
+build returns or raises and whether the caller had collection on or off. A
+cache hit does not touch collection. The pause changes no result: the cache
+still returns the identical system for a key it has seen and builds a new
+one for any other key, and YAML cases produce the same outcomes and values
+with or without it.
 """
 
 import contextlib
@@ -80,6 +81,23 @@ def restore_gc():
         gc.disable()
 
 
+@pytest.fixture
+def gc_calls(restore_gc, monkeypatch):
+    """Every call to gc.disable, gc.enable and gc.collect, in order. Disabling
+    and enabling take effect; a recorded collection does not run, to keep
+    hundreds of builds fast."""
+    calls = []
+    for name in ("disable", "enable", "collect"):
+        real = getattr(gc, name) if name != "collect" else lambda *args: 0
+
+        def spy(*args, real=real, name=name):
+            calls.append(name)
+            return real(*args)
+
+        monkeypatch.setattr(gc, name, spy)
+    return calls
+
+
 def set_gc(enabled):
     if enabled:
         gc.enable()
@@ -87,10 +105,11 @@ def set_gc(enabled):
         gc.disable()
 
 
-def test_a_cache_miss_builds_with_collection_paused(restore_gc):
-    gc.enable()
+def test_a_cache_miss_builds_paused_then_collects_once(gc_calls):
+    set_gc(True)
     log = []
     baseline = RecordingSystem(log)
+    del gc_calls[:]
 
     system = _get_tax_benefit_system(
         baseline, ["some.reform", callable_reform], ["some.extension"]
@@ -104,6 +123,7 @@ def test_a_cache_miss_builds_with_collection_paused(restore_gc):
         "extension",
     ]
     assert [enabled for _, enabled in log] == [False] * 5
+    assert gc_calls == ["disable", "collect", "enable"]
     assert gc.isenabled()
     assert system.reforms == ("some.reform", "callable")
     assert system.extensions == ("some.extension",)
@@ -115,7 +135,7 @@ SCENARIOS = ["miss", "hit", "clone_raises", "reform_raises", "extension_raises"]
 @pytest.mark.parametrize("enabled_before", [True, False])
 @pytest.mark.parametrize("scenario", SCENARIOS)
 def test_collection_state_after_a_call_equals_the_state_before(
-    restore_gc, enabled_before, scenario
+    gc_calls, enabled_before, scenario
 ):
     fail_at = {
         "clone_raises": "clone",
@@ -127,12 +147,15 @@ def test_collection_state_after_a_call_equals_the_state_before(
         _get_tax_benefit_system(baseline, ["some.reform"], ["some.extension"])
 
     set_gc(enabled_before)
+    del gc_calls[:]
     if fail_at is None:
         _get_tax_benefit_system(baseline, ["some.reform"], ["some.extension"])
     else:
         with pytest.raises(BuildFailed, match=fail_at):
             _get_tax_benefit_system(baseline, ["some.reform"], ["some.extension"])
     assert gc.isenabled() is enabled_before
+    # Only a build that returns, for a caller with collection on, collects.
+    assert gc_calls.count("collect") == int(scenario == "miss" and enabled_before)
 
     # A failed build caches nothing, so the next call builds again.
     log_length = len(baseline.log)
@@ -142,29 +165,27 @@ def test_collection_state_after_a_call_equals_the_state_before(
     assert gc.isenabled() is enabled_before
 
 
-def test_a_cache_hit_leaves_collection_alone(restore_gc, monkeypatch):
-    gc.enable()
+def test_a_cache_hit_leaves_collection_alone(gc_calls):
+    set_gc(True)
     baseline = RecordingSystem([])
     system = _get_tax_benefit_system(baseline, ["some.reform"], [])
-    calls = []
-    for name in ("disable", "enable"):
-        real = getattr(gc, name)
-        monkeypatch.setattr(
-            gc, name, lambda real=real, name=name: calls.append(name) or real()
-        )
+    del gc_calls[:]
 
     assert _get_tax_benefit_system(baseline, ["some.reform"], []) is system
-    assert calls == []
+    assert gc_calls == []
+    assert gc.isenabled()
 
 
-def test_the_pause_restores_the_callers_state_when_the_body_raises(restore_gc):
+def test_the_pause_restores_the_callers_state_when_the_body_raises(gc_calls):
     for enabled_before in (True, False):
         set_gc(enabled_before)
+        del gc_calls[:]
         with pytest.raises(BuildFailed):
             with _automatic_gc_paused():
                 assert not gc.isenabled()
                 raise BuildFailed("body")
         assert gc.isenabled() is enabled_before
+        assert "collect" not in gc_calls
 
 
 REFORM_NAMES = ["a.reform", "b.reform", "c.reform"]
@@ -185,7 +206,7 @@ request_strategy = st.tuples(
 )
 @hypothesis.given(requests=st.lists(request_strategy, max_size=25))
 def test_the_cache_matches_a_reference_dict_and_keeps_the_callers_state(
-    restore_gc, requests
+    gc_calls, requests
 ):
     log = []
     baseline = RecordingSystem(log)
@@ -194,6 +215,7 @@ def test_the_cache_matches_a_reference_dict_and_keeps_the_callers_state(
         key = (tuple(reforms), reform_key, frozenset(extensions))
         clones_before = sum(name == "clone" for name, _ in log)
         set_gc(enabled_before)
+        del gc_calls[:]
 
         system = _get_tax_benefit_system(
             baseline, list(reforms), list(extensions), reform_key=reform_key
@@ -202,9 +224,11 @@ def test_the_cache_matches_a_reference_dict_and_keeps_the_callers_state(
         assert gc.isenabled() is enabled_before
         assert all(not enabled for _, enabled in log)
         built = sum(name == "clone" for name, _ in log) > clones_before
+        assert gc_calls.count("collect") == int(built and enabled_before)
         if key in reference:
             assert system is reference[key]
             assert not built
+            assert gc_calls == []
         else:
             assert built
             assert all(system is not other for other in reference.values())

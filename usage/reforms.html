@@ -251,7 +251,7 @@
 <h3>Method signature<a class="headerlink" href="#method-signature" title="Permalink to this heading">#</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Reform</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span>
     <span class="n">parameter_values</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>  <span class="c1"># Parameter path -&gt; period -&gt; value mappings</span>
-    <span class="n">country_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>  <span class="c1"># Optional: country code for API integration</span>
+    <span class="n">country_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>  <span class="c1"># Optional: the country the reform applies to</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>        <span class="c1"># Optional: human-readable name for the reform</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Reform</span>
 </pre></div>
@@ -386,12 +386,12 @@
 </div>
 </div>
 </section>
-<section id="named-reforms-for-api-integration">
-<h3>Named reforms for API integration<a class="headerlink" href="#named-reforms-for-api-integration" title="Permalink to this heading">#</a></h3>
-<p>When working with the PolicyEngine API, you can provide a <code class="docutils literal notranslate"><span class="pre">country_id</span></code> and <code class="docutils literal notranslate"><span class="pre">name</span></code> for better integration.</p>
+<section id="named-reforms">
+<h3>Named reforms<a class="headerlink" href="#named-reforms" title="Permalink to this heading">#</a></h3>
+<p>You can provide a <code class="docutils literal notranslate"><span class="pre">country_id</span></code> and a <code class="docutils literal notranslate"><span class="pre">name</span></code>, which are stored on the reform class to identify it.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Named reform with country ID (useful for API integration)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Named reform with a country ID</span>
 <span class="n">named_reform</span> <span class="o">=</span> <span class="n">Reform</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span>
     <span class="p">{</span>
         <span class="s2">"benefits.basic_income"</span><span class="p">:</span> <span class="p">{</span>
@@ -572,7 +572,7 @@
 <li><a class="reference internal" href="#multiple-parameters">Multiple parameters</a></li>
 <li><a class="reference internal" href="#bracket-parameters">Bracket parameters</a></li>
 <li><a class="reference internal" href="#shorthand-for-permanent-changes">Shorthand for permanent changes</a></li>
-<li><a class="reference internal" href="#named-reforms-for-api-integration">Named reforms for API integration</a></li>
+<li><a class="reference internal" href="#named-reforms">Named reforms</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#creating-reforms-with-a-reform-subclass">Creating reforms with a Reform subclass</a></li>

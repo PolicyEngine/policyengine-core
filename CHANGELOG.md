@@ -1,3 +1,10 @@
+## [3.33.14] - 2026-10-30
+
+### Fixed
+
+- Build the YAML test runner's unit-test nodes with pytest's public `from_parent` constructor, so the test suite passes with pytest 9.2.0.
+
+
 ## [3.33.13] - 2026-10-27
 
 ### Fixed

@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 
+import gc
 import logging
 import sys
 import os
 import traceback
 import textwrap
+from contextlib import contextmanager
 from typing import Dict, List
 
 import pytest
@@ -419,6 +421,25 @@ class OpenFiscaPlugin(object):
             )
 
 
+@contextmanager
+def _automatic_gc_paused():
+    """Pause automatic garbage collection, then restore the caller's setting.
+
+    Building a reform system copies the whole baseline. Its allocations
+    trigger full collections that walk every object the baseline and its
+    copies hold and free almost nothing: on policyengine-us they took about
+    half of each build. Collection resumes as before once the build returns
+    or raises, and a caller that had disabled it keeps it disabled.
+    """
+    was_enabled = gc.isenabled()
+    gc.disable()
+    try:
+        yield
+    finally:
+        if was_enabled:
+            gc.enable()
+
+
 def _get_tax_benefit_system(
     baseline,
     reforms,
@@ -444,20 +465,22 @@ def _get_tax_benefit_system(
         if cached is not None:
             return cached
 
-    current_tax_benefit_system = baseline.clone()
+    # Only a cache miss builds a system, so only a miss pauses collection.
+    with _automatic_gc_paused():
+        current_tax_benefit_system = baseline.clone()
 
-    for reform_path in reforms:
-        if isinstance(reform_path, str):
-            current_tax_benefit_system = current_tax_benefit_system.apply_reform(
-                reform_path
-            )
-        else:
-            current_tax_benefit_system = reform_path(current_tax_benefit_system)
-        current_tax_benefit_system._parameters_at_instant_cache = {}
+        for reform_path in reforms:
+            if isinstance(reform_path, str):
+                current_tax_benefit_system = current_tax_benefit_system.apply_reform(
+                    reform_path
+                )
+            else:
+                current_tax_benefit_system = reform_path(current_tax_benefit_system)
+            current_tax_benefit_system._parameters_at_instant_cache = {}
 
-    for extension in extensions:
-        current_tax_benefit_system = current_tax_benefit_system.clone()
-        current_tax_benefit_system.load_extension(extension)
+        for extension in extensions:
+            current_tax_benefit_system = current_tax_benefit_system.clone()
+            current_tax_benefit_system.load_extension(extension)
 
     if baseline_entry is None:
         baseline_entry = {}

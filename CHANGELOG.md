@@ -1,3 +1,31 @@
+## [3.34.0] - 2026-10-30
+
+### Removed
+
+- Removed `Reform.from_api`, `Reform.api_id` and `policyengine_core.charts.api` (with the chart functions `get_api_chart_data`, `intra_decile_chart` and `decile_chart` that `policyengine_core.charts` exported from it), which sent HTTP requests to the PolicyEngine Public API; build reforms with `Reform.from_dict` instead.
+
+
+## [3.33.15] - 2026-10-30
+
+### Changed
+
+- Upgraded certifi to 2026.10.23 and hf-xet to 1.8.0 in `uv.lock`, so development environments installed from the lock no longer trust the compromised eMudhra CA certificates.
+
+
+## [3.33.14] - 2026-10-30
+
+### Fixed
+
+- Build the YAML test runner's unit-test nodes with pytest's public `from_parent` constructor, so the test suite passes with pytest 9.2.0.
+
+
+## [3.33.13] - 2026-10-27
+
+### Fixed
+
+- Restore dumped simulations that have no persons, or groups with no members, by recording each population's count in the dump; `build_default_simulation` again refuses a count that is not an integer when building.
+
+
 ## [3.33.12] - 2026-10-19
 
 ### Fixed

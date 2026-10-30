@@ -1,0 +1,1 @@
+Resolve `ParameterNodeAtInstant` children on first read instead of building the whole parameter tree for every instant, which cost policyengine-us 16 to 33 MB and several seconds per instant on every tax-benefit system.

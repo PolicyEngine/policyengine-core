@@ -422,10 +422,12 @@ class OpenFiscaPlugin(object):
 
 
 # A cache miss forces a full collection only while the cache holds fewer than
-# this many systems: the forced collection walks every object in the process,
-# and in #643's padded-template model it stopped paying for itself once two
-# or three systems were cached, while the automatic collector's full
-# collections grew rarer as the heap grew.
+# this many systems. That collection walks every object in the process, so
+# each cached system makes it dearer, while the automatic collector's full
+# collections grow rarer as the heap grows. In PR #643's model of
+# policyengine-us-sized systems, 3 gave the least collection CPU over 16 and
+# 32 misses; limits from 1 to 8 came within 20%, and no limit cost about three
+# times as much.
 _FULL_COLLECTION_CACHE_LIMIT = 3
 
 

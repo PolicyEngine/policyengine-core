@@ -147,6 +147,11 @@ class Reform(TaxBenefitSystem):
     def __getattr__(self, attribute):
         return getattr(self.baseline, attribute)
 
+    def preprocess_situation(self, situation: dict, default_period=None) -> dict:
+        # TaxBenefitSystem defines a no-op hook, so ``__getattr__`` never
+        # reaches the baseline's override; delegate to it explicitly.
+        return self.baseline.preprocess_situation(situation, default_period)
+
     @property
     def full_key(self) -> str:
         key = self.key

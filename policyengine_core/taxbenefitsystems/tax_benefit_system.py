@@ -150,6 +150,22 @@ class TaxBenefitSystem:
     _defined_for_checks_deferred: bool = False
     """Whether ``load_variable`` leaves ``defined_for`` checks to a later pass over every variable."""
 
+    def preprocess_situation(self, situation: dict, default_period=None) -> dict:
+        """Normalize entity-form input before the builder creates populations.
+
+        Country models can override this to fill missing entity definitions.
+        The builder passes a deep copy of the caller's situation, with singular
+        entity aliases expanded and any ``axes`` still present, and its default
+        period as set (None, a string, an integer or a ``Period``). Return a
+        dict holding an entity-form situation for the builder's usual
+        validation. A ``Reform`` delegates this hook to its baseline. Dataset
+        and variable-only inputs do not use this hook.
+
+        ``Simulation.input_group_entities`` records the groups supplied by
+        the caller before this hook runs, separately from inferred groups.
+        """
+        return situation
+
     def __init__(self, entities: Sequence[Entity] = None, reform=None) -> None:
         if entities is None:
             entities = self.entities

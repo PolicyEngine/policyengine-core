@@ -1,3 +1,10 @@
+## [3.34.1] - 2026-10-31
+
+### Changed
+
+- Parameter clones copy each metadata dict without deep-copying the values in it, which makes cloning a large tax-benefit system faster and smaller. `interpolate_parameters` now records its work in `Parameter.interpolated` instead of writing `completed` into the `interpolation` metadata, so it interpolates every parameter a node propagates `interpolation` to, not only the first.
+
+
 ## [3.34.0] - 2026-10-30
 
 ### Removed

@@ -230,6 +230,28 @@ def test_a_copied_storage_and_its_source_keep_their_own_values(storage, copier):
 
 @COPIERS
 @pytest.mark.parametrize("copy_first", [True, False], ids=["copy", "source"])
+def test_a_copied_storage_and_its_source_drop_by_their_own_store_order(
+    storage, copier, copy_first
+):
+    storage.put(np.array([1.0]), "2012", derived=True)
+    original_number = storage._sequence_numbers["default_2012"]
+    copied = copier(storage)
+    writer, reader = (copied, storage) if copy_first else (storage, copied)
+
+    writer.put(np.array([2.0]), "2012", derived=True)
+    replacement_number = writer._sequence_numbers["default_2012"]
+
+    assert replacement_number > original_number
+    assert reader._sequence_numbers["default_2012"] == original_number
+    assert writer.drop_computed(since=replacement_number) == 1
+    assert not reader.has_unnumbered_values()
+    assert reader.drop_computed(since=replacement_number) == 0
+    np.testing.assert_array_equal(reader.get("2012"), [1])
+    assert reader.drop_computed(since=original_number) == 1
+
+
+@COPIERS
+@pytest.mark.parametrize("copy_first", [True, False], ids=["copy", "source"])
 def test_a_copied_storage_and_its_source_keep_their_own_values_for_a_new_key(
     storage, copier, copy_first
 ):

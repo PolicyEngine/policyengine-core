@@ -5,6 +5,7 @@ on:
 jobs:
   Lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: |
       (github.repository == 'PolicyEngine/policyengine-core')
       && (github.event.head_commit.message == 'Update PolicyEngine Core')
@@ -56,6 +57,10 @@ jobs:
           fetch: false
   Test:
     runs-on: ubuntu-latest
+    # Slowest observed 2026-10-06..08: 4 minutes. Docs waits on this job
+    # (Publish does not). Fail a hang instead of holding a shared runner for
+    # the 6-hour default.
+    timeout-minutes: 45
     if: |
       (github.repository == 'PolicyEngine/policyengine-core')
       && (github.event.head_commit.message == 'Update PolicyEngine Core')
@@ -73,22 +78,49 @@ jobs:
       - name: Run tests
         run: make test
       - uses: codecov/codecov-action@v6
-      - name: Generate documentation
-        run: make documentation
-      - name: Deploy documentation
-        if: matrix.os == 'ubuntu-latest'
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: gh-pages # The branch the action should deploy to.
-          FOLDER: docs/_build/html # The folder the action should deploy.
-  Publish:
+  Docs:
     runs-on: ubuntu-latest
+    # Deploy only a release that reached PyPI. As its own job, a failed
+    # deploy cannot fail Test or Publish.
+    needs: [Test, Publish]
     if: |
       (github.repository == 'PolicyEngine/policyengine-core')
       && (github.event.head_commit.message == 'Update PolicyEngine Core')
     permissions:
       contents: write
+    # One deploy at a time; a newly queued deploy replaces one still waiting.
+    concurrency:
+      group: gh-pages-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+      - name: Install package
+        run: make install
+      - name: Generate documentation
+        run: make documentation
+      - name: Deploy documentation
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: docs/_build/html
+  Publish:
+    runs-on: ubuntu-latest
+    if: |
+      (github.repository == 'PolicyEngine/policyengine-core')
+      && (github.event.head_commit.message == 'Update PolicyEngine Core')
+    # PyPI trusted publishing: PyPI accepts uploads only from this workflow in
+    # the pypi environment, which is limited to master. No stored PyPI token.
+    environment: pypi
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
@@ -107,8 +139,6 @@ jobs:
       - name: Publish a Python distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          user: __token__
-          password: ${{ secrets.PYPI }}
           skip-existing: true
       - name: Publish a git tag
         run: bash .github/publish-git-tag.sh

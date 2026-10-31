@@ -2,11 +2,17 @@ import os
 import shutil
 import tempfile
 import weakref
+from typing import Dict, List, Optional, Set, Tuple
 
 import numpy
 from numpy.typing import ArrayLike
 
 from policyengine_core import periods
+from policyengine_core.data_storage.store_history import (
+    _period_from_storage_key,
+    advance_sequence_past,
+    next_sequence_number,
+)
 from policyengine_core.data_storage.storage_directory import (
     directory_containing,
     path_key,
@@ -51,6 +57,11 @@ def _epoch() -> tuple:
 class OnDiskStorage:
     """
     Low-level class responsible for storing and retrieving calculated vectors on disk
+
+    Compound periods contain colons, which Windows forbids in filenames.
+    Their physical filenames use semicolons in the period suffix instead;
+    logical storage keys keep the original period strings. ``restore`` reads
+    both these portable filenames and legacy filenames containing colons.
     """
 
     # Defaults for ``__del__``, which also runs on an instance whose
@@ -86,6 +97,8 @@ class OnDiskStorage:
         # File keys stored with ``put(..., derived=True)``; see
         # ``InMemoryStorage``.
         self._derived = set()
+        # When each file key was stored; see ``InMemoryStorage``.
+        self._sequence_numbers: Dict[str, int] = {}
         # For each key, the file this storage last wrote for it, while it has
         # not shared that file since: the only files of its family ``put``
         # writes over (see ``_path_to_write``). Kept when the key is deleted,
@@ -199,7 +212,15 @@ class OnDiskStorage:
             state["_storage_dir_owner"] = owner
         if state.get("_parent_directory") is None:
             state["_parent_directory"] = directory_containing(state["storage_dir"])
+        # Nor numbers: pickled before stores were numbered. Copies have their
+        # own numbers, like their file index: replacing or dropping a key
+        # through one must not change when the other's value was stored.
+        state["_sequence_numbers"] = dict(state.get("_sequence_numbers", {}))
         self.__dict__.update(state)
+        # Numbers from the process that pickled this storage must stay below
+        # those of stores made after unpickling it.
+        if self._sequence_numbers:
+            advance_sequence_past(max(self._sequence_numbers.values()))
 
     def clone(self) -> "OnDiskStorage":
         """Create a private metadata view over this storage directory.
@@ -220,6 +241,7 @@ class OnDiskStorage:
         clone._files = self._files.copy()
         clone._enums = self._enums.copy()
         clone._derived = set(self._derived)
+        clone._sequence_numbers = dict(self._sequence_numbers)
         # One set of read-back paths for the family, so a clone made before
         # ``restore`` still writes over none of them after a fork.
         clone._restored_paths = self._restored_paths
@@ -271,7 +293,13 @@ class OnDiskStorage:
         period: Period,
         branch_name: str = "default",
         derived: bool = False,
+        sequence_number: Optional[int] = None,
     ) -> None:
+        """Store ``value`` for ``period`` on ``branch_name``.
+
+        ``derived`` and ``sequence_number`` are as in
+        :meth:`InMemoryStorage.put`.
+        """
         if self.is_eternal:
             period = periods.period(periods.ETERNITY)
         period = periods.period(period)
@@ -281,6 +309,8 @@ class OnDiskStorage:
         if isinstance(value, EnumArray):
             self._enums[path] = value.possible_values
             value = value.view(numpy.ndarray)
+        else:
+            self._enums.pop(path, None)
         numpy.save(path, value)
         self._files[filename] = path
         self._own_paths[filename] = path
@@ -289,6 +319,59 @@ class OnDiskStorage:
             self._derived.add(filename)
         else:
             self._derived.discard(filename)
+        self._sequence_numbers[filename] = (
+            next_sequence_number() if sequence_number is None else sequence_number
+        )
+
+    def drop_computed(self, *, since: Optional[int] = None) -> int:
+        """Forget stored values that are not inputs, and return how many.
+
+        As :meth:`InMemoryStorage.drop_computed`. The files stay on disk
+        (clones may still read them) until the storage directory is removed;
+        writing a dropped key again reuses this storage's own file for it,
+        as after ``delete``.
+        """
+        numbers = self._sequence_numbers
+        dropped = [
+            key
+            for key in self._files
+            if key in self._derived
+            and (since is None or numbers.get(key, since) >= since)
+        ]
+        for key in dropped:
+            del self._files[key]
+            numbers.pop(key, None)
+        self._derived.difference_update(dropped)
+        return len(dropped)
+
+    def inputs_since(self, since: Optional[int] = None) -> List[Tuple[Period, int]]:
+        """As :meth:`InMemoryStorage.inputs_since`."""
+        numbers = self._sequence_numbers
+        # Period strings contain no "_"; branch names may.
+        return [
+            (_period_from_storage_key(key.rsplit("_", 1)[1]), numbers[key])
+            for key in self._files
+            if key not in self._derived
+            and key in numbers
+            and (since is None or numbers[key] >= since)
+        ]
+
+    def mark_derived_except(self, keys: Set[str]) -> None:
+        """As :meth:`InMemoryStorage.mark_derived_except`."""
+        self._derived.update(key for key in self._files if key not in keys)
+
+    def has_unnumbered_values(self) -> bool:
+        """As :meth:`InMemoryStorage.has_unnumbered_values`."""
+        return any(key not in self._sequence_numbers for key in self._files)
+
+    def _forget_dropped_keys(self) -> None:
+        """Forget the derived marks and numbers of keys ``_files`` no longer has."""
+        self._derived.intersection_update(self._files)
+        numbers = self._sequence_numbers
+        if not numbers.keys() <= self._files.keys():
+            self._sequence_numbers = {
+                key: number for key, number in numbers.items() if key in self._files
+            }
 
     def _path_to_write(self, filename: str) -> str:
         """The path ``put`` writes the value for key ``filename`` to.
@@ -313,13 +396,19 @@ class OnDiskStorage:
         own = self._own_paths.get(filename)
         if own is not None:
             return own
-        path = os.path.join(self.storage_dir, filename) + ".npy"
+        # A period string can contain colons, which Windows forbids in
+        # filenames. Period strings never contain semicolons or underscores,
+        # so translating only the final suffix is reversible and leaves
+        # branch names untouched.
+        branch, separator, period_string = filename.rpartition("_")
+        portable_filename = f"{branch}{separator}{period_string.replace(':', ';')}"
+        path = os.path.join(self.storage_dir, portable_filename) + ".npy"
         if path not in self._family_files and not self._writes_only_new_files():
             return path
         directory = os.path.join(self.storage_dir, REPLACEMENTS_DIR)
         os.makedirs(directory, exist_ok=True)
         descriptor, path = tempfile.mkstemp(
-            prefix=f"{filename}.", suffix=".npy", dir=directory
+            prefix=f"{portable_filename}.", suffix=".npy", dir=directory
         )
         os.close(descriptor)
         return path
@@ -335,7 +424,7 @@ class OnDiskStorage:
                 for period_item, value in self._files.items()
                 if not period_item.startswith(branch_prefix)
             }
-            self._derived.intersection_update(self._files)
+            self._forget_dropped_keys()
             return
 
         if self.is_eternal:
@@ -348,7 +437,7 @@ class OnDiskStorage:
                 for period_item, value in self._files.items()
                 if not period_item == f"{branch_name}_{period}"
             }
-            self._derived.intersection_update(self._files)
+            self._forget_dropped_keys()
 
     def get_known_periods(self) -> list:
         return list([periods.period(x.split("_")[1]) for x in self._files.keys()])
@@ -363,24 +452,41 @@ class OnDiskStorage:
         """Read back the values stored in this storage's directory: for each
         key, the file named for it (not those in ``REPLACEMENTS_DIR``).
 
-        This storage writes over those files, as over those it wrote, until
+        This storage writes over portable files, as over those it wrote, until
         it is cloned or copied, or this process forks: from then on it writes
         a new file instead, since the clone, copy or forked process reads
         them. A storage made separately for the directory, the one that wrote
         them say, still writes over them, as before. So may another storage
         in this one's family, when ``restore`` runs after it was cloned and
         this process has not forked since.
+
+        The period suffix of new filenames uses semicolons for the colons
+        in compound period strings. Legacy filenames containing colons are
+        still accepted. If both versions of a key exist after updating a
+        legacy value, the portable filename holds the current value and wins
+        regardless of directory listing order. Readers still indexed to the
+        legacy file keep its old value until they restore again. Branch names
+        are unchanged.
         """
         self._files = files = {}
-        # Files read back from a directory carry no derived marks.
+        # Files read back from a directory carry no derived marks or numbers.
         self._derived = set()
+        self._sequence_numbers = {}
         # Restore self._files from content of storage_dir.
         for filename in os.listdir(self.storage_dir):
             if not filename.endswith(".npy"):
                 continue
             path = os.path.join(self.storage_dir, filename)
             filename_core = filename.rsplit(".", 1)[0]
-            files[filename_core] = path
+            branch, separator, period_string = filename_core.rpartition("_")
+            key = filename_core
+            if separator:
+                key = f"{branch}{separator}{period_string.replace(';', ':')}"
+            # Updating a legacy value may leave its old colon filename
+            # beside the portable file. Prefer the latter, independent of
+            # directory listing order, without parsing arbitrary basenames.
+            if key not in files or key != filename_core:
+                files[key] = path
         self._restored_paths.update(files.values())
 
     def __del__(self, _rmtree=shutil.rmtree, _getpid=os.getpid) -> None:

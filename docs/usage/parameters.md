@@ -65,7 +65,7 @@ metadata:
 parameter.metadata["reference"] = [*parameter.metadata["reference"], new_reference]
 ```
 
-The same holds within one tree: a parameter's dated values hold the parameter's metadata values, and `propagate_parameter_metadata` gives a node's descendants the node's values.
+The same holds within one tree: a dated value written in dictionary form (`value:`, with or without `metadata:`) holds its parameter's metadata values, and `propagate_parameter_metadata` gives a node's descendants the node's values.
 
 ### Metadata for parameters
 

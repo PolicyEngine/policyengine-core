@@ -4,8 +4,8 @@
 object in the copy its own metadata dict, holding the same values as the
 source's. So a key set, updated, popped or replaced on one side never shows
 on the other, while a nested value (a list of references, a dict) is one
-object for both until a key is replaced. ``interpolate_parameters`` replaces
-the ``interpolation`` dict it marks complete for that reason.
+object for both until a key is replaced. ``interpolate_parameters`` marks the
+parameter it has interpolated, not the ``interpolation`` dict, for that reason.
 
 ``test_parameter_metadata_clone_property.py`` checks the same over random
 trees and edits, against a reference clone that deep-copies metadata.
@@ -135,7 +135,7 @@ def test_interpolating_a_tree_interpolates_the_clone_it_holds():
     for amount in (root.benefit.amount, root.baseline.benefit.amount):
         assert amount("2016-06-01") == 110
         assert amount("2018-06-01") == 130
-        assert amount.metadata["interpolation"]["completed"] is True
+        assert amount.interpolated
 
 
 def test_a_tax_benefit_system_interpolates_its_baseline_copy(tmp_path):
@@ -159,11 +159,63 @@ def test_a_tax_benefit_system_interpolates_its_baseline_copy(tmp_path):
     assert system.parameters.baseline.amount("2016-06-01") == 110
 
 
+def test_a_tax_benefit_system_interpolates_each_parameter_once(tmp_path):
+    """``TaxBenefitSystem.__init__`` propagates metadata again after interpolating.
+
+    That gives each parameter the node's ``interpolation`` dict again, so a
+    mark on the parameter's own copy of the dict would be lost, and the next
+    interpolation would add every entry a second time.
+    """
+    node = tmp_path / "node"
+    node.mkdir()
+    (node / "index.yaml").write_text(
+        "metadata:\n"
+        "  propagate_metadata_to_children: true\n"
+        "  interpolation:\n"
+        "    interval: year\n"
+    )
+    for name, start, end in (("a", 100, 140), ("b", 200, 280)):
+        (node / f"{name}.yaml").write_text(
+            "description: An amount.\n"
+            "values:\n"
+            f"  2015-01-01: {start}\n"
+            f"  2019-01-01: {end}\n"
+        )
+
+    class System(TaxBenefitSystem):
+        entities = template_entities.entities
+        parameters_dir = str(tmp_path)
+
+    system = System()
+    before = snapshot(system.parameters)
+
+    interpolate_parameters(system.parameters)
+
+    assert snapshot(system.parameters) == before
+    for tree in (system.parameters, system.parameters.baseline):
+        assert len(tree.node.a.values_list) == 5
+        assert tree.node.a("2016-06-01") == 110
+        assert tree.node.b("2016-06-01") == 220
+
+
+def test_interpolating_writes_no_metadata():
+    root = propagate_parameter_metadata(build())
+    root.add_child("baseline", root.clone())
+    metadata_before = [
+        (item, copy.deepcopy(item.metadata)) for item in root.get_descendants()
+    ]
+
+    interpolate_parameters(root)
+
+    assert root.allowance.couple("2016-06-01") == 220
+    for item, metadata in metadata_before:
+        assert item.metadata == metadata
+
+
 def test_every_parameter_a_node_propagates_interpolation_to_is_interpolated():
     """Propagation gives each child the node's ``interpolation`` dict.
 
-    Marking that one dict complete in place skipped every child after the
-    first.
+    Marking that one dict complete skipped every child after the first.
     """
     root = ParameterNode(
         data={
@@ -193,15 +245,20 @@ def test_interpolating_a_clone_leaves_its_source_uninterpolated():
 
     assert clone.benefit.amount("2016-06-01") == 110
     assert snapshot(source) == source_before
-    assert "completed" not in source.benefit.amount.metadata["interpolation"]
+    assert not source.benefit.amount.interpolated
     # And the source still interpolates when asked.
     interpolate_parameters(source)
     assert source.benefit.amount("2016-06-01") == 110
 
 
-def test_a_clone_of_an_interpolated_tree_is_not_interpolated_again():
+@pytest.mark.parametrize(
+    "copy_tree",
+    [lambda tree: tree.clone(), copy.deepcopy],
+    ids=["clone", "deepcopy"],
+)
+def test_a_copy_of_an_interpolated_tree_is_not_interpolated_again(copy_tree):
     source = interpolate_parameters(build())
-    clone = source.clone()
+    clone = copy_tree(source)
     values_before = snapshot(clone)
 
     interpolate_parameters(clone)

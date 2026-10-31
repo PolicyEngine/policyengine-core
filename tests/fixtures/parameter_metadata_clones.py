@@ -7,7 +7,8 @@ clone shares with its source.
 
 ``deep_clone`` copies a tree the way Core did before clones shared nested
 metadata: every metadata dict is deep-copied. It is the reference the
-differential tests compare ``clone`` against.
+differential tests compare ``clone`` against. ``interpolate_in_place`` is the
+same for ``interpolate_parameters``.
 
 ``snapshot`` turns a tree into plain data, so two trees, or one tree before
 and after an edit, can be compared with ``==``.
@@ -29,6 +30,7 @@ from policyengine_core.parameters import (
     interpolate_parameters,
     propagate_parameter_metadata,
 )
+from policyengine_core.periods import instant
 
 # ``snapshot`` reads each parameter at these instants.
 INSTANTS = ["2014-06-01", "2016-01-01", "2018-07-01", "2020-01-01", "2022-01-01"]
@@ -64,6 +66,14 @@ def tree_data():
                 },
             },
             "eligible": {"2015-01-01": True, "2020-01-01": False},
+        },
+        "allowance": {
+            "metadata": {
+                "propagate_metadata_to_children": True,
+                "interpolation": {"interval": "year"},
+            },
+            "single": {"values": {"2015-01-01": 100, "2019-01-01": 140}},
+            "couple": {"values": {"2015-01-01": 200, "2019-01-01": 280}},
         },
         "tax": {
             "metadata": {"label": "Tax", "reference": reference("scale")},
@@ -112,6 +122,50 @@ def deep_clone(item):
     return clone
 
 
+def interpolate_in_place(root):
+    """``interpolate_parameters`` as Core had it, with its completion marker.
+
+    The reference for the values interpolation gives. It marks a dict that
+    several objects can share, so compare it only on parameters that each
+    have their own.
+    """
+    for parameter in root.get_descendants():
+        if isinstance(parameter, Parameter):
+            if "interpolation" in parameter.metadata and not parameter.metadata[
+                "interpolation"
+            ].get("completed", False):
+                interpolated_entries = []
+                for i in range(len(parameter.values_list) - 1):
+                    start = instant(parameter.values_list[::-1][i].instant_str)
+                    num_intervals = 1
+                    interval_size = parameter.metadata["interpolation"]["interval"]
+                    parameter_dates = [
+                        at_instant.instant_str for at_instant in parameter.values_list
+                    ]
+                    while (
+                        str(start.offset(num_intervals, interval_size))
+                        < parameter_dates[0]
+                    ):
+                        num_intervals += 1
+                    for j in range(1, num_intervals):
+                        start_str = str(start.offset(j, interval_size))
+                        start_value = parameter.values_list[::-1][i].value
+                        end_value = parameter.values_list[::-1][i + 1].value
+                        new_value = (
+                            start_value + (end_value - start_value) * j / num_intervals
+                        )
+                        interpolated_entries += [
+                            ParameterAtInstant(
+                                parameter.name, start_str, data=new_value
+                            )
+                        ]
+                for entry in interpolated_entries:
+                    parameter.values_list.append(entry)
+                parameter.values_list.sort(key=lambda x: x.instant_str, reverse=True)
+                parameter.metadata["interpolation"]["completed"] = True
+    return root
+
+
 def objects(root):
     """Every object in the tree, the root first, in a fixed order."""
     found = [root]
@@ -138,6 +192,7 @@ def snapshot(item):
             [snapshot(value) for value in item.values_list],
             # Read through the parameter as well as its list.
             [item._get_at_instant(instant) for instant in INSTANTS],
+            item.interpolated,
         )
     if isinstance(item, ParameterScale):
         return ("scale", metadata, [snapshot(bracket) for bracket in item.brackets])
@@ -192,6 +247,8 @@ def apply_edit(root, edit):
         metadata.setdefault(edit[2], copy.deepcopy(edit[3]))
     elif kind == "pop key":
         metadata.pop(edit[2], None)
+    elif kind == "set interpolation":
+        metadata["interpolation"] = {"interval": "year"}
     elif kind == "replace values":
         # Change every nested value the documented way: a new value per key.
         for key, value in list(metadata.items()):

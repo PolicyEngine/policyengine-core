@@ -11,13 +11,20 @@ metadata dict's own methods, replacing nested metadata values, and Core's
   was cloned), so no edit reaches a tree it was not made on;
 * ``clone``, which shares nested metadata values, and ``deep_clone``, which
   deep-copies them as Core used to, leave every tree in the same state
-  (differential).
+  (differential);
+* after ``TaxBenefitSystem.__init__``'s propagate, interpolate, propagate,
+  interpolating again changes nothing.
+
+``interpolate_parameters`` gives the values Core's in-place version gave, on
+parameters that each have their own ``interpolation`` dict (differential).
 
 A nested metadata value edited in place, rather than replaced, is visible
 through every tree that shares it: that is the documented contract and is
 not one of the edits here. ``test_parameter_metadata_clone.py`` has the
 examples.
 """
+
+from datetime import date
 
 import pytest
 
@@ -27,10 +34,15 @@ pytest.importorskip("hypothesis")
 from hypothesis import given, settings  # noqa: E402
 from hypothesis import strategies as st  # noqa: E402
 
+from policyengine_core.parameters import (  # noqa: E402
+    ParameterNode,
+    interpolate_parameters,
+)
 from tests.fixtures.parameter_metadata_clones import (  # noqa: E402
     apply_edit,
     build,
     deep_clone,
+    interpolate_in_place,
     snapshot,
 )
 
@@ -63,6 +75,7 @@ EDITS = st.one_of(
     st.tuples(st.just("setdefault key"), POSITIONS, KEYS, METADATA_VALUES),
     st.tuples(st.just("pop key"), POSITIONS, KEYS),
     st.tuples(st.just("replace values"), POSITIONS),
+    st.tuples(st.just("set interpolation"), POSITIONS),
     st.tuples(st.just("propagate")),
     st.tuples(st.just("interpolate")),
 )
@@ -146,3 +159,56 @@ def test_edits_to_one_side_never_change_the_other(edits, edit_clone):
 
     assert snapshot(other) == other_before
     assert snapshot(edited) == snapshot(_fresh(edits))
+
+
+@settings(**_SETTINGS)
+@given(steps=chains())
+def test_interpolating_a_processed_tree_again_changes_nothing(steps):
+    trees, _ = _run(steps, lambda tree: tree.clone())
+
+    for tree in trees:
+        for step in ("propagate", "interpolate", "propagate"):
+            apply_edit(tree, (step,))
+        processed = snapshot(tree)
+        apply_edit(tree, ("interpolate",))
+        assert snapshot(tree) == processed
+
+
+_DATES = st.dates(min_value=date(2015, 1, 1), max_value=date(2022, 12, 1)).map(
+    lambda day: day.replace(day=1).isoformat()
+)
+
+
+def _tree(interval, values_by_parameter):
+    return ParameterNode(
+        data={
+            f"parameter_{position}": {
+                "metadata": {"interpolation": {"interval": interval}},
+                "values": dict(values),
+            }
+            for position, values in enumerate(values_by_parameter)
+        }
+    )
+
+
+@settings(**_SETTINGS)
+@given(
+    interval=st.sampled_from(["year", "month"]),
+    values_by_parameter=st.lists(
+        st.dictionaries(_DATES, st.integers(0, 500), min_size=1, max_size=4),
+        min_size=1,
+        max_size=3,
+    ),
+)
+def test_interpolated_values_match_the_in_place_reference(
+    interval, values_by_parameter
+):
+    interpolated = interpolate_parameters(_tree(interval, values_by_parameter))
+    reference = interpolate_in_place(_tree(interval, values_by_parameter))
+
+    for parameter, expected in zip(
+        interpolated.children.values(), reference.children.values()
+    ):
+        assert [(item.instant_str, item.value) for item in parameter.values_list] == [
+            (item.instant_str, item.value) for item in expected.values_list
+        ]

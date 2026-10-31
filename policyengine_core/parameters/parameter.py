@@ -105,6 +105,7 @@ class Parameter(AtInstantLike):
         self.values_list: List[ParameterAtInstant] = values_list
 
         self.modified: bool = False
+        self.interpolated: bool = False
 
     def __repr__(self):
         return os.linesep.join(

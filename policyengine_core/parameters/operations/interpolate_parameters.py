@@ -10,8 +10,8 @@ def interpolate_parameters(root: ParameterNode) -> ParameterNode:
     """Interpolates parameters according to their metadata.
 
     Each parameter interpolates once, however many times this runs. To
-    interpolate one again after changing its ``interpolation`` metadata, set
-    its ``interpolated`` attribute to ``False``.
+    interpolate one again, set its ``interpolated`` attribute to ``False`` and
+    give it ``interpolation`` metadata without a true ``completed`` key.
 
     Args:
         root (ParameterNode): The root of the parameter tree.

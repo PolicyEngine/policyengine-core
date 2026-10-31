@@ -251,6 +251,45 @@ def test_interpolating_a_clone_leaves_its_source_uninterpolated():
     assert source.benefit.amount("2016-06-01") == 110
 
 
+def test_a_parameter_interpolates_again_once_its_flag_is_cleared():
+    root = ParameterNode(
+        data={
+            "amount": {
+                "metadata": {"interpolation": {"interval": "year"}},
+                "values": {"2015-01-01": 100, "2015-07-01": 200},
+            }
+        }
+    )
+    interpolate_parameters(root)
+    assert len(root.amount.values_list) == 2
+
+    root.amount.metadata["interpolation"] = {"interval": "month"}
+    root.amount.interpolated = False
+    interpolate_parameters(root)
+
+    assert len(root.amount.values_list) == 7
+    assert root.amount("2015-06-01") == pytest.approx(100 + 100 * 5 / 6)
+
+
+def test_a_parameter_that_skipped_init_interpolates():
+    """A subclass can skip ``Parameter.__init__``.
+
+    So can a parameter pickled before ``interpolated`` existed. Neither has
+    the attribute on the instance.
+    """
+    source = build().benefit.amount
+    parameter = Parameter.__new__(Parameter)
+    parameter.__dict__.update(
+        {key: value for key, value in vars(source).items() if key != "interpolated"}
+    )
+    root = ParameterNode(data={})
+    root.add_child("amount", parameter)
+
+    interpolate_parameters(root)
+
+    assert parameter("2016-06-01") == 110
+
+
 @pytest.mark.parametrize(
     "copy_tree",
     [lambda tree: tree.clone(), copy.deepcopy],

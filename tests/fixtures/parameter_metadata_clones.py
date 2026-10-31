@@ -248,7 +248,7 @@ def apply_edit(root, edit):
     elif kind == "pop key":
         metadata.pop(edit[2], None)
     elif kind == "set interpolation":
-        metadata["interpolation"] = {"interval": "year"}
+        metadata["interpolation"] = {"interval": edit[2]}
     elif kind == "replace values":
         # Change every nested value the documented way: a new value per key.
         for key, value in list(metadata.items()):

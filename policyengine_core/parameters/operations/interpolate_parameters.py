@@ -9,7 +9,9 @@ from policyengine_core.periods import instant
 def interpolate_parameters(root: ParameterNode) -> ParameterNode:
     """Interpolates parameters according to their metadata.
 
-    Each parameter interpolates once, however many times this runs.
+    Each parameter interpolates once, however many times this runs. To
+    interpolate one again after changing its ``interpolation`` metadata, set
+    its ``interpolated`` attribute to ``False``.
 
     Args:
         root (ParameterNode): The root of the parameter tree.

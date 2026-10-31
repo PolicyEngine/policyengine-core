@@ -75,7 +75,9 @@ EDITS = st.one_of(
     st.tuples(st.just("setdefault key"), POSITIONS, KEYS, METADATA_VALUES),
     st.tuples(st.just("pop key"), POSITIONS, KEYS),
     st.tuples(st.just("replace values"), POSITIONS),
-    st.tuples(st.just("set interpolation"), POSITIONS),
+    st.tuples(
+        st.just("set interpolation"), POSITIONS, st.sampled_from(["year", "month"])
+    ),
     st.tuples(st.just("propagate")),
     st.tuples(st.just("interpolate")),
 )

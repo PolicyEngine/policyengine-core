@@ -287,6 +287,14 @@
 <span class="w">          </span><span class="nt">href</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://www.gov.uk/government/publications/child-benefit-rates-and-thresholds/child-benefit-rates-and-thresholds</span>
 </pre></div>
 </div>
+<section id="metadata-in-copies">
+<h3>Metadata in copies<a class="headerlink" href="#metadata-in-copies" title="Permalink to this heading">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">clone()</span></code> on a parameter tree, which <code class="docutils literal notranslate"><span class="pre">TaxBenefitSystem.clone()</span></code>, reforms and simulation clones use, gives every node, parameter, dated value and scale in the copy its own metadata dict. The values in that dict are the same objects as in the source. Setting, updating or removing a key changes only the tree it is made on. To change a nested value, such as one entry of a <code class="docutils literal notranslate"><span class="pre">reference</span></code> list, replace the key with a new value instead of editing the list or dict in place, which would change every copy that shares it:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">parameter</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">"reference"</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="o">*</span><span class="n">parameter</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">"reference"</span><span class="p">],</span> <span class="n">new_reference</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>The same holds within one tree: a dated value written in dictionary form (<code class="docutils literal notranslate"><span class="pre">value:</span></code>, with or without <code class="docutils literal notranslate"><span class="pre">metadata:</span></code>) holds its parameter’s metadata values, and <code class="docutils literal notranslate"><span class="pre">propagate_parameter_metadata</span></code> gives a node’s descendants the node’s values.</p>
+</section>
 <section id="metadata-for-parameters">
 <h3>Metadata for parameters<a class="headerlink" href="#metadata-for-parameters" title="Permalink to this heading">#</a></h3>
 <dl class="py class">
@@ -447,6 +455,7 @@
 <li><a class="reference internal" href="#">Writing parameters</a><ul>
 <li><a class="reference internal" href="#parameter-values">Parameter values</a></li>
 <li><a class="reference internal" href="#metadata">Metadata</a><ul>
+<li><a class="reference internal" href="#metadata-in-copies">Metadata in copies</a></li>
 <li><a class="reference internal" href="#metadata-for-parameters">Metadata for parameters</a></li>
 <li><a class="reference internal" href="#metadata-for-parameter-nodes">Metadata for parameter nodes</a></li>
 </ul>

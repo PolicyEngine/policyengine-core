@@ -21,7 +21,13 @@ def interpolate_parameters(root: ParameterNode) -> ParameterNode:
     """
     for parameter in root.get_descendants():
         if isinstance(parameter, Parameter):
-            if "interpolation" in parameter.metadata and not parameter.interpolated:
+            if (
+                "interpolation" in parameter.metadata
+                and not parameter.interpolated
+                # Core no longer writes this key, but a tree pickled by an
+                # older Core has it, and so can metadata written by hand.
+                and not parameter.metadata["interpolation"].get("completed", False)
+            ):
                 interpolated_entries = []
                 for i in range(len(parameter.values_list) - 1):
                     # For each gap in parameter values

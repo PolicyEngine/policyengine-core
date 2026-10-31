@@ -271,6 +271,22 @@ def test_a_parameter_interpolates_again_once_its_flag_is_cleared():
     assert root.amount("2015-06-01") == pytest.approx(100 + 100 * 5 / 6)
 
 
+def test_a_completed_key_in_the_metadata_still_stops_interpolation():
+    """A tree pickled by an older Core carries the key its interpolation wrote."""
+    root = ParameterNode(
+        data={
+            "amount": {
+                "metadata": {"interpolation": {"interval": "year", "completed": True}},
+                "values": {"2015-01-01": 100, "2019-01-01": 140},
+            }
+        }
+    )
+
+    interpolate_parameters(root)
+
+    assert len(root.amount.values_list) == 2
+
+
 def test_a_parameter_that_skipped_init_interpolates():
     """A subclass can skip ``Parameter.__init__``.
 

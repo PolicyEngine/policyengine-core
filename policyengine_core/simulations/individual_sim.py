@@ -54,6 +54,13 @@ class IndividualSim:
             setattr(self, f"add_{entity}", partial(self.add_data, entity=entity))
 
     def build(self):
+        # The empty mappings seeded in __init__ and the required groups
+        # filled in below are not groups the caller supplied.
+        supplied_groups = frozenset(
+            entity.key
+            for entity in self.system.group_entities
+            if self.situation_data.get(entity.plural)
+        )
         if self.required_entities is not None:
             # Check for missing entities
             entities = {entity.key: entity for entity in self.system.entities}
@@ -80,6 +87,9 @@ class IndividualSim:
             situation=self.situation_data,
             reform=self.reform,
         )
+        for simulation in (self.simulation, getattr(self.simulation, "baseline", None)):
+            if simulation is not None:
+                simulation.input_group_entities = supplied_groups
         self.simulation.trace = True
         self.sim = self.simulation
 

@@ -8,12 +8,20 @@ import numpy as np
 import pytest
 
 from policyengine_core import periods, tools
-from policyengine_core.country_template import entities, situation_examples
+from policyengine_core.country_template import (
+    CountryTaxBenefitSystem,
+    entities,
+    situation_examples,
+)
+from policyengine_core.entities import build_entity
 from policyengine_core.enums import Enum
 from policyengine_core.errors import SituationParsingError
 from policyengine_core.populations import Population
+from policyengine_core.reforms import Reform
 from policyengine_core.simulations import Simulation, SimulationBuilder
+from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 from policyengine_core.tools import test_runner
+from policyengine_core.tools.test_runner import _get_tax_benefit_system
 from policyengine_core.variables import Variable
 
 
@@ -189,6 +197,59 @@ def test_explicit_empty_group_mapping_is_recorded(tax_benefit_system):
         tax_benefit_system, {"persons": {"Alicia": {}}, "households": {}}
     )
     assert simulation.input_group_entities == frozenset({"household"})
+
+
+def test_only_supplied_groups_are_recorded():
+    person = build_entity("person", "persons", "", is_person=True)
+    household = build_entity(
+        "household", "households", "", roles=[{"key": "member", "plural": "members"}]
+    )
+    family = build_entity(
+        "family", "families", "", roles=[{"key": "member", "plural": "members"}]
+    )
+    simulation = SimulationBuilder().build_from_dict(
+        TaxBenefitSystem([person, household, family]),
+        {"persons": {"Alicia": {}}, "households": {"home": {"members": ["Alicia"]}}},
+    )
+    assert simulation.input_group_entities == frozenset({"household"})
+
+
+class _PreprocessingTaxBenefitSystem(CountryTaxBenefitSystem):
+    def preprocess_situation(self, situation, default_period=None):
+        situation.setdefault("households", {"inferred": {"parents": ["Alicia"]}})
+        return situation
+
+
+class _NoOpReform(Reform):
+    def apply(self):
+        pass
+
+
+def test_reform_delegates_preprocessing_to_its_baseline():
+    # Reform inherits TaxBenefitSystem's no-op hook, so a reform, including
+    # the one the YAML runner builds for inline parameters, must delegate.
+    baseline = _PreprocessingTaxBenefitSystem()
+    for system in (
+        _NoOpReform(baseline),
+        _get_tax_benefit_system(baseline, [_NoOpReform], []),
+    ):
+        simulation = SimulationBuilder().build_from_dict(
+            system, {"persons": {"Alicia": {}}}
+        )
+        assert list(simulation.household.ids) == ["inferred"]
+        assert simulation.input_group_entities == frozenset()
+
+
+def test_country_preprocessing_must_return_a_dict(tax_benefit_system, monkeypatch):
+    monkeypatch.setattr(
+        tax_benefit_system,
+        "preprocess_situation",
+        lambda situation, default_period: None,
+    )
+    with pytest.raises(TypeError, match="preprocess_situation must return a dict"):
+        SimulationBuilder().build_from_dict(
+            tax_benefit_system, {"persons": {"Alicia": {}}}
+        )
 
 
 def test_add_person_entity(persons):

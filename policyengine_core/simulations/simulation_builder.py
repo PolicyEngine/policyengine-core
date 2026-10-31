@@ -234,7 +234,11 @@ class SimulationBuilder:
         input_dict = tax_benefit_system.preprocess_situation(
             input_dict, self.default_period
         )
-        check_type(input_dict, dict, ["error"])
+        if not isinstance(input_dict, dict):
+            raise TypeError(
+                f"{type(tax_benefit_system).__name__}.preprocess_situation must "
+                f"return a dict, not {type(input_dict).__name__}."
+            )
         axes = input_dict.pop("axes", None)
 
         unexpected_entities = [

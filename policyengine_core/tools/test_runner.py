@@ -421,26 +421,45 @@ class OpenFiscaPlugin(object):
             )
 
 
+# A cache miss forces a full collection only while the cache holds fewer than
+# this many systems: the forced collection walks every object in the process,
+# and in #643's padded-template model it stopped paying for itself once two
+# or three systems were cached, while the automatic collector's full
+# collections grew rarer as the heap grew.
+_FULL_COLLECTION_CACHE_LIMIT = 3
+
+
 @contextmanager
-def _automatic_gc_paused():
-    """Pause automatic garbage collection for a build, then collect once.
+def _automatic_gc_paused(collect=True):
+    """Pause automatic garbage collection for a build, then maybe collect once.
 
     Building a reform system copies the whole baseline. On policyengine-us
     the copy's allocations set off six or seven full collections per build,
     each walking every object in the process and freeing almost nothing.
-    With collection only paused, the copy's objects were walked three times
-    once it resumed: by a young, a middle and a full collection. One full
-    collection at the end of a build that returns walks them once.
+    Pausing collection skips them. When collection resumes, the copy's
+    objects pass through a young and a middle collection, and through a full
+    one only when CPython's growth rule allows it: an automatic full
+    collection waits until the objects moved into the oldest generation since
+    the last full collection number at least a quarter of those that survived
+    it.
+
+    With ``collect``, a build that returns ends with one ``gc.collect()``. That
+    full collection bypasses the growth rule and moves the copy straight into
+    the oldest generation, so its objects skip the young and middle
+    collections. It pays only while the copy is a large share of the heap, so
+    ``_get_tax_benefit_system`` asks for it only while the cache holds fewer
+    than ``_FULL_COLLECTION_CACHE_LIMIT`` systems and otherwise leaves the copy
+    to the automatic collector.
 
     The caller's setting is restored when the build returns or raises. A
     caller that had disabled collection gets no collection and keeps it
-    disabled.
+    disabled, and a build that raises gets none.
     """
     was_enabled = gc.isenabled()
     gc.disable()
     try:
         yield
-        if was_enabled:
+        if was_enabled and collect:
             gc.collect()
     finally:
         if was_enabled:
@@ -473,7 +492,9 @@ def _get_tax_benefit_system(
             return cached
 
     # Only a cache miss builds a system, so only a miss touches collection.
-    with _automatic_gc_paused():
+    # The count covers every baseline's entries.
+    cached_systems = sum(len(entry) for entry in _tax_benefit_system_cache.values())
+    with _automatic_gc_paused(collect=cached_systems < _FULL_COLLECTION_CACHE_LIMIT):
         current_tax_benefit_system = baseline.clone()
 
         for reform_path in reforms:

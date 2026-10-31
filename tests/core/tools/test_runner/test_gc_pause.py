@@ -1,18 +1,21 @@
 """The YAML runner pauses automatic collection while it builds a reform system.
 
 A cache miss in ``_get_tax_benefit_system`` builds with automatic collection
-paused, then, if the caller had collection on and the build returned, runs
-one full collection. It leaves ``gc.isenabled()`` as it found it, whether the
-build returns or raises and whether the caller had collection on or off. A
-cache hit does not touch collection. The pause changes no result: the cache
-still returns the identical system for a key it has seen and builds a new
-one for any other key, and YAML cases produce the same outcomes and values
-with or without it.
+paused. If the caller had collection on, the build returned, and the cache
+held fewer than ``_FULL_COLLECTION_CACHE_LIMIT`` systems, it then runs one
+full collection; otherwise it leaves the new system to the automatic
+collector, so a run of misses forces at most that many collections. It leaves
+``gc.isenabled()`` as it found it, whether the build returns or raises and
+whether the caller had collection on or off. A cache hit does not touch
+collection. The pause changes no result: the cache still returns the
+identical system for a key it has seen and builds a new one for any other
+key, and YAML cases produce the same outcomes and values with or without it.
 """
 
 import contextlib
 import gc
 import os
+import weakref
 
 import pytest
 
@@ -81,21 +84,45 @@ def restore_gc():
         gc.disable()
 
 
+@pytest.fixture(autouse=True)
+def empty_cache(monkeypatch):
+    """Give each test its own empty system cache, so systems other tests
+    cached do not count toward the full-collection bound."""
+    monkeypatch.setattr(
+        test_runner, "_tax_benefit_system_cache", weakref.WeakKeyDictionary()
+    )
+
+
+# gc.collect()'s default generation, the oldest: a full collection.
+FULL = "collect(2)"
+LIMIT = test_runner._FULL_COLLECTION_CACHE_LIMIT
+
+
 @pytest.fixture
 def gc_calls(restore_gc, monkeypatch):
-    """Every call to gc.disable, gc.enable and gc.collect, in order. Disabling
-    and enabling take effect; a recorded collection does not run, to keep
-    hundreds of builds fast."""
+    """Every call to gc.disable, gc.enable and gc.collect, in order, with the
+    generation each collection asked for: ``FULL`` for ``gc.collect()``.
+    Disabling and enabling take effect; a recorded collection does not run,
+    to keep hundreds of builds fast."""
     calls = []
-    for name in ("disable", "enable", "collect"):
-        real = getattr(gc, name) if name != "collect" else lambda *args: 0
+    for name in ("disable", "enable"):
 
-        def spy(*args, real=real, name=name):
+        def spy(real=getattr(gc, name), name=name):
             calls.append(name)
-            return real(*args)
+            return real()
 
         monkeypatch.setattr(gc, name, spy)
+
+    def collect(generation=2):
+        calls.append(f"collect({generation})")
+        return 0
+
+    monkeypatch.setattr(gc, "collect", collect)
     return calls
+
+
+def collections(calls):
+    return [call for call in calls if call.startswith("collect")]
 
 
 def set_gc(enabled):
@@ -123,7 +150,7 @@ def test_a_cache_miss_builds_paused_then_collects_once(gc_calls):
         "extension",
     ]
     assert [enabled for _, enabled in log] == [False] * 5
-    assert gc_calls == ["disable", "collect", "enable"]
+    assert gc_calls == ["disable", FULL, "enable"]
     assert gc.isenabled()
     assert system.reforms == ("some.reform", "callable")
     assert system.extensions == ("some.extension",)
@@ -155,7 +182,8 @@ def test_collection_state_after_a_call_equals_the_state_before(
             _get_tax_benefit_system(baseline, ["some.reform"], ["some.extension"])
     assert gc.isenabled() is enabled_before
     # Only a build that returns, for a caller with collection on, collects.
-    assert gc_calls.count("collect") == int(scenario == "miss" and enabled_before)
+    expected = [FULL] if scenario == "miss" and enabled_before else []
+    assert collections(gc_calls) == expected
 
     # A failed build caches nothing, so the next call builds again.
     log_length = len(baseline.log)
@@ -185,7 +213,71 @@ def test_the_pause_restores_the_callers_state_when_the_body_raises(gc_calls):
                 assert not gc.isenabled()
                 raise BuildFailed("body")
         assert gc.isenabled() is enabled_before
-        assert "collect" not in gc_calls
+        assert collections(gc_calls) == []
+
+
+def miss(baseline, number):
+    """A cache miss: a parameter key the cache has not seen."""
+    return _get_tax_benefit_system(baseline, [], [], reform_key=f"gov.rate:{number}")
+
+
+@pytest.mark.parametrize("limit", [0, 1, 2, LIMIT, LIMIT + 2])
+def test_misses_collect_only_while_the_cache_holds_fewer_systems_than_the_limit(
+    gc_calls, monkeypatch, limit
+):
+    monkeypatch.setattr(test_runner, "_FULL_COLLECTION_CACHE_LIMIT", limit)
+    set_gc(True)
+    baseline = RecordingSystem([])
+    collected = []
+    for number in range(limit + 3):
+        del gc_calls[:]
+        miss(baseline, number)
+        collected.append(collections(gc_calls))
+        assert gc.isenabled()
+    # The last forced collection is miss number limit - 1, with limit - 1
+    # systems cached; from miss number limit on, none.
+    assert collected == [[FULL]] * limit + [[]] * 3
+
+
+def test_a_miss_past_the_limit_still_pauses_and_restores_collection(gc_calls):
+    log = []
+    baseline = RecordingSystem(log)
+    for enabled_before in (True, False):
+        set_gc(True)
+        for number in range(LIMIT):
+            miss(baseline, number)
+        del log[:]
+        set_gc(enabled_before)
+        del gc_calls[:]
+
+        system = _get_tax_benefit_system(baseline, ["some.reform"], ["x.extension"])
+
+        assert [name for name, _ in log] == ["clone", "reform", "clone", "extension"]
+        assert not any(enabled for _, enabled in log)
+        assert gc_calls == (["disable", "enable"] if enabled_before else ["disable"])
+        assert gc.isenabled() is enabled_before
+        assert system.reforms == ("some.reform",)
+        baseline = RecordingSystem(log)
+
+
+def test_the_limit_counts_systems_cached_for_every_baseline(gc_calls, monkeypatch):
+    monkeypatch.setattr(test_runner, "_FULL_COLLECTION_CACHE_LIMIT", 3)
+    set_gc(True)
+    first = RecordingSystem([])
+    miss(first, 0)
+    miss(first, 1)
+    second = RecordingSystem([])
+    del gc_calls[:]
+    miss(second, 0)  # 2 cached
+    assert collections(gc_calls) == [FULL]
+    del gc_calls[:]
+    miss(second, 1)  # 3 cached
+    assert collections(gc_calls) == []
+    # A baseline that goes away takes its systems out of the count.
+    del first
+    del gc_calls[:]
+    miss(second, 2)  # 2 cached
+    assert collections(gc_calls) == [FULL]
 
 
 REFORM_NAMES = ["a.reform", "b.reform", "c.reform"]
@@ -206,11 +298,16 @@ request_strategy = st.tuples(
 )
 @hypothesis.given(requests=st.lists(request_strategy, max_size=25))
 def test_the_cache_matches_a_reference_dict_and_keeps_the_callers_state(
-    gc_calls, requests
+    gc_calls, monkeypatch, requests
 ):
+    # Each example starts from an empty cache.
+    monkeypatch.setattr(
+        test_runner, "_tax_benefit_system_cache", weakref.WeakKeyDictionary()
+    )
     log = []
     baseline = RecordingSystem(log)
     reference = {}
+    forced = 0
     for reforms, reform_key, extensions, enabled_before in requests:
         key = (tuple(reforms), reform_key, frozenset(extensions))
         clones_before = sum(name == "clone" for name, _ in log)
@@ -224,7 +321,11 @@ def test_the_cache_matches_a_reference_dict_and_keeps_the_callers_state(
         assert gc.isenabled() is enabled_before
         assert all(not enabled for _, enabled in log)
         built = sum(name == "clone" for name, _ in log) > clones_before
-        assert gc_calls.count("collect") == int(built and enabled_before)
+        # The reference dict holds what the cache held before this call.
+        collects = built and enabled_before and len(reference) < LIMIT
+        assert collections(gc_calls) == ([FULL] if collects else [])
+        forced += collects
+        assert forced <= LIMIT
         if key in reference:
             assert system is reference[key]
             assert not built
@@ -297,7 +398,11 @@ def run_recording(paths, pause):
         patch.setattr(test_runner, "assert_near", recording_assert_near)
         patch.setattr(TaxBenefitSystem, "clone", recording_clone)
         if not pause:
-            patch.setattr(test_runner, "_automatic_gc_paused", contextlib.nullcontext)
+            patch.setattr(
+                test_runner,
+                "_automatic_gc_paused",
+                lambda collect=True: contextlib.nullcontext(),
+            )
         # run_tests' own arguments, plus a plugin that records outcomes.
         exit_code = pytest.main(
             ["--capture", "no", "--maxfail", "0", "--tb", "no", "-q", *paths],

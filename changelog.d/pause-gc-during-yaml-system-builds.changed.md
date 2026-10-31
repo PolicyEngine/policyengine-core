@@ -1,0 +1,1 @@
+Pause automatic garbage collection while the YAML test runner builds the system for a reform combination, run one full collection when the build returns while the cache holds fewer than three systems, and restore the caller's setting, so a cache-miss build no longer spends most of its time in repeated full collections that free almost nothing.

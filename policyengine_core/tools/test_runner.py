@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 
+import gc
 import logging
 import sys
 import os
 import traceback
 import textwrap
+from contextlib import contextmanager
 from typing import Dict, List
 
 import pytest
@@ -419,6 +421,53 @@ class OpenFiscaPlugin(object):
             )
 
 
+# A cache miss forces a full collection only while the cache holds fewer than
+# this many systems. That collection walks every object in the process, so
+# each cached system makes it dearer, while the automatic collector's full
+# collections grow rarer as the heap grows. In PR #643's model of
+# policyengine-us-sized systems, 3 gave the least collection CPU over 16 and
+# 32 misses; limits from 1 to 8 came within 20%, and no limit cost about three
+# times as much.
+_FULL_COLLECTION_CACHE_LIMIT = 3
+
+
+@contextmanager
+def _automatic_gc_paused(collect=True):
+    """Pause automatic garbage collection for a build, then maybe collect once.
+
+    Building a reform system copies the whole baseline. On policyengine-us
+    the copy's allocations set off six or seven full collections per build,
+    each walking every object in the process and freeing almost nothing.
+    Pausing collection skips them. When collection resumes, the copy's
+    objects pass through a young and a middle collection, and through a full
+    one only when CPython's growth rule allows it: an automatic full
+    collection waits until the objects moved into the oldest generation since
+    the last full collection number at least a quarter of those that survived
+    it.
+
+    With ``collect``, a build that returns ends with one ``gc.collect()``. That
+    full collection bypasses the growth rule and moves the copy straight into
+    the oldest generation, so its objects skip the young and middle
+    collections. It pays only while the copy is a large share of the heap, so
+    ``_get_tax_benefit_system`` asks for it only while the cache holds fewer
+    than ``_FULL_COLLECTION_CACHE_LIMIT`` systems and otherwise leaves the copy
+    to the automatic collector.
+
+    The caller's setting is restored when the build returns or raises. A
+    caller that had disabled collection gets no collection and keeps it
+    disabled, and a build that raises gets none.
+    """
+    was_enabled = gc.isenabled()
+    gc.disable()
+    try:
+        yield
+        if was_enabled and collect:
+            gc.collect()
+    finally:
+        if was_enabled:
+            gc.enable()
+
+
 def _get_tax_benefit_system(
     baseline,
     reforms,
@@ -444,20 +493,24 @@ def _get_tax_benefit_system(
         if cached is not None:
             return cached
 
-    current_tax_benefit_system = baseline.clone()
+    # Only a cache miss builds a system, so only a miss touches collection.
+    # The count covers every baseline's entries.
+    cached_systems = sum(len(entry) for entry in _tax_benefit_system_cache.values())
+    with _automatic_gc_paused(collect=cached_systems < _FULL_COLLECTION_CACHE_LIMIT):
+        current_tax_benefit_system = baseline.clone()
 
-    for reform_path in reforms:
-        if isinstance(reform_path, str):
-            current_tax_benefit_system = current_tax_benefit_system.apply_reform(
-                reform_path
-            )
-        else:
-            current_tax_benefit_system = reform_path(current_tax_benefit_system)
-        current_tax_benefit_system._parameters_at_instant_cache = {}
+        for reform_path in reforms:
+            if isinstance(reform_path, str):
+                current_tax_benefit_system = current_tax_benefit_system.apply_reform(
+                    reform_path
+                )
+            else:
+                current_tax_benefit_system = reform_path(current_tax_benefit_system)
+            current_tax_benefit_system._parameters_at_instant_cache = {}
 
-    for extension in extensions:
-        current_tax_benefit_system = current_tax_benefit_system.clone()
-        current_tax_benefit_system.load_extension(extension)
+        for extension in extensions:
+            current_tax_benefit_system = current_tax_benefit_system.clone()
+            current_tax_benefit_system.load_extension(extension)
 
     if baseline_entry is None:
         baseline_entry = {}

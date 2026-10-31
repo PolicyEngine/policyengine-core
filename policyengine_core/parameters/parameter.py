@@ -19,6 +19,8 @@ class Parameter(AtInstantLike):
 
     Attributes:
         values_list: List of the values, in reverse chronological order.
+        interpolated: Whether :func:`interpolate_parameters` has filled in this
+            parameter's values.
 
 
     Args:
@@ -44,6 +46,10 @@ class Parameter(AtInstantLike):
             })
 
     """
+
+    # A class default rather than an ``__init__`` assignment, so a subclass that
+    # skips ``__init__`` and a tree pickled before this existed can read it.
+    interpolated: bool = False
 
     def __init__(self, name: str, data: dict, file_path: Optional[str] = None) -> None:
         self.name: str = name
@@ -124,7 +130,8 @@ class Parameter(AtInstantLike):
         clone = empty_clone(self)
         clone.__dict__ = self.__dict__.copy()
 
-        clone.metadata = copy.deepcopy(self.metadata)
+        # Own dict, shared values: see ParameterAtInstant.clone.
+        clone.metadata = copy.copy(self.metadata)
         clone.values_list = [
             parameter_at_instant.clone() for parameter_at_instant in self.values_list
         ]

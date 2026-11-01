@@ -67,14 +67,14 @@ def _build_formula_backed_id_simulation(
 def test_subsample_preserves_formula_backed_structural_ids(
     isolated_tax_benefit_system,
 ) -> None:
-    """Subsampling needs IDs that safe public exports intentionally omit."""
+    """Subsampling and exports keep a stored ID that has a formula."""
     sim = _build_formula_backed_id_simulation(isolated_tax_benefit_system)
 
-    safe_columns = sim.to_input_dataframe().columns
-    full_columns = sim.to_input_dataframe(include_computed_variables=True).columns
-
-    assert "person_id__2022" not in safe_columns
-    assert "person_id__2022" in full_columns
+    assert "person_id__2022" in sim.to_input_dataframe().columns
+    assert (
+        "person_id__2022"
+        in sim.to_input_dataframe(include_computed_variables=True).columns
+    )
 
     sim.subsample(n=1, seed="formula-backed-person-id")
 

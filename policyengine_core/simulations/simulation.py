@@ -3627,6 +3627,7 @@ class Simulation:
         df = self._to_person_dataframe(self._get_set_input_periods)
 
         self._retain_population_structure(df, self.dataset.time_period)
+        person_key = self.persons.entity.key
 
         # Flat-file loading can infer households from membership IDs even
         # when the household ID variable has a formula. Use the same leaves

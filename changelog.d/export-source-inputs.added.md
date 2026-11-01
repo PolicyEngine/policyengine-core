@@ -1,0 +1,1 @@
+`to_input_dataframe` now exports population IDs and the formula variables a model declares in `source_input_variables`, accepts a `period` to export one period plus all-time variables, and warns when it leaves out values given for other formula variables.

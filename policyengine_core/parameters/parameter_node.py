@@ -235,6 +235,19 @@ class ParameterNode(AtInstantLike):
         if self.parent is not None:
             self.parent.clear_parent_cache()
 
+    def clear_descendant_caches(self) -> None:
+        """Drop the nodes at instant cached by this node and every node below it.
+
+        ``Parameter.update`` clears the nodes above it, as far as ``parent``
+        links reach. This reaches the nodes an edit made some other way leaves
+        behind: a change to ``values_list``, a scale's ``brackets`` or
+        ``children``.
+        """
+        self._at_instant_cache.clear()
+        for descendant in self.get_descendants():
+            if isinstance(descendant, ParameterNode):
+                descendant._at_instant_cache.clear()
+
     def mark_as_modified(self):
         self.modified = True
         if self.parent is not None:

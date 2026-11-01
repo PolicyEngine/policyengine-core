@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import copy
-from typing import Callable, Union, TYPE_CHECKING
+from typing import Union, TYPE_CHECKING
 
 from policyengine_core.parameters import ParameterNode, Parameter
 from policyengine_core.taxbenefitsystems import TaxBenefitSystem
@@ -124,10 +123,8 @@ class Reform(TaxBenefitSystem):
         super().__init__(baseline.entities)
         self.baseline = baseline
         # Clone the parameter tree so in-place mutations inside ``apply()``
-        # (``set_parameter(...)`` or ``self.parameters.path.update(...)``)
-        # don't leak into the baseline. ``modify_parameters()`` was already
-        # deep-copying, but plenty of reforms mutate ``self.parameters``
-        # directly (bug C4).
+        # (``modify_parameters(...)`` or ``self.parameters.path.update(...)``)
+        # don't leak into the baseline (bug C4).
         if baseline.parameters is not None:
             self.parameters = baseline.parameters.clone()
         else:
@@ -157,29 +154,6 @@ class Reform(TaxBenefitSystem):
             baseline_full_key = self.baseline.full_key
             key = ".".join([baseline_full_key, key])
         return key
-
-    def modify_parameters(
-        self, modifier_function: Callable[[ParameterNode], ParameterNode]
-    ) -> None:
-        """Make modifications on the parameters of the legislation.
-
-        Call this function in `apply()` if the reform asks for legislation parameter modifications.
-
-        Args:
-            modifier_function: A function that takes a :obj:`.ParameterNode` and should return an object of the same type.
-        """
-        baseline_parameters = self.baseline.parameters
-        baseline_parameters_copy = copy.deepcopy(baseline_parameters)
-        reform_parameters = modifier_function(baseline_parameters_copy)
-        if not isinstance(reform_parameters, ParameterNode):
-            return ValueError(
-                "modifier_function {} in module {} must return a ParameterNode".format(
-                    modifier_function.__name__,
-                    modifier_function.__module__,
-                )
-            )
-        self.parameters = reform_parameters
-        self._parameters_at_instant_cache = {}
 
     @staticmethod
     def from_dict(

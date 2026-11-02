@@ -83,6 +83,29 @@ def test_reform_cache_evicts_least_recently_used():
     assert _rate(rebuilt_b) == pytest.approx(0.22)
 
 
+def test_a_baseline_entry_still_reads_as_a_mapping_of_reform_systems():
+    # policyengine-uk's conftest.py drops a file's dotted-input systems after
+    # its last case by walking each baseline's entry like the old dict:
+    #     for key in [key for key in systems if key[1]]: del systems[key]
+    baseline = CountryTaxBenefitSystem()
+    reform_free = _get_tax_benefit_system(baseline, [], [])
+    first = _system_for_rate(baseline, 0.21)
+    _system_for_rate(baseline, 0.22)
+    systems = _tax_benefit_system_cache[baseline]
+    keys = list(systems)
+    assert len(systems) == len(keys) == 2
+    assert all(key[1] for key in keys)
+    assert systems[keys[0]] is first
+    assert keys[0] in systems
+
+    for key in [key for key in systems if key[1]]:
+        del systems[key]
+
+    assert len(systems) == 0 and list(systems) == []
+    assert _get_tax_benefit_system(baseline, [], []) is reform_free
+    assert _system_for_rate(baseline, 0.21) is not first
+
+
 def test_reform_free_system_is_kept_through_evictions():
     baseline = CountryTaxBenefitSystem()
     reform_free = _get_tax_benefit_system(baseline, [], [], reform_key="")

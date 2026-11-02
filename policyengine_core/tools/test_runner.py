@@ -534,11 +534,35 @@ def _automatic_gc_paused(collect=True):
 
 class _CachedSystems:
     """One baseline's cached systems: the reform-free one, kept for the
-    baseline's lifetime, and an LRU of reform systems."""
+    baseline's lifetime, and an LRU of reform systems.
+
+    Before the bound, each baseline's entry was a dict from a (reforms,
+    reform_key, extensions) key to a system, and country packages' test hooks
+    walk it to drop systems early: policyengine-uk's ``conftest.py`` iterates
+    each entry's keys and deletes those with a ``reform_key``. Iterating,
+    indexing, ``in`` and ``del`` therefore act on the reform systems, keyed
+    as before, so such hooks keep working. The reform-free system is not
+    among them.
+    """
 
     def __init__(self):
         self.reform_free = None
         self.reforms = OrderedDict()
+
+    def __iter__(self):
+        return iter(self.reforms)
+
+    def __len__(self):
+        return len(self.reforms)
+
+    def __contains__(self, key):
+        return key in self.reforms
+
+    def __getitem__(self, key):
+        return self.reforms[key]
+
+    def __delitem__(self, key):
+        del self.reforms[key]
 
 
 def _cached_system_count():

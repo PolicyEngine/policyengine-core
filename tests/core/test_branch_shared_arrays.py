@@ -128,11 +128,16 @@ def test_branch_copies_only_what_it_reads(tax_benefit_system):
     branch.calculate("income_tax", JANUARY)
 
     still_shared = shared_keys(branch)
+    held = set(stored_arrays(branch))
     assert still_shared < inherited
-    # ``income_tax`` reads ``salary`` only, so nothing else was copied.
+    # ``income_tax`` reads ``salary`` only, so nothing else was copied: each
+    # other array is still shared, or was dropped by the input (values
+    # calculated after ``salary`` was first stored).
     for variable in ("rent", "accommodation_size", "housing_tax", "basic_income"):
         keys = {key for key in inherited if key[0] == variable}
-        assert keys and keys <= still_shared, variable
+        assert keys and all(key in still_shared or key not in held for key in keys), (
+            variable
+        )
     branch_arrays = stored_arrays(branch)
     for key in still_shared:
         assert np.shares_memory(branch_arrays[key], parent_arrays[key]), key
@@ -439,11 +444,9 @@ def test_set_input_on_branch_leaves_parent(tax_benefit_system):
     branch.set_input("salary", JANUARY, np.array([10_000.0, 0.0, 0.0, 0.0]))
     branch_tax = branch.calculate("income_tax", JANUARY)
 
-    # ``income_tax`` was cached before branching, so the branch keeps the
-    # parent's value, exactly as when the branch held a copy of it.
-    assert np.array_equal(branch_tax, parent_tax)
-    branch.delete_arrays("income_tax", JANUARY)
-    assert branch.calculate("income_tax", JANUARY)[0] > parent_tax[0]
+    # The input drops the ``income_tax`` the branch inherited, so the branch
+    # calculates it from the new salary.
+    assert branch_tax[0] > parent_tax[0]
 
     _assert_unchanged(simulation, snapshot)
     assert np.array_equal(simulation.calculate("income_tax", JANUARY), parent_tax)

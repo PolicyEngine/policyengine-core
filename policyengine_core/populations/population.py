@@ -53,6 +53,28 @@ class Population:
         return numpy.full(self.count, value, dtype)
 
     def __getattr__(self, attribute: str) -> Any:
+        # The shortcut lookup reads ``self.entity`` and ``self.simulation``.
+        # They are missing while copy or pickle rebuilds a population (both
+        # probe the new, empty instance for ``__setstate__`` before restoring
+        # its ``__dict__``), and looking them up would recurse here.
+        # Reject protocol probes before shortcut lookup, including when a
+        # subclass's entity property reads state that has not been restored.
+        if attribute in (
+            "entity",
+            "simulation",
+            "__slots__",
+            "__copy__",
+            "__deepcopy__",
+            "__getstate__",
+            "__setstate__",
+            "__reduce__",
+            "__reduce_ex__",
+            "__getnewargs__",
+            "__getnewargs_ex__",
+        ):
+            raise AttributeError(
+                f"{type(self).__name__!s} has no attribute {attribute!r}"
+            )
         projector = projectors.get_projector_from_shortcut(self, attribute)
         if not projector:
             raise AttributeError(
@@ -233,17 +255,22 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
         )
 
         positions = entity.members_position
-        biggest_entity_size = numpy.max(positions) + 1
+        biggest_entity_size = numpy.max(positions) + 1 if len(positions) else 0
         filtered_criteria = numpy.where(condition, criteria, numpy.inf)
         ids = entity.members_entity_id
 
         # Matrix: the value in line i and column j is the value of criteria for the jth person of the ith entity
-        matrix = numpy.asarray(
-            [
-                entity.value_nth_person(k, filtered_criteria, default=numpy.inf)
-                for k in range(biggest_entity_size)
-            ]
-        ).transpose()
+        # (``reshape`` keeps it two-dimensional when there are no persons)
+        matrix = (
+            numpy.asarray(
+                [
+                    entity.value_nth_person(k, filtered_criteria, default=numpy.inf)
+                    for k in range(biggest_entity_size)
+                ]
+            )
+            .reshape(biggest_entity_size, entity.count)
+            .transpose()
+        )
 
         # We double-argsort all lines of the matrix.
         # Double-argsorting gets the rank of each value once sorted

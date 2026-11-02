@@ -1,0 +1,11 @@
+# actionlint reads this file from .github/ on every run, in CI and locally.
+# Format: https://github.com/rhysd/actionlint/blob/v1.7.12/docs/config.md
+paths:
+  .github/workflows/push.yaml:
+    ignore:
+      # Both come from the Test job's "Deploy documentation" step, which
+      # PolicyEngine/policyengine-core#594 moves into its own Docs job and
+      # fixes. Delete these two entries in whichever PR fixes or removes that
+      # step.
+      - 'property "os" is not defined in object type \{\}'
+      - 'input "GITHUB_TOKEN" is not defined in action "JamesIves/github-pages-deploy-action@v4"'

@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import gc
+import os
+
+from pathlib import Path
 
 import numpy as np
 
@@ -82,32 +85,31 @@ def test_delete_arrays_purges_only_visible_branch_names():
     )
 
 
-def test_on_disk_storage_clone_copies_metadata_without_owning_directory(tmp_path):
-    """A cloned disk view must own metadata, but not the shared directory."""
+def test_on_disk_storage_clone_copies_metadata_and_writes_elsewhere(tmp_path):
+    """A cloned disk view owns its metadata and writes a separate file."""
     storage_dir = tmp_path / "storage"
     storage_dir.mkdir()
     storage = OnDiskStorage(str(storage_dir), is_eternal=True)
     storage.put(np.asarray([12.0]), PERIOD, "default")
     storage._enums["sentinel"] = "enum"
 
-    try:
-        assert storage.preserve_storage_dir is False
-        clone = storage.clone()
+    clone = storage.clone()
 
-        assert clone is not storage
-        assert clone.storage_dir == storage.storage_dir
-        assert clone.is_eternal == storage.is_eternal
-        assert clone.preserve_storage_dir is True
-        assert clone._files == storage._files
-        assert clone._files is not storage._files
-        assert clone._enums == storage._enums
-        assert clone._enums is not storage._enums
-        assert clone._storage_dir_owner is storage
-        assert clone.clone()._storage_dir_owner is storage
-    finally:
-        # Let pytest's tmp_path cleanup remove the directory even if an
-        # assertion fails before the clone can prove its ownership setting.
-        storage.preserve_storage_dir = True
+    assert clone is not storage
+    assert clone.is_eternal == storage.is_eternal
+    assert clone._files == storage._files
+    assert clone._files is not storage._files
+    assert clone._enums == storage._enums
+    assert clone._enums is not storage._enums
+
+    clone.put(np.asarray([13.0]), PERIOD, "default")
+
+    (clone_file,) = clone._files.values()
+    (source_file,) = storage._files.values()
+    assert clone_file != source_file
+    assert os.path.isfile(clone_file)
+    np.testing.assert_array_equal(storage.get(PERIOD, "default"), [12.0])
+    np.testing.assert_array_equal(clone.get(PERIOD, "default"), [13.0])
 
 
 def test_on_disk_storage_clone_keeps_cleanup_owner_alive(tmp_path):
@@ -145,11 +147,12 @@ def test_child_disk_delete_keeps_parent_view_intact(tmp_path):
         child.delete_arrays("salary", PERIOD)
 
         assert child_storage is not parent_storage
-        assert child_storage.preserve_storage_dir is True
         np.testing.assert_array_equal(inherited_value, [3_000.0])
         assert disk_key in parent_storage._files
         assert disk_key not in child_storage._files
-        assert (tmp_path / "salary" / f"{disk_key}.npy").is_file()
+        # Each store writes its own file; the parent's is still there.
+        assert Path(parent_storage._files[disk_key]).is_file()
+        assert Path(parent_storage._files[disk_key]).parent == tmp_path / "salary"
         np.testing.assert_array_equal(
             parent_holder._disk_storage.get(PERIOD, "default"),
             [3_000.0],

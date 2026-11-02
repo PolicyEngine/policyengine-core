@@ -1,12 +1,45 @@
 from __future__ import annotations
 
+import importlib
+import operator
 import typing
-from typing import Any, NoReturn, Optional, Type
+from typing import Any, NoReturn, Optional, Tuple, Type
 
 import numpy
 
 if typing.TYPE_CHECKING:
     from policyengine_core.enums import Enum
+
+
+def _restore_enum_array(
+    array: numpy.ndarray,
+    enum_name: Optional[Tuple[str, str]],
+    array_type: Optional[Type[EnumArray]] = None,
+) -> EnumArray:
+    """Rebuild a pickled EnumArray, with its enum if this process can find it.
+
+    ``enum_name`` is the enum's module and qualified name, or ``None`` for an
+    array that had no enum.
+
+    Tax-benefit systems load variable files under module names that exist only
+    in the process that loaded them, so an enum defined in one cannot be found
+    from another process. The array then comes back with ``possible_values``
+    unset (``None``), where pickling the enum by reference would fail to
+    unpickle the array at all.
+    """
+    possible_values = None
+    if enum_name is not None:
+        module_name, qualified_name = enum_name
+        try:
+            module = importlib.import_module(module_name)
+            possible_values = operator.attrgetter(qualified_name)(module)
+        except (ImportError, AttributeError):
+            pass
+    # Do not invoke a subclass's constructor: it may require other arguments.
+    # The default also accepts pickles written by the two-argument reducer.
+    restored = array.view(EnumArray if array_type is None else array_type)
+    restored.possible_values = possible_values
+    return restored
 
 
 class EnumArray(numpy.ndarray):
@@ -34,6 +67,16 @@ class EnumArray(numpy.ndarray):
             return
 
         self.possible_values = getattr(obj, "possible_values", None)
+
+    def __reduce__(self) -> tuple:
+        # ndarray's own ``__reduce__`` rebuilds the array without
+        # ``possible_values``, so an unpickled EnumArray could be neither
+        # decoded nor compared with an enum item. The enum travels by name
+        # rather than by reference; see ``_restore_enum_array``.
+        # Legacy NumPy pickles do not restore this attribute at all.
+        enum = getattr(self, "possible_values", None)
+        name = None if enum is None else (enum.__module__, enum.__qualname__)
+        return _restore_enum_array, (self.view(numpy.ndarray), name, type(self))
 
     def __eq__(self, other: Any) -> bool:
         # When comparing to an item of self.possible_values, use the item index

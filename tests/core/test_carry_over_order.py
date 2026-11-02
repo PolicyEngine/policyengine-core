@@ -145,6 +145,27 @@ def test_an_input_ending_after_the_last_date_carries(system, stored, asked):
     )
 
 
+@pytest.mark.parametrize("cache_only", [False, True])
+def test_an_input_ending_after_the_last_date_drops_overlapping_defaults(
+    system, cache_only
+):
+    built = simulation(system, {})
+    name = "day_input_without_helper"
+    holder = built.get_holder(name)
+    requested = periods.period("9999-12-31")
+    holder._do_not_store = cache_only
+    np.testing.assert_array_equal(built.calculate(name, requested), [0, 0])
+    assert (name, requested) in built._fast_cache
+    assert holder._memory_storage.has(requested) == (not cache_only)
+    holder._do_not_store = False
+
+    built.set_input(name, "day:9999-12-30:3", [10, 20])
+
+    assert holder.get_array(requested) is None
+    assert (name, requested) not in built._fast_cache
+    np.testing.assert_array_equal(built.calculate(name, requested), [10, 20])
+
+
 @pytest.mark.parametrize("longer_first", [True, False], ids=["longer", "shorter"])
 def test_an_input_ending_after_the_last_date_ends_last(system, longer_first):
     values = {"day:2012-01-01:4000000": [10, 20], "day:2012-01-01:2": [1, 2]}

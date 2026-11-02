@@ -1,3 +1,102 @@
+## [3.34.2] - 2026-10-31
+
+### Changed
+
+- Pause automatic garbage collection while the YAML test runner builds the system for a reform combination, run one full collection when the build returns while the cache holds fewer than three systems, and restore the caller's setting, so a cache-miss build no longer spends most of its time in repeated full collections that free almost nothing.
+
+
+## [3.34.1] - 2026-10-31
+
+### Changed
+
+- Parameter clones copy each metadata dict without deep-copying the values in it, which makes cloning a large tax-benefit system faster and smaller. `interpolate_parameters` now records its work in `Parameter.interpolated` instead of writing `completed` into the `interpolation` metadata, so it interpolates every parameter a node propagates `interpolation` to, not only the first.
+
+
+## [3.34.0] - 2026-10-30
+
+### Removed
+
+- Removed `Reform.from_api`, `Reform.api_id` and `policyengine_core.charts.api` (with the chart functions `get_api_chart_data`, `intra_decile_chart` and `decile_chart` that `policyengine_core.charts` exported from it), which sent HTTP requests to the PolicyEngine Public API; build reforms with `Reform.from_dict` instead.
+
+
+## [3.33.15] - 2026-10-30
+
+### Changed
+
+- Upgraded certifi to 2026.10.23 and hf-xet to 1.8.0 in `uv.lock`, so development environments installed from the lock no longer trust the compromised eMudhra CA certificates.
+
+
+## [3.33.14] - 2026-10-30
+
+### Fixed
+
+- Build the YAML test runner's unit-test nodes with pytest's public `from_parent` constructor, so the test suite passes with pytest 9.2.0.
+
+
+## [3.33.13] - 2026-10-27
+
+### Fixed
+
+- Restore dumped simulations that have no persons, or groups with no members, by recording each population's count in the dump; `build_default_simulation` again refuses a count that is not an integer when building.
+
+
+## [3.33.12] - 2026-10-19
+
+### Fixed
+
+- `set_input` for one of a variable's own periods (one month, or one year) now drops the sums and twelfths the simulation calculated for that variable over overlapping periods, so a later `calculate` adds up or divides the new input instead of returning the old result (#579).
+- Compile each variable source file once per process for each source version, reusing that code object in each system's own module so tools such as coverage's sys.monitoring core retain fewer copies (#607), while keeping variable modules in sys.modules (#520) and preserving the original execution path for bytecode-only and other loaders.
+
+
+## [3.33.11] - 2026-10-19
+
+### Fixed
+
+- Reject implicit dataset defaults that exceed their recognized role's capacity per group and role arrays that are not one dimensional or do not match the membership count.
+
+
+## [3.33.10] - 2026-10-18
+
+### Fixed
+
+- Group `all`, `max` and `min`, `members_position` and `Population.get_rank` now work when a simulation has no persons, giving the neutral element (True, -inf, inf) for each group instead of raising "zero-size array to reduction"; empty memberships and default simulation IDs (including for NumPy unsigned counts) are kept as integers so ranks and projections work.
+
+
+## [3.33.9] - 2026-10-18
+
+### Fixed
+
+- `MarginalRateTaxScale.to_average` now keeps a first threshold other than 0, so the average scale levies the marginal tax at every threshold and `to_marginal` gives the scale back; it raises `ValueError`, instead of returning a wrong scale or raising `ZeroDivisionError`, when no average rate scale can levy the tax, and it converts one bracket with surplus rates as it converts the paired bracket.
+
+
+## [3.33.8] - 2026-10-18
+
+### Fixed
+
+- Looking up parameters with empty key arrays now returns an empty array at every level of a chained lookup, instead of raising `IndexError` once a level holds numeric values; after such a selection a one-element key gives no rows if it names a child and raises `ParameterNotFoundError` if it does not.
+
+
+## [3.33.7] - 2026-10-18
+
+### Fixed
+
+- Correct dataset group identity and membership validation, and load flat-file memberships and group values in group order while preserving empty datasets.
+
+
+## [3.33.6] - 2026-10-18
+
+### Fixed
+
+- `LinearAverageRateTaxScale.calc` now taxes a base at or above the last threshold at the last average rate. It used to return 0 for such bases unless the last threshold was infinity, as `MarginalRateTaxScale.to_average` sets it.
+
+
+## [3.33.5] - 2026-10-18
+
+### Fixed
+
+- Converting a one-bracket rate scale no longer raises `UnboundLocalError`, zero-origin marginal singletons preserve their tax calculations, and converting an empty linear-average scale gives an empty marginal scale.
+
+
 ## [3.33.4] - 2026-10-15
 
 ### Changed

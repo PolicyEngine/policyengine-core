@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
+import operator
 import os
 import warnings
 
@@ -27,13 +28,22 @@ DERIVED_PERIODS_FILE = "derived_periods.txt"
 DUMP_FORMAT_FILE = "dump_format.txt"
 DUMP_FORMAT_VERSION = 1
 
+# In each population's directory in ``__entities__``: its count as an int64
+# scalar, which its ids and memberships do not always give (a group with no
+# members holds no membership, and some simulations never set ids).
+# ``restore_simulation`` infers the count of a population whose dump lacks
+# this file (see ``_restore_count``), as for a count that is not an integer;
+# earlier versions ignore the file.
+COUNT_FILE = "count.npy"
+
 
 def dump_simulation(simulation, directory):
     """
     Write simulation data to directory, so that it can be restored later.
 
-    Writes the simulation's branch values, including inherited values, and
-    lists the periods it calculated (see ``restore_simulation``).
+    Writes each population's ids and count and each group's memberships,
+    positions and roles; the simulation's branch values, including inherited
+    values; and the periods it calculated (see ``restore_simulation``).
     """
     parent_directory = os.path.abspath(os.path.join(directory, os.pardir))
     if not os.path.isdir(parent_directory):  # To deal with reforms
@@ -81,6 +91,11 @@ def restore_simulation(directory, tax_benefit_system, **kwargs):
     format marker that lists none may be one of those, so restoring it
     warns: ``apply_reform`` then keeps any calculated value in it as dumped
     instead of recalculating it.
+
+    Each population gets the count the dump records, which may be zero. A
+    dump written before counts were recorded gives each count as the
+    smallest its ids and memberships allow: that is the count when the ids
+    are set, one per instance, as ``SimulationBuilder`` sets them.
     """
     simulation = Simulation(
         tax_benefit_system, tax_benefit_system.instantiate_entities()
@@ -88,15 +103,14 @@ def restore_simulation(directory, tax_benefit_system, **kwargs):
 
     entities_dump_dir = os.path.join(directory, "__entities__")
     for population in simulation.populations.values():
-        if population.entity.is_person:
-            continue
-        person_count = _restore_entity(population, entities_dump_dir)
-
-    for population in simulation.populations.values():
-        if not population.entity.is_person:
-            continue
         _restore_entity(population, entities_dump_dir)
-        population.count = person_count
+    groups = [
+        population
+        for population in simulation.populations.values()
+        if not population.entity.is_person
+    ]
+    for population in simulation.populations.values():
+        _restore_count(population, entities_dump_dir, groups)
 
     variables_to_restore = [
         variable for variable in os.listdir(directory) if variable != "__entities__"
@@ -160,6 +174,15 @@ def _dump_entity(population, directory):
     path = os.path.join(directory, population.entity.key)
     os.mkdir(path)
     np.save(os.path.join(path, "id.npy"), population.ids)
+    try:
+        # Any integer, such as a NumPy one or a 0-d or masked array, as int64.
+        count = np.int64(operator.index(population.count))
+    except TypeError:
+        # A count that is not an integer can only be set by hand: restore
+        # infers it, as it does for an older dump.
+        count = None
+    if count is not None:
+        np.save(os.path.join(path, COUNT_FILE), count)
 
     if population.entity.is_person:
         return
@@ -202,9 +225,25 @@ def _restore_entity(population, directory):
             [encoded_roles == role.key for role in flattened_roles],
             [role for role in flattened_roles],
         )
-    person_count = len(population.members_entity_id)
-    population.count = max(population.members_entity_id) + 1
-    return person_count
+
+
+def _restore_count(population, directory, groups):
+    """Set ``population.count`` from its dump, after every structure is restored.
+
+    A dump without ``COUNT_FILE`` gives the smallest count its arrays allow:
+    one per id and, for a group, one past its highest member index (none
+    with no members); for persons, as many as any group has members.
+    """
+    count_path = os.path.join(directory, population.entity.key, COUNT_FILE)
+    if os.path.exists(count_path):
+        population.count = np.load(count_path).item()
+        return
+    counts = [len(population.ids)]
+    if population.entity.is_person:
+        counts += [len(group.members_entity_id) for group in groups]
+    elif len(population.members_entity_id):
+        counts.append(int(np.max(population.members_entity_id)) + 1)
+    population.count = max(counts)
 
 
 def _restore_holder(

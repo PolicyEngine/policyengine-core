@@ -167,6 +167,56 @@ def _drop_calculated_overlapping(
     _evict_fast_cache(holder, dropped_periods, branch_name)
 
 
+def _drop_calculated_over_own_period(
+    holder: Holder, period: Period, branch_name: str
+) -> None:
+    """Drop what the simulation calculated for the variable over periods
+    that overlap ``period``, once an input is set for ``period``, one of the
+    variable's own periods (policyengine-core#579).
+
+    ``calculate`` adds up a monthly flow over a year, or divides a yearly
+    flow into a month, and caches the result at that period. The value the
+    input replaced went into it, so it is out of date, and ``calculate``
+    would return it instead of adding up or dividing the input. The rule is
+    the one the ``set_input`` helpers follow (``_drop_calculated_overlapping``),
+    applied to an input that needs no helper. Inputs are kept.
+
+    ``calculate``'s fast cache also drops what it holds for the variable at
+    periods that overlap ``period``, ``period`` included, so an input set
+    through the holder rather than ``Simulation.set_input`` is read back too.
+    """
+    _drop_calculated_overlapping(holder, period, branch_name)
+    simulation = getattr(holder, "simulation", None)
+    fast_cache = getattr(simulation, "_fast_cache", None)
+    if not fast_cache:
+        return
+    name = holder.variable.name
+    _evict_fast_cache(
+        holder,
+        [
+            cached_period
+            for cached_name, cached_period in list(fast_cache)
+            if cached_name == name
+            and isinstance(cached_period, Period)
+            and cached_period.unit != periods.ETERNITY
+            and _periods_overlap(cached_period, period)
+        ],
+        branch_name,
+    )
+
+
+def _periods_overlap(first: Period, second: Period) -> bool:
+    """Compare extents even when a period ends beyond datetime's last date."""
+    try:
+        return not (first.start > second.stop or first.stop < second.start)
+    except OverflowError:
+        from policyengine_core.simulations.simulation import _end_order
+
+        return first.start.date.toordinal() < _end_order(
+            second
+        ) and second.start.date.toordinal() < _end_order(first)
+
+
 def _is_calculated_overlapping(
     holder: Holder,
     stored_branch_name: str,
@@ -184,7 +234,7 @@ def _is_calculated_overlapping(
         return False
     if stored_period.unit == periods.ETERNITY:
         return False
-    if stored_period.start > period.stop or stored_period.stop < period.start:
+    if not _periods_overlap(stored_period, period):
         return False
     return not _is_input(holder, stored_period, stored_branch_name, storage_name)
 

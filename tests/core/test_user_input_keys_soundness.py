@@ -157,6 +157,10 @@ def test_memory_input_wins_over_a_conflicting_disk_cache(invalidate):
     holder.put_in_cache(np.array([99.0]), JANUARY)
     simulation.memory_config.max_memory_occupation_pc = 101
     simulation.set_input("rent", JANUARY, [42.0])
+    assert holder._disk_storage.get(JANUARY) is None
+    # Own-period cleanup removed the old cache; model a later conflicting
+    # disk cache so export and replay still exercise both tiers.
+    holder._disk_storage.put(np.array([99.0]), JANUARY)
     np.testing.assert_array_equal(holder._memory_storage.get(JANUARY), [42.0])
     np.testing.assert_array_equal(holder._disk_storage.get(JANUARY), [99.0])
 
@@ -234,6 +238,10 @@ def test_deleted_memory_input_does_not_turn_a_disk_calculation_into_an_input():
     assert _key("rent", JANUARY) not in simulation._user_input_keys
     simulation.memory_config.max_memory_occupation_pc = 101
     simulation.set_input("rent", JANUARY, [500.0])
+    assert holder._disk_storage.get(JANUARY) is None
+    # Keep a calculated disk value behind the input to test its provenance
+    # after the memory input is deleted.
+    holder._disk_storage.put(np.array([0.0]), JANUARY, derived=True)
     np.testing.assert_array_equal(holder._memory_storage.get(JANUARY), [500.0])
     np.testing.assert_array_equal(holder._disk_storage.get(JANUARY), [0.0])
 
@@ -373,6 +381,10 @@ if hypothesis is not None:
             holder.put_in_cache(np.array([float(disk_value)]), JANUARY)
         simulation.memory_config.max_memory_occupation_pc = 101
         simulation.set_input("rent", JANUARY, [memory_value])
+        if not disk_is_input:
+            assert holder._disk_storage.get(JANUARY) is None
+            # Preserve the generated conflicting-tier witness after cleanup.
+            holder._disk_storage.put(np.array([float(disk_value)]), JANUARY)
         if delete_memory:
             simulation.delete_arrays("rent", "2025")
 

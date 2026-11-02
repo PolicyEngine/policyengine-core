@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 
+import gc
 import logging
 import sys
 import os
 import traceback
 import textwrap
+from contextlib import contextmanager
 from typing import Dict, List
 
 import pytest
@@ -474,6 +476,62 @@ class OpenFiscaPlugin(object):
             )
 
 
+# A cache miss forces a full collection only while the cache holds fewer than
+# this many systems, counting each baseline's reform-free system and its
+# reform systems across every baseline. That collection walks every object in
+# the process, so each cached system makes it dearer, while the automatic
+# collector's full collections grow rarer as the heap grows. In PR #643's
+# model of policyengine-us-sized systems, 3 gave the least collection CPU over
+# 16 and 32 misses; limits from 1 to 8 came within 20%, and no limit cost
+# about three times as much. Treat 3 as a practical bound, not a proven best
+# value: the model's ranking of limits moves with the heap's shape.
+#
+# With the default reform cache (the reform-free system plus 2 reform
+# systems) the cache reaches 3 after its third build and stays there, so later
+# misses leave the copy to the automatic collector. A smaller
+# ``reform_cache_size`` (0 or 1) keeps one baseline's cache below 3 for good,
+# so every miss then forces a collection; each such collection walks a heap of
+# at most two cached systems plus the new one.
+_FULL_COLLECTION_CACHE_LIMIT = 3
+
+
+@contextmanager
+def _automatic_gc_paused(collect=True):
+    """Pause automatic garbage collection for a build, then maybe collect once.
+
+    Building a reform system copies the whole baseline. On policyengine-us
+    the copy's allocations set off six or seven full collections per build,
+    each walking every object in the process and freeing almost nothing.
+    Pausing collection skips them. When collection resumes, the copy's
+    objects pass through a young and a middle collection, and through a full
+    one only when CPython's growth rule allows it: an automatic full
+    collection waits until the objects moved into the oldest generation since
+    the last full collection number at least a quarter of those that survived
+    it.
+
+    With ``collect``, a build that returns ends with one ``gc.collect()``. That
+    full collection bypasses the growth rule and moves the copy straight into
+    the oldest generation, so its objects skip the young and middle
+    collections. It pays only while the copy is a large share of the heap, so
+    ``_get_tax_benefit_system`` asks for it only while the cache holds fewer
+    than ``_FULL_COLLECTION_CACHE_LIMIT`` systems and otherwise leaves the copy
+    to the automatic collector.
+
+    The caller's setting is restored when the build returns or raises. A
+    caller that had disabled collection gets no collection and keeps it
+    disabled, and a build that raises gets none.
+    """
+    was_enabled = gc.isenabled()
+    gc.disable()
+    try:
+        yield
+        if was_enabled and collect:
+            gc.collect()
+    finally:
+        if was_enabled:
+            gc.enable()
+
+
 class _CachedSystems:
     """One baseline's cached systems: the reform-free one, kept for the
     baseline's lifetime, and an LRU of reform systems."""
@@ -481,6 +539,15 @@ class _CachedSystems:
     def __init__(self):
         self.reform_free = None
         self.reforms = OrderedDict()
+
+
+def _cached_system_count():
+    """How many systems the cache holds across every baseline: each
+    baseline's reform-free system, once built, plus its reform systems."""
+    return sum(
+        (entry.reform_free is not None) + len(entry.reforms)
+        for entry in _tax_benefit_system_cache.values()
+    )
 
 
 def _get_tax_benefit_system(
@@ -520,7 +587,12 @@ def _get_tax_benefit_system(
 
     if not reforms and not extensions and not reform_key:
         if cached_systems.reform_free is None:
-            cached_systems.reform_free = baseline.clone()
+            # A miss: build paused, as for a reform system below.
+            with _automatic_gc_paused(
+                collect=_cached_system_count() < _FULL_COLLECTION_CACHE_LIMIT
+            ):
+                reform_free = baseline.clone()
+            cached_systems.reform_free = reform_free
         return cached_systems.reform_free
 
     # Key: (reforms in order, reform_key, extensions as a frozenset). The
@@ -540,20 +612,26 @@ def _get_tax_benefit_system(
         reform_systems.move_to_end(inner_key)
         return cached
 
-    current_tax_benefit_system = baseline.clone()
+    # Only a cache miss builds a system, so only a miss touches collection.
+    # The count covers every baseline's systems, after this call's bound has
+    # trimmed this baseline's reform systems and before the new one goes in.
+    with _automatic_gc_paused(
+        collect=_cached_system_count() < _FULL_COLLECTION_CACHE_LIMIT
+    ):
+        current_tax_benefit_system = baseline.clone()
 
-    for reform_path in reforms:
-        if isinstance(reform_path, str):
-            current_tax_benefit_system = current_tax_benefit_system.apply_reform(
-                reform_path
-            )
-        else:
-            current_tax_benefit_system = reform_path(current_tax_benefit_system)
-        current_tax_benefit_system._parameters_at_instant_cache = {}
+        for reform_path in reforms:
+            if isinstance(reform_path, str):
+                current_tax_benefit_system = current_tax_benefit_system.apply_reform(
+                    reform_path
+                )
+            else:
+                current_tax_benefit_system = reform_path(current_tax_benefit_system)
+            current_tax_benefit_system._parameters_at_instant_cache = {}
 
-    for extension in extensions:
-        current_tax_benefit_system = current_tax_benefit_system.clone()
-        current_tax_benefit_system.load_extension(extension)
+        for extension in extensions:
+            current_tax_benefit_system = current_tax_benefit_system.clone()
+            current_tax_benefit_system.load_extension(extension)
 
     if cache_size > 0:
         reform_systems[inner_key] = current_tax_benefit_system

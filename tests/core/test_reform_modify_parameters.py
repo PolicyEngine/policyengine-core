@@ -156,15 +156,20 @@ def test_edits_of_a_warm_tree_read_as_a_cold_tree_of_the_same_edits(run, edit):
         edit(parameters)
         return parameters
 
-    class edited(Reform):
-        def apply(self):
-            self.modify_parameters(modify)
+    def reform(warm_first):
+        class edited(Reform):
+            def apply(self):
+                if warm_first:
+                    warm(self)
+                self.modify_parameters(modify)
+
+        return edited
 
     warmed = new_system()
     warm(warmed)
-    reformed = run(edited, warmed)
+    reformed = run(reform(True), warmed)
 
-    assert system_reads(reformed) == system_reads(run(edited, new_system()))
+    assert system_reads(reformed) == system_reads(run(reform(False), new_system()))
 
 
 def test_dict_form_clears_what_an_update_under_a_bracket_leaves_behind():
@@ -172,10 +177,10 @@ def test_dict_form_clears_what_an_update_under_a_bracket_leaves_behind():
     system = new_system()
     warm(system)
 
-    system.modify_parameters({"tax[1].rate": {"year:2017:1": 0.9}})
+    system.modify_parameters({"tax[1].rate": {"year:2016:1": 0.9}})
 
-    assert system.get_parameters_at_instant(INSTANT).tax.rates == [0.1, 0.9]
-    assert system.parameters(INSTANT).tax.rates == [0.1, 0.9]
+    assert system.get_parameters_at_instant("2016-01-01").tax.rates == [0.1, 0.9]
+    assert system.parameters("2016-01-01").tax.rates == [0.1, 0.9]
 
 
 @BOTH_PATHS
@@ -190,6 +195,7 @@ def test_a_tree_the_modifier_returns_reads_fresh(run, replace):
 
     class replaces_the_tree(Reform):
         def apply(self):
+            warm(self)
             self.modify_parameters(modify)
 
     system = new_system()
@@ -234,19 +240,79 @@ def test_a_modifier_that_raises_leaves_a_tree_that_reads_fresh():
     assert system.parameters("2020-01-01").benefit.amount == -1
 
 
-def test_clear_descendant_caches_reaches_every_node_below_and_none_above():
+@BOTH_PATHS
+def test_edits_made_before_a_modifier_raises_stay(run):
+    """``apply()`` may catch the exception and carry on."""
+
+    def modify(parameters):
+        parameters.benefit.amount.values_list[0].value = -1
+        raise ModifierFailed
+
+    class catches_it(Reform):
+        def apply(self):
+            warm(self)
+            with pytest.raises(ModifierFailed):
+                self.modify_parameters(modify)
+
+    reformed = run(catches_it, new_system())
+
+    assert reformed.get_parameters_at_instant("2020-01-01").benefit.amount == -1
+
+
+@BOTH_PATHS
+def test_a_read_through_the_system_inside_a_modifier_leaves_nothing_stale(run):
+    class reads_then_edits(Reform):
+        def apply(self):
+            def modify(parameters):
+                self.get_parameters_at_instant("2020-01-01")
+                parameters.benefit.amount.values_list[0].value = -1
+                return parameters
+
+            self.modify_parameters(modify)
+
+    reformed = run(reads_then_edits, new_system())
+
+    assert reformed.get_parameters_at_instant("2020-01-01").benefit.amount == -1
+
+
+def test_the_system_gets_a_new_cache_and_leaves_the_old_one_alone():
+    """policyengine-us's SPM policies share this dict, so emptying it in place
+    would reach the others."""
     system = new_system()
     warm(system)
+    shared = system._parameters_at_instant_cache
+    instants = set(shared)
+
+    system.modify_parameters(lambda parameters: parameters)
+
+    assert instants
+    assert system._parameters_at_instant_cache is not shared
+    assert set(shared) == instants
+
+
+def test_clear_descendant_caches_reaches_every_node_below_and_no_other():
+    system = new_system()
     parameters = system.parameters
+    parameters.benefit.add_child(
+        "inner", ParameterNode(data={"node": {"leaf": {"2015-01-01": 1}}})
+    )
+    warm(system)
+    below = [
+        parameters.benefit,
+        parameters.benefit.inner,
+        parameters.benefit.inner.node,
+    ]
+    nodes = [node for node, _ in cached_nodes(parameters).values()]
+    assert all(node._at_instant_cache for node in nodes)
 
     parameters.benefit.clear_descendant_caches()
-    assert not parameters.benefit._at_instant_cache
-    assert parameters._at_instant_cache
+
+    for node in nodes:
+        assert bool(node._at_instant_cache) != any(node is item for item in below)
 
     parameters.clear_descendant_caches()
-    assert not any(
-        node._at_instant_cache for node, _ in cached_nodes(parameters).values()
-    )
+
+    assert not any(node._at_instant_cache for node in nodes)
 
 
 # ----- Redundant copy, and the changes it dropped ----- #
@@ -338,10 +404,11 @@ def test_a_modifier_that_returns_no_tree_keeps_its_edits(run):
     results = []
 
     def modify(parameters):
-        parameters.benefit.amount.update(period="year:2020:1", value=-1)
+        parameters.benefit.amount.values_list[0].value = -1
 
     class returns_nothing(Reform):
         def apply(self):
+            warm(self)
             results.append(self.modify_parameters(modify))
 
     system = new_system()
@@ -351,6 +418,24 @@ def test_a_modifier_that_returns_no_tree_keeps_its_edits(run):
 
     assert type(results[0]) is ValueError
     assert reformed.get_parameters_at_instant("2020-01-01").benefit.amount == -1
+
+
+@BOTH_PATHS
+@pytest.mark.parametrize(
+    "change",
+    [lambda parameters: parameters, {"benefit.amount": {"year:2020:1": -1}}],
+    ids=["function", "dict"],
+)
+def test_modify_parameters_returns_the_system_it_ran_on(run, change):
+    results = []
+
+    class records(Reform):
+        def apply(self):
+            results.append((self.modify_parameters(change), self))
+
+    run(records, new_system())
+
+    assert results[0][0] is results[0][1]
 
 
 def test_a_reform_instance_takes_the_dict_form():

@@ -796,7 +796,7 @@ class TaxBenefitSystem:
 
     def modify_parameters(
         self, modifier_function: Callable[[ParameterNode], ParameterNode]
-    ) -> None:
+    ) -> TaxBenefitSystem | ValueError:
         """Make modifications on the parameters of the legislation.
 
         Call this function in `apply()` if the reform asks for legislation parameter modifications.
@@ -810,7 +810,7 @@ class TaxBenefitSystem:
 
         This system and its tree read as the changes left them, however the
         modifier made them: every node cached at an instant is dropped once it
-        finishes, even if it raises.
+        finishes, even if it raises. Edits it made before raising stay.
 
         Args:
             modifier_function: A function that takes a :obj:`.ParameterNode` and should return an object of the same type.

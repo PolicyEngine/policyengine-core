@@ -193,14 +193,16 @@ def apply_steps(system, steps):
     """Make each step of a reform's ``apply()`` on ``system``.
 
     A step is an edit made straight on the system's tree (``("direct", edit)``),
-    a read of it (``("read", position)``), a modifier function (``("modify",
-    edits, ending)``), or the dict form of ``modify_parameters`` (``("dict",
-    year, value)``), which does nothing once an edit has removed its parameter.
+    a read through the system and its tree (``("read", position)``), a modifier
+    function (``("modify", edits, ending)``), or the dict form of
+    ``modify_parameters`` (``("dict", year, value)``), which does nothing once an
+    edit has removed its parameter.
     """
     for step in steps:
         if step[0] == "direct":
             make_edit(system.parameters, step[1])
         elif step[0] == "read":
+            system.get_parameters_at_instant(INSTANTS[step[1] % len(INSTANTS)])
             make_edit(system.parameters, step)
         elif step[0] == "modify":
             system.modify_parameters(modifier(step[1], step[2]))

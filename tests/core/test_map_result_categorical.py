@@ -109,6 +109,33 @@ def test_a_decoded_enum_maps_across_groups():
     assert list(result) == ["SOUTH", "SOUTH", "NORTH"]
 
 
+def with_an_empty_household(simulation):
+    households = simulation.populations["household"]
+    households.count = 3
+    households.ids = np.array([1, 2, 3])
+    households.members_entity_id = np.array([0, 0, 2])
+    return simulation
+
+
+def test_a_group_with_no_members_takes_an_empty_string():
+    simulation = with_an_empty_household(build([1, 1, 2], [1, 1, 2]))
+    names = np.array(["x", "x", "y"], dtype=object)
+    assert list(simulation.map_result(names, "person", "household")) == ["x", "", "y"]
+    fixed_width = names.astype(str)
+    assert list(simulation.map_result(fixed_width, "person", "household")) == [
+        "x",
+        "",
+        "y",
+    ]
+
+
+def test_a_group_with_no_members_takes_the_first_value_of_an_enum():
+    simulation = with_an_empty_household(build([1, 1, 2], [1, 1, 2]))
+    regions = EnumArray(np.array([1, 1, 1], dtype=np.int16), Region)
+    mapped = simulation.map_result(regions, "person", "household")
+    assert list(mapped.decode_to_str()) == ["SOUTH", "NORTH", "SOUTH"]
+
+
 def test_a_person_string_that_differs_within_a_group_says_so():
     simulation = two_families_in_one_household()
     with pytest.raises(ValueError, match="1 household group"):

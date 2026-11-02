@@ -29,7 +29,7 @@ from policyengine_core.errors import CycleError, SpiralError
 from policyengine_core.holders.holder import Holder
 from policyengine_core.periods import Period
 from policyengine_core.periods.config import ETERNITY, MONTH, YEAR
-from policyengine_core.periods.helpers import period
+from policyengine_core.periods.helpers import period, unit_weight
 from policyengine_core.tracers import (
     FullTracer,
     SimpleTracer,
@@ -1644,7 +1644,8 @@ class Simulation:
 
         Amounts map between entities by summing and sharing, which strings and
         enums cannot do. A group takes its members' common value, and members
-        with different values have no common value to take.
+        with different values have no common value to take. A group with no
+        members takes an empty string, or an enum's first value.
         """
         person_key = self.tax_benefit_system.person_entity.key
         person_values = (
@@ -1654,7 +1655,10 @@ class Simulation:
         )
         person_values = np.asarray(person_values)
         target_pop = self.populations[target_entity]
-        group_values = target_pop.value_from_first_person(person_values)
+        is_enum = isinstance(values, EnumArray)
+        group_values = target_pop.value_nth_person(
+            0, person_values, default=0 if is_enum else ""
+        )
         differs = target_pop.project(group_values) != person_values
         if np.any(differs):
             groups = np.unique(target_pop.members_entity_id[differs]).size
@@ -1664,7 +1668,7 @@ class Simulation:
                 "values, and text values cannot be summed or shared. Map it to "
                 "the person entity instead."
             )
-        if isinstance(values, EnumArray):
+        if is_enum:
             return EnumArray(group_values, values.possible_values)
         return group_values
 
@@ -1825,9 +1829,9 @@ class Simulation:
             # Registration rejects a non-numeric defined_for variable (see
             # ``TaxBenefitSystem._check_defined_for``). This catches one set,
             # or a variable replaced, afterwards. It reads the variable's
-            # type, not the values: mapped to a group entity, an Enum's
-            # indices are summed into numbers, and str or date values fail
-            # inside the mapping.
+            # type, not the values: mapped to a group entity, a str or Enum
+            # value gives its members' shared value or a mapping error, and a
+            # date fails inside the mapping.
             defined_for_variable = self.tax_benefit_system.get_variable(
                 variable.defined_for
             )
@@ -3344,7 +3348,8 @@ class Simulation:
 
         Columns are named ``variable__period``, so a variable defined for all
         time exports as ``variable__ETERNITY``. A filter on a year's suffix
-        leaves those columns out; pass ``period`` to keep them.
+        leaves those columns out, and the inputs that year carries from an
+        earlier one; pass ``period`` to keep both.
 
         By default, only inputs populated through ``set_input`` are exported
         from their recorded storage tiers: variables with no formula, the IDs
@@ -3358,21 +3363,17 @@ class Simulation:
         Args:
             include_computed_variables: If ``True``, export every variable with
                 a known period, matching the historical unsafe behavior.
-            period: Export only columns inside this period, plus those defined
-                for all time and the IDs that rebuild the population. Defaults
-                to every period.
+            period: Export what this period reads, so that the export reloads
+                on its own: its stored inputs, each input it carries or
+                uprates from an earlier period, the variables defined for all
+                time and the IDs that rebuild the population. Defaults to
+                every stored period.
 
         Returns:
             pd.DataFrame: The DataFrame containing the input values.
         """
         if not include_computed_variables:
-            left_out = self._recorded_inputs_left_out_of_export()
-            if left_out:
-                logging.warning(
-                    f"to_input_dataframe left out the values given for "
-                    f"{len(left_out)} formula variable(s), so reloading the "
-                    f"export runs their formulas instead: {', '.join(left_out)}"
-                )
+            self._warn_about_inputs_left_out_of_export("to_input_dataframe")
 
         requested = None if period is None else periods.period(period)
 
@@ -3385,7 +3386,9 @@ class Simulation:
             return [
                 known
                 for known in exportable
-                if known.unit == ETERNITY or requested.contains(known)
+                if known.unit == ETERNITY
+                or requested.contains(known)
+                or known.contains(requested)
             ]
 
         df = self._to_person_dataframe(
@@ -3393,8 +3396,52 @@ class Simulation:
             include_computed_variables=include_computed_variables,
         )
         if requested is not None:
+            if not include_computed_variables:
+                self._export_carried_inputs(df, requested)
             self._retain_population_structure(df, requested)
         return df
+
+    def _warn_about_inputs_left_out_of_export(self, exporter: str) -> None:
+        left_out = self._recorded_inputs_left_out_of_export()
+        if left_out:
+            logging.warning(
+                f"{exporter} left out the values given for "
+                f"{len(left_out)} formula variable(s), so reloading the "
+                f"export runs their formulas instead: {', '.join(left_out)}"
+            )
+
+    def _export_carried_inputs(self, df: pd.DataFrame, requested: Period) -> None:
+        """Add the inputs ``requested`` reads from earlier periods.
+
+        A period with no stored input reads the latest earlier one, carried
+        over or uprated. Without these columns, an export for that period
+        would reload as defaults.
+        """
+        if requested.unit == ETERNITY:
+            return
+        system = self.tax_benefit_system
+        for name, variable in system.variables.items():
+            stored = self._get_exportable_input_periods(name, False)
+            unit = variable.definition_period
+            carries = (
+                system.auto_carry_over_input_variables or variable.uprating is not None
+            )
+            if not stored or unit == ETERNITY or not carries:
+                continue
+            read_periods = (
+                requested.get_subperiods(unit)
+                if unit_weight(unit) <= unit_weight(requested.unit)
+                else [requested.start.offset("first-of", unit).period(unit)]
+            )
+            for period in read_periods:
+                if (
+                    variable.get_formula(period) is None
+                    and not any(known.contains(period) for known in stored)
+                    and any(known.start <= period.start for known in stored)
+                ):
+                    df[f"{name}__{period}"] = Simulation.calculate(
+                        self, name, period, map_to=self.persons.entity.key
+                    )
 
     def _retain_population_structure(self, df: pd.DataFrame, period: Period) -> None:
         """Add the IDs, memberships and roles ``df`` needs to rebuild this population.
@@ -3413,7 +3460,9 @@ class Simulation:
             structural_period = (
                 ETERNITY
                 if variable.definition_period == ETERNITY
-                else periods.period(period).start.period(variable.definition_period)
+                else periods.period(period)
+                .start.offset("first-of", variable.definition_period)
+                .period(variable.definition_period)
             )
             df[f"{name}__{structural_period}"] = values
 
@@ -3490,6 +3539,9 @@ class Simulation:
         Returns:
             dict: The dictionary containing the input values.
         """
+        if not include_computed_variables:
+            self._warn_about_inputs_left_out_of_export("to_input_dict")
+
         data = {}
 
         for variable in self.tax_benefit_system.variables:

@@ -8,6 +8,7 @@ import pytest
 hypothesis = pytest.importorskip("hypothesis")
 st = hypothesis.strategies
 
+from tests.core.test_flat_file_datasets import Carrying
 from tests.core.test_flat_file_datasets import build as build_flat
 from tests.core.test_map_result_categorical import build as build_groups
 
@@ -78,3 +79,30 @@ def test_an_export_reloads_to_the_same_answers(rows, first_id):
             reloaded.calculate(name, 2024).tolist()
             == source.calculate(name, 2024).tolist()
         )
+
+
+@hypothesis.given(
+    st.lists(
+        st.tuples(st.integers(1, 3), st.floats(0, 120, width=32)),
+        min_size=1,
+        max_size=8,
+    ),
+    st.integers(0, 3),
+)
+@hypothesis.settings(deadline=None, max_examples=40)
+def test_a_period_export_reloads_to_what_that_period_reads(rows, years_later):
+    """Export for a period, reload, and that period reads the same values."""
+    households, ages = map(list, zip(*rows))
+    data = pd.DataFrame(
+        {"household_id": households, "family_id": households, "age": ages}
+    )
+    source = build_flat(data, system_class=Carrying)
+    year = 2024 + years_later
+    reloaded = build_flat(
+        source.to_input_dataframe(period=year),
+        time_period=year,
+        system_class=Carrying,
+    )
+    assert reloaded.calculate("age", year).tolist() == (
+        source.calculate("age", year).tolist()
+    )

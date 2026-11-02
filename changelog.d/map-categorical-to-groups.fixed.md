@@ -1,1 +1,1 @@
-`map_result` and `calculate(map_to=...)` now give a group the string or enum value its members share, and raise a clear error when members disagree, instead of failing on a division.
+Map strings and enums to a group entity as the value its members share, and raise when they differ. An enum used to map as a sum of its indices.

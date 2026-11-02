@@ -155,6 +155,41 @@ def test_a_period_export_reloads_on_its_own():
     assert reloaded.calculate("is_head", 2025).tolist() == [True, False, True]
 
 
+class Carrying(Countable):
+    auto_carry_over_input_variables = True
+
+
+def test_a_period_export_holds_the_inputs_an_earlier_period_carries():
+    simulation = build(people(), system_class=Carrying)
+    exported = simulation.to_input_dataframe(period=2026)
+    assert exported["age__2026"].tolist() == [35.0, 5.0, 60.0]
+    reloaded = build(exported, time_period=2026, system_class=Carrying)
+    assert reloaded.calculate("age", 2026).tolist() == [35.0, 5.0, 60.0]
+
+
+def test_a_later_input_stays_out_of_an_earlier_period_export():
+    data = people().drop(columns="age").assign(age__2025=[35.0, 5.0, 60.0])
+    exported = build(data, system_class=Carrying).to_input_dataframe(period=2024)
+    assert not any(column.startswith("age__") for column in exported)
+
+
+def test_a_period_export_adds_nothing_a_system_does_not_carry():
+    exported = build(people()).to_input_dataframe(period=2026)
+    assert not any(column.startswith("age__") for column in exported)
+
+
+def test_a_period_export_inside_a_stored_year_keeps_that_year():
+    exported = build(people()).to_input_dataframe(period="2024-03")
+    assert exported["age__2024"].tolist() == [35.0, 5.0, 60.0]
+
+
+def test_a_month_read_after_a_stored_year_carries_within_that_month_year():
+    exported = build(people(), system_class=Carrying).to_input_dataframe(
+        period="2025-03"
+    )
+    assert exported["age__2025"].tolist() == [35.0, 5.0, 60.0]
+
+
 def test_a_declared_source_input_survives_the_round_trip():
     data = people().assign(observed_role=[True, False, True])
     simulation = build(data)

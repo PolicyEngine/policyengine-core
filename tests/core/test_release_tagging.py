@@ -347,4 +347,13 @@ def test_test_job_cannot_pass_with_failing_tests():
     test_job = yaml.safe_load(PUSH_WORKFLOW.read_text())["jobs"]["Test"]
     assert not any(
         "continue-on-error" in item for item in [test_job, *test_job["steps"]]
-    )
+    ), "Test or one of its steps continues on error"
+    # A skipped step does not fail the job, and `make test || true` exits 0
+    # whatever the tests do, so the step that runs the tests has no
+    # condition and runs `make test` alone.
+    steps = test_job["steps"]
+    test_step = steps[
+        only_step(steps, lambda step: "make test" in step.get("run", ""), "make test")
+    ]
+    assert "if" not in test_step, "test step has a condition"
+    assert test_step["run"].strip() == "make test", "test step runs more than make test"

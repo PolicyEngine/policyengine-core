@@ -1,3 +1,4 @@
+import re
 import shutil
 import subprocess
 import sys
@@ -309,3 +310,143 @@ def test_publish_workflow_check_accepts_equivalent_settings(mutate):
     mutate(jobs)
 
     assert_publish_tags_only_after_pypi_succeeds(jobs["Publish"])
+
+
+def test_publish_workflow_publishes_only_after_tests_pass():
+    # Without ``needs: Test``, Publish ran beside Test, so a release could
+    # reach PyPI while its tests were still running or after they failed.
+    jobs = yaml.safe_load(PUSH_WORKFLOW.read_text())["jobs"]
+    publishing = [
+        name
+        for name, job in jobs.items()
+        if any(
+            "gh-action-pypi-publish" in step.get("uses", "")
+            for step in job.get("steps", [])
+        )
+    ]
+
+    assert publishing == ["Publish"]
+    needs = jobs["Publish"].get("needs", [])
+    assert "Test" in ([needs] if isinstance(needs, str) else needs)
+    # A job that needs Test is skipped whenever Test is, so both must run on
+    # the same commits for releases to happen at all.
+    assert jobs["Publish"]["if"] == jobs["Test"]["if"]
+    # A status function such as always() would let Publish run after a
+    # failed Test; without one, Publish runs only when Test succeeds.
+    # (Expression function names are matched case-insensitively.)
+    assert not re.search(
+        r"\b(always|failure|cancelled|success)\s*\(",
+        jobs["Publish"]["if"],
+        re.IGNORECASE,
+    )
+
+
+WORKFLOWS = ROOT / ".github" / "workflows"
+PYPI_UPLOAD_COMMAND = re.compile(r"\b(twine\s+upload|uv\s+publish)\b")
+
+
+def uploads_to_pypi(step: dict) -> bool:
+    return step.get("uses", "").startswith("pypa/gh-action-pypi-publish@") or bool(
+        PYPI_UPLOAD_COMMAND.search(step.get("run", ""))
+    )
+
+
+def pypi_publishing_jobs(workflows: Path) -> list[tuple[str, str]]:
+    return [
+        (path.name, name)
+        for path in sorted([*workflows.glob("*.yaml"), *workflows.glob("*.yml")])
+        for name, job in (yaml.safe_load(path.read_text()).get("jobs") or {}).items()
+        if any(uploads_to_pypi(step) for step in job.get("steps", []))
+    ]
+
+
+def test_only_push_publish_job_uploads_to_pypi():
+    # The checks above cover push.yaml's Publish job alone, so an upload in
+    # any other job or workflow file would reach PyPI without them.
+    assert pypi_publishing_jobs(WORKFLOWS) == [("push.yaml", "Publish")]
+
+
+@pytest.mark.parametrize(
+    "upload",
+    [
+        {"uses": "pypa/gh-action-pypi-publish@release/v1"},
+        {"run": "python -m twine upload dist/*"},
+        {"run": "make build\nuv publish"},
+    ],
+    ids=["pypi-publish-action", "twine-upload", "uv-publish"],
+)
+def test_pypi_upload_check_finds_upload_in_another_workflow(tmp_path, upload):
+    for path in WORKFLOWS.iterdir():
+        shutil.copy(path, tmp_path / path.name)
+    pr_workflow = tmp_path / "pr.yaml"
+    workflow = yaml.safe_load(pr_workflow.read_text())
+    workflow["jobs"]["Test"]["steps"].append(upload)
+    pr_workflow.write_text(yaml.safe_dump(workflow))
+
+    assert pypi_publishing_jobs(tmp_path) == [
+        ("pr.yaml", "Test"),
+        ("push.yaml", "Publish"),
+    ]
+
+
+def assert_test_job_fails_when_tests_fail(test_job: dict) -> None:
+    steps = test_job["steps"]
+    # continue-on-error on Test or one of its steps lets the job succeed
+    # after a step fails, and Publish would then run.
+    assert not any("continue-on-error" in item for item in [test_job, *steps]), (
+        "Test continues on error"
+    )
+    test_step = steps[
+        only_step(steps, lambda step: "make test" in step.get("run", ""), "test")
+    ]
+    # A skipped step does not fail the job, so a condition on the step that
+    # runs the tests could let Test succeed without running them.
+    assert "if" not in test_step, "test step has a condition"
+    # Anything after the command, such as `|| true`, could mask its failure.
+    assert test_step["run"].strip() == "make test", "test step runs more than make test"
+
+
+def test_test_job_cannot_pass_with_failing_tests():
+    test_job = yaml.safe_load(PUSH_WORKFLOW.read_text())["jobs"]["Test"]
+
+    assert_test_job_fails_when_tests_fail(test_job)
+
+
+def find_test_step(test_job: dict) -> dict:
+    return next(step for step in test_job["steps"] if step.get("run") == "make test")
+
+
+def continue_test_job_on_error(test_job: dict) -> None:
+    test_job["continue-on-error"] = True
+
+
+def continue_after_test_failure(test_job: dict) -> None:
+    find_test_step(test_job)["continue-on-error"] = True
+
+
+def ignore_test_failure(test_job: dict) -> None:
+    find_test_step(test_job)["run"] += " || true"
+
+
+def skip_tests(test_job: dict) -> None:
+    find_test_step(test_job)["if"] = False
+
+
+@pytest.mark.parametrize(
+    ("mutate", "violation"),
+    [
+        pytest.param(mutate, violation, id=mutate.__name__)
+        for mutate, violation in [
+            (continue_test_job_on_error, "Test continues on error"),
+            (continue_after_test_failure, "Test continues on error"),
+            (ignore_test_failure, "test step runs more than make test"),
+            (skip_tests, "test step has a condition"),
+        ]
+    ],
+)
+def test_test_job_check_rejects_masked_test_failure(mutate, violation):
+    test_job = yaml.safe_load(PUSH_WORKFLOW.read_text())["jobs"]["Test"]
+    mutate(test_job)
+
+    with pytest.raises(AssertionError, match=violation):
+        assert_test_job_fails_when_tests_fail(test_job)

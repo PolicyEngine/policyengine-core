@@ -1,3 +1,17 @@
+## [3.34.4] - 2026-11-03
+
+### Changed
+
+- The release tests now fail if `push.yaml`'s Test job or one of its steps sets `continue-on-error`, or if its `make test` step has an `if:` condition or runs more than that command. They also fail if any job other than `push.yaml`'s Publish uploads to PyPI with `pypa/gh-action-pypi-publish`, `twine upload` or `uv publish`. The actionlint config drops two ignores for a step that no longer exists.
+
+
+## [3.34.3] - 2026-11-03
+
+### Fixed
+
+- The release workflow now publishes to PyPI only after the Test job passes, instead of running Publish beside Test.
+
+
 ## [3.34.2] - 2026-10-31
 
 ### Changed

@@ -437,11 +437,13 @@ def pypi_uploading_recipe_lines(makefile: Path) -> list[str]:
 def test_only_push_publish_job_uploads_to_pypi():
     # The checks above cover push.yaml's Publish job alone, so an upload in
     # any other job or workflow file would reach PyPI without them.
-    # Recognises the pypa publish action, twine upload and
-    # uv/poetry/flit/hatch/pdm/maturin publish in workflow steps, local
-    # composite action steps and Makefile recipes, and rejects reusable
-    # workflows from other repositories; not uploads inside scripts or remote
-    # actions.
+    # Recognises the pypa publish action (lower-case owner), and twine upload
+    # and uv/poetry/flit/hatch/pdm/maturin publish written as adjacent words,
+    # in workflow steps, composite action steps under .github/actions and root
+    # Makefile recipes, and rejects reusable workflows from other repositories.
+    # It misses uploads inside scripts and remote, Docker or JavaScript
+    # actions; test_only_publish_job_gets_pypi_credentials limits those that
+    # rely on trusted publishing.
     assert pypi_publishing_jobs(WORKFLOWS) == [("push.yaml", "Publish")]
     assert remote_reusable_workflow_jobs(WORKFLOWS) == [], (
         "a job calls a reusable workflow from another repository"
@@ -450,6 +452,61 @@ def test_only_push_publish_job_uploads_to_pypi():
     assert pypi_uploading_recipe_lines(MAKEFILE) == [], (
         "a Makefile recipe uploads to PyPI"
     )
+
+
+def pypi_environment(job: dict) -> bool:
+    # environment: is a name, or a mapping with a name and a url.
+    environment = job.get("environment")
+    if isinstance(environment, dict):
+        environment = environment.get("name")
+    return str(environment).lower() == "pypi"
+
+
+def grants_id_token(permissions) -> bool:
+    return permissions == "write-all" or (
+        isinstance(permissions, dict) and permissions.get("id-token") == "write"
+    )
+
+
+def pypi_credential_jobs(workflows: Path) -> list[tuple[str, str, list[str]]]:
+    """Each job that declares the pypi environment or an id-token: write grant.
+
+    A job without permissions of its own is checked against the workflow's.
+    The environment name is compared ignoring case.
+    """
+    return [
+        (file_name, name, grants)
+        for file_name, workflow in load_workflows(workflows)
+        for name, job in (workflow.get("jobs") or {}).items()
+        if (
+            grants := [
+                grant
+                for grant, declared in [
+                    ("environment: pypi", pypi_environment(job)),
+                    (
+                        "id-token: write",
+                        grants_id_token(
+                            job.get("permissions", workflow.get("permissions"))
+                        ),
+                    ),
+                ]
+                if declared
+            ]
+        )
+    ]
+
+
+def test_only_publish_job_gets_pypi_credentials():
+    # Per the comment on push.yaml's Publish job, PyPI trusted publishing
+    # accepts uploads only from push.yaml in the pypi environment, and Publish
+    # declares that environment and id-token: write for it. The scan above
+    # cannot read inside a remote, Docker or JavaScript action, so this keeps
+    # both declarations off every other job. It rests on PyPI's
+    # trusted-publisher settings, which these tests cannot read, and does not
+    # cover an upload that uses a stored API token.
+    assert pypi_credential_jobs(WORKFLOWS) == [
+        ("push.yaml", "Publish", ["environment: pypi", "id-token: write"])
+    ]
 
 
 def copy_workflows_with_pr_test_job_change(tmp_path: Path, change) -> None:
@@ -498,6 +555,62 @@ def test_reusable_workflow_check_finds_only_remote_workflows(tmp_path):
     assert remote_reusable_workflow_jobs(tmp_path) == [("pr.yaml", "Remote")]
 
 
+@pytest.mark.parametrize(
+    ("change", "grants"),
+    [
+        ({"environment": "pypi"}, ["environment: pypi"]),
+        (
+            {"environment": {"name": "PyPI", "url": "https://pypi.org"}},
+            ["environment: pypi"],
+        ),
+        ({"permissions": {"id-token": "write"}}, ["id-token: write"]),
+        ({"permissions": "write-all"}, ["id-token: write"]),
+        (
+            {"environment": "pypi", "permissions": {"id-token": "write"}},
+            ["environment: pypi", "id-token: write"],
+        ),
+    ],
+    ids=[
+        "environment",
+        "environment-mapping",
+        "id-token",
+        "write-all",
+        "both",
+    ],
+)
+def test_pypi_credential_check_finds_another_job(tmp_path, change, grants):
+    copy_workflows_with_pr_test_job_change(
+        tmp_path, lambda jobs: jobs["Test"].update(change)
+    )
+
+    assert pypi_credential_jobs(tmp_path) == [
+        ("pr.yaml", "Test", grants),
+        ("push.yaml", "Publish", ["environment: pypi", "id-token: write"]),
+    ]
+
+
+def test_pypi_credential_check_applies_workflow_permissions(tmp_path):
+    shutil.copytree(WORKFLOWS, tmp_path, dirs_exist_ok=True)
+    workflow = {
+        "on": "push",
+        "permissions": {"id-token": "write"},
+        "jobs": {
+            "Inherits": {"runs-on": "ubuntu-latest", "steps": [{"run": "true"}]},
+            "Overrides": {
+                "runs-on": "ubuntu-latest",
+                "permissions": {"contents": "read"},
+                "steps": [{"run": "true"}],
+            },
+        },
+    }
+    (tmp_path / "other.yaml").write_text(yaml.safe_dump(workflow))
+
+    assert pypi_credential_jobs(tmp_path) == [
+        ("other.yaml", "Inherits", ["id-token: write"]),
+        ("push.yaml", "Publish", ["environment: pypi", "id-token: write"]),
+    ]
+
+
 @pytest.mark.parametrize("file_name", ["action.yml", "action.yaml"])
 def test_pypi_upload_check_finds_upload_in_composite_action(tmp_path, file_name):
     action = tmp_path / "publish" / file_name
@@ -544,7 +657,8 @@ def assert_test_job_fails_when_tests_fail(workflow: dict) -> None:
         only_step(
             steps,
             lambda step: step.get("run", "").split()[:2] == ["make", "test"],
-            "test",
+            "test (a step whose run starts with the words `make test`; if the "
+            "command moved, update this locator and the exact match below)",
         )
     ]
     # A skipped step does not fail the job, so a condition on the step that
@@ -573,25 +687,47 @@ def assert_test_job_fails_when_tests_fail(workflow: dict) -> None:
         "PYTEST_ADDOPTS" in (item.get("env") or {})
         for item in [workflow, test_job, test_step]
     ), "Test sets PYTEST_ADDOPTS"
+    # make takes options from MAKEFLAGS, so MAKEFLAGS=-i lets make test pass
+    # after a recipe line fails, as `make -i test` would.
+    assert not any(
+        "MAKEFLAGS" in (item.get("env") or {})
+        for item in [workflow, test_job, test_step]
+    ), "Test sets MAKEFLAGS"
 
 
-def assert_make_test_fails_when_tests_fail(
-    rules: dict[str, tuple[list[str], list[str]]],
-) -> None:
+# An assignment or export of MAKEFLAGS, such as `MAKEFLAGS += -i`.
+MAKEFLAGS_ASSIGNMENT = re.compile(r"^\s*(export\s+)?MAKEFLAGS\b", re.MULTILINE)
+# A recipe line that ends its own failure: `cmd || ...`, or one that ends in
+# `; true`, `; exit 0` or `; :`.
+MASKED_RECIPE_LINE = re.compile(r"\|\||;\s*(true|exit\s+0|:)\s*$")
+
+
+def assert_make_test_fails_when_tests_fail(makefile: Path) -> None:
+    rules = make_rules(makefile)
     prerequisites, _ = rules["test"]
+    # The .IGNORE special target, with or without prerequisites, and a
+    # MAKEFLAGS set in the Makefile (MAKEFLAGS += -i) both let make test pass
+    # after a recipe line fails.
+    assert ".IGNORE" not in rules, "the Makefile ignores recipe failures (.IGNORE)"
+    assert not MAKEFLAGS_ASSIGNMENT.search(makefile.read_text()), (
+        "the Makefile sets MAKEFLAGS"
+    )
     # make ignores a failing recipe line whose prefix (any mix of @, + and -
     # after the tab) includes -, so make test could pass after tests fail.
     for target in ["test", *prerequisites]:
         for line in rules.get(target, ([], []))[1]:
             prefix = line[: len(line) - len(line.lstrip("@+- \t"))]
             assert "-" not in prefix, f"make {target} ignores a failing recipe line"
+            assert not MASKED_RECIPE_LINE.search(line), (
+                f"make {target} masks a failing command: {line}"
+            )
 
 
 def test_test_job_cannot_pass_with_failing_tests():
     workflow = yaml.safe_load(PUSH_WORKFLOW.read_text())
 
     assert_test_job_fails_when_tests_fail(workflow)
-    assert_make_test_fails_when_tests_fail(make_rules(MAKEFILE))
+    assert_make_test_fails_when_tests_fail(MAKEFILE)
 
 
 def find_test_step(workflow: dict) -> dict:
@@ -642,6 +778,18 @@ def collect_tests_only_in_workflow(workflow: dict) -> None:
     workflow["env"] = {"PYTEST_ADDOPTS": "--collect-only"}
 
 
+def ignore_make_errors_in_test_step(workflow: dict) -> None:
+    find_test_step(workflow)["env"] = {"MAKEFLAGS": "-i"}
+
+
+def ignore_make_errors_in_test_job(workflow: dict) -> None:
+    workflow["jobs"]["Test"]["env"] = {"MAKEFLAGS": "-i"}
+
+
+def ignore_make_errors_in_workflow(workflow: dict) -> None:
+    workflow["env"] = {"MAKEFLAGS": "-i"}
+
+
 @pytest.mark.parametrize(
     ("mutate", "violation"),
     [
@@ -657,6 +805,9 @@ def collect_tests_only_in_workflow(workflow: dict) -> None:
             (collect_tests_only_in_test_step, "Test sets PYTEST_ADDOPTS"),
             (collect_tests_only_in_test_job, "Test sets PYTEST_ADDOPTS"),
             (collect_tests_only_in_workflow, "Test sets PYTEST_ADDOPTS"),
+            (ignore_make_errors_in_test_step, "Test sets MAKEFLAGS"),
+            (ignore_make_errors_in_test_job, "Test sets MAKEFLAGS"),
+            (ignore_make_errors_in_workflow, "Test sets MAKEFLAGS"),
         ]
     ],
 )
@@ -695,4 +846,69 @@ def test_make_test_check_rejects_ignored_recipe_failure(tmp_path, target, prefix
     with pytest.raises(
         AssertionError, match=f"make {target} ignores a failing recipe line"
     ):
-        assert_make_test_fails_when_tests_fail(make_rules(makefile))
+        assert_make_test_fails_when_tests_fail(makefile)
+
+
+@pytest.mark.parametrize(
+    "run",
+    ["make -C . test", "uv run make test"],
+)
+def test_test_job_check_explains_missing_test_step(run):
+    workflow = yaml.safe_load(PUSH_WORKFLOW.read_text())
+    find_test_step(workflow)["run"] = run
+
+    with pytest.raises(AssertionError) as failure:
+        assert_test_job_fails_when_tests_fail(workflow)
+
+    message = str(failure.value).splitlines()[0]
+    assert message.startswith("expected one test (a step whose run starts with")
+    assert "update this locator and the exact match below" in message
+    assert message.endswith("found []")
+
+
+def write_makefile(tmp_path: Path, text: str) -> Path:
+    makefile = tmp_path / "Makefile"
+    makefile.write_text(text)
+    return makefile
+
+
+@pytest.mark.parametrize("rule", [".IGNORE: test", ".IGNORE:"])
+def test_make_test_check_rejects_ignore_special_target(tmp_path, rule):
+    makefile = write_makefile(tmp_path, MAKEFILE.read_text() + f"\n{rule}\n")
+
+    with pytest.raises(AssertionError, match=r"ignores recipe failures \(\.IGNORE\)"):
+        assert_make_test_fails_when_tests_fail(makefile)
+
+
+@pytest.mark.parametrize(
+    "assignment",
+    ["MAKEFLAGS += -i", "export MAKEFLAGS = -i", "  MAKEFLAGS := i"],
+)
+def test_make_test_check_rejects_makeflags_in_makefile(tmp_path, assignment):
+    makefile = write_makefile(tmp_path, f"{assignment}\n" + MAKEFILE.read_text())
+
+    with pytest.raises(AssertionError, match="the Makefile sets MAKEFLAGS"):
+        assert_make_test_fails_when_tests_fail(makefile)
+
+
+@pytest.mark.parametrize(
+    ("target", "suffix"),
+    [
+        ("test", " || true"),
+        ("test", " || exit 0"),
+        ("test", "; true"),
+        ("test", "; exit 0"),
+        ("test", " ; :"),
+        ("test-country-template", " || true"),
+    ],
+)
+def test_make_test_check_rejects_masked_recipe_line(tmp_path, target, suffix):
+    lines = MAKEFILE.read_text().splitlines()
+    recipe_start = next(
+        index for index, line in enumerate(lines) if line.startswith(f"{target}:")
+    )
+    lines[recipe_start + 1] += suffix
+    makefile = write_makefile(tmp_path, "\n".join(lines) + "\n")
+
+    with pytest.raises(AssertionError, match=f"make {target} masks a failing command"):
+        assert_make_test_fails_when_tests_fail(makefile)

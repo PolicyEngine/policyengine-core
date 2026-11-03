@@ -1,0 +1,1 @@
+The release workflow tests now fail if push.yaml's Test job could pass after its tests fail, or if any workflow job other than Publish uploads to PyPI, and the actionlint config drops two ignores that no longer match any error.

@@ -342,7 +342,13 @@ def test_publish_workflow_publishes_only_after_tests_pass():
 
 
 WORKFLOWS = ROOT / ".github" / "workflows"
-PYPI_UPLOAD_COMMAND = re.compile(r"\b(twine\s+upload|uv\s+publish)\b")
+ACTIONS = ROOT / ".github" / "actions"
+MAKEFILE = ROOT / "Makefile"
+PYPI_UPLOAD_COMMAND = re.compile(
+    r"\b(twine\s+upload|(uv|poetry|flit|hatch|pdm|maturin)\s+publish)\b"
+)
+# A rule line such as `test: test-country-template`, but not `X := y`.
+MAKE_RULE = re.compile(r"^([^\s:=#][^:=#]*?)\s*:(?![:=])(.*)$")
 
 
 def uploads_to_pypi(step: dict) -> bool:
@@ -351,19 +357,107 @@ def uploads_to_pypi(step: dict) -> bool:
     )
 
 
+def load_workflows(workflows: Path) -> list[tuple[str, dict]]:
+    return [
+        (path.name, yaml.safe_load(path.read_text()))
+        for path in sorted([*workflows.glob("*.yaml"), *workflows.glob("*.yml")])
+    ]
+
+
 def pypi_publishing_jobs(workflows: Path) -> list[tuple[str, str]]:
     return [
-        (path.name, name)
-        for path in sorted([*workflows.glob("*.yaml"), *workflows.glob("*.yml")])
-        for name, job in (yaml.safe_load(path.read_text()).get("jobs") or {}).items()
+        (file_name, name)
+        for file_name, workflow in load_workflows(workflows)
+        for name, job in (workflow.get("jobs") or {}).items()
         if any(uploads_to_pypi(step) for step in job.get("steps", []))
+    ]
+
+
+def remote_reusable_workflow_jobs(workflows: Path) -> list[tuple[str, str]]:
+    # A job-level `uses:` that does not start with ./ calls a workflow in
+    # another repository, such as owner/repo/.github/workflows/x.yml@ref, whose
+    # steps this scan cannot read. A local reusable workflow lives in
+    # .github/workflows/ and is scanned as a file of its own.
+    return [
+        (file_name, name)
+        for file_name, workflow in load_workflows(workflows)
+        for name, job in (workflow.get("jobs") or {}).items()
+        if "uses" in job and not str(job["uses"]).startswith("./")
+    ]
+
+
+def pypi_publishing_actions(actions: Path) -> list[str]:
+    if not actions.is_dir():
+        return []
+    paths = sorted([*actions.rglob("action.yml"), *actions.rglob("action.yaml")])
+    return [
+        path.relative_to(actions).as_posix()
+        for path in paths
+        if any(
+            uploads_to_pypi(step)
+            for step in (
+                ((yaml.safe_load(path.read_text()) or {}).get("runs") or {}).get(
+                    "steps"
+                )
+                or []
+            )
+        )
+    ]
+
+
+def make_rules(makefile: Path) -> dict[str, tuple[list[str], list[str]]]:
+    """Each target's prerequisites and recipe lines (without the tab).
+
+    Enough for this Makefile: it has no line continuations, includes or
+    pattern rules.
+    """
+    rules = {}
+    recipe = []
+    for line in makefile.read_text().splitlines():
+        if line.startswith("\t"):
+            recipe.append(line[1:])
+        elif rule := MAKE_RULE.match(line):
+            recipe = []
+            for target in rule.group(1).split():
+                rules[target] = (rule.group(2).split(), recipe)
+        elif line.strip():
+            recipe = []
+    return rules
+
+
+def pypi_uploading_recipe_lines(makefile: Path) -> list[str]:
+    return [
+        f"{target}: {line}"
+        for target, (_, recipe) in make_rules(makefile).items()
+        for line in recipe
+        if PYPI_UPLOAD_COMMAND.search(line)
     ]
 
 
 def test_only_push_publish_job_uploads_to_pypi():
     # The checks above cover push.yaml's Publish job alone, so an upload in
     # any other job or workflow file would reach PyPI without them.
+    # Recognises the pypa publish action, twine upload and
+    # uv/poetry/flit/hatch/pdm/maturin publish in workflow steps, local
+    # composite action steps and Makefile recipes, and rejects reusable
+    # workflows from other repositories; not uploads inside scripts or remote
+    # actions.
     assert pypi_publishing_jobs(WORKFLOWS) == [("push.yaml", "Publish")]
+    assert remote_reusable_workflow_jobs(WORKFLOWS) == [], (
+        "a job calls a reusable workflow from another repository"
+    )
+    assert pypi_publishing_actions(ACTIONS) == [], "a composite action uploads to PyPI"
+    assert pypi_uploading_recipe_lines(MAKEFILE) == [], (
+        "a Makefile recipe uploads to PyPI"
+    )
+
+
+def copy_workflows_with_pr_test_job_change(tmp_path: Path, change) -> None:
+    shutil.copytree(WORKFLOWS, tmp_path, dirs_exist_ok=True)
+    pr_workflow = tmp_path / "pr.yaml"
+    workflow = yaml.safe_load(pr_workflow.read_text())
+    change(workflow["jobs"])
+    pr_workflow.write_text(yaml.safe_dump(workflow))
 
 
 @pytest.mark.parametrize(
@@ -372,16 +466,21 @@ def test_only_push_publish_job_uploads_to_pypi():
         {"uses": "pypa/gh-action-pypi-publish@release/v1"},
         {"run": "python -m twine upload dist/*"},
         {"run": "make build\nuv publish"},
+        {"run": "poetry publish --build"},
+        {"run": "maturin publish"},
     ],
-    ids=["pypi-publish-action", "twine-upload", "uv-publish"],
+    ids=[
+        "pypi-publish-action",
+        "twine-upload",
+        "uv-publish",
+        "poetry-publish",
+        "maturin-publish",
+    ],
 )
 def test_pypi_upload_check_finds_upload_in_another_workflow(tmp_path, upload):
-    for path in WORKFLOWS.iterdir():
-        shutil.copy(path, tmp_path / path.name)
-    pr_workflow = tmp_path / "pr.yaml"
-    workflow = yaml.safe_load(pr_workflow.read_text())
-    workflow["jobs"]["Test"]["steps"].append(upload)
-    pr_workflow.write_text(yaml.safe_dump(workflow))
+    copy_workflows_with_pr_test_job_change(
+        tmp_path, lambda jobs: jobs["Test"]["steps"].append(upload)
+    )
 
     assert pypi_publishing_jobs(tmp_path) == [
         ("pr.yaml", "Test"),
@@ -389,47 +488,158 @@ def test_pypi_upload_check_finds_upload_in_another_workflow(tmp_path, upload):
     ]
 
 
-def assert_test_job_fails_when_tests_fail(test_job: dict) -> None:
+def test_reusable_workflow_check_finds_only_remote_workflows(tmp_path):
+    def call_reusable_workflows(jobs: dict) -> None:
+        jobs["Remote"] = {"uses": "some-org/some-repo/.github/workflows/publish.yml@v1"}
+        jobs["Local"] = {"uses": "./.github/workflows/push.yaml"}
+
+    copy_workflows_with_pr_test_job_change(tmp_path, call_reusable_workflows)
+
+    assert remote_reusable_workflow_jobs(tmp_path) == [("pr.yaml", "Remote")]
+
+
+@pytest.mark.parametrize("file_name", ["action.yml", "action.yaml"])
+def test_pypi_upload_check_finds_upload_in_composite_action(tmp_path, file_name):
+    action = tmp_path / "publish" / file_name
+    action.parent.mkdir()
+    action.write_text(
+        yaml.safe_dump(
+            {
+                "name": "Publish",
+                "runs": {
+                    "using": "composite",
+                    "steps": [{"run": "uv publish", "shell": "bash"}],
+                },
+            }
+        )
+    )
+
+    assert pypi_publishing_actions(tmp_path) == [f"publish/{file_name}"]
+    assert pypi_publishing_actions(tmp_path / "missing") == []
+
+
+def test_pypi_upload_check_finds_upload_in_makefile_recipe(tmp_path):
+    makefile = tmp_path / "Makefile"
+    makefile.write_text(
+        MAKEFILE.read_text().replace(
+            "build:\n\tpython -m build\n",
+            "build:\n\tpython -m build\n\ttwine upload dist/*\n",
+        )
+    )
+
+    assert pypi_uploading_recipe_lines(makefile) == ["build: twine upload dist/*"]
+
+
+def assert_test_job_fails_when_tests_fail(workflow: dict) -> None:
+    test_job = workflow["jobs"]["Test"]
     steps = test_job["steps"]
     # continue-on-error on Test or one of its steps lets the job succeed
     # after a step fails, and Publish would then run.
     assert not any("continue-on-error" in item for item in [test_job, *steps]), (
         "Test continues on error"
     )
+    # Match the command's words, so that a separate
+    # `make test-country-template` step is not taken for the test step.
     test_step = steps[
-        only_step(steps, lambda step: "make test" in step.get("run", ""), "test")
+        only_step(
+            steps,
+            lambda step: step.get("run", "").split()[:2] == ["make", "test"],
+            "test",
+        )
     ]
     # A skipped step does not fail the job, so a condition on the step that
     # runs the tests could let Test succeed without running them.
     assert "if" not in test_step, "test step has a condition"
-    # Anything after the command, such as `|| true`, could mask its failure.
-    assert test_step["run"].strip() == "make test", "test step runs more than make test"
+    assert test_step["run"].strip() == "make test", (
+        "test step runs more than make test: anything after it (|| true, | tee, "
+        "|| exit 0) can hide a failure; if the command changed on purpose, update "
+        "this check to the new exact command instead of removing it"
+    )
+    # A shell template inserts the script's file name at {0}, so
+    # `bash -c true {0}` runs `true` and ignores the script. A default shell
+    # can come from the job's or the workflow's defaults.run as well as the
+    # step.
+    assert not any(
+        "shell" in item
+        for item in [
+            test_step,
+            (test_job.get("defaults") or {}).get("run") or {},
+            (workflow.get("defaults") or {}).get("run") or {},
+        ]
+    ), "test step sets a shell"
+    # pytest adds the options in PYTEST_ADDOPTS to its command line, so a
+    # value such as --collect-only lets make test pass without running tests.
+    assert not any(
+        "PYTEST_ADDOPTS" in (item.get("env") or {})
+        for item in [workflow, test_job, test_step]
+    ), "Test sets PYTEST_ADDOPTS"
+
+
+def assert_make_test_fails_when_tests_fail(
+    rules: dict[str, tuple[list[str], list[str]]],
+) -> None:
+    prerequisites, _ = rules["test"]
+    # make ignores a failing recipe line whose prefix (any mix of @, + and -
+    # after the tab) includes -, so make test could pass after tests fail.
+    for target in ["test", *prerequisites]:
+        for line in rules.get(target, ([], []))[1]:
+            prefix = line[: len(line) - len(line.lstrip("@+- \t"))]
+            assert "-" not in prefix, f"make {target} ignores a failing recipe line"
 
 
 def test_test_job_cannot_pass_with_failing_tests():
-    test_job = yaml.safe_load(PUSH_WORKFLOW.read_text())["jobs"]["Test"]
+    workflow = yaml.safe_load(PUSH_WORKFLOW.read_text())
 
-    assert_test_job_fails_when_tests_fail(test_job)
-
-
-def find_test_step(test_job: dict) -> dict:
-    return next(step for step in test_job["steps"] if step.get("run") == "make test")
+    assert_test_job_fails_when_tests_fail(workflow)
+    assert_make_test_fails_when_tests_fail(make_rules(MAKEFILE))
 
 
-def continue_test_job_on_error(test_job: dict) -> None:
-    test_job["continue-on-error"] = True
+def find_test_step(workflow: dict) -> dict:
+    return next(
+        step
+        for step in workflow["jobs"]["Test"]["steps"]
+        if step.get("run") == "make test"
+    )
 
 
-def continue_after_test_failure(test_job: dict) -> None:
-    find_test_step(test_job)["continue-on-error"] = True
+def continue_test_job_on_error(workflow: dict) -> None:
+    workflow["jobs"]["Test"]["continue-on-error"] = True
 
 
-def ignore_test_failure(test_job: dict) -> None:
-    find_test_step(test_job)["run"] += " || true"
+def continue_after_test_failure(workflow: dict) -> None:
+    find_test_step(workflow)["continue-on-error"] = True
 
 
-def skip_tests(test_job: dict) -> None:
-    find_test_step(test_job)["if"] = False
+def ignore_test_failure(workflow: dict) -> None:
+    find_test_step(workflow)["run"] += " || true"
+
+
+def skip_tests(workflow: dict) -> None:
+    find_test_step(workflow)["if"] = False
+
+
+def run_test_step_in_ignoring_shell(workflow: dict) -> None:
+    find_test_step(workflow)["shell"] = "bash -c true {0}"
+
+
+def set_test_job_default_shell(workflow: dict) -> None:
+    workflow["jobs"]["Test"]["defaults"] = {"run": {"shell": "bash -c true {0}"}}
+
+
+def set_workflow_default_shell(workflow: dict) -> None:
+    workflow["defaults"] = {"run": {"shell": "bash -c true {0}"}}
+
+
+def collect_tests_only_in_test_step(workflow: dict) -> None:
+    find_test_step(workflow)["env"] = {"PYTEST_ADDOPTS": "--collect-only"}
+
+
+def collect_tests_only_in_test_job(workflow: dict) -> None:
+    workflow["jobs"]["Test"]["env"] = {"PYTEST_ADDOPTS": "--collect-only"}
+
+
+def collect_tests_only_in_workflow(workflow: dict) -> None:
+    workflow["env"] = {"PYTEST_ADDOPTS": "--collect-only"}
 
 
 @pytest.mark.parametrize(
@@ -441,12 +651,48 @@ def skip_tests(test_job: dict) -> None:
             (continue_after_test_failure, "Test continues on error"),
             (ignore_test_failure, "test step runs more than make test"),
             (skip_tests, "test step has a condition"),
+            (run_test_step_in_ignoring_shell, "test step sets a shell"),
+            (set_test_job_default_shell, "test step sets a shell"),
+            (set_workflow_default_shell, "test step sets a shell"),
+            (collect_tests_only_in_test_step, "Test sets PYTEST_ADDOPTS"),
+            (collect_tests_only_in_test_job, "Test sets PYTEST_ADDOPTS"),
+            (collect_tests_only_in_workflow, "Test sets PYTEST_ADDOPTS"),
         ]
     ],
 )
 def test_test_job_check_rejects_masked_test_failure(mutate, violation):
-    test_job = yaml.safe_load(PUSH_WORKFLOW.read_text())["jobs"]["Test"]
-    mutate(test_job)
+    workflow = yaml.safe_load(PUSH_WORKFLOW.read_text())
+    mutate(workflow)
 
     with pytest.raises(AssertionError, match=violation):
-        assert_test_job_fails_when_tests_fail(test_job)
+        assert_test_job_fails_when_tests_fail(workflow)
+
+
+def test_test_job_check_accepts_separate_template_test_step():
+    workflow = yaml.safe_load(PUSH_WORKFLOW.read_text())
+    steps = workflow["jobs"]["Test"]["steps"]
+    steps.insert(
+        steps.index(find_test_step(workflow)),
+        {"run": "make test-country-template"},
+    )
+
+    assert_test_job_fails_when_tests_fail(workflow)
+
+
+@pytest.mark.parametrize(
+    ("target", "prefix"),
+    [("test", "-"), ("test", "@-"), ("test", "+-"), ("test-country-template", "-")],
+)
+def test_make_test_check_rejects_ignored_recipe_failure(tmp_path, target, prefix):
+    lines = MAKEFILE.read_text().splitlines()
+    recipe_start = next(
+        index for index, line in enumerate(lines) if line.startswith(f"{target}:")
+    )
+    lines[recipe_start + 1] = "\t" + prefix + lines[recipe_start + 1][1:]
+    makefile = tmp_path / "Makefile"
+    makefile.write_text("\n".join(lines) + "\n")
+
+    with pytest.raises(
+        AssertionError, match=f"make {target} ignores a failing recipe line"
+    ):
+        assert_make_test_fails_when_tests_fail(make_rules(makefile))

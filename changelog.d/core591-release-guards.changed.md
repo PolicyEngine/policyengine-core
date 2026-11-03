@@ -1,0 +1,1 @@
+The release tests now fail if the push workflow's Test job could pass after its tests fail, or if any workflow other than the Publish job uploads to PyPI, and the actionlint config drops two ignores for a step that no longer exists.

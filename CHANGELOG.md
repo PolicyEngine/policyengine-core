@@ -1,3 +1,10 @@
+## [3.34.3] - 2026-11-03
+
+### Fixed
+
+- The release workflow now publishes to PyPI only after the Test job passes, instead of running Publish beside Test.
+
+
 ## [3.34.2] - 2026-10-31
 
 ### Changed

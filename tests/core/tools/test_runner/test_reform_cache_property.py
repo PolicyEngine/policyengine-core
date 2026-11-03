@@ -5,11 +5,18 @@ at most that call's ``cache_size`` reform systems after the call, returns a cach
 LRU of that size would, always hands back a system built for the reforms and
 extensions requested, and keeps one reform-free system throughout.
 ``test_runner_memory.py`` pins the same behaviour with examples.
+
+A cache miss can end with a full ``gc.collect()`` (see ``test_gc_pause.py``),
+which walks every object in the test process and never changes what the cache
+returns. Each example replaces it with a no-op: real collections made this
+file the slowest in the suite, about 20 minutes under CI's coverage tracing.
 """
 
 from __future__ import annotations
 
+import gc
 from collections import OrderedDict
+from unittest import mock
 
 import pytest
 
@@ -57,6 +64,11 @@ requests = st.tuples(
     suppress_health_check=[hypothesis.HealthCheck.too_slow],
 )
 def test_cache_matches_reference_lru(sequence):
+    with mock.patch.object(gc, "collect", lambda generation=2: 0):
+        check_against_reference_lru(sequence)
+
+
+def check_against_reference_lru(sequence):
     baseline = StubSystem()
     reference = OrderedDict()
     last_returned = {}

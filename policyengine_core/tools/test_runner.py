@@ -486,12 +486,14 @@ class OpenFiscaPlugin(object):
 # about three times as much. Treat 3 as a practical bound, not a proven best
 # value: the model's ranking of limits moves with the heap's shape.
 #
-# With the default reform cache (the reform-free system plus 2 reform
-# systems) the cache reaches 3 after its third build and stays there, so later
-# misses leave the copy to the automatic collector. A smaller
-# ``reform_cache_size`` (0 or 1) keeps one baseline's cache below 3 for good,
-# so every miss then forces a collection; each such collection walks a heap of
-# at most two cached systems plus the new one.
+# While the cache only grows, a run therefore forces at most 3 collections.
+# Eviction can keep it below 3 for good, and then every miss forces one. With
+# the default reform cache, a baseline whose run builds the reform-free system
+# and two reform systems holds 3 from then on, so later misses leave the copy
+# to the automatic collector. It stays below 3 when the run has no reform-free
+# case, when a call's ``reform_cache_size`` is 0 or 1, or after a test hook
+# deletes reform systems. A forced collection walks at most two cached
+# systems besides the new one and the baselines themselves.
 _FULL_COLLECTION_CACHE_LIMIT = 3
 
 

@@ -10,7 +10,8 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 TAG_SCRIPT = ROOT / ".github" / "publish-git-tag.sh"
-PUSH_WORKFLOW = ROOT / ".github" / "workflows" / "push.yaml"
+WORKFLOWS = ROOT / ".github" / "workflows"
+PUSH_WORKFLOW = WORKFLOWS / "push.yaml"
 
 
 def run_git(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -312,20 +313,35 @@ def test_publish_workflow_check_accepts_equivalent_settings(mutate):
     assert_publish_tags_only_after_pypi_succeeds(jobs["Publish"])
 
 
-def test_publish_workflow_publishes_only_after_tests_pass():
-    # Without ``needs: Test``, Publish ran beside Test, so a release could
-    # reach PyPI while its tests were still running or after they failed.
-    jobs = yaml.safe_load(PUSH_WORKFLOW.read_text())["jobs"]
-    publishing = [
-        name
-        for name, job in jobs.items()
+# A step uploads to PyPI with pypa/gh-action-pypi-publish, `twine upload` or
+# `uv publish`. Flags may come before the subcommand, as in
+# `uv --verbose publish`.
+PYPI_UPLOAD_COMMAND = re.compile(
+    r"\b(?:twine\s+(?:-\S+\s+)*upload|uv\s+(?:-\S+\s+)*publish)\b"
+)
+
+
+def pypi_upload_jobs() -> list[tuple[str, str]]:
+    """Each (workflow file, job) with a step that uploads to PyPI."""
+    return [
+        (workflow.name, name)
+        for workflow in sorted(WORKFLOWS.glob("*.y*ml"))
+        for name, job in yaml.safe_load(workflow.read_text())["jobs"].items()
         if any(
             "gh-action-pypi-publish" in step.get("uses", "")
+            or PYPI_UPLOAD_COMMAND.search(step.get("run", ""))
             for step in job.get("steps", [])
         )
     ]
 
-    assert publishing == ["Publish"]
+
+def test_publish_workflow_publishes_only_after_tests_pass():
+    # Without ``needs: Test``, Publish ran beside Test, so a release could
+    # reach PyPI while its tests were still running or after they failed.
+    # The checks below gate Publish, so no other job in any workflow may
+    # upload to PyPI.
+    assert pypi_upload_jobs() == [("push.yaml", "Publish")]
+    jobs = yaml.safe_load(PUSH_WORKFLOW.read_text())["jobs"]
     needs = jobs["Publish"].get("needs", [])
     assert "Test" in ([needs] if isinstance(needs, str) else needs)
     # A job that needs Test is skipped whenever Test is, so both must run on

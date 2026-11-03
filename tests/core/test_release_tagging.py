@@ -358,8 +358,10 @@ def test_publish_workflow_publishes_only_after_tests_pass():
 
 
 def test_test_job_cannot_pass_with_failing_tests():
-    # continue-on-error on Test or one of its steps lets the job succeed
-    # after a step fails, and Publish would then run.
+    # continue-on-error on one of Test's steps lets the job pass when that
+    # step fails, and Publish would then run. On the job, it lets the
+    # workflow run pass when Test fails, and GitHub's docs don't say whether
+    # jobs that need Test then run. Reject both.
     test_job = yaml.safe_load(PUSH_WORKFLOW.read_text())["jobs"]["Test"]
     assert not any(
         "continue-on-error" in item for item in [test_job, *test_job["steps"]]

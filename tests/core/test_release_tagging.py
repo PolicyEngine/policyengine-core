@@ -727,10 +727,15 @@ def assert_test_job_fails_when_tests_fail(workflow: dict) -> None:
 # .IGNORE or .ONESHELL (with .ONESHELL only the last line's status counts), any
 # mention of MAKEFLAGS, including GNUMAKEFLAGS (=, +=, override, export,
 # $(eval ...)), or a SHELL or .SHELLFLAGS of its own, also target-specific
-# (`test: SHELL = /bin/true`). Reading MAKEFLAGS, as `$(MAKEFLAGS)` does, also
-# fails this check: a loud false positive, and the Makefile has no such line.
+# (`test: SHELL = /bin/true`).
+# Any mention of PYTEST_ADDOPTS fails it too. make passes a variable named
+# in an `export` line to the commands it runs, and pytest adds the options
+# in PYTEST_ADDOPTS to its command line, so `export PYTEST_ADDOPTS =
+# --collect-only` lets make test pass without running tests.
+# Reading MAKEFLAGS, as `$(MAKEFLAGS)` does, also fails this check: a loud
+# false positive, and the Makefile has no such line.
 MAKE_SETTING_THAT_MASKS = re.compile(
-    r"\.(IGNORE|ONESHELL)\b|MAKEFLAGS|(?<![\w.])(SHELL|\.SHELLFLAGS)\s*[:+?!]*="
+    r"\.(IGNORE|ONESHELL)\b|MAKEFLAGS|PYTEST_ADDOPTS|(?<![\w.])(SHELL|\.SHELLFLAGS)\s*[:+?!]*="
 )
 # A recipe line that ends its own failure: `cmd || ...`, or one that ends in
 # `; true`, `; exit 0` or `; :`. It also fails, loudly, on text that masks
@@ -962,6 +967,8 @@ def write_makefile(tmp_path: Path, text: str) -> Path:
         "override SHELL = /bin/true",
         ".SHELLFLAGS := -c true",
         "test: SHELL = /bin/true",
+        "export PYTEST_ADDOPTS = --collect-only",
+        "test: export PYTEST_ADDOPTS = --collect-only",
     ],
 )
 def test_make_test_check_rejects_setting_that_masks(tmp_path, setting):

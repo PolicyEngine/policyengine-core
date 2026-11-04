@@ -405,22 +405,46 @@ def pypi_publishing_actions(actions: Path) -> list[str]:
     ]
 
 
+# Make syntax that make_rules does not follow, so recipe lines after it could
+# run unread: a conditional or define block, a changed recipe prefix, or a
+# backslash at the end of a line.
+MAKE_SYNTAX_MAKE_RULES_SKIPS = re.compile(
+    r"^ *((override|export)\s+)*(ifn?eq|ifn?def|else|endif|define|endef)\b"
+    r"|\.RECIPEPREFIX|\\$",
+    re.MULTILINE,
+)
+
+
 def make_rules(makefile: Path) -> dict[str, tuple[list[str], list[str]]]:
     """Each target's prerequisites and recipe lines (without the tab).
 
-    Enough for this Makefile: it has no line continuations, includes or
-    pattern rules.
+    Reads rule lines that start in the first column with a single colon, and
+    the tab-indented lines after each one as its recipe. Like make, it reads
+    past blank lines and lines of just a comment among recipe lines; any
+    other line ends the recipe. It fails on a conditional, a define block,
+    .RECIPEPREFIX or a line that ends in a backslash, since recipe lines after
+    them could run unread. It misreads a double-colon, indented or repeated
+    rule line and a `;` recipe on the rule line, which
+    make_targets_make_rules_misreads reports, and it doesn't follow include
+    or pattern rules.
     """
+    text = makefile.read_text()
+    assert not MAKE_SYNTAX_MAKE_RULES_SKIPS.search(text), (
+        "make_rules cannot read a conditional, define block, .RECIPEPREFIX or "
+        "line continuation in the Makefile"
+    )
     rules = {}
     recipe = []
-    for line in makefile.read_text().splitlines():
+    for line in text.splitlines():
         if line.startswith("\t"):
             recipe.append(line[1:])
         elif rule := MAKE_RULE.match(line):
             recipe = []
             for target in rule.group(1).split():
                 rules[target] = (rule.group(2).split(), recipe)
-        elif line.strip():
+        # make ignores blank lines and lines of just a comment among recipe
+        # lines, so neither ends a recipe.
+        elif line.strip() and not line.lstrip().startswith("#"):
             recipe = []
     return rules
 
@@ -1007,6 +1031,12 @@ TEMPLATE_RULE = "test-country-template:\n"
             "make test-country-template needs exactly one single-colon rule line",
             id="recipe-on-rule-line",
         ),
+        pytest.param(
+            "\tcoverage xml -i\n",
+            "# write the report\n\tcoverage xml -i || true\n",
+            "make test masks a failing command",
+            id="comment-line-before-masked-line",
+        ),
     ],
 )
 def test_make_test_check_rejects_recipe_it_cannot_read(tmp_path, old, new, violation):
@@ -1014,6 +1044,46 @@ def test_make_test_check_rejects_recipe_it_cannot_read(tmp_path, old, new, viola
 
     with pytest.raises(AssertionError, match=violation):
         assert_make_test_fails_when_tests_fail(makefile)
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        pytest.param(
+            "\tcoverage xml -i\n",
+            "ifeq (1,1)\n\tcoverage xml -i || true\nendif\n",
+            id="conditional",
+        ),
+        pytest.param(
+            "all: install", ".RECIPEPREFIX = >\nall: install", id="recipeprefix"
+        ),
+        pytest.param(
+            "all: install",
+            "define SHELL\n/bin/true\nendef\n\nall: install",
+            id="define",
+        ),
+        pytest.param(
+            "\tcoverage xml -i\n",
+            "\tcoverage xml -i; \\\n\ttrue\n",
+            id="line-continuation",
+        ),
+    ],
+)
+def test_make_rules_rejects_syntax_it_cannot_follow(tmp_path, old, new):
+    makefile = edit_makefile(tmp_path, old, new)
+
+    with pytest.raises(AssertionError, match="make_rules cannot read"):
+        make_rules(makefile)
+
+
+def test_pypi_upload_check_reads_past_comment_line(tmp_path):
+    makefile = edit_makefile(
+        tmp_path,
+        "build:\n\tpython -m build\n",
+        "build:\n\tpython -m build\n# upload\n\ttwine upload dist/*\n",
+    )
+
+    assert pypi_uploading_recipe_lines(makefile) == ["build: twine upload dist/*"]
 
 
 @pytest.mark.parametrize(

@@ -440,7 +440,8 @@ def test_only_push_publish_job_uploads_to_pypi():
     # Recognises the pypa publish action (lower-case owner), and twine upload
     # and uv/poetry/flit/hatch/pdm/maturin publish written as adjacent words,
     # in workflow steps, composite action steps under .github/actions and root
-    # Makefile recipes, and rejects reusable workflows from other repositories.
+    # Makefile recipes (each target must have one rule line that make_rules
+    # reads), and rejects reusable workflows from other repositories.
     # It misses uploads inside scripts and remote, Docker or JavaScript
     # actions; test_only_publish_job_gets_pypi_credentials limits those that
     # rely on trusted publishing.
@@ -449,6 +450,9 @@ def test_only_push_publish_job_uploads_to_pypi():
         "a job calls a reusable workflow from another repository"
     )
     assert pypi_publishing_actions(ACTIONS) == [], "a composite action uploads to PyPI"
+    assert make_targets_make_rules_misreads(MAKEFILE) == [], (
+        "a Makefile target needs exactly one single-colon rule line"
+    )
     assert pypi_uploading_recipe_lines(MAKEFILE) == [], (
         "a Makefile recipe uploads to PyPI"
     )
@@ -695,27 +699,68 @@ def assert_test_job_fails_when_tests_fail(workflow: dict) -> None:
     ), "Test sets MAKEFLAGS"
 
 
-# An assignment or export of MAKEFLAGS, such as `MAKEFLAGS += -i`.
-MAKEFLAGS_ASSIGNMENT = re.compile(r"^\s*(export\s+)?MAKEFLAGS\b", re.MULTILINE)
+# A setting that lets make test pass after a recipe line fails: any mention of
+# .IGNORE or .ONESHELL (with .ONESHELL only the last line's status counts), any
+# mention of MAKEFLAGS, including GNUMAKEFLAGS (=, +=, override, export,
+# $(eval ...)), or a SHELL or .SHELLFLAGS of its own, also target-specific
+# (`test: SHELL = /bin/true`). Reading MAKEFLAGS, as `$(MAKEFLAGS)` does, also
+# fails this check: a loud false positive, and the Makefile has no such line.
+MAKE_SETTING_THAT_MASKS = re.compile(
+    r"\.(IGNORE|ONESHELL)\b|MAKEFLAGS|(?<![\w.])(SHELL|\.SHELLFLAGS)\s*[:+?!]*="
+)
 # A recipe line that ends its own failure: `cmd || ...`, or one that ends in
-# `; true`, `; exit 0` or `; :`.
+# `; true`, `; exit 0` or `; :`. It also fails, loudly, on text that masks
+# nothing, such as a recipe comment `# a || b` or `echo 'a || b'`.
 MASKED_RECIPE_LINE = re.compile(r"\|\||;\s*(true|exit\s+0|:)\s*$")
+# Any rule line, including a double-colon one and one indented with spaces,
+# which make reads as a rule line too.
+ANY_MAKE_RULE = re.compile(r"^ *([^\s:=#][^:=#]*?)\s*(::?)(?![:=])(.*)$")
+
+
+def make_targets_make_rules_misreads(makefile: Path) -> list[str]:
+    """Targets whose recipe make_rules may not read as make does.
+
+    make_rules keeps only a target's last rule line, skips double-colon rules
+    and rule lines indented with spaces, and reads a recipe written after `;`
+    on the rule line as prerequisites. So each target needs exactly one rule
+    line, single-colon, starting in the first column, with no `;`.
+    """
+    lines = {}
+    for line in makefile.read_text().splitlines():
+        if rule := ANY_MAKE_RULE.match(line):
+            for target in rule.group(1).split():
+                lines.setdefault(target, []).append(line)
+    return sorted(
+        target
+        for target, rule_lines in lines.items()
+        if len(rule_lines) != 1
+        or not (rule := MAKE_RULE.match(rule_lines[0]))
+        or ";" in rule.group(2)
+    )
 
 
 def assert_make_test_fails_when_tests_fail(makefile: Path) -> None:
-    rules = make_rules(makefile)
-    prerequisites, _ = rules["test"]
-    # The .IGNORE special target, with or without prerequisites, and a
-    # MAKEFLAGS set in the Makefile (MAKEFLAGS += -i) both let make test pass
-    # after a recipe line fails.
-    assert ".IGNORE" not in rules, "the Makefile ignores recipe failures (.IGNORE)"
-    assert not MAKEFLAGS_ASSIGNMENT.search(makefile.read_text()), (
-        "the Makefile sets MAKEFLAGS"
+    assert not MAKE_SETTING_THAT_MASKS.search(makefile.read_text()), (
+        "the Makefile can ignore recipe failures"
     )
-    # make ignores a failing recipe line whose prefix (any mix of @, + and -
-    # after the tab) includes -, so make test could pass after tests fail.
-    for target in ["test", *prerequisites]:
-        for line in rules.get(target, ([], []))[1]:
+    rules = make_rules(makefile)
+    misread = make_targets_make_rules_misreads(makefile)
+    # make runs test's prerequisites at every depth, and their recipes.
+    checked, queue = [], ["test"]
+    while queue:
+        target = queue.pop()
+        if target in checked:
+            continue
+        checked.append(target)
+        assert target in rules and target not in misread, (
+            f"make {target} needs exactly one single-colon rule line"
+        )
+        prerequisites, recipe = rules[target]
+        # `|` separates order-only prerequisites, which make also runs.
+        queue += [name for name in prerequisites if name != "|"]
+        for line in recipe:
+            # make ignores a failing recipe line whose prefix (any mix of @, +
+            # and - after the tab) includes -.
             prefix = line[: len(line) - len(line.lstrip("@+- \t"))]
             assert "-" not in prefix, f"make {target} ignores a failing recipe line"
             assert not MASKED_RECIPE_LINE.search(line), (
@@ -872,23 +917,120 @@ def write_makefile(tmp_path: Path, text: str) -> Path:
     return makefile
 
 
-@pytest.mark.parametrize("rule", [".IGNORE: test", ".IGNORE:"])
-def test_make_test_check_rejects_ignore_special_target(tmp_path, rule):
-    makefile = write_makefile(tmp_path, MAKEFILE.read_text() + f"\n{rule}\n")
+@pytest.mark.parametrize(
+    "setting",
+    [
+        ".IGNORE: test",
+        ".IGNORE:",
+        "  .IGNORE:",
+        ".IGNORE: # c",
+        ".IGNORE:test",
+        "foo .IGNORE:",
+        "$(eval .IGNORE:)",
+        ".ONESHELL:",
+        "MAKEFLAGS += -i",
+        "export MAKEFLAGS = -i",
+        "  MAKEFLAGS := i",
+        "override MAKEFLAGS += -i",
+        "$(eval MAKEFLAGS += -i)",
+        "GNUMAKEFLAGS += -i",
+        "SHELL := /bin/true",
+        "override SHELL = /bin/true",
+        ".SHELLFLAGS := -c true",
+        "test: SHELL = /bin/true",
+    ],
+)
+def test_make_test_check_rejects_setting_that_masks(tmp_path, setting):
+    makefile = write_makefile(tmp_path, f"{setting}\n" + MAKEFILE.read_text())
 
-    with pytest.raises(AssertionError, match=r"ignores recipe failures \(\.IGNORE\)"):
+    with pytest.raises(AssertionError, match="the Makefile can ignore recipe failures"):
+        assert_make_test_fails_when_tests_fail(makefile)
+
+
+def edit_makefile(tmp_path: Path, old: str, new: str) -> Path:
+    text = MAKEFILE.read_text()
+    assert text.count(old) == 1
+    return write_makefile(tmp_path, text.replace(old, new))
+
+
+TEMPLATE_RULE = "test-country-template:\n"
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "violation"),
+    [
+        pytest.param(
+            TEMPLATE_RULE,
+            "test-country-template: deeper\n",
+            "make deeper needs exactly one single-colon rule line",
+            id="prerequisite-without-rule",
+        ),
+        pytest.param(
+            TEMPLATE_RULE,
+            "deeper:\n\tfalse || true\n\ntest-country-template: deeper\n",
+            "make deeper masks a failing command",
+            id="prerequisite-of-prerequisite",
+        ),
+        pytest.param(
+            "test: test-country-template\n",
+            "test: test-country-template | deeper\n",
+            "make deeper needs exactly one single-colon rule line",
+            id="order-only-prerequisite",
+        ),
+        pytest.param(
+            "build:\n",
+            "test: format\n\nbuild:\n",
+            "make test needs exactly one single-colon rule line",
+            id="later-rule-line",
+        ),
+        pytest.param(
+            "build:\n",
+            "format test:\n\nbuild:\n",
+            "make test needs exactly one single-colon rule line",
+            id="later-rule-line-with-other-target",
+        ),
+        pytest.param(
+            "build:\n",
+            "  test:\n\ttrue\n\nbuild:\n",
+            "make test needs exactly one single-colon rule line",
+            id="later-indented-rule-line",
+        ),
+        pytest.param(
+            TEMPLATE_RULE,
+            "test-country-template::\n",
+            "make test-country-template needs exactly one single-colon rule line",
+            id="double-colon-rule",
+        ),
+        pytest.param(
+            TEMPLATE_RULE,
+            "test-country-template: ; false || true\n",
+            "make test-country-template needs exactly one single-colon rule line",
+            id="recipe-on-rule-line",
+        ),
+    ],
+)
+def test_make_test_check_rejects_recipe_it_cannot_read(tmp_path, old, new, violation):
+    makefile = edit_makefile(tmp_path, old, new)
+
+    with pytest.raises(AssertionError, match=violation):
         assert_make_test_fails_when_tests_fail(makefile)
 
 
 @pytest.mark.parametrize(
-    "assignment",
-    ["MAKEFLAGS += -i", "export MAKEFLAGS = -i", "  MAKEFLAGS := i"],
+    "new",
+    [
+        pytest.param("build::\n\ttwine upload dist/*\n", id="double-colon-rule"),
+        pytest.param(
+            "build:\n\ttwine upload dist/*\n\nbuild: install\n",
+            id="later-rule-line",
+        ),
+        pytest.param("build: ; twine upload dist/*\n", id="recipe-on-rule-line"),
+    ],
 )
-def test_make_test_check_rejects_makeflags_in_makefile(tmp_path, assignment):
-    makefile = write_makefile(tmp_path, f"{assignment}\n" + MAKEFILE.read_text())
+def test_pypi_upload_check_rejects_recipe_it_cannot_read(tmp_path, new):
+    makefile = edit_makefile(tmp_path, "build:\n\tpython -m build\n", new)
 
-    with pytest.raises(AssertionError, match="the Makefile sets MAKEFLAGS"):
-        assert_make_test_fails_when_tests_fail(makefile)
+    assert make_targets_make_rules_misreads(makefile) == ["build"]
 
 
 @pytest.mark.parametrize(

@@ -409,7 +409,7 @@ def pypi_publishing_actions(actions: Path) -> list[str]:
 # run unread: a conditional or define block, a changed recipe prefix, or a
 # backslash at the end of a line.
 MAKE_SYNTAX_MAKE_RULES_SKIPS = re.compile(
-    r"^ *((override|export)\s+)*(ifn?eq|ifn?def|else|endif|define|endef)\b"
+    r"^[ \t\f\v]*((override|export)\s+)*(ifn?eq|ifn?def|else|endif|define|endef)\b"
     r"|\.RECIPEPREFIX|\\$",
     re.MULTILINE,
 )
@@ -1066,6 +1066,21 @@ def test_make_test_check_rejects_recipe_it_cannot_read(tmp_path, old, new, viola
             "\tcoverage xml -i\n",
             "\tcoverage xml -i; \\\n\ttrue\n",
             id="line-continuation",
+        ),
+        pytest.param(
+            "\tcoverage xml -i\n",
+            " \tifeq (1,1)\n\tcoverage xml -i || true\n \tendif\n",
+            id="conditional-after-space-and-tab",
+        ),
+        pytest.param(
+            "all: install",
+            "\fdefine SHELL\n/bin/true\n\fendef\n\nall: install",
+            id="define-after-form-feed",
+        ),
+        pytest.param(
+            "all: install",
+            "X = 1\n\tifeq (1,0)\n\tendif\n\nall: install",
+            id="tab-conditional-outside-rule",
         ),
     ],
 )

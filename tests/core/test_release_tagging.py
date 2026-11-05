@@ -414,12 +414,12 @@ MAKE_SYNTAX_MAKE_RULES_SKIPS = re.compile(
     re.MULTILINE,
 )
 
-# Python ends a line at \r, \v, \f, \x1c to \x1e, \x85,   and
+# Python ends a line at \r, \v, \f, \x1c to \x1e, \x85, \u2028 and \u2029
 # as well as at \n: read_text turns a lone \r into \n, and splitlines splits
 # at the rest. make ends a line only at \n. So make_rules would read a recipe
 # line such as `cmd $(if ,<form feed>)|| true` as two lines and miss its
 # `|| true` or upload.
-MAKE_LINE_BREAK_MAKE_IGNORES = re.compile(r"\r(?!\n)|[\v\f\x1c-\x1e\x85  ]")
+MAKE_LINE_BREAK_MAKE_IGNORES = re.compile(r"\r(?!\n)|[\v\f\x1c-\x1e\x85\u2028\u2029]")
 
 
 def make_rules(makefile: Path) -> dict[str, tuple[list[str], list[str]]]:

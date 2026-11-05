@@ -213,6 +213,28 @@ def test_entity_change_drops_orphaned_holder_and_input_records():
     assert_bound(simulation)
 
 
+@pytest.mark.parametrize("on_disk", [False, True])
+def test_entity_change_keeps_inputs_supplied_to_the_new_holder(on_disk):
+    class MoveAndSupply(Reform):
+        def apply(self):
+            MoveAnnualToHousehold.apply(self)
+            self.simulation.set_input("annual_value", PERIOD, [31])
+
+    simulation = build()
+    if on_disk:
+        store_on_disk(simulation, "annual_value")
+    simulation.set_input("annual_value", PERIOD, [7, 9])
+    simulation.input_variables = ["annual_value", "eligible"]
+
+    simulation.apply_reform(MoveAndSupply)
+
+    assert "annual_value" not in simulation.persons._holders
+    assert "annual_value" in simulation.input_variables
+    assert ("annual_value", "default", period(PERIOD)) in simulation._user_input_keys
+    np.testing.assert_array_equal(simulation.calculate("annual_value", PERIOD), [31])
+    assert_bound(simulation)
+
+
 class MakeAnnual(Reform):
     def apply(self):
         class eternal_value(Variable):
@@ -242,14 +264,14 @@ def test_eternity_to_year_drops_incompatible_storage_and_inputs(on_disk):
 
     simulation.apply_reform(MakeAnnual)
 
-    assert "eternal_value" not in simulation.input_variables
-    assert all(key[0] != "eternal_value" for key in simulation._user_input_keys)
     np.testing.assert_array_equal(
         simulation.calculate("eternal_value", "2025"), [2025, 2025]
     )
     np.testing.assert_array_equal(
         simulation.calculate("eternal_value", "2026"), [2026, 2026]
     )
+    assert "eternal_value" not in simulation.input_variables
+    assert all(key[0] != "eternal_value" for key in simulation._user_input_keys)
     assert_bound(simulation)
 
 

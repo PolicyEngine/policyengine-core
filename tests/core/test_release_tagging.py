@@ -1121,6 +1121,37 @@ def test_make_rules_rejects_syntax_it_cannot_follow(tmp_path, old, new):
         make_rules(makefile)
 
 
+@pytest.mark.parametrize(
+    "line_break", ["\v", "\x1c", "\x1d", "\x1e", "\x85", "\u2028", "\u2029"]
+)
+def test_make_rules_rejects_each_line_break_make_ignores(tmp_path, line_break):
+    makefile = tmp_path / "Makefile"
+    makefile.write_bytes(
+        MAKEFILE.read_bytes().replace(
+            b"\tcoverage xml -i",
+            f"\tcoverage xml -i $(if ,{line_break})|| true".encode(),
+        )
+    )
+
+    with pytest.raises(AssertionError, match="make_rules cannot read a line break"):
+        make_rules(makefile)
+
+
+def test_make_rules_reads_crlf_makefile_as_lf(tmp_path):
+    # Normalize first, since a Windows checkout may already be CRLF.
+    lf = MAKEFILE.read_bytes().replace(b"\r\n", b"\n")
+    lf_makefile = tmp_path / "lf" / "Makefile"
+    crlf_makefile = tmp_path / "crlf" / "Makefile"
+    lf_makefile.parent.mkdir()
+    crlf_makefile.parent.mkdir()
+    lf_makefile.write_bytes(lf)
+    crlf_makefile.write_bytes(lf.replace(b"\n", b"\r\n"))
+
+    lf_rules = make_rules(lf_makefile)
+    assert "coverage xml -i" in lf_rules["test"][1]
+    assert make_rules(crlf_makefile) == lf_rules
+
+
 def test_pypi_upload_check_reads_past_comment_line(tmp_path):
     makefile = edit_makefile(
         tmp_path,

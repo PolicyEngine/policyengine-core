@@ -1,0 +1,1 @@
+The release tests now pin each line break their Makefile parser refuses (vertical tab, `\x1c` to `\x1e`, `\x85`, U+2028 and U+2029), and check that it reads a CRLF copy of the root `Makefile` the same as the LF one.

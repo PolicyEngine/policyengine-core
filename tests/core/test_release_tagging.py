@@ -414,6 +414,13 @@ MAKE_SYNTAX_MAKE_RULES_SKIPS = re.compile(
     re.MULTILINE,
 )
 
+# Python ends a line at \r, \v, \f, \x1c to \x1e, \x85,   and
+# as well as at \n: read_text turns a lone \r into \n, and splitlines splits
+# at the rest. make ends a line only at \n. So make_rules would read a recipe
+# line such as `cmd $(if ,<form feed>)|| true` as two lines and miss its
+# `|| true` or upload.
+MAKE_LINE_BREAK_MAKE_IGNORES = re.compile(r"\r(?!\n)|[\v\f\x1c-\x1e\x85  ]")
+
 
 def make_rules(makefile: Path) -> dict[str, tuple[list[str], list[str]]]:
     """Each target's prerequisites and recipe lines (without the tab).
@@ -422,16 +429,22 @@ def make_rules(makefile: Path) -> dict[str, tuple[list[str], list[str]]]:
     the tab-indented lines after each one as its recipe. Like make, it reads
     past blank lines and lines of just a comment among recipe lines; any
     other line ends the recipe. It fails on a conditional, a define block,
-    .RECIPEPREFIX or a line that ends in a backslash, since recipe lines after
-    them could run unread. It misreads a double-colon, indented or repeated
-    rule line and a `;` recipe on the rule line, which
+    .RECIPEPREFIX, a line that ends in a backslash or a line break other than
+    a newline, since recipe lines after them could run unread. It also fails
+    on a recipe line that opens with a directive word, such as `else`, which
+    it can't tell from a directive. It misreads a double-colon, indented or
+    repeated rule line and a `;` recipe on the rule line, which
     make_targets_make_rules_misreads reports, and it doesn't follow include
     or pattern rules.
     """
+    assert not MAKE_LINE_BREAK_MAKE_IGNORES.search(makefile.read_bytes().decode()), (
+        "make_rules cannot read a line break other than \\n or \\r\\n in the Makefile"
+    )
     text = makefile.read_text()
     assert not MAKE_SYNTAX_MAKE_RULES_SKIPS.search(text), (
-        "make_rules cannot read a conditional, define block, .RECIPEPREFIX or "
-        "line continuation in the Makefile"
+        "make_rules cannot read a conditional, define block, .RECIPEPREFIX, "
+        "line continuation or recipe line that opens with a directive word in "
+        "the Makefile"
     )
     rules = {}
     recipe = []
@@ -1088,6 +1101,16 @@ def test_make_test_check_rejects_recipe_it_cannot_read(tmp_path, old, new, viola
             "all: install",
             "X = 1\n\tifeq (1,0)\n\tendif\n\nall: install",
             id="tab-conditional-outside-rule",
+        ),
+        pytest.param(
+            "\tcoverage xml -i\n",
+            "\tcoverage xml -i $(if ,\f)|| true\n",
+            id="form-feed-inside-recipe-line",
+        ),
+        pytest.param(
+            "\tcoverage xml -i\n",
+            "\tcoverage xml -i $(if ,\r)|| true\n",
+            id="carriage-return-inside-recipe-line",
         ),
     ],
 )

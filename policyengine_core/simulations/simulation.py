@@ -932,6 +932,8 @@ class Simulation:
             if isinstance(reform, dict):
                 reform = Reform.from_dict(reform)
             reform.apply(self.tax_benefit_system)
+        # Refresh holders before input replay looks them up in the new system.
+        self._bind_to_tax_benefit_system()
         # Invalidate every cached value so the simulation recomputes under
         # the new tax-benefit system. Previously ``apply_reform`` left
         # ``_fast_cache``, in-memory holder storage, and on-disk holder
@@ -1318,6 +1320,11 @@ class Simulation:
         holder was built for the reform's definition in a way a new variable
         cannot change: in another entity's population, or with storage for
         (or not for) an ``ETERNITY`` variable.
+
+        After an in-place reform, compatible holders keep their storage and
+        recorded inputs. Each existing branch binds to its own system, so
+        shared-system branches follow the reform and a baseline keeps its
+        baseline variables.
         """
         system = self.tax_benefit_system
         if system is None:
@@ -1346,7 +1353,11 @@ class Simulation:
                     holder.variable = variable
 
         def kept(name):
-            return name in variables and name not in dropped
+            # A reform may supply a new entity's input before we drop the old holder.
+            return name in variables and (
+                name not in dropped
+                or name in self.populations[variables[name].entity.key]._holders
+            )
 
         if getattr(self, "_user_input_keys", None) is not None:
             self._user_input_keys = {
@@ -1354,6 +1365,8 @@ class Simulation:
             }
         if getattr(self, "input_variables", None) is not None:
             self.input_variables = [name for name in self.input_variables if kept(name)]
+        for branch in self.branches.values():
+            branch._bind_to_tax_benefit_system()
 
     def create_shortcuts(self) -> None:
         for _key, population in self.populations.items():

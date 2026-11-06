@@ -1,3 +1,10 @@
+## [3.34.8] - 2026-11-06
+
+### Fixed
+
+- Simulation.apply_reform now rebinds existing holders to each branch's system before clearing cached calculations.
+
+
 ## [3.34.7] - 2026-11-05
 
 ### Changed

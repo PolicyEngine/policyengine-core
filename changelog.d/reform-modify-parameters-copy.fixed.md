@@ -1,0 +1,1 @@
+`Reform.modify_parameters` no longer deep-copies the baseline's parameter tree, so changes `apply()` made first are kept, and `TaxBenefitSystem.modify_parameters` drops every cached node at instant after the modifier runs, so in-place edits read fresh.

@@ -155,7 +155,7 @@ class Holder:
     def _forget_deleted_inputs(
         self, user_input_keys: set, stored_before: Tuple[set, set]
     ) -> None:
-        """Drop the simulation's record of the inputs ``delete_arrays`` deleted.
+        """Drop the simulation's record of the inputs removed from storage.
 
         ``_user_input_keys`` records each (variable, branch, period) stored
         through ``set_input``, with the period as storage keys it (see
@@ -442,6 +442,31 @@ class Holder:
             self._disk_storage is not None
             and self._disk_storage.has_unnumbered_values()
         )
+
+    def delete_array(
+        self,
+        period: Period,
+        branch_name: str = "default",
+        derived_only: bool = False,
+    ) -> None:
+        """
+        Remove the value stored for exactly ``period`` under ``branch_name``, leaving the periods it contains (unlike ``delete_arrays``).
+
+        With ``derived_only``, remove it only if the simulation calculated it (see ``put_in_cache``): an input stored there stays.
+        """
+        simulation = getattr(self, "simulation", None)
+        user_input_keys = (
+            None if derived_only else getattr(simulation, "_user_input_keys", None)
+        )
+        stored_before = self._stored_keys() if user_input_keys else None
+
+        self._memory_storage.delete_exact(period, branch_name, derived_only)
+        if self._disk_storage:
+            self._disk_storage.delete_exact(period, branch_name, derived_only)
+        self._evict_fast_cache(period, branch_name)
+
+        if user_input_keys:
+            self._forget_deleted_inputs(user_input_keys, stored_before)
 
     def _get_array_from_storage(
         self, period: Period, branch_name: str = "default"
@@ -847,6 +872,7 @@ class Holder:
             return
 
         self._set(period, value, branch_name, is_input=False, derived=derived)
+        self.simulation._note_cached_value(self.variable.name, period)
 
     def _record_store(self, period: Period, sequence_number: int) -> None:
         simulation = getattr(self, "simulation", None)

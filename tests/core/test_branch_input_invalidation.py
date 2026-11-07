@@ -533,14 +533,14 @@ def test_value_a_holder_does_not_keep_is_tracked():
 
 
 def test_value_a_spiral_defaults_is_tracked():
-    """The default a spiral returns is not stored, but what reads it is."""
+    """A spiral's default stays in dependency history after cut caches are purged."""
     simulation = synthetic_simulation(ROOT_INPUTS)
     branch = simulation.get_branch("branch")
     branch.calculate("p_spiral", "2015")
-    deepest = min(
-        periods.period(key.split(":", 1)[1])
-        for key in branch.get_holder("p_spiral")._memory_storage._arrays
-    ).last_year
+    assert not branch.get_holder("p_spiral")._memory_storage._arrays
+    history = branch._get_store_history()
+    deepest = min(history._first_stored["p_spiral"])
+    assert history.earliest_dependency("p_spiral", deepest) is not None
 
     branch.set_input("p_spiral", deepest, np.array([100.0, 100.0, 100.0]))
 

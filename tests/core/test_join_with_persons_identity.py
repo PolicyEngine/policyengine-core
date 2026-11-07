@@ -99,6 +99,7 @@ def test_dataset_person_joins_named_household_when_another_is_empty(
 
     household = simulation.populations["household"]
     assert household.members_entity_id.tolist() == [0, 2]
+    assert simulation.input_group_entities == frozenset({"household"})
     assert simulation.calculate("rent", "2024-01", map_to="person").tolist() == [
         100.0,
         300.0,
@@ -189,6 +190,8 @@ def test_flat_file_with_only_a_household_id_column_reads_it_as_membership(
     household = simulation.populations["household"]
     assert household.count == 2
     assert household.members_entity_id.tolist() == [0, 0, 1]
+    # The ID column declares the households, so they count as supplied.
+    assert simulation.input_group_entities == frozenset({"household"})
 
 
 def test_flat_file_default_roles_cover_every_person():

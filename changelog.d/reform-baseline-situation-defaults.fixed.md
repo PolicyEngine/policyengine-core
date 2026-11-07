@@ -1,0 +1,1 @@
+A reform simulation built from a situation now gives its baseline the inputs the baseline system makes of that situation: people the situation gives no value take the baseline's default instead of the reform's, and valid inputs for a variable the reform neutralizes reach the baseline.

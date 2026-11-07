@@ -406,10 +406,15 @@
 
 <div class="viewcode-block" id="Population.get_holder"><a class="viewcode-back" href="../../../python_api/populations.html#policyengine_core.populations.population.Population.get_holder">[docs]</a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_holder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variable_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Holder</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">check_variable_defined_for_entity</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span>
+        <span class="n">variable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span>
         <span class="n">holder</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_holders</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">holder</span><span class="p">:</span>
+            <span class="c1"># The system may have replaced the definition since the holder</span>
+            <span class="c1"># was made or last bound: a reform's ``apply`` that restores a</span>
+            <span class="c1"># neutralized variable and then sets its input, or code that</span>
+            <span class="c1"># changes a branch's system directly.</span>
+            <span class="n">holder</span><span class="o">.</span><span class="n">_follow_definition</span><span class="p">(</span><span class="n">variable</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">holder</span>
-        <span class="n">variable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">variable_name</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_holders</span><span class="p">[</span><span class="n">variable_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">holder</span> <span class="o">=</span> <span class="n">Holder</span><span class="p">(</span><span class="n">variable</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">holder</span></div>
 

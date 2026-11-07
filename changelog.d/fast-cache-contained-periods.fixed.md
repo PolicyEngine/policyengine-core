@@ -1,0 +1,1 @@
+`delete_arrays`, `set_input` and spiral-cache purging now drop every contained period from the simulation's fast cache (every period for ETERNITY variables), as holder storage does, so `calculate` no longer returns values storage has deleted or replaced.

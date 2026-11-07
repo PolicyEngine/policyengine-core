@@ -87,8 +87,11 @@ class Microsimulation(Simulation):
         period: Period = None,
         map_to: str = None,
         use_weights: bool = True,
+        decode_enums: bool = False,
     ) -> MicroSeries:
-        values = super().calculate_add(variable_name, period)
+        # ``Population.__call__`` passes ``decode_enums`` with every ADD or
+        # DIVIDE read in a formula.
+        values = super().calculate_add(variable_name, period, decode_enums=decode_enums)
         if map_to is not None:
             source_entity = self.tax_benefit_system.get_variable(
                 variable_name, check_existence=True
@@ -105,8 +108,11 @@ class Microsimulation(Simulation):
         period: Period = None,
         map_to: str = None,
         use_weights: bool = True,
+        decode_enums: bool = False,
     ) -> MicroSeries:
-        values = super().calculate_divide(variable_name, period)
+        values = super().calculate_divide(
+            variable_name, period, decode_enums=decode_enums
+        )
         if map_to is not None:
             source_entity = self.tax_benefit_system.get_variable(
                 variable_name, check_existence=True

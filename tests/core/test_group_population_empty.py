@@ -84,7 +84,26 @@ def test_default_simulation_of_no_one():
     assert households.all(no_values > 0).tolist() == []
 
 
-@pytest.mark.parametrize("count_type", [int, np.int32, np.int64, np.uint64])
+INTEGER_COUNT_TYPES = [
+    int,
+    np.int8,
+    np.int16,
+    np.int32,
+    np.int64,
+    np.uint8,
+    np.uint16,
+    np.uint32,
+    np.uint64,
+    np.intp,
+    np.uintp,
+    np.intc,
+    np.longlong,
+    # A 0-d integer array, which ``range`` also takes.
+    np.array,
+]
+
+
+@pytest.mark.parametrize("count_type", INTEGER_COUNT_TYPES)
 @pytest.mark.parametrize("count_value", [0, 1, 4])
 def test_default_simulation_keeps_integer_ids(count_type, count_value):
     count = count_type(count_value)

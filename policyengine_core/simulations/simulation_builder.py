@@ -1,4 +1,5 @@
 import copy
+import operator
 import typing
 from typing import TYPE_CHECKING, Any, List
 
@@ -334,8 +335,16 @@ class SimulationBuilder:
             - There are ``count`` persons
             - There are ``count`` instances of each group entity, containing one person
             - Every person has, in each entity, the first role
+
+        Raises:
+            TypeError: if ``count`` is not an integer, as ``range(count)``
+                would.
         """
 
+        # ``np.arange`` accepts 2.5 or 2.0, and the simulation then fails in
+        # ``sum`` or ``calculate``; ``operator.index`` refuses what ``range``
+        # refuses.
+        id_count = operator.index(count)
         if simulation is None:
             simulation = Simulation(
                 tax_benefit_system=tax_benefit_system,
@@ -343,7 +352,7 @@ class SimulationBuilder:
             )
         for population in simulation.populations.values():
             population.count = count
-            population.ids = np.arange(count, dtype=np.int64)
+            population.ids = np.arange(id_count, dtype=np.int64)
             if not population.entity.is_person:
                 population.members_entity_id = (
                     population.ids

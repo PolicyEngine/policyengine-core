@@ -1,3 +1,94 @@
+## [3.34.9] - 2026-11-07
+
+### Fixed
+
+- Holders now follow their system's current variable definitions whenever a simulation looks them up, so a reform can set an input for a variable it restores, and `apply_reform` keeps `input_variables` unless it drops a name.
+
+
+## [3.34.8] - 2026-11-06
+
+### Fixed
+
+- Simulation.apply_reform now rebinds existing holders to each branch's system before clearing cached calculations.
+
+
+## [3.34.7] - 2026-11-05
+
+### Changed
+
+- The release tests now pin each line break their Makefile parser refuses (vertical tab, `\x1c` to `\x1e`, `\x85`, U+2028 and U+2029), and check that it reads a CRLF copy of the root `Makefile` the same as the LF one.
+
+
+## [3.34.6] - 2026-11-05
+
+### Changed
+
+- The release tests now also fail if the root `Makefile` mentions `.IGNORE`, `.ONESHELL`, `MAKEFLAGS` (also inside a longer name such as `GNUMAKEFLAGS`) or `PYTEST_ADDOPTS`, or assigns `SHELL` or `.SHELLFLAGS` (with any assignment operator, also target-specific). They fail if it holds a conditional (`ifeq` … `endif`), a `define` block, `.RECIPEPREFIX`, a line that ends in `\` or a line break other than a newline (such as a form feed), which their recipe parser can't follow. They fail if a target on any of its rule lines, or a prerequisite that `make test` runs at any depth, lacks exactly one single-colon rule line that starts in the first column with no `;` recipe on it. They fail if a recipe line of `make test` or of a prerequisite it runs at any depth (order-only included) contains `||` or ends in `; true`, `; exit 0` or `; :`. The parser reads past comment-only lines inside a recipe, as make does. The tests also fail if the workflow, the Test job or the push workflow's test step sets `MAKEFLAGS` in `env`. They fail if any workflow job other than `push.yaml`'s Publish declares `environment: pypi` or gets `id-token: write` (from its own `permissions`, the workflow's, or `write-all`). A missing test step's failure message now says how to update the locator.
+
+
+## [3.34.5] - 2026-11-03
+
+### Changed
+
+- The release tests now also recognise `poetry`, `flit`, `hatch`, `pdm` and `maturin publish` as PyPI uploads alongside the PyPI publish action, `twine upload` and `uv publish`, and fail if a recipe in the root `Makefile` or a step of a composite action under `.github/actions/` runs one of those commands or the action, if a workflow job calls a reusable workflow from another repository, if the push workflow's test step runs under a `shell` set on the step or in the Test job's or the workflow's `defaults.run`, if the workflow, the Test job or its test step sets `PYTEST_ADDOPTS` in `env`, or if a recipe line of `make test` or of its prerequisites has a `-` prefix.
+
+
+## [3.34.4] - 2026-11-03
+
+### Changed
+
+- The release tests now fail if `push.yaml`'s Test job or one of its steps sets `continue-on-error`, or if its `make test` step has an `if:` condition or runs more than that command. They also fail if any job other than `push.yaml`'s Publish uploads to PyPI with `pypa/gh-action-pypi-publish`, `twine upload` or `uv publish`. The actionlint config drops two ignores for a step that no longer exists.
+
+
+## [3.34.3] - 2026-11-03
+
+### Fixed
+
+- The release workflow now publishes to PyPI only after the Test job passes, instead of running Publish beside Test.
+
+
+## [3.34.2] - 2026-10-31
+
+### Changed
+
+- Pause automatic garbage collection while the YAML test runner builds the system for a reform combination, run one full collection when the build returns while the cache holds fewer than three systems, and restore the caller's setting, so a cache-miss build no longer spends most of its time in repeated full collections that free almost nothing.
+
+
+## [3.34.1] - 2026-10-31
+
+### Changed
+
+- Parameter clones copy each metadata dict without deep-copying the values in it, which makes cloning a large tax-benefit system faster and smaller. `interpolate_parameters` now records its work in `Parameter.interpolated` instead of writing `completed` into the `interpolation` metadata, so it interpolates every parameter a node propagates `interpolation` to, not only the first.
+
+
+## [3.34.0] - 2026-10-30
+
+### Removed
+
+- Removed `Reform.from_api`, `Reform.api_id` and `policyengine_core.charts.api` (with the chart functions `get_api_chart_data`, `intra_decile_chart` and `decile_chart` that `policyengine_core.charts` exported from it), which sent HTTP requests to the PolicyEngine Public API; build reforms with `Reform.from_dict` instead.
+
+
+## [3.33.15] - 2026-10-30
+
+### Changed
+
+- Upgraded certifi to 2026.10.23 and hf-xet to 1.8.0 in `uv.lock`, so development environments installed from the lock no longer trust the compromised eMudhra CA certificates.
+
+
+## [3.33.14] - 2026-10-30
+
+### Fixed
+
+- Build the YAML test runner's unit-test nodes with pytest's public `from_parent` constructor, so the test suite passes with pytest 9.2.0.
+
+
+## [3.33.13] - 2026-10-27
+
+### Fixed
+
+- Restore dumped simulations that have no persons, or groups with no members, by recording each population's count in the dump; `build_default_simulation` again refuses a count that is not an integer when building.
+
+
 ## [3.33.12] - 2026-10-19
 
 ### Fixed

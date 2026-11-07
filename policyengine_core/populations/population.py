@@ -168,10 +168,15 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
 
     def get_holder(self, variable_name: str) -> Holder:
         self.entity.check_variable_defined_for_entity(variable_name)
+        variable = self.entity.get_variable(variable_name)
         holder = self._holders.get(variable_name)
         if holder:
+            # The system may have replaced the definition since the holder
+            # was made or last bound: a reform's ``apply`` that restores a
+            # neutralized variable and then sets its input, or code that
+            # changes a branch's system directly.
+            holder._follow_definition(variable)
             return holder
-        variable = self.entity.get_variable(variable_name)
         self._holders[variable_name] = holder = Holder(variable, self)
         return holder
 

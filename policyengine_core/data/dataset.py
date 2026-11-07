@@ -482,7 +482,21 @@ class Dataset:
 
     @staticmethod
     def from_dataframe(dataframe: pd.DataFrame, time_period: str = None):
-        """Creates a dataset from a DataFrame.
+        """Creates a dataset from a person-level DataFrame.
+
+        Each row is one person. A column named ``variable__period`` holds that
+        variable for that period, and a column named ``variable`` holds it for
+        ``time_period``. Variables defined for all time accept any period, and
+        ``Simulation.to_input_dataframe`` spells theirs ``ETERNITY``.
+
+        Each row also says which group the person belongs to, through a
+        ``person_{entity}_id`` or ``{entity}_id`` column for every group entity.
+        A ``person_id`` column is optional, and rows number people without one.
+        A group variable reads its value from the first member's row.
+
+        Args:
+            dataframe (pd.DataFrame): The person-level data.
+            time_period (str, optional): The period of unsuffixed columns.
 
         Returns:
             Dataset: The dataset.

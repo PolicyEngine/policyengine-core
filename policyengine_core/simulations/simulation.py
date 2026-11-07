@@ -29,7 +29,7 @@ from policyengine_core.errors import CycleError, SpiralError
 from policyengine_core.holders.holder import Holder
 from policyengine_core.periods import Period
 from policyengine_core.periods.config import ETERNITY, MONTH, YEAR
-from policyengine_core.periods.helpers import period
+from policyengine_core.periods.helpers import period, unit_weight
 from policyengine_core.tracers import (
     FullTracer,
     SimpleTracer,
@@ -71,6 +71,16 @@ class _BranchClone:
 _branch_clone: ContextVar[Optional[_BranchClone]] = ContextVar(
     "_branch_clone", default=None
 )
+
+
+def _flat_column_variable(column: str) -> str:
+    """The variable a flat-file column belongs to: ``variable__period``."""
+    return column.rsplit("__", 1)[0]
+
+
+def _is_categorical(values: ArrayLike) -> bool:
+    """Whether values are text or enums, which have no sum or share."""
+    return isinstance(values, EnumArray) or np.asarray(values).dtype.kind in "USO"
 
 
 def _stable_hash_to_seed(value: str) -> int:
@@ -1120,7 +1130,7 @@ class Simulation:
             if self.dataset.data_format == Dataset.FLAT_FILE:
                 # Look for any column with variablename__timeperiod
                 for col in data:
-                    if col.split("__")[0] == name:
+                    if _flat_column_variable(col) == name:
                         return data[col]
             elif self.dataset.data_format == Dataset.TIME_PERIOD_ARRAYS:
                 return data[name][list(data[name].keys())[0]]
@@ -1130,8 +1140,11 @@ class Simulation:
             assert entity_id_field in data, (
                 f"Missing {entity_id_field} column in the dataset. Each person entity must have an ID array defined for ETERNITY."
             )
-        elif entity_id_field not in data:
-            data[entity_id_field] = np.arange(len(get_eternity_array("person_id")))
+        elif not any(
+            _flat_column_variable(column) == entity_id_field for column in data
+        ):
+            # Each row of a flat file is one person, so the rows number them.
+            data[entity_id_field] = np.arange(len(next(iter(data.values()), ())))
 
         entity_ids = get_eternity_array(entity_id_field)
         builder.declare_person_entity(person_entity.key, entity_ids)
@@ -1158,10 +1171,19 @@ class Simulation:
                     (
                         field
                         for field in (person_membership_id_field, entity_id_field)
-                        if any(column.split("__")[0] == field for column in data)
+                        if any(
+                            _flat_column_variable(column) == field for column in data
+                        )
                     ),
-                    person_membership_id_field,
+                    None,
                 )
+                if membership_field is None:
+                    raise ValueError(
+                        f"The dataset has no {person_membership_id_field} or "
+                        f"{entity_id_field} column. A flat file needs one, on "
+                        f"every person's row, to say which {group_entity.key} "
+                        "that person belongs to."
+                    )
                 membership_values = get_eternity_array(membership_field)
                 if pd.isna(membership_values).any():
                     # np.unique would merge every missing membership into one
@@ -1178,7 +1200,9 @@ class Simulation:
             builder.declare_entity(group_entity.key, entity_ids)
 
             person_role_field = f"{person_entity.key}_{group_entity.key}_role"
-            if any(column.split("__")[0] == person_role_field for column in data):
+            if any(
+                _flat_column_variable(column) == person_role_field for column in data
+            ):
                 person_roles = get_eternity_array(person_role_field)
             elif "role" in data:
                 person_roles = get_eternity_array("role")
@@ -1240,7 +1264,7 @@ class Simulation:
         else:
             for variable in data:
                 if "__" in variable:
-                    variable_name, time_period = variable.split("__")
+                    variable_name, time_period = variable.rsplit("__", 1)
                 else:
                     variable_name = variable
                     time_period = self.dataset.time_period or self.default_input_period
@@ -1583,6 +1607,13 @@ class Simulation:
         entity_pop = self.populations[source_entity]
         target_pop = self.populations[target_entity]
         if (
+            how is None
+            and target_entity in self.tax_benefit_system.group_entity_keys
+            and source_entity != target_entity
+            and _is_categorical(values)
+        ):
+            return self._map_categorical_to_group(values, source_entity, target_entity)
+        if (
             source_entity == "person"
             and target_entity in self.tax_benefit_system.group_entity_keys
         ):
@@ -1618,6 +1649,41 @@ class Simulation:
                 target_entity,
                 how="sum",
             )
+
+    def _map_categorical_to_group(
+        self, values: ArrayLike, source_entity: str, target_entity: str
+    ) -> ArrayLike:
+        """Give each group the string or enum value its members share.
+
+        Amounts map between entities by summing and sharing, which strings and
+        enums cannot do. A group takes its members' common value, and members
+        with different values have no common value to take. A group with no
+        members takes an empty string, or an enum's first value.
+        """
+        person_key = self.tax_benefit_system.person_entity.key
+        person_values = (
+            values
+            if source_entity == person_key
+            else self.populations[source_entity].project(values)
+        )
+        person_values = np.asarray(person_values)
+        target_pop = self.populations[target_entity]
+        is_enum = isinstance(values, EnumArray)
+        group_values = target_pop.value_nth_person(
+            0, person_values, default=0 if is_enum else ""
+        )
+        differs = target_pop.project(group_values) != person_values
+        if np.any(differs):
+            groups = np.unique(target_pop.members_entity_id[differs]).size
+            raise ValueError(
+                f"Cannot map this {source_entity} value to {target_entity}: the "
+                f"members of {groups} {target_entity} group(s) hold different "
+                "values, and text values cannot be summed or shared. Map it to "
+                "the person entity instead."
+            )
+        if is_enum:
+            return EnumArray(group_values, values.possible_values)
+        return group_values
 
     def calculate_dataframe(
         self,
@@ -1776,9 +1842,9 @@ class Simulation:
             # Registration rejects a non-numeric defined_for variable (see
             # ``TaxBenefitSystem._check_defined_for``). This catches one set,
             # or a variable replaced, afterwards. It reads the variable's
-            # type, not the values: mapped to a group entity, an Enum's
-            # indices are summed into numbers, and str or date values fail
-            # inside the mapping.
+            # type, not the values: mapped to a group entity, a str or Enum
+            # value gives its members' shared value or a mapping error, and a
+            # date fails inside the mapping.
             defined_for_variable = self.tax_benefit_system.get_variable(
                 variable.defined_for
             )
@@ -3203,8 +3269,28 @@ class Simulation:
         return self.get_input_variables(include_computed_variables=False)
 
     def _is_exportable_input_variable(self, variable_name: str) -> bool:
-        variable = self.tax_benefit_system.get_variable(variable_name)
-        return variable is not None and variable.is_input_variable()
+        system = self.tax_benefit_system
+        variable = system.get_variable(variable_name)
+        if variable is None:
+            return False
+        return (
+            variable.is_input_variable()
+            or variable_name in system.source_input_variables
+            or variable_name in self._population_id_variables()
+        )
+
+    def _population_id_variables(self) -> set:
+        """Variables that say who exists and who belongs together.
+
+        A model can give these formulas, but a stored value is a population
+        leaf rather than a calculated result, so an export keeps it. Reloaded
+        IDs also keep each entity's random seed.
+        """
+        person_key = self.tax_benefit_system.person_entity.key
+        names = {f"{person_key}_id"}
+        for entity in self.tax_benefit_system.group_entities:
+            names.update({f"{entity.key}_id", f"{person_key}_{entity.key}_id"})
+        return names
 
     def _get_visible_branch_names(self) -> List[str]:
         branch_names = [getattr(self, "branch_name", "default")]
@@ -3269,27 +3355,161 @@ class Simulation:
     def to_input_dataframe(
         self,
         include_computed_variables: bool = False,
+        period: Period = None,
     ) -> pd.DataFrame:
         """Exports a DataFrame that can be loaded back into a new Simulation.
 
-        By default, only structurally input variables populated through
-        ``set_input`` are exported from their recorded storage tiers. This
-        avoids serializing pseudo-inputs and stale calculated values that
-        would override formulas when reloaded.
+        Columns are named ``variable__period``, so a variable defined for all
+        time exports as ``variable__ETERNITY``. A filter on a year's suffix
+        leaves those columns out, and the inputs that year carries from an
+        earlier one; pass ``period`` to keep both.
+
+        By default, only inputs populated through ``set_input`` are exported
+        from their recorded storage tiers: variables with no formula, the IDs
+        that define the population, and the formula variables the model
+        declares in ``source_input_variables``. This avoids serializing
+        pseudo-inputs and stale calculated values that would override formulas
+        when reloaded. Any other value the simulation was given for a formula
+        variable stays out, and a warning names those variables, because
+        reloading the export runs their formulas instead.
 
         Args:
             include_computed_variables: If ``True``, export every variable with
                 a known period, matching the historical unsafe behavior.
+            period: Export what this period reads, so that the export reloads
+                on its own: its stored inputs, each input it carries or
+                uprates from an earlier period, the variables defined for all
+                time and the IDs that rebuild the population. Defaults to
+                every stored period.
 
         Returns:
             pd.DataFrame: The DataFrame containing the input values.
         """
+        if not include_computed_variables:
+            self._warn_about_inputs_left_out_of_export("to_input_dataframe")
 
-        return self._to_person_dataframe(
-            lambda variable: self._get_exportable_input_periods(
+        requested = None if period is None else periods.period(period)
+
+        def get_periods(variable: str) -> List[Period]:
+            exportable = self._get_exportable_input_periods(
                 variable, include_computed_variables
-            ),
+            )
+            if requested is None:
+                return exportable
+            return [
+                known
+                for known in exportable
+                if known.unit == ETERNITY
+                or requested.contains(known)
+                or known.contains(requested)
+            ]
+
+        df = self._to_person_dataframe(
+            get_periods,
             include_computed_variables=include_computed_variables,
+        )
+        if requested is not None:
+            if not include_computed_variables:
+                self._export_carried_inputs(df, requested)
+            self._retain_population_structure(df, requested)
+        return df
+
+    def _warn_about_inputs_left_out_of_export(self, exporter: str) -> None:
+        left_out = self._recorded_inputs_left_out_of_export()
+        if left_out:
+            logging.warning(
+                f"{exporter} left out the values given for "
+                f"{len(left_out)} formula variable(s), so reloading the "
+                f"export runs their formulas instead: {', '.join(left_out)}"
+            )
+
+    def _export_carried_inputs(self, df: pd.DataFrame, requested: Period) -> None:
+        """Add the inputs ``requested`` reads from earlier periods.
+
+        A period with no stored input reads the latest earlier one, carried
+        over or uprated. Without these columns, an export for that period
+        would reload as defaults.
+        """
+        if requested.unit == ETERNITY:
+            return
+        system = self.tax_benefit_system
+        for name, variable in system.variables.items():
+            stored = self._get_exportable_input_periods(name, False)
+            unit = variable.definition_period
+            carries = (
+                system.auto_carry_over_input_variables or variable.uprating is not None
+            )
+            if not stored or unit == ETERNITY or not carries:
+                continue
+            read_periods = (
+                requested.get_subperiods(unit)
+                if unit_weight(unit) <= unit_weight(requested.unit)
+                else [requested.start.offset("first-of", unit).period(unit)]
+            )
+            for period in read_periods:
+                if (
+                    variable.get_formula(period) is None
+                    and not any(known.contains(period) for known in stored)
+                    and any(known.start <= period.start for known in stored)
+                ):
+                    df[f"{name}__{period}"] = Simulation.calculate(
+                        self, name, period, map_to=self.persons.entity.key
+                    )
+
+    def _retain_population_structure(self, df: pd.DataFrame, period: Period) -> None:
+        """Add the IDs, memberships and roles ``df`` needs to rebuild this population.
+
+        These are loaded population leaves, not calculated ID formulas. A
+        simulation built from populations may have no stored ID inputs, and
+        one export period may hold none of those it has.
+        """
+
+        def retain_structure(name, values):
+            variable = self.tax_benefit_system.get_variable(name)
+            if variable is None or any(
+                _flat_column_variable(column) == name for column in df
+            ):
+                return
+            structural_period = (
+                ETERNITY
+                if variable.definition_period == ETERNITY
+                else periods.period(period)
+                .start.offset("first-of", variable.definition_period)
+                .period(variable.definition_period)
+            )
+            df[f"{name}__{structural_period}"] = values
+
+        person_key = self.persons.entity.key
+        retain_structure(f"{person_key}_id", self.persons.ids)
+        for entity in self.tax_benefit_system.group_entities:
+            population = self.populations[entity.key]
+            retain_structure(
+                f"{person_key}_{entity.key}_id",
+                population.ids[population.members_entity_id],
+            )
+            role_name = f"{person_key}_{entity.key}_role"
+            role_variable = self.tax_benefit_system.get_variable(role_name)
+            roles = np.broadcast_to(population.members_role, self.persons.count)
+            if role_variable is not None and role_variable.value_type == int:
+                role_values = [
+                    entity.flattened_roles.index(role)
+                    if role in entity.flattened_roles
+                    else 0
+                    for role in roles
+                ]
+            else:
+                role_values = [getattr(role, "key", "") for role in roles]
+            retain_structure(role_name, role_values)
+
+    def _recorded_inputs_left_out_of_export(self) -> List[str]:
+        """Variables whose given values ``to_input_dataframe`` does not export."""
+        recorded = {name for name, _, _ in getattr(self, "_user_input_keys", set())}
+        return sorted(
+            name
+            for name in recorded
+            if self.tax_benefit_system.get_variable(name) is not None
+            and not self._is_exportable_input_variable(name)
+            and self._get_set_input_periods(name)
         )
 
     def _to_person_dataframe(
@@ -3332,6 +3552,9 @@ class Simulation:
         Returns:
             dict: The dictionary containing the input values.
         """
+        if not include_computed_variables:
+            self._warn_about_inputs_left_out_of_export("to_input_dict")
+
         data = {}
 
         for variable in self.tax_benefit_system.variables:
@@ -3468,42 +3691,8 @@ class Simulation:
         # be calculated before subsampling.
         df = self._to_person_dataframe(self._get_set_input_periods)
 
-        def retain_structure(name, values):
-            variable = self.tax_benefit_system.get_variable(name)
-            if variable is None or any(column.split("__")[0] == name for column in df):
-                return
-            structural_period = (
-                ETERNITY
-                if variable.definition_period == ETERNITY
-                else periods.period(self.dataset.time_period).start.period(
-                    variable.definition_period
-                )
-            )
-            df[f"{name}__{structural_period}"] = values
-
-        # These are loaded population leaves, not calculated ID formulas.
-        # A simulation built from populations may have no stored ID inputs.
+        self._retain_population_structure(df, self.dataset.time_period)
         person_key = self.persons.entity.key
-        retain_structure(f"{person_key}_id", self.persons.ids)
-        for entity in self.tax_benefit_system.group_entities:
-            population = self.populations[entity.key]
-            retain_structure(
-                f"{person_key}_{entity.key}_id",
-                population.ids[population.members_entity_id],
-            )
-            role_name = f"{person_key}_{entity.key}_role"
-            role_variable = self.tax_benefit_system.get_variable(role_name)
-            roles = np.broadcast_to(population.members_role, self.persons.count)
-            if role_variable is not None and role_variable.value_type == int:
-                role_values = [
-                    entity.flattened_roles.index(role)
-                    if role in entity.flattened_roles
-                    else 0
-                    for role in roles
-                ]
-            else:
-                role_values = [getattr(role, "key", "") for role in roles]
-            retain_structure(role_name, role_values)
 
         # Flat-file loading can infer households from membership IDs even
         # when the household ID variable has a formula. Use the same leaves

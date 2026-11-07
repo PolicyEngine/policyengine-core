@@ -1,5 +1,7 @@
 """Check holder identity, defaults and recorded inputs after a reform."""
 
+import warnings
+
 import numpy as np
 import pytest
 
@@ -9,7 +11,13 @@ st = hypothesis.strategies
 from policyengine_core import periods
 from policyengine_core.reforms import Reform
 from policyengine_core.variables import Variable
-from tests.fixtures.reform_holders import YEAR, build, change_default, store_on_disk
+from tests.fixtures.reform_holders import (
+    YEAR,
+    award,
+    build,
+    change_default,
+    store_on_disk,
+)
 
 pytestmark = pytest.mark.filterwarnings(
     "ignore:Memory configuration:policyengine_core.warnings.MemoryConfigWarning"
@@ -224,3 +232,75 @@ def test_applying_same_reform_object_twice_returns_same_values(mask, default, wa
     np.testing.assert_array_equal(
         twice.calculate("award", YEAR), once.calculate("award", YEAR)
     )
+
+
+AWARD_VALUES = st.lists(
+    st.integers(min_value=-1_000, max_value=1_000), min_size=2, max_size=2
+)
+NEUTRALIZATION_STEPS = st.lists(
+    st.one_of(
+        st.tuples(st.sampled_from(("neutralize", "restore")), st.none()),
+        st.tuples(
+            st.sampled_from(("write", "neutralize_then_write", "restore_then_write")),
+            AWARD_VALUES,
+        ),
+    ),
+    min_size=1,
+    max_size=8,
+)
+
+
+def award_reform(neutralize, values=None):
+    """Return a reform that neutralizes or restores the award, then may set it."""
+
+    class ChangeAward(Reform):
+        def apply(self):
+            if neutralize:
+                self.neutralize_variable("award")
+            else:
+                self.replace_variable(award)
+            if values is not None:
+                self.simulation.set_input("award", YEAR, values)
+
+    return ChangeAward
+
+
+@PROPERTY_SETTINGS
+@hypothesis.given(steps=NEUTRALIZATION_STEPS, on_disk=st.booleans())
+@hypothesis.example(
+    steps=[("neutralize", None), ("restore_then_write", [20, 30])], on_disk=False
+)
+@hypothesis.example(
+    steps=[("neutralize_then_write", [1, 2]), ("restore", None)], on_disk=True
+)
+@hypothesis.example(
+    steps=[("neutralize", None), ("write", [55, 55]), ("restore", None)],
+    on_disk=False,
+)
+def test_neutralized_award_reads_its_last_input_set_while_defined(steps, on_disk):
+    """A model of neutralization: an input counts only if set while defined.
+
+    While the award is neutralized it reads its default, 0, and ignores new
+    inputs. Restored, it reads the last input set while it was not
+    neutralized, whether a reform set it inside ``apply`` or code set it
+    outside one.
+    """
+    simulation = build()
+    if on_disk:
+        store_on_disk(simulation, "award")
+    simulation.set_input("award", YEAR, [7, 9])
+    neutralized, last_input = False, [7, 9]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for action, values in steps:
+            if action == "write":
+                simulation.set_input("award", YEAR, values)
+            else:
+                neutralize = action.startswith("neutralize")
+                simulation.apply_reform(award_reform(neutralize, values))
+                neutralized = neutralize
+            if values is not None and not neutralized:
+                last_input = values
+            expected = [0, 0] if neutralized else last_input
+            np.testing.assert_array_equal(simulation.calculate("award", YEAR), expected)
+            assert_holder_identity(simulation)

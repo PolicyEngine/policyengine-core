@@ -919,6 +919,10 @@ class Simulation:
             # variables, so a variable the reform neutralized read as the
             # default in the baseline too.
             self.baseline._bind_to_tax_benefit_system()
+            # The branch shares this simulation's list of input variables,
+            # and the binding keeps a list it drops nothing from. The
+            # baseline runs under another system, so it keeps its own list.
+            self.baseline.input_variables = list(self.baseline.input_variables)
         else:
             self.baseline = None
 
@@ -1324,7 +1328,11 @@ class Simulation:
         After an in-place reform, compatible holders keep their storage and
         recorded inputs. Each existing branch binds to its own system, so
         shared-system branches follow the reform and a baseline keeps its
-        baseline variables.
+        baseline variables. This replaces ``input_variables`` and the
+        recorded inputs only when it drops an entry, so a list that a clone or
+        branch shares stays shared; the code that builds a baseline branch
+        gives it a list of its own. Between reforms, ``Population.get_holder``
+        keeps compatible holders on the current definitions.
         """
         system = self.tax_benefit_system
         if system is None:
@@ -1359,12 +1367,19 @@ class Simulation:
                 or name in self.populations[variables[name].entity.key]._holders
             )
 
-        if getattr(self, "_user_input_keys", None) is not None:
-            self._user_input_keys = {
-                key for key in self._user_input_keys if kept(key[0])
-            }
-        if getattr(self, "input_variables", None) is not None:
-            self.input_variables = [name for name in self.input_variables if kept(name)]
+        # Replace a record only when it loses a name, and never edit it in
+        # place: a clone or branch may share its parent's, and callers may
+        # hold it.
+        user_input_keys = getattr(self, "_user_input_keys", None)
+        if user_input_keys is not None and not all(
+            kept(key[0]) for key in user_input_keys
+        ):
+            self._user_input_keys = {key for key in user_input_keys if kept(key[0])}
+        input_variables = getattr(self, "input_variables", None)
+        if input_variables is not None and not all(
+            kept(name) for name in input_variables
+        ):
+            self.input_variables = [name for name in input_variables if kept(name)]
         for branch in self.branches.values():
             branch._bind_to_tax_benefit_system()
 
@@ -3658,6 +3673,8 @@ class Simulation:
             baseline.tracer = self.tracer
             baseline.tax_benefit_system = baseline_tax_benefit_system
             baseline._bind_to_tax_benefit_system()
+            # As in ``__init__``, the baseline keeps its own list.
+            baseline.input_variables = list(baseline.input_variables)
             baseline.baseline = None
             if getattr(self, "baseline", None) is not None:
                 self.baseline = baseline

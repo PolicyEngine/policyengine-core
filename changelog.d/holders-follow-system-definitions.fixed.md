@@ -1,0 +1,1 @@
+Holders now follow their system's current variable definitions whenever a simulation looks them up, so a reform can set an input for a variable it restores, and `apply_reform` keeps `input_variables` unless it drops a name.

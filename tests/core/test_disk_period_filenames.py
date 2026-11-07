@@ -38,7 +38,7 @@ def portable_writes(monkeypatch):
     monkeypatch.setattr(np, "save", checked_save)
 
 
-@pytest.mark.parametrize("period", COMPOUND_PERIODS + EARLY_DAYS, ids=str)
+@pytest.mark.parametrize("period", COMPOUND_PERIODS + EARLY_DAYS[-1:], ids=str)
 def test_compound_period_has_a_portable_disk_filename(
     tmp_path, portable_writes, period
 ):
@@ -52,6 +52,19 @@ def test_compound_period_has_a_portable_disk_filename(
     restored.restore()
     np.testing.assert_array_equal(restored.get(period), [42.0])
     assert set(restored._files) == {f"default_{period}"}
+
+
+@pytest.mark.parametrize("period", EARLY_DAYS[:-1], ids=str)
+def test_unparseable_early_period_is_rejected_before_writing(
+    tmp_path, portable_writes, period
+):
+    storage = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
+
+    with pytest.raises(ValueError, match="string form cannot be parsed"):
+        storage.put(np.array([42.0]), period)
+
+    assert not storage._files
+    assert not list(tmp_path.iterdir())
 
 
 @pytest.mark.parametrize("period", COMPOUND_PERIODS, ids=str)
@@ -130,14 +143,15 @@ def test_restore_still_reads_legacy_compound_period_filename(tmp_path):
 
 
 @pytest.mark.parametrize("name", ["notes", "notes;percent%3A"])
-def test_restore_tolerates_basenames_without_a_key_separator(tmp_path, name):
+def test_restore_skips_basenames_without_a_key_separator(tmp_path, name):
     np.save(tmp_path / f"{name}.npy", np.array([42.0]))
     restored = OnDiskStorage(str(tmp_path), preserve_storage_dir=True)
 
-    restored.restore()
+    with pytest.warns(UserWarning, match="Not restoring"):
+        restored.restore()
 
-    assert set(restored._files) == {name}
-    np.testing.assert_array_equal(restored._decode_file(restored._files[name]), [42.0])
+    assert not restored._files
+    np.testing.assert_array_equal(np.load(tmp_path / f"{name}.npy"), [42.0])
 
 
 @pytest.mark.skipif(

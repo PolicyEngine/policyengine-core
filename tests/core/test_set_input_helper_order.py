@@ -581,29 +581,24 @@ def test_repeated_helper_clears_cache_shadow_when_every_month_has_a_disk_input(
 
 
 @pytest.mark.parametrize("on_disk", [False, True])
-def test_helper_drops_overlapping_early_year_cache(on_disk):
+def test_helper_rejects_early_year_input_and_cache_without_recording(on_disk):
     simulation = build_simulation(on_disk=on_disk)
     holder = simulation.get_holder("flow_m")
     year = periods.period("0025")
-    holder.put_in_cache(np.array([5.0, 6.0]), year, derived=True)
-    # Plain reads do not fast-cache an aggregate today; model an existing
-    # fast-cache entry to prove cleanup uses the early-year Period itself.
-    simulation._fast_cache[("flow_m", year)] = np.array([5.0, 6.0])
-    fresh = build_simulation()
+    input_keys = simulation._user_input_keys.copy()
 
-    set_input_divide_by_period(holder, year, YEARLY_INPUT)
-    fresh.set_input("flow_m", year, YEARLY_INPUT)
+    with pytest.raises(ValueError, match="string form cannot be parsed"):
+        holder.put_in_cache(np.array([5.0, 6.0]), year, derived=True)
+    with pytest.raises(ValueError, match="string form cannot be parsed"):
+        set_input_divide_by_period(holder, year, YEARLY_INPUT)
 
-    assert holder.get_array(year) is None
+    assert holder.get_known_periods() == []
+    storage = holder._disk_storage if on_disk else holder._memory_storage
+    assert not storage._sequence_numbers
     assert ("flow_m", year) not in simulation._fast_cache
-    january = year.start.period(periods.MONTH)
-    for month in [january.offset(index) for index in range(12)]:
-        np.testing.assert_array_equal(
-            simulation.calculate("flow_m", month), fresh.calculate("flow_m", month)
-        )
-    np.testing.assert_array_equal(
-        simulation.calculate("flow_m", year), fresh.calculate("flow_m", year)
-    )
+    assert simulation._user_input_keys == input_keys
+    assert not hasattr(holder, "_user_input_storage")
+    assert not getattr(simulation, "_user_input_contexts", [])
 
 
 def test_every_stored_value_counts_as_an_input_without_a_record():

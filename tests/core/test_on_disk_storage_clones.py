@@ -62,7 +62,9 @@ def _stored(holder, period):
 
 @pytest.mark.parametrize("variable", list(HELPER_INPUTS), ids=["dispatch", "divide"])
 def test_helper_input_on_a_clone_leaves_the_source_unchanged(system, variable):
-    parent = simulation(system, {})
+    # A real uprating source makes December a stored derived value under
+    # both carry-over settings; a missing root input stays uncached.
+    parent = simulation(system, {variable: {"2011-12": [1.0, 2.0]}})
     holder = _on_disk(parent, variable)
     calculated = parent.calculate(variable, "2012-12").copy()
     assert holder._disk_storage.is_derived(periods.period("2012-12"))

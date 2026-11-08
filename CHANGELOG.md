@@ -1,3 +1,10 @@
+## [3.34.10] - 2026-11-08
+
+### Fixed
+
+- Scope known periods and dumps to the branch's readable values while preserving derived marks, leave root uprating and carry-over fallback defaults uncached through period conversions and even after branch mutations converge so later inputs take effect, return inputs supplied during conversion on the first call, parse underscore-containing disk branch names safely, delete contained disk periods consistently with memory, reject ambiguous or unparseable storage keys before writing, and warn and skip malformed restored filenames.
+
+
 ## [3.34.9] - 2026-11-07
 
 ### Fixed

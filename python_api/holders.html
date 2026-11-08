@@ -306,8 +306,13 @@ reads first (the branch before its ancestors, memory before disk).</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.holders.holder.Holder.get_known_periods">
-<span class="sig-name descname"><span class="pre">get_known_periods</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="periods.html#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">Period</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#policyengine_core.holders.holder.Holder.get_known_periods" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_known_periods</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">branch_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="periods.html#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">Period</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#policyengine_core.holders.holder.Holder.get_known_periods" title="Permalink to this definition">#</a></dt>
 <dd><p>Get the list of periods the variable value is known for.</p>
+<p>With <code class="docutils literal notranslate"><span class="pre">branch_name</span></code>, list each period <code class="docutils literal notranslate"><span class="pre">get_array(period,</span>
+<span class="pre">branch_name)</span></code> reads a stored value for, once: those stored under
+that branch, its <code class="docutils literal notranslate"><span class="pre">parent_branch</span></code> ancestors or <code class="docutils literal notranslate"><span class="pre">default</span></code> (see
+<code class="docutils literal notranslate"><span class="pre">_readable_branches</span></code>). Without it, list the period of every value
+stored, under any branch; that branch may not read some of them.</p>
 </dd></dl>
 
 <dl class="py method">

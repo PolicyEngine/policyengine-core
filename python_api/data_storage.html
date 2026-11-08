@@ -476,6 +476,8 @@ keeps that storage alive, so the files last while it reads them.</p>
 <span class="sig-name descname"><span class="pre">restore</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#policyengine_core.data_storage.on_disk_storage.OnDiskStorage.restore" title="Permalink to this definition">#</a></dt>
 <dd><p>Read back the values stored in this storage’s directory: for each
 key, the file named for it (not those in <code class="docutils literal notranslate"><span class="pre">REPLACEMENTS_DIR</span></code>).</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">.npy</span></code> file whose name lacks a branch separator and a canonical
+period string is left out, with a warning.</p>
 <p>This storage writes over portable files, as over those it wrote, until
 it is cloned or copied, or this process forks: from then on it writes
 a new file instead, since the clone, copy or forked process reads
@@ -492,6 +494,35 @@ legacy file keep its old value until they restore again. Branch names
 are unchanged.</p>
 </dd></dl>
 
+</dd></dl>
+
+</section>
+<section id="storage-keys">
+<h2>Storage keys<a class="headerlink" href="#storage-keys" title="Permalink to this heading">#</a></h2>
+<p>Both storage backends reject branch names containing <code class="docutils literal notranslate"><span class="pre">:</span></code> and month or year
+periods anchored after the first day of a month. They also reject periods whose
+string form cannot be parsed back, such as the year <code class="docutils literal notranslate"><span class="pre">0999</span></code>, before storing a
+value. Existing aliases, including twelve-month periods serialized as one year,
+remain supported. Disk restoration warns and skips filenames without a branch
+separator and a canonical period string.</p>
+<span class="target" id="module-policyengine_core.data_storage.storage_keys"></span><p>What a storage key can hold.</p>
+<p>Both storages key a value by its branch name and its period’s string form:
+<code class="docutils literal notranslate"><span class="pre">f&quot;{branch_name}:{period}&quot;</span></code> in memory, <code class="docutils literal notranslate"><span class="pre">f&quot;{branch_name}_{period}&quot;</span></code> on disk
+(the name of the value’s file). <code class="docutils literal notranslate"><span class="pre">check_storable</span></code> enforces the same branch
+and period serialization restrictions in both storages (<code class="docutils literal notranslate"><span class="pre">Holder._set</span></code>
+chooses between them by how much memory is in use).</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="policyengine_core.data_storage.storage_keys.check_storable">
+<span class="sig-prename descclassname"><span class="pre">policyengine_core.data_storage.storage_keys.</span></span><span class="sig-name descname"><span class="pre">check_storable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">branch_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="periods.html#policyengine_core.periods.period_.Period" title="policyengine_core.periods.period_.Period"><span class="pre">Period</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../_modules/policyengine_core/data_storage/storage_keys.html#check_storable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#policyengine_core.data_storage.storage_keys.check_storable" title="Permalink to this definition">#</a></dt>
+<dd><p>Raise <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> for an ambiguous branch or period serialization.</p>
+<p>Reject a branch name containing <code class="docutils literal notranslate"><span class="pre">:</span></code>, which separates the parts of an
+in-memory key, and a year or month anchored mid-month, whose string form
+drops the day (<code class="docutils literal notranslate"><span class="pre">month:2025-03-15</span></code> is <code class="docutils literal notranslate"><span class="pre">2025-03</span></code>), so that its key would
+be the key of another period. Reject unparseable period strings too,
+including years below 1000 whose string form loses leading zeroes.
+Supported aliases, such as twelve months serialized as one year, retain
+their existing meaning. See policyengine-core#526 for the structured-key
+refactor.</p>
 </dd></dl>
 
 </section>
@@ -700,6 +731,7 @@ any live directory this one was made in.</p>
 <li><a class="reference internal" href="#">Data storage</a><ul>
 <li><a class="reference internal" href="#inmemorystorage">InMemoryStorage</a></li>
 <li><a class="reference internal" href="#ondiskstorage">OnDiskStorage</a></li>
+<li><a class="reference internal" href="#storage-keys">Storage keys</a></li>
 <li><a class="reference internal" href="#temporarystoragedirectory">TemporaryStorageDirectory</a></li>
 </ul>
 </li>

@@ -1,4 +1,5 @@
 import math
+import sys
 
 from numpy import ceil, floor
 
@@ -35,6 +36,15 @@ UPRATING_BASE_KEYS = frozenset({"period", "value"})
 #: rounding down would drop a full interval. On a $50 interval the tolerance
 #: is $0.00000005.
 INCREASE_ROUNDING_TOLERANCE = 1e-9
+
+#: Float error in an increase grows with the amounts it comes from, so for
+#: amounts large next to the interval the tolerance widens to this multiple
+#: of their size (the uprated amount plus the base): sixteen machine epsilons,
+#: about 3.6e-15, a few units in the last place. $572,903.25 raised by
+#: 2,032 / 186 is exactly 22,743,643 quarter-dollar intervals above its base,
+#: which floats put 4e-9 intervals short; the widened tolerance there is about
+#: 1e-7 intervals.
+INCREASE_ROUNDING_RELATIVE_TOLERANCE = 16 * sys.float_info.epsilon
 
 #: The rounding functions ``rounding.type`` names. ``nearest`` is Python's
 #: ``round``, which rounds an exact half to the even multiple, as chained
@@ -444,7 +454,8 @@ def uprate_parameter_from_base(
     and applies them to the increase; without ``rounding`` the value is
     ``base_value * index(t) / index(base)``. Explicit values always win: base
     mode adds values only after the last of them. An index below its
-    base-period level gives a value below the base.
+    base-period level gives a value below the base, and an infinite base
+    amount, such as a scale's ``-inf`` lowest threshold, stays infinite.
 
     The ``base`` block holds:
 
@@ -517,7 +528,7 @@ def uprate_parameter_from_base(
             index_at_entry / index_at_base,
             rounding,
         )
-        if not math.isfinite(value):
+        if not math.isfinite(value) and math.isfinite(base_value):
             raise base_mode_error(
                 parameter,
                 f"its projected value at {entry.instant_str} is {value!r}.",
@@ -532,13 +543,18 @@ def base_mode_error(parameter: Parameter, reason: str) -> ValueError:
     return ValueError(f"Failed to uprate {parameter.name} from its base: {reason}")
 
 
-def is_real_number(value) -> bool:
-    """Whether ``value`` is a finite int or float other than a bool."""
+def is_number(value) -> bool:
+    """Whether ``value`` is an int or float other than a bool or NaN."""
     return (
         isinstance(value, (int, float))
         and not isinstance(value, bool)
-        and math.isfinite(value)
+        and not math.isnan(value)
     )
+
+
+def is_real_number(value) -> bool:
+    """Whether ``value`` is a finite int or float other than a bool."""
+    return is_number(value) and math.isfinite(value)
 
 
 def parse_uprating_base(
@@ -654,10 +670,14 @@ def get_base_mode_index_value(
 def get_base_value(
     parameter: Parameter, base_instant: Instant, stated_value: Optional[float]
 ) -> float:
-    """The base amount: the stated ``value``, else the parameter's at the base."""
+    """The base amount: the stated ``value``, else the parameter's at the base.
+
+    The parameter's own value may be infinite, as a scale's lowest threshold
+    often is; :func:`project_from_base` keeps an infinite base as it is.
+    """
     value_at_base = parameter(base_instant)
     if stated_value is None:
-        if not is_real_number(value_at_base):
+        if not is_number(value_at_base):
             raise base_mode_error(
                 parameter,
                 f"it has no numeric value at the base period {base_instant} "
@@ -674,7 +694,9 @@ def get_base_value(
             f"`base.value` is {stated_value!r}, but the parameter's value at the "
             f"base period {base_instant} is {value_at_base!r}. `base.period` "
             "names the period whose value is the base amount, in the uprating "
-            "index's periods; check it is not a year off.",
+            "index's periods; check it is not a year off. If a reform applied "
+            "before uprating changed the base-period value, omit `base.value` "
+            "so the base follows the reform.",
         )
     return stated_value
 
@@ -685,6 +707,10 @@ def project_from_base(
     rounding: Optional[tuple[float, Callable[[float], float]]],
 ) -> float:
     """The base amount plus the (rounded) increase the index ratio implies.
+
+    An infinite base, such as a scale's ``-inf`` lowest threshold, gives an
+    infinite uprated amount, which returns before any rounding: it stays
+    infinite.
 
     Args:
         base_value: The base amount.
@@ -698,23 +724,44 @@ def project_from_base(
         return float(uprated)
     interval, rounding_fn = rounding
     return float(
-        base_value + round_increase(uprated - base_value, interval, rounding_fn)
+        base_value
+        + round_increase(
+            uprated - base_value,
+            interval,
+            rounding_fn,
+            magnitude=abs(uprated) + abs(base_value),
+        )
     )
 
 
 def round_increase(
-    increase: float, interval: float, rounding_fn: Callable[[float], float]
+    increase: float,
+    interval: float,
+    rounding_fn: Callable[[float], float],
+    magnitude: float = 0.0,
 ) -> float:
     """Round an increase to a multiple of ``interval`` with ``rounding_fn``.
 
     An increase within :data:`INCREASE_ROUNDING_TOLERANCE` intervals of a
-    multiple counts as that multiple, so floating-point error in an increase
-    that is a whole number of intervals cannot move it to the next multiple
-    down (or up).
+    multiple, or within :data:`INCREASE_ROUNDING_RELATIVE_TOLERANCE` times
+    ``magnitude`` where that is wider, counts as that multiple, so
+    floating-point error in an increase that is a whole number of intervals
+    cannot move it to the next multiple down (or up).
+
+    Args:
+        increase: The increase over the base amount.
+        interval: The rounding interval.
+        rounding_fn: ``round``, ``ceil`` or ``floor``.
+        magnitude: The size of the amounts the increase comes from (the
+            uprated amount plus the base), which bounds its float error.
     """
     intervals = increase / interval
     whole_intervals = round(intervals)
-    if abs(intervals - whole_intervals) <= INCREASE_ROUNDING_TOLERANCE:
+    tolerance = max(
+        INCREASE_ROUNDING_TOLERANCE,
+        INCREASE_ROUNDING_RELATIVE_TOLERANCE * magnitude / interval,
+    )
+    if abs(intervals - whole_intervals) <= tolerance:
         intervals = whole_intervals
     return float(rounding_fn(intervals)) * interval
 

@@ -796,33 +796,55 @@ class TaxBenefitSystem:
 
     def modify_parameters(
         self, modifier_function: Callable[[ParameterNode], ParameterNode]
-    ) -> None:
+    ) -> TaxBenefitSystem | ValueError:
         """Make modifications on the parameters of the legislation.
 
         Call this function in `apply()` if the reform asks for legislation parameter modifications.
 
+        The modifier gets this system's own parameter tree, with every change
+        made to it so far, and may change it in place. A reform built with
+        ``Reform(baseline)`` holds a clone of the baseline's tree, so its changes
+        stay out of the baseline. A clone shares nested metadata and list values
+        with what it was cloned from, so a modifier replaces those rather than
+        editing them.
+
+        This system and its tree read as the changes left them, however the
+        modifier made them: every node cached at an instant is dropped once it
+        finishes, even if it raises. Edits it made before raising stay.
+
         Args:
             modifier_function: A function that takes a :obj:`.ParameterNode` and should return an object of the same type.
         """
-        if isinstance(modifier_function, dict):
-            for parameter in modifier_function:
-                for time_period in modifier_function[parameter]:
-                    param: Parameter = self.parameters.get_child(parameter)
-                    param.update(
-                        value=modifier_function[parameter][time_period],
-                        period=periods.period(time_period),
+        parameters = self.parameters
+        reform_parameters = parameters
+        try:
+            if isinstance(modifier_function, dict):
+                for parameter in modifier_function:
+                    for time_period in modifier_function[parameter]:
+                        param: Parameter = self.parameters.get_child(parameter)
+                        param.update(
+                            value=modifier_function[parameter][time_period],
+                            period=periods.period(time_period),
+                        )
+            else:
+                reform_parameters = modifier_function(parameters)
+                if not isinstance(reform_parameters, ParameterNode):
+                    return ValueError(
+                        "modifier_function {} in module {} must return a ParameterNode".format(
+                            modifier_function.__name__,
+                            modifier_function.__module__,
+                        )
                     )
-        else:
-            reform_parameters = modifier_function(self.parameters)
-            if not isinstance(reform_parameters, ParameterNode):
-                return ValueError(
-                    "modifier_function {} in module {} must return a ParameterNode".format(
-                        modifier_function.__name__,
-                        modifier_function.__module__,
-                    )
-                )
-            self.parameters = reform_parameters
-        self._parameters_at_instant_cache = {}
+                self.parameters = reform_parameters
+        finally:
+            self._parameters_at_instant_cache = {}
+            if parameters is not None:
+                parameters.clear_descendant_caches()
+            if (
+                isinstance(reform_parameters, ParameterNode)
+                and reform_parameters is not parameters
+            ):
+                reform_parameters.clear_descendant_caches()
         return self
 
     def add_modelled_policy_metadata(self):

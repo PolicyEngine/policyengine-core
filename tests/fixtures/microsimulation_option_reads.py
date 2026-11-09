@@ -189,6 +189,22 @@ class fee_and_pay_added(Variable):
         )
 
 
+class fee_or_all_paid(Variable):
+    value_type = bool
+    entity = Household
+    definition_period = YEAR
+    label = "Household paid a fee or every member was paid"
+
+    def formula(household, period, parameters):
+        # policyengine-us's wi_wheap_categorically_eligible has this shape: it
+        # projects a group's ADD read to its members and combines the result
+        # with a person value.
+        person = household.members
+        paid = add(person, period, ["monthly_pay"]) > 0
+        pays = household("household_monthly_fee", period, options=[ADD]) > 0
+        return household.all(paid | household.project(pays))
+
+
 SOURCES = [
     monthly_pay,
     monthly_take_home,
@@ -207,6 +223,7 @@ READERS = [
     members_pay_added,
     members_grant_divided,
     fee_and_pay_added,
+    fee_or_all_paid,
 ]
 
 
@@ -220,13 +237,16 @@ def tax_benefit_system() -> CountryTaxBenefitSystem:
 
 @dataclass(frozen=True)
 class Inputs:
-    """Households in order, and each input's values.
+    """People in the order the data lists them, and each input's values.
 
-    ``monthly_pay`` and ``household_monthly_fee`` hold 12 values (January to
-    December) for each person or household.
+    ``household_of_person`` gives each person's household. Households take the
+    numbers 0, 1, ... and each has at least one member; the data can list a
+    household's members anywhere. ``monthly_pay`` and
+    ``household_monthly_fee`` hold 12 values (January to December) for each
+    person or household.
     """
 
-    household_sizes: Tuple[int, ...]
+    household_of_person: Tuple[int, ...]
     household_weight: Tuple[float, ...]
     monthly_pay: Tuple[Tuple[float, ...], ...]
     yearly_grant: Tuple[float, ...]
@@ -234,17 +254,17 @@ class Inputs:
     household_yearly_grant: Tuple[float, ...]
     yearly_tenure: Optional[Tuple[str, ...]] = None
 
-    @property
-    def household_of_person(self) -> np.ndarray:
-        return np.repeat(
-            np.arange(len(self.household_sizes)), np.array(self.household_sizes)
-        )
+    def __post_init__(self):
+        # A dataset declares a household only through its members' rows.
+        if set(self.household_of_person) != set(range(len(self.household_weight))):
+            raise ValueError("Every household needs a weight and a member.")
 
 
 def dataframe(inputs: Inputs) -> pd.DataFrame:
     """One row per person. Each member's row repeats its household's values."""
-    household = inputs.household_of_person
-    first_member = np.r_[True, household[1:] != household[:-1]]
+    household = np.array(inputs.household_of_person)
+    first_member = np.zeros(len(household), dtype=bool)
+    first_member[np.unique(household, return_index=True)[1]] = True
     pay = np.array(inputs.monthly_pay, dtype=float)
     fee = np.array(inputs.household_monthly_fee, dtype=float)
     data = {
@@ -334,8 +354,8 @@ def expected(inputs: Inputs, reader: str) -> np.ndarray:
 
     Monthly readers return the same value for every month of the year.
     """
-    household = inputs.household_of_person
-    households = len(inputs.household_sizes)
+    household = np.array(inputs.household_of_person)
+    households = len(inputs.household_weight)
     pay = np.array(inputs.monthly_pay, dtype=float)
     grant = np.array(inputs.yearly_grant, dtype=float)
     fee = np.array(inputs.household_monthly_fee, dtype=float)
@@ -344,6 +364,8 @@ def expected(inputs: Inputs, reader: str) -> np.ndarray:
     def members(values):
         return np.bincount(household, weights=values, minlength=households)
 
+    paid = pay.sum(axis=1) > 0
+    pays = fee.sum(axis=1) > 0
     return {
         "pay_added": pay.sum(axis=1),
         "take_home_added": (0.75 * pay).sum(axis=1),
@@ -354,4 +376,6 @@ def expected(inputs: Inputs, reader: str) -> np.ndarray:
         "members_pay_added": members(pay.sum(axis=1)),
         "members_grant_divided": members(grant) / 12,
         "fee_and_pay_added": fee.sum(axis=1) + members(pay.sum(axis=1)),
+        # ``all`` over each household's members: no member fails the test.
+        "fee_or_all_paid": members(~(paid | pays[household]) * 1.0) == 0,
     }[reader]

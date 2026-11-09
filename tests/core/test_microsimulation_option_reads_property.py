@@ -16,8 +16,9 @@ Population calls and the two methods read each variable over periods its
 option accepts. Since the Simulation ignores weights, weights never change an
 unweighted value.
 
-Formula results also equal the same arithmetic done in NumPy, so the two
-simulations cannot agree on a wrong value.
+The population calls return NumPy arrays in both classes. Formula results
+also equal the same arithmetic done in NumPy, so the two simulations cannot
+agree on a wrong value.
 
 Enum variables are left out:
 ``test_enum_read_with_divide_over_a_year_gives_member_names_in_a_microsimulation``
@@ -143,13 +144,21 @@ def test_unweighted_microsimulation_reads_equal_simulation_reads(data, requests)
         assert result == run(simulation, request), request
 
 
-@hypothesis.settings(max_examples=100, deadline=None)
-@hypothesis.given(
-    inputs(),
-    st.sampled_from(READERS),
-    st.sampled_from(MONTHS),
-)
-def test_formula_reads_with_an_option_equal_numpy_arithmetic(data, reader, month):
+@hypothesis.settings(max_examples=50, deadline=None)
+@hypothesis.given(inputs(), st.sampled_from(POPULATION_CALLS))
+def test_population_reads_with_an_option_return_numpy_arrays(data, call):
+    # pandas pairs two Series' values by index label, and a projected Series
+    # carries each member's group position, so formulas get positional arrays.
+    _, entity_key, variable, period, option = call
+    for simulation in simulations(data):
+        read = simulation.populations[entity_key](variable, period, options=[option])
+        assert type(read) is np.ndarray, (type(simulation).__name__, call)
+
+
+@pytest.mark.parametrize("reader", READERS, ids=lambda reader: reader.__name__)
+@hypothesis.settings(max_examples=25, deadline=None)
+@hypothesis.given(inputs(), st.sampled_from(MONTHS))
+def test_formula_reads_with_an_option_equal_numpy_arithmetic(reader, data, month):
     period = month if reader.definition_period == MONTH else DATASET_YEAR
     reference = expected(data, reader.__name__)
     for simulation in simulations(data):

@@ -1,0 +1,1 @@
+Uprating metadata can name a statutory base: with `base: {period, value}`, uprating computes each projected value as the base amount plus the increase the index implies over the base period, rounding that increase rather than the uprated amount.

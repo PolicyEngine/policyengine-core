@@ -763,6 +763,8 @@ class Variable:
         return clone
 
     def check_set_value(self, value):
+        if self.value_type == Enum and isinstance(value, (int, numpy.integer)):
+            self.possible_values._validate_integer_indices(value)
         if self.value_type == Enum and isinstance(value, str):
             try:
                 value = self.possible_values[value].index

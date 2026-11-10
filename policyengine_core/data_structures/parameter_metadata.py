@@ -38,6 +38,11 @@ class UpratingBase(dict):
     The base amount. Optional: it defaults to the parameter's value at ``period``, and when the parameter has a value there, a stated ``value`` must equal it.
     """
 
+    floor: bool
+    """
+    Optional, default false. When true, base mode counts the index as no lower than its base-period level, so the index ratio is at least 1 and a positive base never projects below itself, as in statutes that add the percentage (if any) by which an index exceeds its base-year level.
+    """
+
 
 class UpratingSchema(dict):
     """
@@ -61,7 +66,7 @@ class UpratingSchema(dict):
 
     base: UpratingBase
     """
-    Opts in to base mode: each value after the last explicit one is the base amount plus the increase the index implies since the base period, with ``rounding`` applied to that increase. Base mode takes only ``parameter``, ``base`` and ``rounding``.
+    Opts in to base mode: each value after the last explicit one is the base amount plus the increase the index implies since the base period, with ``rounding`` applied to that increase and, with ``floor``, an index ratio of at least 1. Base mode takes only ``parameter``, ``base`` and ``rounding``.
     """
 
 

@@ -101,6 +101,7 @@ metadata:
     base:
       period: 2025
       value: 23_625
+      floor: true
     rounding:
       type: downwards
       interval: 50
@@ -116,9 +117,10 @@ applying `rounding`'s type and interval to the increase. Without `rounding`, `va
 
 - `base.period` names the base in the index's own periods, since base mode reads the index there. Where the index's value at period `Y` measures calendar year `Y − 1`, as in the example above, a statute's base year `Y − 1` is `period: Y`.
 - `base.value` defaults to the parameter's own value at `base.period`. When the parameter has a value there, a stated `base.value` must equal it, which catches a period one year off. State it when the parameter has no value at the base period, such as a 1997 base for a parameter whose history starts later; elsewhere, leaving it out lets the base follow a reform (see below).
+- `base.floor: true` counts the index as no lower than its base-period level: base mode uses `max(index(t) / index(base.period), 1)` as the ratio, so a positive base never projects below itself. Statutes that add "the percentage (if any) by which" an index exceeds its base-year level floor the adjustment this way; 26 U.S.C. 1(f)(3), which sets the cost-of-living adjustment in the example above, is one. Without `floor`, an index below its base-period level gives a value below the base.
 - Base mode takes only `parameter`, `base` and `rounding`. It raises an error for `start_instant`, `at_defined_interval`, `parameter: self` and any other key, rather than ignore them.
 - Before rounding, base mode counts an increase within 10⁻⁹ intervals of a whole number of intervals as that whole number, so floating-point error cannot drop an exact multiple to the one below. A 40% rise on $1,400 is exactly $560, which floats compute as 559.9999999999998. For amounts large next to the interval, where float error is larger, the tolerance widens to about 3.6 × 10⁻¹⁵ of the amounts, a few units in their last place.
-- An index below its base-period level gives a value below the base; base mode sets no floor. An infinite base, such as a scale's `-.inf` lowest threshold, stays infinite.
+- An infinite base, such as a scale's `-.inf` lowest threshold, stays infinite.
 
 ### Base mode and reforms
 

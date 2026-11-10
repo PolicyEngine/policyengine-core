@@ -26,7 +26,7 @@ from policyengine_core.periods import Instant, instant
 BASE_MODE_UPRATING_KEYS = frozenset({"parameter", "base", "rounding"})
 
 #: Keys of an ``uprating.base`` block.
-UPRATING_BASE_KEYS = frozenset({"period", "value"})
+UPRATING_BASE_KEYS = frozenset({"period", "value", "floor"})
 
 #: Base mode treats an increase within this many rounding intervals of a whole
 #: number of intervals as that whole number before it rounds. Index values
@@ -454,8 +454,9 @@ def uprate_parameter_from_base(
     and applies them to the increase; without ``rounding`` the value is
     ``base_value * index(t) / index(base)``. Explicit values always win: base
     mode adds values only after the last of them. An index below its
-    base-period level gives a value below the base, and an infinite base
-    amount, such as a scale's ``-inf`` lowest threshold, stays infinite.
+    base-period level gives a value below the base unless ``base.floor`` is
+    set, and an infinite base amount, such as a scale's ``-inf`` lowest
+    threshold, stays infinite.
 
     The ``base`` block holds:
 
@@ -467,6 +468,12 @@ def uprate_parameter_from_base(
     * ``value`` (optional): the base amount. It defaults to the parameter's
       value at ``period``. When the parameter has a value there, a stated
       ``value`` must equal it, which catches a ``period`` one year off.
+    * ``floor`` (optional, default ``false``): when ``true``, base mode counts
+      the index as no lower than its base-period level, so the index ratio is
+      at least 1 and a positive base never projects below itself. Statutes
+      that add "the percentage (if any) by which" an index exceeds its
+      base-year level, such as 26 U.S.C. 1(f)(3), floor the adjustment this
+      way.
 
     Args:
         parameter: The parameter to uprate. Its ``values_list`` gains the
@@ -488,7 +495,7 @@ def uprate_parameter_from_base(
     """
     if parameter_paths is None:
         parameter_paths = {}
-    base_instant, stated_value = parse_uprating_base(parameter, meta)
+    base_instant, stated_value, floor_at_base = parse_uprating_base(parameter, meta)
     rounding = (
         parse_increase_rounding(parameter, meta["rounding"])
         if "rounding" in meta
@@ -523,11 +530,10 @@ def uprate_parameter_from_base(
         index_at_entry = get_base_mode_index_value(
             parameter, uprating_parameter, entry_instant
         )
-        value = project_from_base(
-            base_value,
-            index_at_entry / index_at_base,
-            rounding,
-        )
+        index_ratio = index_at_entry / index_at_base
+        if floor_at_base:
+            index_ratio = max(index_ratio, 1.0)
+        value = project_from_base(base_value, index_ratio, rounding)
         if not math.isfinite(value) and math.isfinite(base_value):
             raise base_mode_error(
                 parameter,
@@ -559,12 +565,13 @@ def is_real_number(value) -> bool:
 
 def parse_uprating_base(
     parameter: Parameter, meta: dict
-) -> tuple[Instant, Optional[float]]:
+) -> tuple[Instant, Optional[float], bool]:
     """Validate a base-mode ``uprating`` block and read its ``base``.
 
     Returns:
-        The base instant and the stated base ``value`` (``None`` when the
-        block leaves it to the parameter's value at the base period).
+        The base instant; the stated base ``value`` (``None`` when the block
+        leaves it to the parameter's value at the base period); and whether
+        ``floor`` keeps the index ratio at or above 1.
     """
     unknown_keys = sorted(set(meta) - BASE_MODE_UPRATING_KEYS)
     if unknown_keys:
@@ -585,14 +592,14 @@ def parse_uprating_base(
     if not isinstance(base, dict):
         raise base_mode_error(
             parameter,
-            "`base` must be a mapping with a `period` and an optional `value`, "
-            f"not {base!r}.",
+            "`base` must be a mapping with a `period` and an optional `value` "
+            f"and `floor`, not {base!r}.",
         )
     unknown_base_keys = sorted(set(base) - UPRATING_BASE_KEYS)
     if unknown_base_keys:
         raise base_mode_error(
             parameter,
-            "`base` takes only `period` and `value`, not "
+            "`base` takes only `period`, `value` and `floor`, not "
             + ", ".join(f"`{key}`" for key in unknown_base_keys)
             + ".",
         )
@@ -617,7 +624,13 @@ def parse_uprating_base(
             parameter,
             f"`base.value` {stated_value!r} is not a finite number.",
         )
-    return base_instant, stated_value
+    floor_at_base = base.get("floor", False)
+    if not isinstance(floor_at_base, bool):
+        raise base_mode_error(
+            parameter,
+            f"`base.floor` {floor_at_base!r} is not `true` or `false`.",
+        )
+    return base_instant, stated_value, floor_at_base
 
 
 def parse_increase_rounding(

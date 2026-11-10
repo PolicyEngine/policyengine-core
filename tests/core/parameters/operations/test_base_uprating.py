@@ -329,13 +329,27 @@ def test_a_scale_level_base_reads_each_brackets_value_at_the_base_period():
     assert thresholds == [0, 12_225]
 
 
-def test_an_infinite_base_stays_infinite():
+@pytest.mark.parametrize(
+    "floor, index_2026, expected",
+    [
+        # 11,925 * 0.026 = 310.05 rounds to 300.
+        (False, 102.6, 12_225),
+        (True, 102.6, 12_225),
+        # 11,925 * -0.03 = -357.75 rounds to -350; the floor holds the base.
+        (False, 97.0, 11_575),
+        (True, 97.0, 11_925),
+    ],
+)
+def test_an_infinite_base_stays_infinite(floor, index_2026, expected):
     # A scale's lowest threshold is often -inf, and indexing keeps it there.
     root = uprated_root(
         {
             "scale": {
                 "metadata": {
-                    **base_mode({"period": 2025}, {"type": "nearest", "interval": 50}),
+                    **base_mode(
+                        {"period": 2025, "floor": floor},
+                        {"type": "nearest", "interval": 50},
+                    ),
                     "uprate_thresholds": True,
                 },
                 "brackets": [
@@ -349,13 +363,12 @@ def test_an_infinite_base_stays_infinite():
                     },
                 ],
             },
-            "index": {"values": {"2025-01-01": 100.0, "2026-01-01": 102.6}},
+            "index": {"values": {"2025-01-01": 100.0, "2026-01-01": index_2026}},
         }
     )
 
     thresholds = [bracket.threshold("2026-01-01") for bracket in root.scale.brackets]
-    # 11,925 * 0.026 = 310.05 rounds to 300.
-    assert thresholds == [-float("inf"), 12_225]
+    assert thresholds == [-float("inf"), expected]
 
 
 def test_base_mode_in_a_cloned_subtree_reads_that_subtrees_index():
@@ -507,6 +520,61 @@ def test_an_index_below_its_base_level_gives_a_value_below_the_base():
     assert root.amount("2021-01-01") == 950
 
 
+def test_floor_holds_a_value_at_its_base_while_the_index_is_below_its_base_level():
+    # 26 U.S.C. 1(f)(3)(A) makes the cost-of-living adjustment "the
+    # percentage (if any)" by which the index exceeds its base-year level, so
+    # an index below that level leaves the amount at its base.
+    def amount(base: dict, rounding=None) -> dict:
+        return {"values": {"2020-01-01": 1_000}, "metadata": base_mode(base, rounding)}
+
+    root = uprated_root(
+        {
+            "floored": amount({"period": 2020, "floor": True}, DOWN_50),
+            "floor_false": amount({"period": 2020, "floor": False}, DOWN_50),
+            "unfloored": amount({"period": 2020}, DOWN_50),
+            "floored_unrounded": amount({"period": 2020, "floor": True}),
+            "index": {
+                "values": {
+                    "2020-01-01": 100.0,
+                    "2021-01-01": 97.0,
+                    "2022-01-01": 106.0,
+                    "2023-01-01": 99.9,
+                }
+            },
+        }
+    )
+
+    for year in ["2021", "2023"]:
+        assert root.floored(f"{year}-01-01") == 1_000
+        assert root.floored_unrounded(f"{year}-01-01") == 1_000
+    # Without the floor, -30 and -1 round down to -50.
+    assert root.unfloored("2021-01-01") == root.floor_false("2021-01-01") == 950
+    assert root.unfloored("2023-01-01") == root.floor_false("2023-01-01") == 950
+    # Above the base level the floor does not bind: $60 rounds down to $50.
+    assert root.floored("2022-01-01") == root.unfloored("2022-01-01") == 1_050
+    assert root.floored_unrounded("2022-01-01") == pytest.approx(1_060, rel=1e-12)
+
+
+def test_floor_holds_the_index_ratio_at_one_not_the_increase_at_zero():
+    # The statutes floor the adjustment percentage, so a negative base follows
+    # an index above its base level and holds while the index is below it.
+    # Flooring the increase at zero instead would give -1,000 and then -900.
+    root = uprated_root(
+        {
+            "amount": {
+                "values": {"2020-01-01": -1_000},
+                "metadata": base_mode({"period": 2020, "floor": True}, DOWN_50),
+            },
+            "index": {
+                "values": {"2020-01-01": 100.0, "2021-01-01": 110.0, "2022-01-01": 90.0}
+            },
+        }
+    )
+
+    assert root.amount("2021-01-01") == -1_100
+    assert root.amount("2022-01-01") == -1_000
+
+
 def test_the_base_period_accepts_instant_strings():
     root = uprated_root(
         {
@@ -558,6 +626,20 @@ def error_case(meta: dict, values=None, index_values=None) -> dict:
         (
             error_case({"parameter": "index", "base": {"period": 2020, "value": True}}),
             "not a finite number",
+        ),
+        (
+            error_case(
+                {"parameter": "index", "base": {"period": 2020, "floor": "yes"}}
+            ),
+            "is not `true` or `false`",
+        ),
+        (
+            error_case({"parameter": "index", "base": {"period": 2020, "floor": 1}}),
+            "is not `true` or `false`",
+        ),
+        (
+            error_case({"parameter": "index", "base": {"period": 2020, "floor": None}}),
+            "is not `true` or `false`",
         ),
         (
             error_case({"parameter": "self", "base": {"period": 2020}}),

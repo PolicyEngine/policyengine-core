@@ -30,6 +30,9 @@ Over the domain generated here:
    the implementation before base mode gives it
    (``tests/fixtures/chained_uprating_reference.py``), including at rounding
    boundaries, where a change to the arithmetic before rounding shows.
+8. ``base.floor: true`` changes nothing where the index is at or above its
+   base-period level, to the last bit, and gives exactly the base where the
+   index is below it, so a positive base never projects below itself.
 
 The domain: the index and the parameter have values on January 1 of years
 from 1995 to 2040. Index levels run from 1 to about 1,000 with yearly changes
@@ -46,7 +49,7 @@ import pytest
 pytest.importorskip("hypothesis")
 
 import copy  # noqa: E402
-from dataclasses import dataclass  # noqa: E402
+from dataclasses import dataclass, replace  # noqa: E402
 from fractions import Fraction  # noqa: E402
 from typing import Optional  # noqa: E402
 
@@ -116,11 +119,14 @@ class BaseModeCase:
     index: dict
     rounding: object
     state_value: bool
+    floor: bool = False
 
     def meta(self) -> dict:
         base = {"period": self.base_year}
         if self.state_value:
             base["value"] = self.base_value
+        if self.floor:
+            base["floor"] = True
         meta = {"parameter": "index", "base": base}
         if self.rounding is not None:
             meta["rounding"] = self.rounding
@@ -349,6 +355,45 @@ def test_without_rounding_base_and_chained_mode_agree(case, explicit_path):
             assert base_value == chained_value
         else:
             assert base_value == pytest.approx(chained_value, rel=1e-12)
+
+
+# The index falls below its base level in 2021 and 2023 and rises above it
+# in 2022: the floor binds in two years and not in the third.
+FALLING_INDEX_CASE = BaseModeCase(
+    base_year=2020,
+    base_value=1_000.0,
+    last_explicit_year=2020,
+    values={"2020-01-01": 1_000.0},
+    index={
+        "2020-01-01": 100.0,
+        "2021-01-01": 97.0,
+        "2022-01-01": 106.0,
+        "2023-01-01": 99.9,
+    },
+    rounding={"type": "downwards", "interval": 50},
+    state_value=False,
+)
+
+
+@PROPERTY_SETTINGS
+@given(base_mode_cases())
+@example(HEAD_OF_HOUSEHOLD_CASE)
+@example(FALLING_INDEX_CASE)
+@example(replace(FALLING_INDEX_CASE, rounding=None))
+def test_floor_holds_the_index_ratio_at_one(case):
+    unfloored = case.projected(case.uprate())
+    floored_case = replace(case, floor=True)
+    floored = floored_case.projected(floored_case.uprate())
+    assert [instant_str for instant_str, _ in floored] == [
+        instant_str for instant_str, _ in unfloored
+    ]
+    index_at_base = case.index[year_instant(case.base_year)]
+    for (instant_str, value), (_, unfloored_value) in zip(floored, unfloored):
+        if case.index[instant_str] >= index_at_base:
+            assert value == unfloored_value
+        else:
+            assert value == case.base_value
+        assert value >= case.base_value
 
 
 @PROPERTY_SETTINGS

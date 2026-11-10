@@ -44,8 +44,10 @@ from tests.fixtures.microsimulation_option_reads import (
 hypothesis = pytest.importorskip("hypothesis")
 st = hypothesis.strategies
 
-# Whole amounts keep sums exact in float32, so a mismatch is never rounding.
+# Whole monthly amounts, and yearly amounts in multiples of 12, keep every sum
+# and monthly share exact in float32, so a mismatch is never rounding.
 AMOUNTS = st.integers(-10_000, 10_000).map(float)
+YEARLY_AMOUNTS = st.integers(-10_000, 10_000).map(lambda share: 12.0 * share)
 WEIGHTS = st.floats(min_value=0, max_value=1e6, allow_nan=False)
 PERIODS = ["2022", "2022-01", "2022-06", "2022-12", "2023", "month:2022-01:3"]
 VARIABLES = SOURCES + READERS
@@ -112,8 +114,8 @@ def inputs(draw):
     )
     people = len(household_of_person)
 
-    def values(count):
-        return tuple(draw(st.lists(AMOUNTS, min_size=count, max_size=count)))
+    def values(count, amounts=AMOUNTS):
+        return tuple(draw(st.lists(amounts, min_size=count, max_size=count)))
 
     return Inputs(
         household_of_person=tuple(household_of_person),
@@ -121,9 +123,9 @@ def inputs(draw):
             draw(st.lists(WEIGHTS, min_size=households, max_size=households))
         ),
         monthly_pay=tuple(values(12) for _ in range(people)),
-        yearly_grant=values(people),
+        yearly_grant=values(people, YEARLY_AMOUNTS),
         household_monthly_fee=tuple(values(12) for _ in range(households)),
-        household_yearly_grant=values(households),
+        household_yearly_grant=values(households, YEARLY_AMOUNTS),
     )
 
 
@@ -165,8 +167,6 @@ def test_formula_reads_with_an_option_equal_numpy_arithmetic(reader, data, month
     reference = expected(data, reader.__name__)
     for simulation in simulations(data):
         result = simulation.calculate(reader.__name__, period, **unweighted(simulation))
-        np.testing.assert_allclose(
-            np.asarray(result, dtype=float),
-            np.asarray(reference, dtype=float),
-            rtol=1e-6,
+        np.testing.assert_array_equal(
+            np.asarray(result, dtype=float), np.asarray(reference, dtype=float)
         )

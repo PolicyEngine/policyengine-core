@@ -168,9 +168,11 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
         # two Series' values by index label, and ``GroupPopulation.project``
         # labels each member's value with its group's position, so combining a
         # projected read with another Series pairs the wrong values or raises.
-        # Return the NumPy array a Simulation returns.
+        # Return a NumPy array, as a Simulation does, and copy it: pandas 3
+        # returns a read-only view of a Series' values, and a formula may write
+        # to what it reads.
         if isinstance(result, pd.Series):
-            return result.to_numpy()
+            return result.to_numpy(copy=True)
         return result
 
     # Helpers

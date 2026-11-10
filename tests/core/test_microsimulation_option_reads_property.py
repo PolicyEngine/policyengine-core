@@ -16,9 +16,9 @@ Population calls and the two methods read each variable over periods its
 option accepts. Since the Simulation ignores weights, weights never change an
 unweighted value.
 
-The population calls return NumPy arrays in both classes. Formula results
-also equal the same arithmetic done in NumPy, so the two simulations cannot
-agree on a wrong value.
+The population calls return writable NumPy arrays in both classes. Formula
+results also equal the same arithmetic done in NumPy, so the two simulations
+cannot agree on a wrong value.
 
 Enum variables are left out:
 ``test_enum_read_with_divide_over_a_year_gives_member_names_in_a_microsimulation``
@@ -149,10 +149,12 @@ def test_unweighted_microsimulation_reads_equal_simulation_reads(data, requests)
 def test_population_reads_with_an_option_return_numpy_arrays(data, call):
     # pandas pairs two Series' values by index label, and a projected Series
     # carries each member's group position, so formulas get positional arrays.
+    # Formulas may also write to what they read.
     _, entity_key, variable, period, option = call
     for simulation in simulations(data):
         read = simulation.populations[entity_key](variable, period, options=[option])
         assert type(read) is np.ndarray, (type(simulation).__name__, call)
+        assert read.flags.writeable, (type(simulation).__name__, call)
 
 
 @pytest.mark.parametrize("reader", READERS, ids=lambda reader: reader.__name__)

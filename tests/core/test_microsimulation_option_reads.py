@@ -13,7 +13,7 @@ pairs two Series' values by index label. ``household.project`` labels each
 member's value with its household's position, so combining a projected
 ``MicroSeries`` with another Series raises a ``ValueError`` or pairs members
 with another household's value. A formula's read with an option therefore
-returns the NumPy array a Simulation returns.
+returns a NumPy array, as in a Simulation, and one the formula can write to.
 """
 
 import dataclasses
@@ -139,6 +139,8 @@ def test_population_read_with_an_option_matches_a_simulation(call):
 
     # A NumPy array, as in a Simulation: a MicroSeries pairs values by label.
     assert type(result) is np.ndarray
+    # Formulas may write to what they read.
+    assert result.flags.writeable
     assert result.tolist() == run(simulation, call)
 
 

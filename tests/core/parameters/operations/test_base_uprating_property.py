@@ -467,7 +467,7 @@ def one_step_case(base, index_at_base, index_at_t, rounding_type, interval):
         ),
         # Leading zeros and the exponent are no significant digits:
         # 0.999999999999995 and 9.99999999999995e-05 have 15 each, so these
-        # increases, 1e-12 intervals below $100, round down.
+        # increases, $1e-12 (1e-14 intervals) below $100, round down.
         (one_step_case(100.0, 0.5, 0.999999999999995, "downwards", 100), 100.0),
         (one_step_case(100.0, 5e-05, 9.99999999999995e-05, "downwards", 100), 100.0),
     ],

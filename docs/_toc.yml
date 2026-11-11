@@ -7,6 +7,7 @@ parts:
   - caption: Using PolicyEngine Core
     chapters:
     - file: usage/simulation
+    - file: usage/branches
     - file: usage/country
     - file: usage/cli
     - file: usage/parameters

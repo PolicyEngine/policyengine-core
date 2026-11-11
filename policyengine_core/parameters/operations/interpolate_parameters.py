@@ -9,6 +9,10 @@ from policyengine_core.periods import instant
 def interpolate_parameters(root: ParameterNode) -> ParameterNode:
     """Interpolates parameters according to their metadata.
 
+    Each parameter interpolates once, however many times this runs. To
+    interpolate one again, set its ``interpolated`` attribute to ``False`` and
+    give it ``interpolation`` metadata without a true ``completed`` key.
+
     Args:
         root (ParameterNode): The root of the parameter tree.
 
@@ -17,9 +21,13 @@ def interpolate_parameters(root: ParameterNode) -> ParameterNode:
     """
     for parameter in root.get_descendants():
         if isinstance(parameter, Parameter):
-            if "interpolation" in parameter.metadata and not parameter.metadata[
-                "interpolation"
-            ].get("completed", False):
+            if (
+                "interpolation" in parameter.metadata
+                and not parameter.interpolated
+                # Core no longer writes this key, but a tree pickled by an
+                # older Core has it, and so can metadata written by hand.
+                and not parameter.metadata["interpolation"].get("completed", False)
+            ):
                 interpolated_entries = []
                 for i in range(len(parameter.values_list) - 1):
                     # For each gap in parameter values
@@ -56,5 +64,8 @@ def interpolate_parameters(root: ParameterNode) -> ParameterNode:
                 for entry in interpolated_entries:
                     parameter.values_list.append(entry)
                 parameter.values_list.sort(key=lambda x: x.instant_str, reverse=True)
-                parameter.metadata["interpolation"]["completed"] = True
+                # Mark the parameter, not its ``interpolation`` dict. Its clones
+                # and every parameter under a propagating node share that dict,
+                # and propagating metadata again replaces this parameter's.
+                parameter.interpolated = True
     return root

@@ -1,0 +1,2 @@
+# actionlint reads this file from .github/ on every run, in CI and locally.
+# Format: https://github.com/rhysd/actionlint/blob/v1.7.12/docs/config.md

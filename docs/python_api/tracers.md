@@ -56,6 +56,15 @@ The `policyengine_core.tracers` module contains classes used to represent tracer
     :show-inheritance:
 ```
 
+## TracingParameterNode
+
+```{eval-rst}
+.. autoclass:: policyengine_core.tracers.tracing_parameter_node_at_instant.TracingParameterNode
+    :members:
+    :inherited-members:
+    :show-inheritance:
+```
+
 ## TracingParameterNodeAtInstant
 
 ```{eval-rst}

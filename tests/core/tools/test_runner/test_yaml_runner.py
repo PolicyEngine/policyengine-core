@@ -63,28 +63,29 @@ class Simulation:
         return None
 
 
-class TestFile(YamlFile):
-    def __init__(self):
-        self.config = None
-        self.session = None
-        self._nodeid = "testname"
+# Build nodes through pytest's public `from_parent` constructor, under the
+# running session, as `OpenFiscaPlugin` does. Setting pytest's private node-id
+# attribute by hand broke when pytest 9.2.0 renamed it.
+def make_yaml_file(pytest_session, path):
+    return YamlFile.from_parent(
+        pytest_session,
+        path=path,
+        tax_benefit_system=TaxBenefitSystem(),
+        options={},
+    )
 
-        # Set path to current Python file
-        self.path = Path(__file__)
 
-
-class TestItem(YamlItem):
-    def __init__(self, parent=None, test=None):
-        super().__init__(
-            name="",
-            parent=TestFile.from_parent(None),
-            baseline_tax_benefit_system=TaxBenefitSystem(),
-            test=test,
-            options={},
-        )
-
-        self.tax_benefit_system = self.baseline_tax_benefit_system
-        self.simulation = Simulation()
+def make_yaml_item(pytest_session, test):
+    yaml_item = YamlItem.from_parent(
+        make_yaml_file(pytest_session, Path(__file__)),
+        name="",
+        baseline_tax_benefit_system=TaxBenefitSystem(),
+        test=test,
+        options={},
+    )
+    yaml_item.tax_benefit_system = yaml_item.baseline_tax_benefit_system
+    yaml_item.simulation = Simulation()
+    return yaml_item
 
 
 class TestVariable(Variable):
@@ -99,10 +100,10 @@ class TestVariable(Variable):
         self.dtype = np.float32
 
 
-def test_variable_not_found():
+def test_variable_not_found(request):
     test = {"output": {"unknown_variable": 0}}
     with pytest.raises(VariableNotFoundError) as excinfo:
-        test_item = TestItem.from_parent(None, test=test)
+        test_item = make_yaml_item(request.session, test)
         test_item.check_output()
     assert excinfo.value.variable_name == "unknown_variable"
 
@@ -161,12 +162,12 @@ def test_extensions_order():
     )  # extensions order is ignored in cache
 
 
-def test_performance_graph_option_output():
+def test_performance_graph_option_output(request):
     test = {
         "input": {"salary": {"2017-01": 2000}},
         "output": {"salary": {"2017-01": 2000}},
     }
-    test_item = TestItem.from_parent(None, test=test)
+    test_item = make_yaml_item(request.session, test)
     test_item.options = {"performance_graph": True}
 
     paths = ["./performance_graph.html"]
@@ -182,12 +183,12 @@ def test_performance_graph_option_output():
     clean_performance_files(paths)
 
 
-def test_performance_tables_option_output():
+def test_performance_tables_option_output(request):
     test = {
         "input": {"salary": {"2017-01": 2000}},
         "output": {"salary": {"2017-01": 2000}},
     }
-    test_item = TestItem.from_parent(None, test=test)
+    test_item = make_yaml_item(request.session, test)
     test_item.options = {"performance_tables": True}
 
     paths = ["performance_table.csv", "aggregated_performance_table.csv"]
@@ -269,7 +270,7 @@ def test_yaml_runner_rejects_scalar_keywords(tmp_path):
         list(invalid_yaml_file.collect())
 
 
-def test_yaml_runner_allows_yaml_merge_anchors(tmp_path):
+def test_yaml_runner_allows_yaml_merge_anchors(tmp_path, request):
     yaml_path = tmp_path / "anchors.yaml"
     yaml_path.write_text(
         """
@@ -297,13 +298,7 @@ def test_yaml_runner_allows_yaml_merge_anchors(tmp_path):
         encoding="utf-8",
     )
 
-    yaml_file = object.__new__(YamlFile)
-    yaml_file.config = None
-    yaml_file.session = None
-    yaml_file._nodeid = "anchors"
-    yaml_file.path = yaml_path
-    yaml_file.options = {}
-    yaml_file.tax_benefit_system = TaxBenefitSystem()
+    yaml_file = make_yaml_file(request.session, yaml_path)
 
     collected = list(yaml_file.collect())
 

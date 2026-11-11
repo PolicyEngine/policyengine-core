@@ -211,16 +211,15 @@ def test_matches_explicitly_backdated_index(system, backdated_system, known, req
 
 @pytest.mark.parametrize("known", range(2008, 2016))
 def test_result_does_not_depend_on_intermediate_years_computed(system, known):
-    """Path independence: computing every year in turn (each uprating from the
-    one before, which is then known) gives the same final value as uprating
-    straight from the known year."""
+    """Path independence: computing every year in turn first gives exactly
+    the value uprated straight from the known year. Each year uprates from
+    the input, not from the year before (see test_uprating_order.py); chained
+    from the year before, float32 rounding compounded."""
     stepwise = simulate(system, {known: VALUE})
     for year in range(known + 1, 2022):
         stepwise.calculate("uprated_income", year)
     stepwise_result = float(stepwise.calculate("uprated_income", 2022)[0])
-    assert stepwise_result == pytest.approx(
-        calculate(system, {known: VALUE}, 2022), rel=1e-5
-    )
+    assert stepwise_result == calculate(system, {known: VALUE}, 2022)
 
 
 @pytest.mark.parametrize(

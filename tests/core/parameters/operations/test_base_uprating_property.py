@@ -231,6 +231,17 @@ TIE_CASE = BaseModeCase(
     rounding={"type": "nearest", "interval": 10},
     state_value=True,
 )
+# 100 * 5% is $5, half an interval of $10, where Python's round would take
+# the even multiple, 0.
+EVEN_TIE_CASE = BaseModeCase(
+    base_year=2020,
+    base_value=100.0,
+    last_explicit_year=2020,
+    values={"2020-01-01": 100.0},
+    index={"2020-01-01": 100.0, "2021-01-01": 105.0},
+    rounding={"type": "nearest", "interval": 10},
+    state_value=True,
+)
 # 85 * (111 / 102 - 1) is exactly $7.50.
 SMALL_TIE_CASE = BaseModeCase(
     base_year=2020,
@@ -326,6 +337,7 @@ EXACT_EXAMPLES = [
     LARGE_MULTIPLE_CASE,
     HEAD_OF_HOUSEHOLD_CASE,
     TIE_CASE,
+    EVEN_TIE_CASE,
     SMALL_TIE_CASE,
     NEAR_MISS_CASE,
     NEARLY_ONE_INTERVAL_DOWN,
@@ -378,6 +390,7 @@ def test_each_value_is_the_exact_rounded_increase(case, floor):
         (LARGE_MULTIPLE_CASE, 572_903.25 + 22_743_643 * 0.25),
         (HEAD_OF_HOUSEHOLD_CASE, 24_925.0),
         (TIE_CASE, 975.0),
+        (EVEN_TIE_CASE, 110.0),
         (SMALL_TIE_CASE, 93.0),
         (NEAR_MISS_CASE, 25_317.87),
         (NEARLY_ONE_INTERVAL_DOWN, 1_000.0),
@@ -387,6 +400,22 @@ def test_each_value_is_the_exact_rounded_increase(case, floor):
 def test_review_counterexamples_give_the_exact_value(case, expected):
     (_, value), *_ = reversed(case.projected(case.uprate()))
     assert value == expected
+
+
+def test_the_allowance_never_exceeds_a_millionth_of_an_interval():
+    # $10m on a 1-cent interval: 64 machine epsilons of the amount would be
+    # 1.4e-5 intervals, but the allowance stops at 1e-6. This increase lies
+    # exactly 5e-6 intervals below 2, so it rounds down to 1.
+    case = BaseModeCase(
+        base_year=2020,
+        base_value=10_000_000.0,
+        last_explicit_year=2020,
+        values={"2020-01-01": 10_000_000.0},
+        index={"2020-01-01": 100.0, "2021-01-01": 100.0000001999995},
+        rounding={"type": "downwards", "interval": 0.01},
+        state_value=True,
+    )
+    assert case.uprate()("2021-01-01") == 10_000_000.01
 
 
 @pytest.mark.parametrize(
@@ -653,6 +682,10 @@ CHAINED_JUST_ABOVE_A_MULTIPLE = chained_case(
 CHAINED_EXACT_TIE = chained_case(
     125.0, (100.0, 100.0), {"type": "nearest", "interval": 50}
 )
+# 100 * (117 / 100) is 117, which nearest takes up to 120.
+CHAINED_NEAREST_UP = chained_case(
+    100.0, (100.0, 117.0), {"type": "nearest", "interval": 10}
+)
 
 
 def uprating_outcome(data: dict, uprate) -> object:
@@ -675,6 +708,7 @@ def uprating_outcome(data: dict, uprate) -> object:
 @example(CHAINED_JUST_BELOW_A_MULTIPLE)
 @example(CHAINED_JUST_ABOVE_A_MULTIPLE)
 @example(CHAINED_EXACT_TIE)
+@example(CHAINED_NEAREST_UP)
 def test_chained_mode_matches_the_implementation_before_base_mode(case):
     assert uprating_outcome(case.data, uprate_parameters) == uprating_outcome(
         case.data, reference_uprate_parameters
@@ -687,6 +721,7 @@ def test_chained_mode_matches_the_implementation_before_base_mode(case):
         (CHAINED_JUST_BELOW_A_MULTIPLE, 1_950.0),
         (CHAINED_JUST_ABOVE_A_MULTIPLE, 120.0),
         (CHAINED_EXACT_TIE, 100.0),
+        (CHAINED_NEAREST_UP, 120.0),
     ],
 )
 def test_chained_mode_keeps_its_float_rounding(case, expected):

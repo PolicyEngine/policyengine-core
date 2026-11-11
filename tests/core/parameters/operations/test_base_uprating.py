@@ -248,6 +248,10 @@ def test_rounding_applies_to_the_increase(rounding, expected):
         # 500 * 5% = $25, 2.5 intervals of $10: a tie, which goes up (Python's
         # round would take it to the even 2).
         (500, (100.0, 105.0), 530),
+        # 100 * 5% = $5, half an interval: up to $10, not to the even 0.
+        (100, (100.0, 105.0), 110),
+        # 900 * 5% = $45, 4.5 intervals: up to $50, not to the even 4.
+        (900, (100.0, 105.0), 950),
         # 375 * (523.8 / 202.5 - 1) = $595 exactly, but $594.9999999999999
         # in floats, a hair below the tie.
         (375, (202.5, 523.8), 975),

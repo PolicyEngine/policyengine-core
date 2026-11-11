@@ -54,6 +54,7 @@ import copy  # noqa: E402
 import math  # noqa: E402
 import sys  # noqa: E402
 from dataclasses import dataclass, replace  # noqa: E402
+from decimal import Inexact, localcontext  # noqa: E402
 from fractions import Fraction  # noqa: E402
 from typing import Optional  # noqa: E402
 
@@ -451,6 +452,13 @@ def one_step_case(base, index_at_base, index_at_t, rounding_type, interval):
             one_step_case(123_456_779_999.999, 100.0, 100.01, "downwards", 1),
             123_469_125_676.999,
         ),
+        # A whole-number float prints with a trailing ".0", which is no
+        # significant digit: 123456779999999.0 has 15. The increase lies 1e-7
+        # intervals below 12,345,678 and rounds down.
+        (
+            one_step_case(123_456_779_999_999.0, 100.0, 100.00001, "downwards", 1),
+            123_456_792_345_676.0,
+        ),
     ],
 )
 def test_short_decimal_inputs_round_exactly(case, expected):
@@ -494,6 +502,16 @@ def test_the_allowance_never_exceeds_a_millionth_of_an_interval():
         # epsilons of $1,007 (1.4e-11 intervals), far below the 1e-8 by which
         # $1,000 misses a $7 rise.
         (1_000.0, 100.0, 100.699999999 + 1e-14, "downwards", 1, 1_006.0),
+        # The allowance applies when any input is computed, not just the
+        # index at t. A base-period index that is itself an average:
+        # 0.6 / (0.1 + 0.2) is a hair under 2, so $100 rises by a hair under
+        # $100, which is the float error of a computed index.
+        (100.0, 0.1 + 0.2, 0.6, "downwards", 100, 200.0),
+        # A computed base: 0.7999999999999999 doubles to a hair under eight
+        # tenths more.
+        (0.1 + 0.7, 1.0, 2.0, "downwards", 0.1, 1.5999999999999999),
+        # A computed interval: $9 is a hair under 30 times 0.30000000000000004.
+        (300.0, 100.0, 103.0, "downwards", 0.1 + 0.2, 309.0),
     ],
 )
 def test_float_error_in_a_computed_index_does_not_cross_a_multiple(
@@ -501,6 +519,37 @@ def test_float_error_in_a_computed_index_does_not_cross_a_multiple(
 ):
     case = one_step_case(base, index_at_base, index_at_t, rounding_type, interval)
     assert case.uprate()("2021-01-01") == expected
+
+
+@pytest.mark.parametrize(
+    "index_at_t, expected",
+    [
+        # $1,000 at 1.007 times the base index: the allowance is 64 machine
+        # epsilons of $1,007, about 1.43e-11 intervals of $1. An increase
+        # 2.9e-11 short of $7 is outside it; one 7.2e-12 short is inside it.
+        (100.69999999999713, 1_006.0),
+        (100.69999999999928, 1_007.0),
+        # The allowance scales with the uprated amount: at 3 times the base
+        # index it is about 4.3e-11 intervals, so 2.2e-11 short of $2,000
+        # is inside it.
+        (299.99999999999784, 3_000.0),
+    ],
+)
+def test_the_allowance_is_64_machine_epsilons_of_the_uprated_amount(
+    index_at_t, expected
+):
+    case = one_step_case(1_000.0, 100.0, index_at_t, "downwards", 1)
+    assert case.uprate()("2021-01-01") == expected
+
+
+def test_the_digit_count_does_not_depend_on_the_decimal_context():
+    # A low precision or an Inexact trap in the caller's decimal context must
+    # not change which inputs count as computed.
+    case = one_step_case(1_000.0, 100.0, 100.0 + 0.1 + 0.6, "downwards", 1)
+    with localcontext() as context:
+        context.prec = 10
+        context.traps[Inexact] = True
+        assert case.uprate()("2021-01-01") == 1_007.0
 
 
 @PROPERTY_SETTINGS

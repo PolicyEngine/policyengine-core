@@ -624,6 +624,26 @@ def test_the_base_period_accepts_instant_strings():
     assert root.amount("2021-01-01") == 1_100
 
 
+@pytest.mark.parametrize("rounding", [None, {"type": "nearest", "interval": 50}])
+@pytest.mark.parametrize("base", [float("inf"), -float("inf")])
+def test_an_infinite_base_stays_infinite_when_the_index_ratio_underflows(
+    base, rounding
+):
+    # 1e-200 / 1e200 underflows to 0.0, and an infinite base times zero would
+    # be NaN. The ratio of two positive index values is positive, so the base
+    # stays infinite.
+    root = uprated_root(
+        {
+            "amount": {
+                "values": {"2020-01-01": base},
+                "metadata": base_mode({"period": 2020}, rounding),
+            },
+            "index": {"values": {"2020-01-01": 1e200, "2021-01-01": 1e-200}},
+        }
+    )
+    assert root.amount("2021-01-01") == base
+
+
 def error_case(meta: dict, values=None, index_values=None) -> dict:
     return {
         "amount": {
@@ -651,6 +671,43 @@ def error_case(meta: dict, values=None, index_values=None) -> dict:
         (
             error_case({"parameter": "index", "base": {"period": True}}),
             "not a period or instant",
+        ),
+        # Years past the C int range overflow when read as a date.
+        (
+            error_case({"parameter": "index", "base": {"period": 2**31}}),
+            "not a period or instant",
+        ),
+        (
+            error_case({"parameter": "index", "base": {"period": 10**10}}),
+            "not a period or instant",
+        ),
+        # Unknown keys of mixed types are listed, not compared.
+        (
+            error_case({"parameter": "index", "base": {"period": 2020}, 1: 0, "z": 0}),
+            "not `1`, `z`",
+        ),
+        (
+            error_case({"parameter": "index", "base": {"period": 2020, 1: 0, "z": 0}}),
+            "`base` takes only `period`, `value` and `floor`, not `1`, `z`",
+        ),
+        (
+            error_case(
+                {
+                    "parameter": "index",
+                    "base": {"period": 2020},
+                    "rounding": {"type": "nearest", "interval": 1, 1: 0, "z": 0},
+                }
+            ),
+            "`rounding` takes only `type` and `interval`, not `1`, `z`",
+        ),
+        # A stated base must match to one part in a billion, however small
+        # the amount: 0.0500000005 is 1e-8 off 0.05.
+        (
+            error_case(
+                {"parameter": "index", "base": {"period": 2020, "value": 0.0500000005}},
+                values={"2020-01-01": 0.05},
+            ),
+            "but the parameter's value at the base period",
         ),
         (
             error_case(

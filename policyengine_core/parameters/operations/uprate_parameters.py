@@ -2,7 +2,6 @@ import datetime as dt
 import math
 import numbers
 import sys
-from decimal import Decimal
 from fractions import Fraction
 
 from numpy import ceil, floor
@@ -43,13 +42,14 @@ ROUNDING_KEYS = frozenset({"type", "interval"})
 #:
 #: A float prints as a decimal of at most this many significant digits (15)
 #: when it is the float nearest such a decimal, as a value written in YAML
-#: is. Base mode takes those values as exact.
+#: with at most 15 significant digits is. Base mode takes those values, and
+#: every int, as exact.
 SHORT_DECIMAL_DIGITS = sys.float_info.dig
 
 #: An index computed in floating point, such as an average of monthly prices,
 #: prints with more digits than that, and carries rounding error in its last
 #: ones. The ratio of two such values is off by at most a few units in the
-#: last place, so when any input prints with more than
+#: last place, so when any float input prints with more than
 #: :data:`SHORT_DECIMAL_DIGITS` digits, base mode allows this relative error
 #: in the uprated amount: 64 machine epsilons, about 1.4e-14. An increase
 #: within that error of a multiple of the interval (or of a half, for
@@ -618,7 +618,7 @@ def parse_uprating_base(
         leaves it to the parameter's value at the base period); and whether
         ``floor`` keeps the index ratio at or above 1.
     """
-    unknown_keys = sorted(set(meta) - BASE_MODE_UPRATING_KEYS)
+    unknown_keys = sorted(set(meta) - BASE_MODE_UPRATING_KEYS, key=str)
     if unknown_keys:
         raise base_mode_error(
             parameter,
@@ -640,7 +640,7 @@ def parse_uprating_base(
             "`base` must be a mapping with a `period` and an optional `value` "
             f"and `floor`, not {base!r}.",
         )
-    unknown_base_keys = sorted(set(base) - UPRATING_BASE_KEYS)
+    unknown_base_keys = sorted(set(base) - UPRATING_BASE_KEYS, key=str)
     if unknown_base_keys:
         raise base_mode_error(
             parameter,
@@ -659,9 +659,10 @@ def parse_uprating_base(
         try:
             base_instant = instant(period)
             # ``instant`` accepts impossible dates, such as 2020-02-30 or year
-            # 0, that fail only when something reads them as a date.
+            # 0, that fail only when something reads them as a date. A year
+            # past the C int range overflows instead.
             base_instant.date
-        except (AssertionError, TypeError, ValueError):
+        except (AssertionError, OverflowError, TypeError, ValueError):
             base_instant = None
     if not isinstance(base_instant, Instant):
         raise base_mode_error(
@@ -695,7 +696,7 @@ def parse_increase_rounding(parameter: Parameter, rounding_config) -> tuple[floa
         The interval and the rounding type.
     """
     if isinstance(rounding_config, dict):
-        unknown_keys = sorted(set(rounding_config) - ROUNDING_KEYS)
+        unknown_keys = sorted(set(rounding_config) - ROUNDING_KEYS, key=str)
         if unknown_keys:
             raise base_mode_error(
                 parameter,
@@ -760,7 +761,7 @@ def get_base_value(
         return value_at_base
     if value_at_base is not None and not (
         is_real_number(value_at_base)
-        and math.isclose(stated_value, value_at_base, rel_tol=1e-9, abs_tol=1e-9)
+        and math.isclose(stated_value, value_at_base, rel_tol=1e-9)
     ):
         raise base_mode_error(
             parameter,
@@ -787,12 +788,19 @@ def exact_decimal(value: float) -> Fraction:
 
 
 def is_short_decimal(value: float) -> bool:
-    """Whether ``value`` prints as a decimal of at most
+    """Whether base mode takes ``value`` as exact.
+
+    An int is exact as written, whatever its length. A float is exact when
+    the shortest decimal that reads back as it has at most
     :data:`SHORT_DECIMAL_DIGITS` significant digits, as a value written in
-    YAML does, rather than as the longer decimal of a computed float."""
+    YAML with that many digits does, rather than the longer decimal of a
+    computed float. The count reads the printed string, so it does not depend
+    on the :mod:`decimal` context.
+    """
     if isinstance(value, numbers.Integral):
         return True
-    digits = Decimal(repr(float(value))).normalize().as_tuple().digits
+    mantissa = repr(float(value)).lower().partition("e")[0]
+    digits = mantissa.lstrip("-").replace(".", "").strip("0")
     return len(digits) <= SHORT_DECIMAL_DIGITS
 
 
@@ -808,13 +816,15 @@ def project_from_base(
     With ``rounding``, the increase ``base_value * (index_at_t /
     index_at_base - 1)`` is computed exactly on the decimals the inputs print
     as (:func:`exact_decimal`), rounded to a whole number of intervals, and
-    added to the base. When any input is a computed float rather than a short
-    decimal, an increase within float error of a multiple counts as on it;
-    :data:`INDEX_RELATIVE_ERROR` sets that allowance. Without ``rounding``, the
-    value is ``base_value * index_at_t / index_at_base`` in floating point.
+    added to the base. When any input is a computed float rather than an int
+    or a short decimal (:func:`is_short_decimal`), an increase within float
+    error of a multiple counts as on it; :data:`INDEX_RELATIVE_ERROR` sets
+    that allowance. Without ``rounding``, the value is ``base_value *
+    (index_at_t / index_at_base)`` in floating point, the order chained mode
+    uses.
 
     An infinite base, such as a scale's ``-inf`` lowest threshold, stays
-    infinite.
+    infinite: the index ratio is positive, even where it underflows a float.
 
     Args:
         base_value: The base amount.
@@ -828,7 +838,9 @@ def project_from_base(
     Raises:
         OverflowError: The rounded amount is too large for a float.
     """
-    if rounding is None or not math.isfinite(base_value):
+    if math.isinf(base_value):
+        return float(base_value)
+    if rounding is None:
         ratio = index_at_t / index_at_base
         if floor:
             ratio = max(ratio, 1.0)

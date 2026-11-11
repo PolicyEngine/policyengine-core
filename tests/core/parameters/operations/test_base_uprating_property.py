@@ -459,6 +459,17 @@ def one_step_case(base, index_at_base, index_at_t, rounding_type, interval):
             one_step_case(123_456_779_999_999.0, 100.0, 100.00001, "downwards", 1),
             123_456_792_345_676.0,
         ),
+        # An int is exact at any length: 1,234,567,799,999,999 has 16 digits,
+        # and its increase, 1e-7 intervals below 123,456,780, rounds down.
+        (
+            one_step_case(1_234_567_799_999_999, 100.0, 100.00001, "downwards", 1),
+            1_234_567_923_456_778.0,
+        ),
+        # Leading zeros and the exponent are no significant digits:
+        # 0.999999999999995 and 9.99999999999995e-05 have 15 each, so these
+        # increases, 1e-12 intervals below $100, round down.
+        (one_step_case(100.0, 0.5, 0.999999999999995, "downwards", 100), 100.0),
+        (one_step_case(100.0, 5e-05, 9.99999999999995e-05, "downwards", 100), 100.0),
     ],
 )
 def test_short_decimal_inputs_round_exactly(case, expected):

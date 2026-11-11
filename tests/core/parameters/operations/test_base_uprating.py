@@ -705,6 +705,20 @@ def error_case(meta: dict, values=None, index_values=None) -> dict:
             "not a period or instant",
         ),
         (
+            error_case({"parameter": "index", "base": {"period": "year:2020"}}),
+            "not a period or instant",
+        ),
+        (
+            error_case(
+                {"parameter": "index", "base": {"period": 2020, "value": 10**400}}
+            ),
+            "not a finite number",
+        ),
+        (
+            error_case({"parameter": "missing.index", "base": {"period": 2020}}),
+            "Failed to uprate amount from its base: its index",
+        ),
+        (
             error_case(
                 {"parameter": "index", "base": {"period": 2020, "value": 23_650}},
                 values={"2020-01-01": 23_625},
@@ -803,6 +817,26 @@ def error_case(meta: dict, values=None, index_values=None) -> dict:
         ),
         (
             error_case(
+                {
+                    "parameter": "index",
+                    "base": {"period": 2020},
+                    "rounding": {"type": ["downwards"], "interval": 50},
+                }
+            ),
+            "is not one of",
+        ),
+        (
+            error_case(
+                {
+                    "parameter": "index",
+                    "base": {"period": 2020},
+                    "rounding": {"type": "downwards", "interval": 10**400},
+                }
+            ),
+            "not a positive number",
+        ),
+        (
+            error_case(
                 {"parameter": "index", "base": {"period": 2019}},
                 index_values={"2019-01-01": 100.0, "2021-01-01": 110.0},
             ),
@@ -858,6 +892,18 @@ def error_case(meta: dict, values=None, index_values=None) -> dict:
                 index_values={"2020-01-01": 1.0, "2021-01-01": 1e10},
             ),
             "its projected value at 2021-01-01 is inf",
+        ),
+        (
+            error_case(
+                {
+                    "parameter": "index",
+                    "base": {"period": 2020},
+                    "rounding": {"type": "nearest", "interval": 1e-10},
+                },
+                values={"2020-01-01": -1e300},
+                index_values={"2020-01-01": 1.0, "2021-01-01": 1e10},
+            ),
+            "its projected value at 2021-01-01 is -inf",
         ),
         (
             error_case(

@@ -2,6 +2,7 @@ import datetime as dt
 import math
 import numbers
 import sys
+from decimal import Decimal
 from fractions import Fraction
 
 from numpy import ceil, floor
@@ -40,12 +41,20 @@ ROUNDING_KEYS = frozenset({"type", "interval"})
 #: an increase that decimal arithmetic puts on a multiple of the interval, or
 #: on a half for ``nearest``, rounds from exactly there.
 #:
+#: A float prints as a decimal of at most this many significant digits (15)
+#: when it is the float nearest such a decimal, as a value written in YAML
+#: is. Base mode takes those values as exact.
+SHORT_DECIMAL_DIGITS = sys.float_info.dig
+
 #: An index computed in floating point, such as an average of monthly prices,
-#: carries rounding error in its last digits that its decimal form keeps. The
-#: ratio of two such values is off by at most a few units in the last place,
-#: so base mode allows this relative error in the ratio: 64 machine epsilons,
-#: about 1.4e-14. An increase within that error of a multiple of the interval
-#: (or of a half, for ``nearest``) counts as on it.
+#: prints with more digits than that, and carries rounding error in its last
+#: ones. The ratio of two such values is off by at most a few units in the
+#: last place, so when any input prints with more than
+#: :data:`SHORT_DECIMAL_DIGITS` digits, base mode allows this relative error
+#: in the uprated amount: 64 machine epsilons, about 1.4e-14. An increase
+#: within that error of a multiple of the interval (or of a half, for
+#: ``nearest``) counts as on it. When every input is a short decimal, base
+#: mode allows nothing: the arithmetic is exact.
 INDEX_RELATIVE_ERROR = 64 * sys.float_info.epsilon
 
 #: The allowance never exceeds this many intervals, however large the amount.
@@ -484,14 +493,16 @@ def uprate_parameter_from_base(
 
     The ``base`` block holds:
 
-    * ``period`` (required): any period or instant the parameter system reads,
-      such as ``2025`` or ``1997-01-01``. Base mode reads the index there, so
-      it names the base in the index's own periods. Where an index's value at
+    * ``period`` (required): a year, such as ``2025``, or a date, such as
+      ``1997-01-01`` (from Python, also an ``Instant``, or a ``Period``, read
+      at its start). Base mode reads the index there, so it names the base
+      in the index's own periods. Where an index's value at
       period ``Y`` stands for calendar year ``Y - 1``, a statute's base year
       ``Y - 1`` is ``period: Y``.
     * ``value`` (optional): the base amount. It defaults to the parameter's
       value at ``period``. When the parameter has a value there, a stated
-      ``value`` must equal it, which catches a ``period`` one year off.
+      ``value`` must match it to one part in a billion, which catches a
+      ``period`` one year off.
     * ``floor`` (optional, default ``false``): when ``true``, base mode counts
       the index as no lower than its base-period level, so the index ratio is
       at least 1 and a positive base never projects below itself. Statutes
@@ -525,12 +536,15 @@ def uprate_parameter_from_base(
         if "rounding" in meta
         else None
     )
-    uprating_parameter = get_uprating_parameter(
-        root,
-        parameter,
-        meta["parameter"],
-        parameter_paths,
-    )
+    try:
+        uprating_parameter = get_uprating_parameter(
+            root,
+            parameter,
+            meta["parameter"],
+            parameter_paths,
+        )
+    except ValueError as error:
+        raise base_mode_error(parameter, f"its index: {error}") from error
     index_at_base = get_base_mode_index_value(
         parameter, uprating_parameter, base_instant
     )
@@ -563,7 +577,7 @@ def uprate_parameter_from_base(
                 floor=floor_at_base,
             )
         except OverflowError:
-            value = math.inf
+            value = math.copysign(math.inf, base_value)
         if not math.isfinite(value) and math.isfinite(base_value):
             raise base_mode_error(
                 parameter,
@@ -580,12 +594,13 @@ def base_mode_error(parameter: Parameter, reason: str) -> ValueError:
 
 
 def is_number(value) -> bool:
-    """Whether ``value`` is an int or float other than a bool or NaN."""
-    return (
-        isinstance(value, (int, float))
-        and not isinstance(value, bool)
-        and not math.isnan(value)
-    )
+    """Whether ``value`` is a float other than NaN, or an int other than a
+    bool that a float can hold."""
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return abs(value) <= sys.float_info.max
+    return isinstance(value, float) and not math.isnan(value)
 
 
 def is_real_number(value) -> bool:
@@ -689,7 +704,10 @@ def parse_increase_rounding(parameter: Parameter, rounding_config) -> tuple[floa
                 + ".",
             )
         rounding_type = rounding_config.get("type")
-        if rounding_type not in INCREASE_ROUNDING_FUNCTIONS:
+        if not (
+            isinstance(rounding_type, str)
+            and rounding_type in INCREASE_ROUNDING_FUNCTIONS
+        ):
             raise base_mode_error(
                 parameter,
                 f"`rounding.type` {rounding_type!r} is not one of "
@@ -768,6 +786,16 @@ def exact_decimal(value: float) -> Fraction:
     return Fraction(repr(float(value)))
 
 
+def is_short_decimal(value: float) -> bool:
+    """Whether ``value`` prints as a decimal of at most
+    :data:`SHORT_DECIMAL_DIGITS` significant digits, as a value written in
+    YAML does, rather than as the longer decimal of a computed float."""
+    if isinstance(value, numbers.Integral):
+        return True
+    digits = Decimal(repr(float(value))).normalize().as_tuple().digits
+    return len(digits) <= SHORT_DECIMAL_DIGITS
+
+
 def project_from_base(
     base_value: float,
     index_at_t: float,
@@ -780,8 +808,9 @@ def project_from_base(
     With ``rounding``, the increase ``base_value * (index_at_t /
     index_at_base - 1)`` is computed exactly on the decimals the inputs print
     as (:func:`exact_decimal`), rounded to a whole number of intervals, and
-    added to the base; :data:`INDEX_RELATIVE_ERROR` explains the allowance
-    for index values computed in floating point. Without ``rounding``, the
+    added to the base. When any input is a computed float rather than a short
+    decimal, an increase within float error of a multiple counts as on it;
+    :data:`INDEX_RELATIVE_ERROR` sets that allowance. Without ``rounding``, the
     value is ``base_value * index_at_t / index_at_base`` in floating point.
 
     An infinite base, such as a scale's ``-inf`` lowest threshold, stays
@@ -811,11 +840,17 @@ def project_from_base(
     base = exact_decimal(base_value)
     step = exact_decimal(interval)
     intervals = base * (ratio - 1) / step
-    allowance = min(
-        Fraction(INDEX_RELATIVE_ERROR) * abs(base) * ratio / step,
-        Fraction(INCREASE_SNAP_LIMIT),
-    )
-    intervals = snap_increase(intervals, allowance, halves=rounding_type == "nearest")
+    if not all(
+        is_short_decimal(value)
+        for value in (base_value, index_at_t, index_at_base, interval)
+    ):
+        allowance = min(
+            Fraction(INDEX_RELATIVE_ERROR) * abs(base) * ratio / step,
+            Fraction(INCREASE_SNAP_LIMIT),
+        )
+        intervals = snap_increase(
+            intervals, allowance, halves=rounding_type == "nearest"
+        )
     whole_intervals = INCREASE_ROUNDING_FUNCTIONS[rounding_type](intervals)
     return float(base + whole_intervals * step)
 

@@ -12,10 +12,11 @@ Over the domain generated here:
 2. Each value is the exact one: the increase computed in rational arithmetic
    on the decimals the base, the index values and the interval print as,
    rounded down, up, or to the nearest multiple with an exact half going up.
-   Where that exact increase lies within 1e-6 intervals of a multiple (or of
-   a half, for nearest), the value may instead round from that multiple,
-   which allows for index values computed in floating point. The test
-   computes this itself and imports nothing from the implementation.
+   When every input prints with 15 significant digits or fewer, the value is
+   exactly that. When an input prints with more, as a computed float does,
+   and the exact increase lies within 1e-6 intervals of a multiple (or of a
+   half, for nearest), the value may instead round from that multiple. The
+   test computes this itself and imports nothing from the implementation.
 3. With a positive base, a higher index at the projected period never gives
    a lower value.
 4. Without rounding, base mode and chained mode agree to 1e-12 when the
@@ -290,9 +291,17 @@ FLOAT_NOISE_UP_CASE = BaseModeCase(
 )
 
 #: The outer bound, in intervals, on how far base mode may move an increase
-#: onto a multiple. The specification sets it; the implementation's allowance
-#: for float error in the index must fall inside it.
+#: onto a multiple when an input is a computed float. The specification sets
+#: it; the implementation's allowance for float error must fall inside it.
 SNAP_ZONE = Fraction(1, 10**6)
+
+
+def significant_digits(number) -> int:
+    """How many significant digits the decimal a number prints as has."""
+    if isinstance(number, int):
+        return 0
+    mantissa = repr(number).split("e")[0].lstrip("-").replace(".", "")
+    return len(mantissa.strip("0")) or 1
 
 
 def decimal(number) -> Fraction:
@@ -322,6 +331,14 @@ def allowed_values(case: BaseModeCase, instant_str: str) -> set[float]:
         ratio = max(ratio, Fraction(1))
     exact = base * (ratio - 1) / step
     allowed = {round_intervals(exact, rounding_type)}
+    inputs = (
+        case.base_value,
+        case.index[instant_str],
+        case.index[year_instant(case.base_year)],
+        interval,
+    )
+    if all(significant_digits(number) <= 15 for number in inputs):
+        return {float(base + whole * step) for whole in allowed}
     multiples = [Fraction(round(exact))]
     if rounding_type == "nearest":
         multiples.append(math.floor(exact) + Fraction(1, 2))
@@ -402,6 +419,44 @@ def test_review_counterexamples_give_the_exact_value(case, expected):
     assert value == expected
 
 
+def one_step_case(base, index_at_base, index_at_t, rounding_type, interval):
+    return BaseModeCase(
+        base_year=2020,
+        base_value=base,
+        last_explicit_year=2020,
+        values={"2020-01-01": base},
+        index={"2020-01-01": index_at_base, "2021-01-01": index_at_t},
+        rounding={"type": rounding_type, "interval": interval},
+        state_value=True,
+    )
+
+
+@pytest.mark.parametrize(
+    "case, expected",
+    [
+        # Exact increases a few billionths of an interval from a multiple, at
+        # amounts where 64 machine epsilons of the uprated amount would have
+        # reached it (review run 2): short decimals get no allowance.
+        (one_step_case(1_819_252.81, 370.811, 395.69, "downwards", 5), 1_941_307.81),
+        (one_step_case(2_226_662.91, 382.408, 411.597, "downwards", 10), 2_396_612.91),
+        (one_step_case(5_802_294.89, 275.964, 277.373, "upwards", 25), 5_831_944.89),
+        # The result is the float nearest the exact decimal, which a binary
+        # reading of the inputs misses in the last bit (20021.629999999997).
+        (one_step_case(16_021.63, 181.695, 227.408, "downwards", 50), 20_021.63),
+        (one_step_case(0.05, 1.0, 1.125, "nearest", 0.01), 0.06),
+        # A short decimal with all 15 significant digits a float holds: the
+        # increase lies 1e-7 intervals below 12,345,678, inside the allowance
+        # a computed input would get, and still rounds down.
+        (
+            one_step_case(123_456_779_999.999, 100.0, 100.01, "downwards", 1),
+            123_469_125_676.999,
+        ),
+    ],
+)
+def test_short_decimal_inputs_round_exactly(case, expected):
+    assert case.uprate()("2021-01-01") == expected
+
+
 def test_the_allowance_never_exceeds_a_millionth_of_an_interval():
     # $10m on a 1-cent interval: 64 machine epsilons of the amount would be
     # 1.4e-5 intervals, but the allowance stops at 1e-6. This increase lies
@@ -419,29 +474,32 @@ def test_the_allowance_never_exceeds_a_millionth_of_an_interval():
 
 
 @pytest.mark.parametrize(
-    "index_at_base, index_at_t, rounding, expected",
+    "base, index_at_base, index_at_t, rounding_type, interval, expected",
     [
         # 0.1 + 0.2 is 0.30000000000000004: three times 0.1 and a hair more.
-        (0.1, 0.1 + 0.2, {"type": "upwards", "interval": 100}, 300.0),
+        (100.0, 0.1, 0.1 + 0.2, "upwards", 100, 300.0),
         # 0.7 + 0.1 is 0.7999999999999999: twice 0.4 and a hair less.
-        (0.4, 0.7 + 0.1, {"type": "downwards", "interval": 100}, 200.0),
+        (100.0, 0.4, 0.7 + 0.1, "downwards", 100, 200.0),
         # 0.35 + 0.1 is 0.44999999999999996: 4.5 times 0.1 and a hair less,
         # so the increase is a hair under the tie at 3.5 intervals.
-        (0.1, 0.35 + 0.1, {"type": "nearest", "interval": 100}, 500.0),
+        (100.0, 0.1, 0.35 + 0.1, "nearest", 100, 500.0),
+        # A ratio near 1, where the allowance must scale with the uprated
+        # amount, not the increase: 100 + 0.1 + 0.6 is 100.69999999999999,
+        # so $1,000 rises by a hair under $7.
+        (1_000.0, 100.0, 100.0 + 0.1 + 0.6, "downwards", 1, 1_007.0),
+        # 100 + 0.2 + 0.4 is 100.60000000000001: a hair over $6.
+        (1_000.0, 100.0, 100.0 + 0.2 + 0.4, "upwards", 1, 1_006.0),
+        # A computed index can still fall short for real. 100.699999999 + 1e-14
+        # prints with 17 digits, so the allowance applies, but it is 64 machine
+        # epsilons of $1,007 (1.4e-11 intervals), far below the 1e-8 by which
+        # $1,000 misses a $7 rise.
+        (1_000.0, 100.0, 100.699999999 + 1e-14, "downwards", 1, 1_006.0),
     ],
 )
 def test_float_error_in_a_computed_index_does_not_cross_a_multiple(
-    index_at_base, index_at_t, rounding, expected
+    base, index_at_base, index_at_t, rounding_type, interval, expected
 ):
-    case = BaseModeCase(
-        base_year=2020,
-        base_value=100.0,
-        last_explicit_year=2020,
-        values={"2020-01-01": 100.0},
-        index={"2020-01-01": index_at_base, "2021-01-01": index_at_t},
-        rounding=rounding,
-        state_value=True,
-    )
+    case = one_step_case(base, index_at_base, index_at_t, rounding_type, interval)
     assert case.uprate()("2021-01-01") == expected
 
 

@@ -30,12 +30,12 @@ class UpratingBase(dict):
 
     period: Union[int, str]
     """
-    The period of the base amount, such as 2025 or 1997-01-01, in the uprating index's own periods: a year, a date, or a period string the parameter system reads. Base mode measures each increase from the index's value here.
+    The period of the base amount, in the uprating index's own periods: a year, such as 2025, or a date, such as 1997-01-01. Base mode measures each increase from the index's value here.
     """
 
     value: float
     """
-    The base amount. Optional: it defaults to the parameter's value at ``period``, and when the parameter has a value there, a stated ``value`` must equal it.
+    The base amount. Optional: it defaults to the parameter's value at ``period``, and when the parameter has a value there, a stated ``value`` must match it to one part in a billion.
     """
 
     floor: bool

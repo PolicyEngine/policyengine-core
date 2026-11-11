@@ -69,7 +69,7 @@ The same holds within one tree: a dated value written in dictionary form (`value
 
 ## Uprating
 
-A parameter's `uprating` metadata extends its value history with another parameter, the index, such as a price index. When a tax-benefit system loads its parameters, `uprate_parameters` adds a value at each instant where the index has a value after the parameter's last explicit value. Uprating never changes an explicit value, so a new explicit value always replaces a projection.
+A parameter's `uprating` metadata extends its value history with another parameter, the index, such as a price index. When a tax-benefit system loads its parameters, `uprate_parameters` adds a value at each instant where the index has a value after the parameter's last explicit value (or, in chained mode, after `start_instant` when the metadata sets one). Uprating never changes an explicit value, so a new explicit value always replaces a projection.
 
 ### Chained mode
 
@@ -88,7 +88,7 @@ metadata:
       interval: 50
 ```
 
-`rounding` rounds the uprated amount to a multiple of `interval`. A bare float, such as `rounding: 0.01`, rounds to the nearest multiple. Chained mode also takes `start_instant`, to project from an instant other than the last explicit value; `at_defined_interval`, to uprate on a fixed cadence; and `parameter: self`, to extend the parameter's own growth.
+`rounding` rounds the uprated amount, as a floating-point number, to a multiple of `interval`; `nearest` takes an exact half to the even multiple. A bare float, such as `rounding: 0.01`, rounds to the nearest multiple. Chained mode also takes `start_instant`, to project from an instant other than the last explicit value; `at_defined_interval`, to uprate on a fixed cadence; and `parameter: self`, to extend the parameter's own growth.
 
 ### Base mode
 
@@ -113,13 +113,14 @@ For each instant `t` where the index has a value after the last explicit value, 
 value(t) = base + round(base × (index(t) / index(base.period) − 1))
 ```
 
-applying `rounding`'s type and interval to the increase. Without `rounding`, `value(t) = base × index(t) / index(base.period)`.
+applying `rounding`'s type and interval to the increase. A bare number, such as `rounding: 10`, rounds to the nearest multiple. Without `rounding`, `value(t) = base × index(t) / index(base.period)`.
 
 - `base.period` names the base in the index's own periods, since base mode reads the index there. Where the index's value at period `Y` measures calendar year `Y − 1`, as in the example above, a statute's base year `Y − 1` is `period: Y`.
 - `base.value` defaults to the parameter's own value at `base.period`. When the parameter has a value there, a stated `base.value` must equal it, which catches a period one year off. State it when the parameter has no value at the base period, such as a 1997 base for a parameter whose history starts later; elsewhere, leaving it out lets the base follow a reform (see below).
 - `base.floor: true` counts the index as no lower than its base-period level: base mode uses `max(index(t) / index(base.period), 1)` as the ratio, so a positive base never projects below itself. Statutes that add "the percentage (if any) by which" an index exceeds its base-year level floor the adjustment this way; 26 U.S.C. 1(f)(3), which sets the cost-of-living adjustment in the example above, is one. Without `floor`, an index below its base-period level gives a value below the base.
 - Base mode takes only `parameter`, `base` and `rounding`. It raises an error for `start_instant`, `at_defined_interval`, `parameter: self` and any other key, rather than ignore them.
-- Before rounding, base mode counts an increase within 10⁻⁹ intervals of a whole number of intervals as that whole number, so floating-point error cannot drop an exact multiple to the one below. A 40% rise on $1,400 is exactly $560, which floats compute as 559.9999999999998. For amounts large next to the interval, where float error is larger, the tolerance widens to about 3.6 × 10⁻¹⁵ of the amounts, a few units in their last place.
+- Base mode computes the increase exactly, in rational arithmetic on the decimals the base, the index values and the interval print as, so an index written as `102.6` counts as 102.6. A 40% rise on $1,400 is exactly $560, though floats compute it as 559.9999999999998, so rounding down to $10 keeps all of it. `nearest` takes an exact half up: a $25 increase on a $10 interval becomes $30.
+- An index computed in floating point, such as an average of monthly prices, can be off by a few units in its last place. Base mode allows for that: an increase within 64 machine epsilons (about 1.4 × 10⁻¹⁴) of the uprated amount of a multiple of the interval, or of a half for `nearest`, counts as on it. The allowance never exceeds 10⁻⁶ intervals.
 - An infinite base, such as a scale's `-.inf` lowest threshold, stays infinite.
 
 ### Base mode and reforms

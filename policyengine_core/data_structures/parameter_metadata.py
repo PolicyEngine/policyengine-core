@@ -30,7 +30,7 @@ class UpratingBase(dict):
 
     period: Union[int, str]
     """
-    The period of the base amount, such as 2025 or 1997-01-01, in the uprating index's own periods. Base mode measures each increase from the index's value here.
+    The period of the base amount, such as 2025 or 1997-01-01, in the uprating index's own periods: a year, a date, or a period string the parameter system reads. Base mode measures each increase from the index's value here.
     """
 
     value: float
@@ -61,7 +61,7 @@ class UpratingSchema(dict):
 
     rounding: Union[UpratingRoundingConfig, float]
     """
-    The rounding to apply. Chained mode rounds the uprated amount; base mode rounds the increase over the base amount. A bare number rounds to the nearest multiple of it.
+    The rounding to apply. Chained mode rounds the uprated amount, taking an exact half to the even multiple; base mode rounds the increase over the base amount, computed exactly on the decimals the inputs print as, taking an exact half up. A bare float rounds to the nearest multiple of it in either mode, and base mode also reads a bare int that way.
     """
 
     base: UpratingBase

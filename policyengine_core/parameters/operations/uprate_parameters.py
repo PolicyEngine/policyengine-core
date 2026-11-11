@@ -1,5 +1,8 @@
+import datetime as dt
 import math
+import numbers
 import sys
+from fractions import Fraction
 
 from numpy import ceil, floor
 
@@ -17,7 +20,7 @@ from policyengine_core.parameters.parameter_at_instant import (
     ParameterAtInstant,
 )
 from policyengine_core.parameters.parameter_node import ParameterNode
-from policyengine_core.periods import Instant, instant
+from policyengine_core.periods import Instant, Period, instant
 
 #: Keys a base-mode ``uprating`` block may hold. Base mode rejects the others
 #: (``start_instant``, ``at_defined_interval`` and the ``self`` keys) rather
@@ -28,31 +31,45 @@ BASE_MODE_UPRATING_KEYS = frozenset({"parameter", "base", "rounding"})
 #: Keys of an ``uprating.base`` block.
 UPRATING_BASE_KEYS = frozenset({"period", "value", "floor"})
 
-#: Base mode treats an increase within this many rounding intervals of a whole
-#: number of intervals as that whole number before it rounds. Index values
-#: written in decimal, such as 102.6, are inexact in binary floating point, so
-#: an increase that decimal arithmetic puts exactly on a multiple of the
-#: interval can come out a few units in the last place below it, where
-#: rounding down would drop a full interval. On a $50 interval the tolerance
-#: is $0.00000005.
-INCREASE_ROUNDING_TOLERANCE = 1e-9
+#: Keys of a base-mode ``rounding`` mapping.
+ROUNDING_KEYS = frozenset({"type", "interval"})
 
-#: Float error in an increase grows with the amounts it comes from, so for
-#: amounts large next to the interval the tolerance widens to this multiple
-#: of their size (the uprated amount plus the base): sixteen machine epsilons,
-#: about 3.6e-15, a few units in the last place. $572,903.25 raised by
-#: 2,032 / 186 is exactly 22,743,643 quarter-dollar intervals above its base,
-#: which floats put 4e-9 intervals short; the widened tolerance there is about
-#: 1e-7 intervals.
-INCREASE_ROUNDING_RELATIVE_TOLERANCE = 16 * sys.float_info.epsilon
+#: Base mode rounds the increase in exact rational arithmetic on the decimals
+#: the base amount, the index values and the interval print as, so an index
+#: written as 102.6 counts as 102.6, not as the binary float nearest it, and
+#: an increase that decimal arithmetic puts on a multiple of the interval, or
+#: on a half for ``nearest``, rounds from exactly there.
+#:
+#: An index computed in floating point, such as an average of monthly prices,
+#: carries rounding error in its last digits that its decimal form keeps. The
+#: ratio of two such values is off by at most a few units in the last place,
+#: so base mode allows this relative error in the ratio: 64 machine epsilons,
+#: about 1.4e-14. An increase within that error of a multiple of the interval
+#: (or of a half, for ``nearest``) counts as on it.
+INDEX_RELATIVE_ERROR = 64 * sys.float_info.epsilon
 
-#: The rounding functions ``rounding.type`` names. ``nearest`` is Python's
-#: ``round``, which rounds an exact half to the even multiple, as chained
-#: mode's rounding does.
-INCREASE_ROUNDING_FUNCTIONS: dict[str, Callable[[float], float]] = {
-    "nearest": round,
-    "upwards": ceil,
-    "downwards": floor,
+#: The allowance never exceeds this many intervals, however large the amount.
+#: On a $50 interval that is $0.00005, far below any amount a statute prints.
+INCREASE_SNAP_LIMIT = 1e-6
+
+
+def round_half_up(intervals: Fraction) -> int:
+    """Round to the nearest whole number, taking an exact half upwards.
+
+    Half up is the usual reading of "rounded to the nearest multiple", and
+    the hand-coded projections PolicyEngine-US replaced with base mode used
+    it (``math.floor(x / interval + 0.5)``). Chained mode uses Python's
+    ``round``, which takes a half to the even number.
+    """
+    return math.floor(intervals + Fraction(1, 2))
+
+
+#: The functions ``rounding.type`` names, which round a number of intervals,
+#: held as an exact fraction, to a whole number.
+INCREASE_ROUNDING_FUNCTIONS: dict[str, Callable[[Fraction], int]] = {
+    "nearest": round_half_up,
+    "upwards": math.ceil,
+    "downwards": math.floor,
 }
 
 
@@ -94,7 +111,12 @@ def get_uprating_dependency_name(parameter: Parameter) -> Optional[str]:
     if meta is None:
         return None
     meta = normalize_uprating_metadata(meta)
-    dependency_name = meta["parameter"]
+    dependency_name = meta.get("parameter") if isinstance(meta, dict) else None
+    if not isinstance(dependency_name, str):
+        raise ValueError(
+            f"Failed to uprate {parameter.name}: its uprating metadata "
+            f"{meta!r} has no `parameter` that names an index."
+        )
     if dependency_name == "self":
         return None
     return dependency_name
@@ -451,7 +473,9 @@ def uprate_parameter_from_base(
         base_value + round(base_value * (index(t) / index(base) - 1))
 
     ``rounding`` takes the same ``type`` and ``interval`` as in chained mode
-    and applies them to the increase; without ``rounding`` the value is
+    and applies them to the increase, computed exactly on the decimals the
+    amounts and index values print as; ``nearest`` takes an exact half up
+    (see :func:`project_from_base`). Without ``rounding`` the value is
     ``base_value * index(t) / index(base)``. Explicit values always win: base
     mode adds values only after the last of them. An index below its
     base-period level gives a value below the base unless ``base.floor`` is
@@ -488,10 +512,10 @@ def uprate_parameter_from_base(
     Raises:
         ValueError: The metadata is malformed or combines ``base`` with
             ``start_instant``, ``at_defined_interval`` or ``self``; the index
-            is undefined, zero or not finite where base mode reads it; the
-            base amount is missing, not a number, or differs from the
-            parameter's value at the base period; or the parameter has no
-            values or its last value is null.
+            is undefined, not positive or not finite where base mode reads
+            it; the base amount is missing, not a number, or differs from the
+            parameter's value at the base period; the parameter has no values
+            or its last value is null; or a projected value overflows.
     """
     if parameter_paths is None:
         parameter_paths = {}
@@ -530,10 +554,16 @@ def uprate_parameter_from_base(
         index_at_entry = get_base_mode_index_value(
             parameter, uprating_parameter, entry_instant
         )
-        index_ratio = index_at_entry / index_at_base
-        if floor_at_base:
-            index_ratio = max(index_ratio, 1.0)
-        value = project_from_base(base_value, index_ratio, rounding)
+        try:
+            value = project_from_base(
+                base_value,
+                index_at_entry,
+                index_at_base,
+                rounding,
+                floor=floor_at_base,
+            )
+        except OverflowError:
+            value = math.inf
         if not math.isfinite(value) and math.isfinite(base_value):
             raise base_mode_error(
                 parameter,
@@ -581,7 +611,7 @@ def parse_uprating_base(
             + ", ".join(f"`{key}`" for key in unknown_keys)
             + ".",
         )
-    if "parameter" not in meta:
+    if not isinstance(meta.get("parameter"), str):
         raise base_mode_error(parameter, "`parameter` names no index.")
     if meta["parameter"] == "self":
         raise base_mode_error(
@@ -607,9 +637,15 @@ def parse_uprating_base(
         raise base_mode_error(parameter, "`base` has no `period`.")
     period = base["period"]
     base_instant = None
-    if not isinstance(period, bool):
+    # YAML gives a year as an int and an unquoted date as a ``datetime.date``.
+    if isinstance(period, (int, str, dt.date, Instant, Period)) and not isinstance(
+        period, bool
+    ):
         try:
             base_instant = instant(period)
+            # ``instant`` accepts impossible dates, such as 2020-02-30 or year
+            # 0, that fail only when something reads them as a date.
+            base_instant.date
         except (AssertionError, TypeError, ValueError):
             base_instant = None
     if not isinstance(base_instant, Instant):
@@ -633,9 +669,7 @@ def parse_uprating_base(
     return base_instant, stated_value, floor_at_base
 
 
-def parse_increase_rounding(
-    parameter: Parameter, rounding_config
-) -> tuple[float, Callable[[float], float]]:
+def parse_increase_rounding(parameter: Parameter, rounding_config) -> tuple[float, str]:
     """Read a base-mode ``rounding`` block.
 
     It takes chained mode's forms: a mapping with a ``type`` (``nearest``,
@@ -643,9 +677,17 @@ def parse_increase_rounding(
     interval, which rounds to the nearest multiple.
 
     Returns:
-        The interval and the rounding function.
+        The interval and the rounding type.
     """
     if isinstance(rounding_config, dict):
+        unknown_keys = sorted(set(rounding_config) - ROUNDING_KEYS)
+        if unknown_keys:
+            raise base_mode_error(
+                parameter,
+                "`rounding` takes only `type` and `interval`, not "
+                + ", ".join(f"`{key}`" for key in unknown_keys)
+                + ".",
+            )
         rounding_type = rounding_config.get("type")
         if rounding_type not in INCREASE_ROUNDING_FUNCTIONS:
             raise base_mode_error(
@@ -663,19 +705,19 @@ def parse_increase_rounding(
             parameter,
             f"the rounding interval {interval!r} is not a positive number.",
         )
-    return interval, INCREASE_ROUNDING_FUNCTIONS[rounding_type]
+    return interval, rounding_type
 
 
 def get_base_mode_index_value(
     parameter: Parameter, uprating_parameter: Parameter, at: Instant
 ) -> float:
-    """Read the uprating index at ``at``, which must be finite and nonzero."""
+    """Read the uprating index at ``at``, which must be finite and positive."""
     value = uprating_parameter(at)
-    if not is_real_number(value) or value == 0:
+    if not is_real_number(value) or value <= 0:
         raise base_mode_error(
             parameter,
             f"the uprating index {uprating_parameter.name} is {value!r} at {at}; "
-            "base mode needs a finite, nonzero value there.",
+            "base mode needs a finite, positive value there.",
         )
     return value
 
@@ -714,69 +756,86 @@ def get_base_value(
     return stated_value
 
 
+def exact_decimal(value: float) -> Fraction:
+    """The exact rational value of the decimal ``value`` prints as.
+
+    An int is exact already. A float becomes the shortest decimal that reads
+    back as it, which for a value written in YAML is the value as written:
+    102.6 becomes 1026/10, not the binary float a hair below it.
+    """
+    if isinstance(value, numbers.Integral) and not isinstance(value, bool):
+        return Fraction(int(value))
+    return Fraction(repr(float(value)))
+
+
 def project_from_base(
     base_value: float,
-    index_ratio: float,
-    rounding: Optional[tuple[float, Callable[[float], float]]],
+    index_at_t: float,
+    index_at_base: float,
+    rounding: Optional[tuple[float, str]],
+    floor: bool = False,
 ) -> float:
-    """The base amount plus the (rounded) increase the index ratio implies.
+    """The base amount plus the (rounded) increase the index implies.
 
-    An infinite base, such as a scale's ``-inf`` lowest threshold, gives an
-    infinite uprated amount, which returns before any rounding: it stays
+    With ``rounding``, the increase ``base_value * (index_at_t /
+    index_at_base - 1)`` is computed exactly on the decimals the inputs print
+    as (:func:`exact_decimal`), rounded to a whole number of intervals, and
+    added to the base; :data:`INDEX_RELATIVE_ERROR` explains the allowance
+    for index values computed in floating point. Without ``rounding``, the
+    value is ``base_value * index_at_t / index_at_base`` in floating point.
+
+    An infinite base, such as a scale's ``-inf`` lowest threshold, stays
     infinite.
 
     Args:
         base_value: The base amount.
-        index_ratio: The index at the projected period over the index at the
-            base period.
-        rounding: The interval and rounding function for the increase, or
+        index_at_t: The index at the projected period, finite and positive.
+        index_at_base: The index at the base period, finite and positive.
+        rounding: The interval and rounding type for the increase, or
             ``None`` for no rounding.
+        floor: Whether to count the index as no lower than its base-period
+            level, so the ratio is at least 1.
+
+    Raises:
+        OverflowError: The rounded amount is too large for a float.
     """
-    uprated = base_value * index_ratio
-    if rounding is None or not math.isfinite(uprated):
-        return float(uprated)
-    interval, rounding_fn = rounding
-    return float(
-        base_value
-        + round_increase(
-            uprated - base_value,
-            interval,
-            rounding_fn,
-            magnitude=abs(uprated) + abs(base_value),
-        )
+    if rounding is None or not math.isfinite(base_value):
+        ratio = index_at_t / index_at_base
+        if floor:
+            ratio = max(ratio, 1.0)
+        return float(base_value * ratio)
+    interval, rounding_type = rounding
+    ratio = exact_decimal(index_at_t) / exact_decimal(index_at_base)
+    if floor:
+        ratio = max(ratio, Fraction(1))
+    base = exact_decimal(base_value)
+    step = exact_decimal(interval)
+    intervals = base * (ratio - 1) / step
+    allowance = min(
+        Fraction(INDEX_RELATIVE_ERROR) * abs(base) * ratio / step,
+        Fraction(INCREASE_SNAP_LIMIT),
     )
+    intervals = snap_increase(intervals, allowance, halves=rounding_type == "nearest")
+    whole_intervals = INCREASE_ROUNDING_FUNCTIONS[rounding_type](intervals)
+    return float(base + whole_intervals * step)
 
 
-def round_increase(
-    increase: float,
-    interval: float,
-    rounding_fn: Callable[[float], float],
-    magnitude: float = 0.0,
-) -> float:
-    """Round an increase to a multiple of ``interval`` with ``rounding_fn``.
+def snap_increase(intervals: Fraction, allowance: Fraction, halves: bool) -> Fraction:
+    """Move an increase within ``allowance`` of a multiple onto it.
 
-    An increase within :data:`INCREASE_ROUNDING_TOLERANCE` intervals of a
-    multiple, or within :data:`INCREASE_ROUNDING_RELATIVE_TOLERANCE` times
-    ``magnitude`` where that is wider, counts as that multiple, so
-    floating-point error in an increase that is a whole number of intervals
-    cannot move it to the next multiple down (or up).
-
-    Args:
-        increase: The increase over the base amount.
-        interval: The rounding interval.
-        rounding_fn: ``round``, ``ceil`` or ``floor``.
-        magnitude: The size of the amounts the increase comes from (the
-            uprated amount plus the base), which bounds its float error.
+    ``intervals`` is the increase in rounding intervals. Within ``allowance``
+    of a whole number it becomes that number, and, when ``halves`` is set
+    (for ``nearest``), within ``allowance`` of a half it becomes that half.
+    Otherwise it is returned as it is.
     """
-    intervals = increase / interval
-    whole_intervals = round(intervals)
-    tolerance = max(
-        INCREASE_ROUNDING_TOLERANCE,
-        INCREASE_ROUNDING_RELATIVE_TOLERANCE * magnitude / interval,
-    )
-    if abs(intervals - whole_intervals) <= tolerance:
-        intervals = whole_intervals
-    return float(rounding_fn(intervals)) * interval
+    whole = round(intervals)
+    if abs(intervals - whole) <= allowance:
+        return Fraction(whole)
+    if halves:
+        half = math.floor(intervals) + Fraction(1, 2)
+        if abs(intervals - half) <= allowance:
+            return half
+    return intervals
 
 
 def round_uprated_value(meta: dict, uprated_value: float) -> float:

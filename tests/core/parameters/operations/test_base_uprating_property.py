@@ -8,15 +8,14 @@ parameter's last explicit value
 Over the domain generated here:
 
 1. The increase over the base, ``value - base``, is a whole number of rounding
-   intervals.
-2. Rounding down never puts the increase above the exact increase (the
-   rational number the float inputs define) and leaves it less than one
-   interval below it. Rounding up mirrors that, and rounding to the nearest
-   multiple leaves it within half an interval. An exact increase that is
-   already a whole number of intervals stays exactly that, under every
-   rule. "Never above" allows the tolerance base mode gives an increase near
-   a multiple (1e-9 intervals, or about 3.6e-15 of the amounts if more), plus
-   float error of order 1e-14 of the amounts.
+   intervals, up to the float error in printing the result.
+2. Each value is the exact one: the increase computed in rational arithmetic
+   on the decimals the base, the index values and the interval print as,
+   rounded down, up, or to the nearest multiple with an exact half going up.
+   Where that exact increase lies within 1e-6 intervals of a multiple (or of
+   a half, for nearest), the value may instead round from that multiple,
+   which allows for index values computed in floating point. The test
+   computes this itself and imports nothing from the implementation.
 3. With a positive base, a higher index at the projected period never gives
    a lower value.
 4. Without rounding, base mode and chained mode agree to 1e-12 when the
@@ -28,8 +27,10 @@ Over the domain generated here:
    base amount and the last explicit instant.
 7. Every chained-mode parameter gets exactly the values, or the error, that
    the implementation before base mode gives it
-   (``tests/fixtures/chained_uprating_reference.py``), including at rounding
-   boundaries, where a change to the arithmetic before rounding shows.
+   (``tests/fixtures/chained_uprating_reference.py``, a frozen copy of the
+   module at 7c84d941b), including at rounding boundaries, where a change to
+   the arithmetic before rounding shows. Three such boundaries are also
+   pinned as literals.
 8. ``base.floor: true`` changes nothing where the index is at or above its
    base-period level, to the last bit, and gives exactly the base where the
    index is below it, so a positive base never projects below itself.
@@ -49,6 +50,8 @@ import pytest
 pytest.importorskip("hypothesis")
 
 import copy  # noqa: E402
+import math  # noqa: E402
+import sys  # noqa: E402
 from dataclasses import dataclass, replace  # noqa: E402
 from fractions import Fraction  # noqa: E402
 from typing import Optional  # noqa: E402
@@ -57,10 +60,6 @@ from hypothesis import HealthCheck, example, given, settings  # noqa: E402
 from hypothesis import strategies as st  # noqa: E402
 
 from policyengine_core.parameters import ParameterNode, uprate_parameters  # noqa: E402
-from policyengine_core.parameters.operations.uprate_parameters import (  # noqa: E402
-    INCREASE_ROUNDING_RELATIVE_TOLERANCE,
-    INCREASE_ROUNDING_TOLERANCE,
-)
 from tests.fixtures.chained_uprating_reference import (  # noqa: E402
     reference_uprate_parameters,
 )
@@ -220,62 +219,201 @@ HEAD_OF_HOUSEHOLD_CASE = BaseModeCase(
 )
 
 
-def tolerance(case: BaseModeCase, ratio: float, value: float, interval: float):
-    """Allowed error in an increase, in currency units, as an exact Fraction.
+# The review's counterexamples to the first base-mode rounding (2026-11-11).
+# Exact ties for nearest, which floats put a hair below the half:
+# 375 * (523.8 / 202.5 - 1) is exactly $595, 59.5 intervals of $10.
+TIE_CASE = BaseModeCase(
+    base_year=2020,
+    base_value=375.0,
+    last_explicit_year=2020,
+    values={"2020-01-01": 375.0},
+    index={"2020-01-01": 202.5, "2021-01-01": 523.8},
+    rounding={"type": "nearest", "interval": 10},
+    state_value=True,
+)
+# 85 * (111 / 102 - 1) is exactly $7.50.
+SMALL_TIE_CASE = BaseModeCase(
+    base_year=2020,
+    base_value=85.0,
+    last_explicit_year=2020,
+    values={"2020-01-01": 85.0},
+    index={"2020-01-01": 102.0, "2021-01-01": 111.0},
+    rounding={"type": "nearest", "interval": 1},
+    state_value=False,
+)
+# An increase 5e-10 intervals below 16, which only float error, not index
+# error, can put there: it rounds down to 15 intervals.
+NEAR_MISS_CASE = BaseModeCase(
+    base_year=2020,
+    base_value=24_567.87,
+    last_explicit_year=2020,
+    values={"2020-01-01": 24_567.87},
+    index={"2020-01-01": 315.605, "2021-01-01": 325.882},
+    rounding={"type": "downwards", "interval": 50},
+    state_value=True,
+)
+# 0.99 and 1.01 intervals: no allowance may reach a multiple from there.
+NEARLY_ONE_INTERVAL_DOWN = BaseModeCase(
+    base_year=2020,
+    base_value=1_000.0,
+    last_explicit_year=2020,
+    values={"2020-01-01": 1_000.0},
+    index={"2020-01-01": 100.0, "2021-01-01": 104.95},
+    rounding={"type": "downwards", "interval": 50},
+    state_value=True,
+)
+NEARLY_ONE_INTERVAL_UP = replace(
+    NEARLY_ONE_INTERVAL_DOWN,
+    index={"2020-01-01": 100.0, "2021-01-01": 105.05},
+    rounding={"type": "upwards", "interval": 50},
+)
+# A 10% rise on $100 is exactly $10, but 10.000000000000014 in floats.
+FLOAT_NOISE_UP_CASE = BaseModeCase(
+    base_year=2020,
+    base_value=100.0,
+    last_explicit_year=2020,
+    values={"2020-01-01": 100.0},
+    index={"2020-01-01": 100.0, "2021-01-01": 110.0},
+    rounding={"type": "upwards", "interval": 10},
+    state_value=True,
+)
 
-    Base mode's snap can move an increase by its tolerance: the larger of
-    INCREASE_ROUNDING_TOLERANCE intervals and INCREASE_ROUNDING_RELATIVE_TOLERANCE
-    times the uprated amount plus the base, which ``amounts`` bounds twice
-    over. Float arithmetic adds error of order 1e-16 of the amounts, which
-    1e-14 covers.
-    """
-    amounts = abs(case.base_value) * max(ratio, 1.0) + abs(value)
-    snap = max(
-        INCREASE_ROUNDING_TOLERANCE * interval,
-        INCREASE_ROUNDING_RELATIVE_TOLERANCE * 2 * amounts,
+#: The outer bound, in intervals, on how far base mode may move an increase
+#: onto a multiple. The specification sets it; the implementation's allowance
+#: for float error in the index must fall inside it.
+SNAP_ZONE = Fraction(1, 10**6)
+
+
+def decimal(number) -> Fraction:
+    """The exact value of the decimal a number prints as."""
+    if isinstance(number, float):
+        return Fraction(repr(number))
+    return Fraction(number)
+
+
+def round_intervals(intervals: Fraction, rounding_type: str) -> int:
+    if rounding_type == "downwards":
+        return math.floor(intervals)
+    if rounding_type == "upwards":
+        return math.ceil(intervals)
+    return math.floor(intervals + Fraction(1, 2))
+
+
+def allowed_values(case: BaseModeCase, instant_str: str) -> set[float]:
+    """The values the specification allows base mode to give at an instant."""
+    rounding_type, interval = rounding_rule(case.rounding)
+    step = decimal(interval)
+    base = decimal(case.base_value)
+    ratio = decimal(case.index[instant_str]) / decimal(
+        case.index[year_instant(case.base_year)]
     )
-    return Fraction(snap + 1e-14 * amounts)
+    if case.floor:
+        ratio = max(ratio, Fraction(1))
+    exact = base * (ratio - 1) / step
+    allowed = {round_intervals(exact, rounding_type)}
+    multiples = [Fraction(round(exact))]
+    if rounding_type == "nearest":
+        multiples.append(math.floor(exact) + Fraction(1, 2))
+    for multiple in multiples:
+        if abs(exact - multiple) <= SNAP_ZONE:
+            allowed.add(round_intervals(multiple, rounding_type))
+    return {float(base + whole * step) for whole in allowed}
+
+
+EXACT_EXAMPLES = [
+    FLOAT_NOISE_CASE,
+    FLOAT_NOISE_UP_CASE,
+    LARGE_MULTIPLE_CASE,
+    HEAD_OF_HOUSEHOLD_CASE,
+    TIE_CASE,
+    SMALL_TIE_CASE,
+    NEAR_MISS_CASE,
+    NEARLY_ONE_INTERVAL_DOWN,
+    NEARLY_ONE_INTERVAL_UP,
+]
+
+
+def with_examples(*extra_args):
+    """Add each of EXACT_EXAMPLES as a Hypothesis example, then ``extra_args``."""
+
+    def decorate(test):
+        for case in reversed(EXACT_EXAMPLES):
+            test = example(case, *extra_args)(test)
+        return test
+
+    return decorate
 
 
 @PROPERTY_SETTINGS
 @given(base_mode_cases(rounded=True))
-@example(FLOAT_NOISE_CASE)
-@example(LARGE_MULTIPLE_CASE)
-@example(HEAD_OF_HOUSEHOLD_CASE)
+@with_examples()
 def test_the_increase_is_a_whole_number_of_intervals(case):
     _, interval = rounding_rule(case.rounding)
     projected = case.projected(case.uprate())
     assert projected
     for _, value in projected:
         intervals = (value - case.base_value) / interval
-        assert abs(intervals - round(intervals)) <= 1e-6
+        # Printing base + k * interval as a float, and the float subtraction
+        # and division here, each add error of order epsilon of the amounts.
+        float_error = (
+            4 * sys.float_info.epsilon * (abs(value) + abs(case.base_value)) / interval
+        )
+        assert abs(intervals - round(intervals)) <= 1e-12 + float_error
 
 
 @PROPERTY_SETTINGS
-@given(base_mode_cases(rounded=True))
-@example(FLOAT_NOISE_CASE)
-@example(LARGE_MULTIPLE_CASE)
-@example(HEAD_OF_HOUSEHOLD_CASE)
-def test_the_rounded_increase_brackets_the_exact_increase(case):
-    rounding_type, interval = rounding_rule(case.rounding)
-    base = Fraction(case.base_value)
-    index_at_base = Fraction(case.index[year_instant(case.base_year)])
+@given(base_mode_cases(rounded=True), st.booleans())
+@with_examples(False)
+def test_each_value_is_the_exact_rounded_increase(case, floor):
+    case = replace(case, floor=floor) if floor else case
     for instant_str, value in case.projected(case.uprate()):
-        index_at_t = Fraction(case.index[instant_str])
-        exact = base * (index_at_t / index_at_base - 1)
-        rounded = Fraction(value) - base
-        slack = tolerance(case, float(index_at_t / index_at_base), value, interval)
-        if (exact / Fraction(interval)).denominator == 1:
-            # An exact whole number of intervals survives float error intact.
-            assert abs(rounded - exact) <= slack
-        if rounding_type == "downwards":
-            assert rounded <= exact + slack
-            assert exact - rounded < interval + slack
-        elif rounding_type == "upwards":
-            assert rounded >= exact - slack
-            assert rounded - exact < interval + slack
-        else:
-            assert abs(rounded - exact) <= Fraction(interval) / 2 + slack
+        assert value in allowed_values(case, instant_str), instant_str
+
+
+@pytest.mark.parametrize(
+    "case, expected",
+    [
+        (FLOAT_NOISE_CASE, 1_960.0),
+        (FLOAT_NOISE_UP_CASE, 110.0),
+        (LARGE_MULTIPLE_CASE, 572_903.25 + 22_743_643 * 0.25),
+        (HEAD_OF_HOUSEHOLD_CASE, 24_925.0),
+        (TIE_CASE, 975.0),
+        (SMALL_TIE_CASE, 93.0),
+        (NEAR_MISS_CASE, 25_317.87),
+        (NEARLY_ONE_INTERVAL_DOWN, 1_000.0),
+        (NEARLY_ONE_INTERVAL_UP, 1_100.0),
+    ],
+)
+def test_review_counterexamples_give_the_exact_value(case, expected):
+    (_, value), *_ = reversed(case.projected(case.uprate()))
+    assert value == expected
+
+
+@pytest.mark.parametrize(
+    "index_at_base, index_at_t, rounding, expected",
+    [
+        # 0.1 + 0.2 is 0.30000000000000004: three times 0.1 and a hair more.
+        (0.1, 0.1 + 0.2, {"type": "upwards", "interval": 100}, 300.0),
+        # 0.7 + 0.1 is 0.7999999999999999: twice 0.4 and a hair less.
+        (0.4, 0.7 + 0.1, {"type": "downwards", "interval": 100}, 200.0),
+        # 0.35 + 0.1 is 0.44999999999999996: 4.5 times 0.1 and a hair less,
+        # so the increase is a hair under the tie at 3.5 intervals.
+        (0.1, 0.35 + 0.1, {"type": "nearest", "interval": 100}, 500.0),
+    ],
+)
+def test_float_error_in_a_computed_index_does_not_cross_a_multiple(
+    index_at_base, index_at_t, rounding, expected
+):
+    case = BaseModeCase(
+        base_year=2020,
+        base_value=100.0,
+        last_explicit_year=2020,
+        values={"2020-01-01": 100.0},
+        index={"2020-01-01": index_at_base, "2021-01-01": index_at_t},
+        rounding=rounding,
+        state_value=True,
+    )
+    assert case.uprate()("2021-01-01") == expected
 
 
 @PROPERTY_SETTINGS
@@ -541,6 +679,21 @@ def test_chained_mode_matches_the_implementation_before_base_mode(case):
     assert uprating_outcome(case.data, uprate_parameters) == uprating_outcome(
         case.data, reference_uprate_parameters
     )
+
+
+@pytest.mark.parametrize(
+    "case, expected",
+    [
+        (CHAINED_JUST_BELOW_A_MULTIPLE, 1_950.0),
+        (CHAINED_JUST_ABOVE_A_MULTIPLE, 120.0),
+        (CHAINED_EXACT_TIE, 100.0),
+    ],
+)
+def test_chained_mode_keeps_its_float_rounding(case, expected):
+    """Chained mode rounds the float product, so float error and half-to-even
+    stay as they were; only base mode rounds exact decimals."""
+    root = uprate_parameters(ParameterNode(data=copy.deepcopy(case.data)))
+    assert root.amount("2021-01-01") == expected
 
 
 CADENCE_UPRATER = {

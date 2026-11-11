@@ -242,6 +242,39 @@ def test_rounding_applies_to_the_increase(rounding, expected):
     assert root.amount("2021-01-01") == pytest.approx(expected)
 
 
+@pytest.mark.parametrize(
+    "base, index, expected",
+    [
+        # 500 * 5% = $25, 2.5 intervals of $10: a tie, which goes up (Python's
+        # round would take it to the even 2).
+        (500, (100.0, 105.0), 530),
+        # 375 * (523.8 / 202.5 - 1) = $595 exactly, but $594.9999999999999
+        # in floats, a hair below the tie.
+        (375, (202.5, 523.8), 975),
+        # 375 * 132% = $495 exactly, but $494.9999999999999 in floats.
+        (375, (100.0, 232.0), 875),
+        # 85 * (111 / 102 - 1) = $7.50 exactly, but $7.499999999999986 in
+        # floats, on a $1 interval.
+        (85, (102.0, 111.0), 93),
+    ],
+)
+def test_nearest_rounds_an_exact_half_up(base, index, expected):
+    interval = 1 if base == 85 else 10
+    root = uprated_root(
+        {
+            "amount": {
+                "values": {"2020-01-01": base},
+                "metadata": base_mode(
+                    {"period": 2020}, {"type": "nearest", "interval": interval}
+                ),
+            },
+            "index": {"values": {"2020-01-01": index[0], "2021-01-01": index[1]}},
+        }
+    )
+
+    assert root.amount("2021-01-01") == expected
+
+
 def test_without_rounding_base_mode_scales_the_base_by_the_index():
     root = uprated_root(
         {
@@ -264,8 +297,8 @@ def test_without_rounding_base_mode_scales_the_base_by_the_index():
 
 def test_an_increase_on_a_multiple_is_not_rounded_down_a_full_interval():
     # A 40% rise on $1,400 is $560 exactly, but 1,400 * (140 / 100) - 1,400 is
-    # 559.9999999999998 in binary floating point. Rounded down to $10 without
-    # the tolerance, it would lose $10.
+    # 559.9999999999998 in binary floating point. Rounded down to $10 in
+    # floats, it would lose $10; base mode rounds the exact decimal increase.
     root = uprated_root(
         {
             "amount": {
@@ -283,9 +316,7 @@ def test_an_increase_on_a_multiple_is_not_rounded_down_a_full_interval():
 
 def test_a_large_increase_on_a_multiple_is_not_rounded_down_an_interval():
     # $572,903.25 * (2,032 / 186 - 1) is $5,685,910.75 exactly, 22,743,643
-    # quarter-dollar intervals, but floats put it 4e-9 intervals short: past
-    # the fixed 1e-9 tolerance, within a few units in the last place of the
-    # amounts.
+    # quarter-dollar intervals, but floats put it 4e-9 intervals short.
     root = uprated_root(
         {
             "amount": {
@@ -646,6 +677,37 @@ def error_case(meta: dict, values=None, index_values=None) -> dict:
             "names no index",
         ),
         (
+            error_case({"base": {"period": 2020}}),
+            "has no `parameter` that names an index",
+        ),
+        (
+            error_case({"parameter": None, "base": {"period": 2020}}),
+            "has no `parameter` that names an index",
+        ),
+        (
+            error_case({"parameter": "index", "base": {"period": "2020-02-30"}}),
+            "not a period or instant",
+        ),
+        (
+            error_case({"parameter": "index", "base": {"period": 0}}),
+            "not a period or instant",
+        ),
+        (
+            error_case({"parameter": "index", "base": {"period": [2020]}}),
+            "not a period or instant",
+        ),
+        (
+            error_case({"parameter": "index", "base": {"period": 2020.0}}),
+            "not a period or instant",
+        ),
+        (
+            error_case(
+                {"parameter": "index", "base": {"period": 2020, "value": 23_650}},
+                values={"2020-01-01": 23_625},
+            ),
+            "but the parameter's value at the base period",
+        ),
+        (
             error_case(
                 {
                     "parameter": "index",
@@ -727,6 +789,16 @@ def error_case(meta: dict, values=None, index_values=None) -> dict:
         ),
         (
             error_case(
+                {
+                    "parameter": "index",
+                    "base": {"period": 2020},
+                    "rounding": {"type": "downwards", "interval": 50, "round": 1},
+                }
+            ),
+            "takes only `type` and `interval`, not `round`",
+        ),
+        (
+            error_case(
                 {"parameter": "index", "base": {"period": 2019}},
                 index_values={"2019-01-01": 100.0, "2021-01-01": 110.0},
             ),
@@ -753,6 +825,47 @@ def error_case(meta: dict, values=None, index_values=None) -> dict:
         (
             error_case(
                 {"parameter": "index", "base": {"period": 2020}},
+                index_values={"2020-01-01": -1.0, "2021-01-01": 1.0},
+            ),
+            "is -1.0 at 2020-01-01; base mode needs a finite, positive value",
+        ),
+        (
+            error_case(
+                {"parameter": "index", "base": {"period": 2020}},
+                index_values={"2020-01-01": 1.0, "2021-01-01": float("inf")},
+            ),
+            "is inf at 2021-01-01",
+        ),
+        (
+            error_case(
+                {"parameter": "index", "base": {"period": 2020}},
+                index_values={"2020-01-01": 1.0, "2021-01-01": float("nan")},
+            ),
+            "is nan at 2021-01-01",
+        ),
+        (
+            error_case(
+                {
+                    "parameter": "index",
+                    "base": {"period": 2020},
+                    "rounding": {"type": "nearest", "interval": 1e-10},
+                },
+                values={"2020-01-01": 1e300},
+                index_values={"2020-01-01": 1.0, "2021-01-01": 1e10},
+            ),
+            "its projected value at 2021-01-01 is inf",
+        ),
+        (
+            error_case(
+                {"parameter": "index", "base": {"period": 2020}},
+                values={"2020-01-01": 1e300},
+                index_values={"2020-01-01": 1.0, "2021-01-01": 1e10},
+            ),
+            "its projected value at 2021-01-01 is inf",
+        ),
+        (
+            error_case(
+                {"parameter": "index", "base": {"period": 2020}},
                 values={"2020-01-01": 1_000, "2021-01-01": None},
                 index_values={"2020-01-01": 1.0, "2022-01-01": 1.1},
             ),
@@ -768,6 +881,8 @@ def test_malformed_base_mode_metadata_raises(data, message):
 def test_errors_name_the_parameter():
     with pytest.raises(ValueError, match="Failed to uprate amount from its base"):
         uprated_root(error_case({"parameter": "index", "base": {}}))
+    with pytest.raises(ValueError, match="Failed to uprate amount: "):
+        uprated_root(error_case({"base": {"period": 2020}}))
 
 
 def test_a_parameter_with_no_values_and_a_stated_base_raises():

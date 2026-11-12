@@ -226,11 +226,6 @@ class SimulationBuilder:
             )
 
         check_type(input_dict, dict, ["error"])
-        simulation.input_group_entities = frozenset(
-            entity.key
-            for entity in tax_benefit_system.group_entities
-            if input_dict.get(entity.plural) is not None
-        )
         input_dict = tax_benefit_system.preprocess_situation(
             input_dict, self.default_period
         )
@@ -363,7 +358,6 @@ class SimulationBuilder:
                 tax_benefit_system=tax_benefit_system,
                 populations=tax_benefit_system.instantiate_entities(),
             )
-        simulation.input_group_entities = frozenset()
         for population in simulation.populations.values():
             population.count = count
             population.ids = np.arange(id_count, dtype=np.int64)

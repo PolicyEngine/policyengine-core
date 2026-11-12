@@ -160,9 +160,6 @@ class TaxBenefitSystem:
         dict holding an entity-form situation for the builder's usual
         validation. A ``Reform`` delegates this hook to its baseline. Dataset
         and variable-only inputs do not use this hook.
-
-        ``Simulation.input_group_entities`` records the groups supplied by
-        the caller before this hook runs, separately from inferred groups.
         """
         return situation
 

@@ -13,13 +13,11 @@ from policyengine_core.country_template import (
     entities,
     situation_examples,
 )
-from policyengine_core.entities import build_entity
 from policyengine_core.enums import Enum
 from policyengine_core.errors import SituationParsingError
 from policyengine_core.populations import Population
 from policyengine_core.reforms import Reform
 from policyengine_core.simulations import Simulation, SimulationBuilder
-from policyengine_core.taxbenefitsystems import TaxBenefitSystem
 from policyengine_core.tools import test_runner
 from policyengine_core.tools.test_runner import _get_tax_benefit_system
 from policyengine_core.variables import Variable
@@ -134,9 +132,7 @@ def test_explicit_singular_entities(tax_benefit_system):
     }
 
 
-def test_country_preprocessing_preserves_caller_input_and_group_provenance(
-    tax_benefit_system, monkeypatch
-):
+def test_country_preprocessing_preserves_caller_input(tax_benefit_system, monkeypatch):
     seen_periods = []
 
     def preprocess(situation, default_period):
@@ -153,24 +149,20 @@ def test_country_preprocessing_preserves_caller_input_and_group_provenance(
     builder.set_default_period("2024-01")
     inferred = builder.build_from_dict(tax_benefit_system, situation)
     assert list(inferred.household.ids) == ["inferred"]
-    assert inferred.input_group_entities == frozenset()
     assert situation == original
     assert seen_periods == ["2024-01"]
 
-    # Singular aliases are normalized before the hook; explicit membership
-    # remains distinguishable even if it has the same shape as the default.
+    # Singular aliases are expanded before the hook, so it sees the caller's
+    # household and keeps it.
     explicit = builder.build_from_dict(
         tax_benefit_system,
         {**situation, "household": {"parents": ["Alicia", "Javier"]}},
     )
-    assert explicit.input_group_entities == frozenset({"household"})
-    assert explicit.clone().input_group_entities == explicit.input_group_entities
+    assert list(explicit.household.ids) == ["household"]
 
-    # Reusing a simulation for variable-only construction resets provenance
-    # and does not run entity preprocessing.
+    # Variable-only construction does not run entity preprocessing.
     calls = len(seen_periods)
     builder.build_default_simulation(tax_benefit_system, 2, explicit)
-    assert explicit.input_group_entities == frozenset()
     assert len(seen_periods) == calls
 
 
@@ -189,29 +181,6 @@ def test_country_preprocessing_applies_to_simulation_api(
         situation={"persons": {"Alicia": {}, "Javier": {}}},
     )
     assert simulation.household.members_entity_id.tolist() == [0, 1]
-    assert simulation.input_group_entities == frozenset()
-
-
-def test_explicit_empty_group_mapping_is_recorded(tax_benefit_system):
-    simulation = SimulationBuilder().build_from_dict(
-        tax_benefit_system, {"persons": {"Alicia": {}}, "households": {}}
-    )
-    assert simulation.input_group_entities == frozenset({"household"})
-
-
-def test_only_supplied_groups_are_recorded():
-    person = build_entity("person", "persons", "", is_person=True)
-    household = build_entity(
-        "household", "households", "", roles=[{"key": "member", "plural": "members"}]
-    )
-    family = build_entity(
-        "family", "families", "", roles=[{"key": "member", "plural": "members"}]
-    )
-    simulation = SimulationBuilder().build_from_dict(
-        TaxBenefitSystem([person, household, family]),
-        {"persons": {"Alicia": {}}, "households": {"home": {"members": ["Alicia"]}}},
-    )
-    assert simulation.input_group_entities == frozenset({"household"})
 
 
 class _PreprocessingTaxBenefitSystem(CountryTaxBenefitSystem):
@@ -237,7 +206,6 @@ def test_reform_delegates_preprocessing_to_its_baseline():
             system, {"persons": {"Alicia": {}}}
         )
         assert list(simulation.household.ids) == ["inferred"]
-        assert simulation.input_group_entities == frozenset()
 
 
 def test_country_preprocessing_must_return_a_dict(tax_benefit_system, monkeypatch):

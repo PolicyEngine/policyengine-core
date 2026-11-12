@@ -1,1 +1,1 @@
-Add country-specific entity-situation preprocessing and retain which group memberships were explicitly supplied by a situation or dataset.
+Add a `TaxBenefitSystem.preprocess_situation` hook so country models can fill missing groups in an entity-form situation before it is built.

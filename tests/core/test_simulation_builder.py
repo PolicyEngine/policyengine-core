@@ -5,6 +5,7 @@ from fractions import Fraction
 from typing import Iterable
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from policyengine_core import periods, tools
@@ -13,6 +14,7 @@ from policyengine_core.country_template import (
     entities,
     situation_examples,
 )
+from policyengine_core.data import Dataset
 from policyengine_core.enums import Enum
 from policyengine_core.errors import SituationParsingError
 from policyengine_core.populations import Population
@@ -162,8 +164,52 @@ def test_country_preprocessing_preserves_caller_input(tax_benefit_system, monkey
 
     # Variable-only construction does not run entity preprocessing.
     calls = len(seen_periods)
-    builder.build_default_simulation(tax_benefit_system, 2, explicit)
+    builder.build_from_dict(tax_benefit_system, {"salary": {"2024-01": 100}})
     assert len(seen_periods) == calls
+
+
+def test_country_preprocessing_receives_axes(tax_benefit_system, monkeypatch):
+    seen = []
+
+    def preprocess(situation, default_period):
+        seen.append(situation.get("axes"))
+        return situation
+
+    monkeypatch.setattr(tax_benefit_system, "preprocess_situation", preprocess)
+    axes = [
+        [{"name": "salary", "min": 0, "max": 2_000, "count": 3, "period": "2024-01"}]
+    ]
+    simulation = SimulationBuilder().build_from_dict(
+        tax_benefit_system,
+        {
+            "persons": {"Alicia": {}},
+            "households": {"home": {"parents": ["Alicia"]}},
+            "axes": axes,
+        },
+    )
+    assert seen == [axes]
+    assert simulation.persons.count == 3
+
+
+def test_datasets_do_not_run_country_preprocessing(tax_benefit_system, monkeypatch):
+    calls = []
+
+    def preprocess(situation, default_period):
+        calls.append(situation)
+        return situation
+
+    monkeypatch.setattr(tax_benefit_system, "preprocess_situation", preprocess)
+    dataframe = pd.DataFrame({"person_id": [0, 1, 2], "household_id": [7, 7, 9]})
+    simulation = Simulation(
+        tax_benefit_system=tax_benefit_system,
+        dataset=Dataset.from_dataframe(dataframe, "2024"),
+    )
+    assert simulation.populations["household"].members_entity_id.tolist() == [
+        0,
+        0,
+        1,
+    ]
+    assert calls == []
 
 
 def test_country_preprocessing_applies_to_simulation_api(
@@ -200,12 +246,46 @@ def test_reform_delegates_preprocessing_to_its_baseline():
     baseline = _PreprocessingTaxBenefitSystem()
     for system in (
         _NoOpReform(baseline),
+        _NoOpReform(_NoOpReform(baseline)),
         _get_tax_benefit_system(baseline, [_NoOpReform], []),
     ):
         simulation = SimulationBuilder().build_from_dict(
             system, {"persons": {"Alicia": {}}}
         )
         assert list(simulation.household.ids) == ["inferred"]
+
+
+class _RateReadingTaxBenefitSystem(CountryTaxBenefitSystem):
+    def preprocess_situation(self, situation, default_period=None):
+        rate = self.parameters("2024-01-01").taxes.income_tax_rate
+        situation.setdefault("households", {f"rate {rate}": {"parents": ["Alicia"]}})
+        return situation
+
+
+class _RateReform(Reform):
+    def apply(self):
+        def modify(parameters):
+            parameters.taxes.income_tax_rate.update(
+                period=periods.period("year:2015:20"), value=0.99
+            )
+            return parameters
+
+        self.modify_parameters(modify)
+
+
+def test_reform_runs_the_country_hook_with_the_reformed_system():
+    # The hook reads parameters through the system it is given, so under a
+    # reform it sees the reform's value, not the baseline's 0.15.
+    baseline = _RateReadingTaxBenefitSystem()
+    for system, expected in (
+        (baseline, "rate 0.15"),
+        (_RateReform(baseline), "rate 0.99"),
+        (_get_tax_benefit_system(baseline, [_RateReform], []), "rate 0.99"),
+    ):
+        simulation = SimulationBuilder().build_from_dict(
+            system, {"persons": {"Alicia": {}}}
+        )
+        assert list(simulation.household.ids) == [expected]
 
 
 def test_country_preprocessing_must_return_a_dict(tax_benefit_system, monkeypatch):

@@ -154,12 +154,17 @@ class TaxBenefitSystem:
         """Normalize entity-form input before the builder creates populations.
 
         Country models can override this to fill missing entity definitions.
-        The builder passes a deep copy of the caller's situation, with singular
-        entity aliases expanded and any ``axes`` still present, and its default
-        period as set (None, a string, an integer or a ``Period``). Return a
-        dict holding an entity-form situation for the builder's usual
-        validation. A ``Reform`` delegates this hook to its baseline. Dataset
-        and variable-only inputs do not use this hook.
+        ``SimulationBuilder.build_from_entities`` passes a deep copy of the
+        caller's situation, with any ``axes`` still present, and its default
+        period as set (None, a string, an integer or a ``Period``). Through
+        ``build_from_dict`` and ``Simulation(situation=...)``, singular entity
+        aliases are already expanded; a direct ``build_from_entities`` call
+        passes the caller's keys as given. The hook runs before the builder
+        validates entities, so it may receive a situation with no persons.
+        Return a dict holding an entity-form situation for the builder's usual
+        validation. A ``Reform`` runs its country system's hook with the
+        reform as the system, so the hook sees reformed parameters and
+        variables. Dataset and variable-only inputs do not use this hook.
         """
         return situation
 

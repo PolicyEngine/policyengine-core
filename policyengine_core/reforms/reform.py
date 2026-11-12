@@ -149,8 +149,19 @@ class Reform(TaxBenefitSystem):
 
     def preprocess_situation(self, situation: dict, default_period=None) -> dict:
         # TaxBenefitSystem defines a no-op hook, so ``__getattr__`` never
-        # reaches the baseline's override; delegate to it explicitly.
-        return self.baseline.preprocess_situation(situation, default_period)
+        # reaches the country's override. Run the country system's hook with
+        # this reform as the system, so the hook reads the reformed parameters
+        # and variables. A hook set on the country system instance itself
+        # stays bound to that instance.
+        country_system = self.baseline
+        while isinstance(country_system, Reform):
+            country_system = country_system.baseline
+        instance_hook = vars(country_system).get("preprocess_situation")
+        if instance_hook is not None:
+            return instance_hook(situation, default_period)
+        return type(country_system).preprocess_situation(
+            self, situation, default_period
+        )
 
     @property
     def full_key(self) -> str:

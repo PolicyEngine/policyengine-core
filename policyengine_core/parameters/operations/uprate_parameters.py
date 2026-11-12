@@ -40,26 +40,10 @@ ROUNDING_KEYS = frozenset({"type", "interval"})
 #: an increase that decimal arithmetic puts on a multiple of the interval, or
 #: on a half for ``nearest``, rounds from exactly there.
 #:
-#: A float prints as a decimal of at most this many significant digits (15)
-#: when it is the float nearest such a decimal, as a value written in YAML
-#: with at most 15 significant digits is. Base mode takes those values, and
-#: every int, as exact.
-SHORT_DECIMAL_DIGITS = sys.float_info.dig
-
-#: An index computed in floating point, such as an average of monthly prices,
-#: prints with more digits than that, and carries rounding error in its last
-#: ones. The ratio of two such values is off by at most a few units in the
-#: last place, so when any float input prints with more than
-#: :data:`SHORT_DECIMAL_DIGITS` digits, base mode allows this relative error
-#: in the uprated amount: 64 machine epsilons, about 1.4e-14. An increase
-#: within that error of a multiple of the interval (or of a half, for
-#: ``nearest``) counts as on it. When every input is a short decimal, base
-#: mode allows nothing: the arithmetic is exact.
-INDEX_RELATIVE_ERROR = 64 * sys.float_info.epsilon
-
-#: The allowance never exceeds this many intervals, however large the amount.
-#: On a $50 interval that is $0.00005, far below any amount a statute prints.
-INCREASE_SNAP_LIMIT = 1e-6
+#: Every recorded decimal is exact, including a computed float's printed
+#: value. Its digit count cannot establish whether it contains index error.
+#: Index producers must supply the intended precision; guessing here can
+#: make a higher index produce a lower projected amount.
 
 
 def round_half_up(intervals: Fraction) -> int:
@@ -787,23 +771,6 @@ def exact_decimal(value: float) -> Fraction:
     return Fraction(repr(float(value)))
 
 
-def is_short_decimal(value: float) -> bool:
-    """Whether base mode takes ``value`` as exact.
-
-    An int is exact as written, whatever its length. A float is exact when
-    the shortest decimal that reads back as it has at most
-    :data:`SHORT_DECIMAL_DIGITS` significant digits, as a value written in
-    YAML with that many digits does, rather than the longer decimal of a
-    computed float. The count reads the printed string, so it does not depend
-    on the :mod:`decimal` context.
-    """
-    if isinstance(value, numbers.Integral):
-        return True
-    mantissa = repr(float(value)).lower().partition("e")[0]
-    digits = mantissa.lstrip("-").replace(".", "").strip("0")
-    return len(digits) <= SHORT_DECIMAL_DIGITS
-
-
 def project_from_base(
     base_value: float,
     index_at_t: float,
@@ -816,10 +783,9 @@ def project_from_base(
     With ``rounding``, the increase ``base_value * (index_at_t /
     index_at_base - 1)`` is computed exactly on the decimals the inputs print
     as (:func:`exact_decimal`), rounded to a whole number of intervals, and
-    added to the base. When any input is a computed float rather than an int
-    or a short decimal (:func:`is_short_decimal`), an increase within float
-    error of a multiple counts as on it; :data:`INDEX_RELATIVE_ERROR` sets
-    that allowance. Without ``rounding``, the value is ``base_value *
+    added to the base. Every recorded input is exact: a computed float is
+    read at its printed decimal value, without guessing its intended index
+    precision from its digit count. Without ``rounding``, the value is ``base_value *
     (index_at_t / index_at_base)`` in floating point, the order chained mode
     uses.
 
@@ -852,37 +818,8 @@ def project_from_base(
     base = exact_decimal(base_value)
     step = exact_decimal(interval)
     intervals = base * (ratio - 1) / step
-    if not all(
-        is_short_decimal(value)
-        for value in (base_value, index_at_t, index_at_base, interval)
-    ):
-        allowance = min(
-            Fraction(INDEX_RELATIVE_ERROR) * abs(base) * ratio / step,
-            Fraction(INCREASE_SNAP_LIMIT),
-        )
-        intervals = snap_increase(
-            intervals, allowance, halves=rounding_type == "nearest"
-        )
     whole_intervals = INCREASE_ROUNDING_FUNCTIONS[rounding_type](intervals)
     return float(base + whole_intervals * step)
-
-
-def snap_increase(intervals: Fraction, allowance: Fraction, halves: bool) -> Fraction:
-    """Move an increase within ``allowance`` of a multiple onto it.
-
-    ``intervals`` is the increase in rounding intervals. Within ``allowance``
-    of a whole number it becomes that number, and, when ``halves`` is set
-    (for ``nearest``), within ``allowance`` of a half it becomes that half.
-    Otherwise it is returned as it is.
-    """
-    whole = round(intervals)
-    if abs(intervals - whole) <= allowance:
-        return Fraction(whole)
-    if halves:
-        half = math.floor(intervals) + Fraction(1, 2)
-        if abs(intervals - half) <= allowance:
-            return half
-    return intervals
 
 
 def round_uprated_value(meta: dict, uprated_value: float) -> float:

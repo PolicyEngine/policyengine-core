@@ -12,11 +12,9 @@ Over the domain generated here:
 2. Each value is the exact one: the increase computed in rational arithmetic
    on the decimals the base, the index values and the interval print as,
    rounded down, up, or to the nearest multiple with an exact half going up.
-   When every input prints with 15 significant digits or fewer, the value is
-   exactly that. When an input prints with more, as a computed float does,
-   and the exact increase lies within 1e-6 intervals of a multiple (or of a
-   half, for nearest), the value may instead round from that multiple. The
-   test computes this itself and imports nothing from the implementation.
+   Every recorded decimal is exact, including a computed float's printed
+   value. The test computes this itself and imports nothing from the
+   implementation.
 3. With a positive base, a higher index at the projected period never gives
    a lower value.
 4. Without rounding, base mode and chained mode agree to 1e-12 when the
@@ -265,7 +263,7 @@ NEAR_MISS_CASE = BaseModeCase(
     rounding={"type": "downwards", "interval": 50},
     state_value=True,
 )
-# 0.99 and 1.01 intervals: no allowance may reach a multiple from there.
+# 0.99 and 1.01 intervals lie on opposite sides of a whole interval.
 NEARLY_ONE_INTERVAL_DOWN = BaseModeCase(
     base_year=2020,
     base_value=1_000.0,
@@ -291,19 +289,6 @@ FLOAT_NOISE_UP_CASE = BaseModeCase(
     state_value=True,
 )
 
-#: The outer bound, in intervals, on how far base mode may move an increase
-#: onto a multiple when an input is a computed float. The specification sets
-#: it; the implementation's allowance for float error must fall inside it.
-SNAP_ZONE = Fraction(1, 10**6)
-
-
-def significant_digits(number) -> int:
-    """How many significant digits the decimal a number prints as has."""
-    if isinstance(number, int):
-        return 0
-    mantissa = repr(number).split("e")[0].lstrip("-").replace(".", "")
-    return len(mantissa.strip("0")) or 1
-
 
 def decimal(number) -> Fraction:
     """The exact value of the decimal a number prints as."""
@@ -320,8 +305,8 @@ def round_intervals(intervals: Fraction, rounding_type: str) -> int:
     return math.floor(intervals + Fraction(1, 2))
 
 
-def allowed_values(case: BaseModeCase, instant_str: str) -> set[float]:
-    """The values the specification allows base mode to give at an instant."""
+def exact_value(case: BaseModeCase, instant_str: str) -> float:
+    """The unique rounded value of the recorded decimal inputs."""
     rounding_type, interval = rounding_rule(case.rounding)
     step = decimal(interval)
     base = decimal(case.base_value)
@@ -331,22 +316,7 @@ def allowed_values(case: BaseModeCase, instant_str: str) -> set[float]:
     if case.floor:
         ratio = max(ratio, Fraction(1))
     exact = base * (ratio - 1) / step
-    allowed = {round_intervals(exact, rounding_type)}
-    inputs = (
-        case.base_value,
-        case.index[instant_str],
-        case.index[year_instant(case.base_year)],
-        interval,
-    )
-    if all(significant_digits(number) <= 15 for number in inputs):
-        return {float(base + whole * step) for whole in allowed}
-    multiples = [Fraction(round(exact))]
-    if rounding_type == "nearest":
-        multiples.append(math.floor(exact) + Fraction(1, 2))
-    for multiple in multiples:
-        if abs(exact - multiple) <= SNAP_ZONE:
-            allowed.add(round_intervals(multiple, rounding_type))
-    return {float(base + whole * step) for whole in allowed}
+    return float(base + round_intervals(exact, rounding_type) * step)
 
 
 EXACT_EXAMPLES = [
@@ -397,7 +367,7 @@ def test_the_increase_is_a_whole_number_of_intervals(case):
 def test_each_value_is_the_exact_rounded_increase(case, floor):
     case = replace(case, floor=floor) if floor else case
     for instant_str, value in case.projected(case.uprate()):
-        assert value in allowed_values(case, instant_str), instant_str
+        assert value == exact_value(case, instant_str), instant_str
 
 
 @pytest.mark.parametrize(
@@ -435,9 +405,8 @@ def one_step_case(base, index_at_base, index_at_t, rounding_type, interval):
 @pytest.mark.parametrize(
     "case, expected",
     [
-        # Exact increases a few billionths of an interval from a multiple, at
-        # amounts where 64 machine epsilons of the uprated amount would have
-        # reached it (review run 2): short decimals get no allowance.
+        # Exact increases a few billionths of an interval from a multiple
+        # must remain on the recorded side of that multiple.
         (one_step_case(1_819_252.81, 370.811, 395.69, "downwards", 5), 1_941_307.81),
         (one_step_case(2_226_662.91, 382.408, 411.597, "downwards", 10), 2_396_612.91),
         (one_step_case(5_802_294.89, 275.964, 277.373, "upwards", 25), 5_831_944.89),
@@ -445,9 +414,8 @@ def one_step_case(base, index_at_base, index_at_t, rounding_type, interval):
         # reading of the inputs misses in the last bit (20021.629999999997).
         (one_step_case(16_021.63, 181.695, 227.408, "downwards", 50), 20_021.63),
         (one_step_case(0.05, 1.0, 1.125, "nearest", 0.01), 0.06),
-        # A short decimal with all 15 significant digits a float holds: the
-        # increase lies 1e-7 intervals below 12,345,678, inside the allowance
-        # a computed input would get, and still rounds down.
+        # This increase lies 1e-7 intervals below 12,345,678 and still rounds
+        # down, even though it is very close to a whole interval.
         (
             one_step_case(123_456_779_999.999, 100.0, 100.01, "downwards", 1),
             123_469_125_676.999,
@@ -465,21 +433,19 @@ def one_step_case(base, index_at_base, index_at_t, rounding_type, interval):
             one_step_case(1_234_567_799_999_999, 100.0, 100.00001, "downwards", 1),
             1_234_567_923_456_778.0,
         ),
-        # Leading zeros and the exponent are no significant digits:
-        # 0.999999999999995 and 9.99999999999995e-05 have 15 each, so these
-        # increases, $1e-12 (1e-14 intervals) below $100, round down.
+        # These increases, $1e-12 (1e-14 intervals) below $100, round down
+        # whether the input uses ordinary or exponent notation.
         (one_step_case(100.0, 0.5, 0.999999999999995, "downwards", 100), 100.0),
         (one_step_case(100.0, 5e-05, 9.99999999999995e-05, "downwards", 100), 100.0),
     ],
 )
-def test_short_decimal_inputs_round_exactly(case, expected):
+def test_decimal_inputs_round_exactly(case, expected):
     assert case.uprate()("2021-01-01") == expected
 
 
-def test_the_allowance_never_exceeds_a_millionth_of_an_interval():
-    # $10m on a 1-cent interval: 64 machine epsilons of the amount would be
-    # 1.4e-5 intervals, but the allowance stops at 1e-6. This increase lies
-    # exactly 5e-6 intervals below 2, so it rounds down to 1.
+def test_a_large_base_does_not_erase_a_decimal_shortfall():
+    # This increase lies exactly 5e-6 intervals below 2 and rounds down to 1,
+    # even though the base is much larger than the shortfall.
     case = BaseModeCase(
         base_year=2020,
         base_value=10_000_000.0,
@@ -495,72 +461,56 @@ def test_the_allowance_never_exceeds_a_millionth_of_an_interval():
 @pytest.mark.parametrize(
     "base, index_at_base, index_at_t, rounding_type, interval, expected",
     [
-        # 0.1 + 0.2 is 0.30000000000000004: three times 0.1 and a hair more.
-        (100.0, 0.1, 0.1 + 0.2, "upwards", 100, 300.0),
-        # 0.7 + 0.1 is 0.7999999999999999: twice 0.4 and a hair less.
-        (100.0, 0.4, 0.7 + 0.1, "downwards", 100, 200.0),
-        # 0.35 + 0.1 is 0.44999999999999996: 4.5 times 0.1 and a hair less,
-        # so the increase is a hair under the tie at 3.5 intervals.
-        (100.0, 0.1, 0.35 + 0.1, "nearest", 100, 500.0),
-        # A ratio near 1, where the allowance must scale with the uprated
-        # amount, not the increase: 100 + 0.1 + 0.6 is 100.69999999999999,
-        # so $1,000 rises by a hair under $7.
-        (1_000.0, 100.0, 100.0 + 0.1 + 0.6, "downwards", 1, 1_007.0),
-        # 100 + 0.2 + 0.4 is 100.60000000000001: a hair over $6.
-        (1_000.0, 100.0, 100.0 + 0.2 + 0.4, "upwards", 1, 1_006.0),
-        # A computed index can still fall short for real. 100.699999999 + 1e-14
-        # prints with 17 digits, so the allowance applies, but it is 64 machine
-        # epsilons of $1,007 (1.4e-11 intervals), far below the 1e-8 by which
-        # $1,000 misses a $7 rise.
+        # Computed inputs use their recorded decimal, on either side of a
+        # boundary or tie. Their intended precision cannot be inferred.
+        (100.0, 0.1, 0.1 + 0.2, "upwards", 100, 400.0),
+        (100.0, 0.4, 0.7 + 0.1, "downwards", 100, 100.0),
+        (100.0, 0.1, 0.35 + 0.1, "nearest", 100, 400.0),
+        (1_000.0, 100.0, 100.0 + 0.1 + 0.6, "downwards", 1, 1_006.0),
+        (1_000.0, 100.0, 100.0 + 0.2 + 0.4, "upwards", 1, 1_007.0),
         (1_000.0, 100.0, 100.699999999 + 1e-14, "downwards", 1, 1_006.0),
-        # The allowance applies when any input is computed, not just the
-        # index at t. A base-period index that is itself an average:
-        # 0.6 / (0.1 + 0.2) is a hair under 2, so $100 rises by a hair under
-        # $100, which is the float error of a computed index.
-        (100.0, 0.1 + 0.2, 0.6, "downwards", 100, 200.0),
-        # A computed base: 0.7999999999999999 doubles to a hair under eight
-        # tenths more.
-        (0.1 + 0.7, 1.0, 2.0, "downwards", 0.1, 1.5999999999999999),
-        # A computed interval: $9 is a hair under 30 times 0.30000000000000004.
-        (300.0, 100.0, 103.0, "downwards", 0.1 + 0.2, 309.0),
+        (100.0, 0.1 + 0.2, 0.6, "downwards", 100, 100.0),
+        (0.1 + 0.7, 1.0, 2.0, "downwards", 0.1, 1.5),
+        (300.0, 100.0, 103.0, "downwards", 0.1 + 0.2, 308.7),
+        (1_000.0, 100.0, 100.69999999999713, "downwards", 1, 1_006.0),
+        (1_000.0, 100.0, 100.69999999999928, "downwards", 1, 1_006.0),
+        (1_000.0, 100.0, 299.99999999999784, "downwards", 1, 2_999.0),
     ],
 )
-def test_float_error_in_a_computed_index_does_not_cross_a_multiple(
+def test_computed_inputs_round_their_recorded_decimal(
     base, index_at_base, index_at_t, rounding_type, interval, expected
 ):
     case = one_step_case(base, index_at_base, index_at_t, rounding_type, interval)
     assert case.uprate()("2021-01-01") == expected
 
 
-@pytest.mark.parametrize(
-    "index_at_t, expected",
-    [
-        # $1,000 at 1.007 times the base index: the allowance is 64 machine
-        # epsilons of $1,007, about 1.43e-11 intervals of $1. An increase
-        # 2.9e-11 short of $7 is outside it; one 7.2e-12 short is inside it.
-        (100.69999999999713, 1_006.0),
-        (100.69999999999928, 1_007.0),
-        # The allowance scales with the uprated amount: at 3 times the base
-        # index it is about 4.3e-11 intervals, so 2.2e-11 short of $2,000
-        # is inside it.
-        (299.99999999999784, 3_000.0),
-    ],
-)
-def test_the_allowance_is_64_machine_epsilons_of_the_uprated_amount(
-    index_at_t, expected
-):
-    case = one_step_case(1_000.0, 100.0, index_at_t, "downwards", 1)
-    assert case.uprate()("2021-01-01") == expected
-
-
-def test_the_digit_count_does_not_depend_on_the_decimal_context():
-    # A low precision or an Inexact trap in the caller's decimal context must
-    # not change which inputs count as computed.
+def test_exact_rounding_does_not_depend_on_the_decimal_context():
     case = one_step_case(1_000.0, 100.0, 100.0 + 0.1 + 0.6, "downwards", 1)
     with localcontext() as context:
         context.prec = 10
         context.traps[Inexact] = True
-        assert case.uprate()("2021-01-01") == 1_007.0
+        assert case.uprate()("2021-01-01") == 1_006.0
+
+
+@pytest.mark.parametrize(
+    "rounding_type, high, expected",
+    [
+        ("downwards", 100.699999999999, 50_300.0),
+        ("nearest", 100.749999999999, 50_350.0),
+        ("upwards", 100.60000000000102, 50_350.0),
+    ],
+)
+def test_adjacent_indices_at_decimal_precision_boundary_are_monotone(
+    rounding_type, high, expected
+):
+    low = math.nextafter(high, 0)
+    # The old digit-count heuristic reversed these adjacent floats in all
+    # three rounding modes, changing the amount by a whole $50 interval.
+    values = [
+        one_step_case(50_000.0, 100.0, index, rounding_type, 50).uprate()("2021-01-01")
+        for index in (low, high)
+    ]
+    assert values == [expected, expected]
 
 
 @PROPERTY_SETTINGS
@@ -570,6 +520,27 @@ def test_the_digit_count_does_not_depend_on_the_decimal_context():
     index_at_t=st.floats(min_value=1.0, max_value=3_000.0),
     rise=st.floats(min_value=0.0, max_value=1_000.0),
     rounding=st.one_of(st.none(), roundings()),
+)
+@example(
+    base_value=50_000.0,
+    index_at_base=100.0,
+    index_at_t=100.69999999999898,
+    rise=1.4210854715202004e-14,
+    rounding={"type": "downwards", "interval": 50},
+)
+@example(
+    base_value=50_000.0,
+    index_at_base=100.0,
+    index_at_t=100.74999999999899,
+    rise=1.4210854715202004e-14,
+    rounding={"type": "nearest", "interval": 50},
+)
+@example(
+    base_value=50_000.0,
+    index_at_base=100.0,
+    index_at_t=100.600000000001,
+    rise=1.4210854715202004e-14,
+    rounding={"type": "upwards", "interval": 50},
 )
 def test_a_higher_index_never_gives_a_lower_value(
     base_value, index_at_base, index_at_t, rise, rounding

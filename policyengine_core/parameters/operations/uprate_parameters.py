@@ -43,7 +43,7 @@ ROUNDING_KEYS = frozenset({"type", "interval"})
 #: Every recorded decimal is exact, including a computed float's printed
 #: value. Its digit count cannot establish whether it contains index error.
 #: Index producers must supply the intended precision; guessing here can
-#: make a higher index produce a lower projected amount.
+#: make a higher index produce a lower amount from a positive base.
 
 
 def round_half_up(intervals: Fraction) -> int:

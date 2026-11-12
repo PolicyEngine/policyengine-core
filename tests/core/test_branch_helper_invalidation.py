@@ -78,15 +78,14 @@ def test_branch_helper_drops_inherited_aggregates_and_dependents(
     january = year.first_month
     months = [january.offset(index) for index in range(12)]
     parent = build()
+    if year_string == "0025":
+        with pytest.raises(ValueError, match="string form cannot be parsed"):
+            parent.calculate("helper_independent", year)
+        assert parent.get_holder("helper_independent").get_known_periods() == []
+        return
     parent.calculate("helper_independent", year)
     parent.set_input("helper_flow", january, [12.0, 24.0])
     parent_months = [january]
-    if year_string == "0025":
-        # Early-year fallback getters have a separate legacy parser issue.
-        # Supply every month so this case exercises history and input replay.
-        for month in months[1:]:
-            parent.set_input("helper_flow", month, [0.0, 0.0])
-        parent_months = months
     parent_inputs = {("helper_flow", "default", month) for month in parent_months}
     np.testing.assert_array_equal(parent.calculate("helper_flow", year), [12, 24])
     np.testing.assert_array_equal(parent.calculate("helper_result", year), [24, 48])

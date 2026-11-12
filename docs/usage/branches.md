@@ -237,7 +237,15 @@ depend on the input is calculated again) but not less, within these limits:
   input. Input helpers still remove overlapping calculated values of the
   variable they write. A formula's input for its own period is still returned
   as described above, and results calculated while an input is being set do not
-  enter the fast cache.
+  enter the fast cache. When uprating or automatic carry-over finds no source
+  input, the root returns the fallback default without caching it, including
+  when repeated branch mutations converge to a fixed point. Period conversion
+  preserves this rule: a divided, summed or stock-selected value containing
+  such a fallback also stays uncached. If a formula supplies an input for the
+  requested period during conversion, that input is returned on the first
+  call, before deciding whether to cache the converted result. Setting an
+  earlier input can therefore change the next calculation of the requested period.
+  Branches can cache these defaults because later inputs invalidate them.
 - **Existing child branches keep their values.** An input set on a branch does
   not reach branches already created from it.
 - **Values kept elsewhere stay.** A value one simulation calculated from
@@ -276,9 +284,9 @@ say what each value was calculated from, nor what was read without being kept,
 so the restored simulation records that values from that number on may depend
 on anything: an input set for any variable on a branch of it drops all of them.
 A dump written before calculated values were recorded is restored with every
-value as an input, as before, so such values never drop. With disk storage, a branch whose
-name contains `_` cannot be dumped yet: `OnDiskStorage.get_known_periods`
-splits its keys on every `_` (as on master).
+value as an input, as before, so such values never drop. Disk storage splits
+keys at the last underscore, so branch names containing `_` also round-trip
+through dumps and restoration.
 
 Two related behaviours: a branch stops reading macro-cache files once an input
 is set on it, even one it already reads, since they are keyed by branch name and

@@ -48,6 +48,27 @@ class Holder:
             if self.variable.name in self.simulation.memory_config.variables_to_drop:
                 self._do_not_store = True
 
+    def _follow_definition(self, variable: "Variable") -> None:
+        """Take ``variable`` as this holder's definition when its storage fits.
+
+        A definition for the same entity, with the same ``ETERNITY`` storage,
+        replaces the holder's own, so reads and writes follow it: a
+        neutralized definition reads its default and ignores new inputs, and
+        a restored one stores them again. A change of entity or of
+        ``ETERNITY`` storage needs a new holder, so this leaves the holder as
+        it is; ``Simulation.apply_reform`` drops such holders when it binds
+        them to the reformed system.
+        """
+        if variable is self.variable:
+            return
+        if variable.entity.key != self.variable.entity.key:
+            return
+        if (
+            variable.definition_period == periods.ETERNITY
+        ) != self._memory_storage.is_eternal:
+            return
+        self.variable = variable
+
     def clone(self, population: "Population", share_arrays: bool = False) -> "Holder":
         """
         Copy the holder just enough to be able to run a new simulation without modifying the original simulation.
@@ -538,11 +559,25 @@ class Holder:
 
         return usage
 
-    def get_known_periods(self) -> List[Period]:
+    def get_known_periods(self, branch_name: str = None) -> List[Period]:
         """
         Get the list of periods the variable value is known for.
-        """
 
+        With ``branch_name``, list each period ``get_array(period,
+        branch_name)`` reads a stored value for, once: those stored under
+        that branch, its ``parent_branch`` ancestors or ``default`` (see
+        ``_readable_branches``). Without it, list the period of every value
+        stored, under any branch; that branch may not read some of them.
+        """
+        if branch_name is not None:
+            readable = set(self._readable_branches(branch_name))
+            return list(
+                dict.fromkeys(
+                    period
+                    for stored_branch, period in self.get_known_branch_periods()
+                    if stored_branch in readable
+                )
+            )
         return list(self._memory_storage.get_known_periods()) + list(
             (self._disk_storage.get_known_periods() if self._disk_storage else [])
         )

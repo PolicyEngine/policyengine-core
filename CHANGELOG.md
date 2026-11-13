@@ -1,3 +1,10 @@
+## [3.35.0] - 2026-11-13
+
+### Added
+
+- Add a `TaxBenefitSystem.preprocess_situation` hook so country models can fill missing groups in an entity-form situation before it is built.
+
+
 ## [3.34.10] - 2026-11-08
 
 ### Fixed

@@ -328,6 +328,28 @@ being silently swallowed.</p>
 </dl>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="policyengine_core.reforms.Reform.preprocess_situation">
+<span class="sig-name descname"><span class="pre">preprocess_situation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">situation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_period</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#policyengine_core.reforms.Reform.preprocess_situation" title="Permalink to this definition">#</a></dt>
+<dd><p>Normalize entity-form input before the builder creates populations.</p>
+<p>Country models can override this to fill missing entity definitions.
+<code class="docutils literal notranslate"><span class="pre">SimulationBuilder.build_from_entities</span></code> passes a deep copy of the
+caller’s situation, with any <code class="docutils literal notranslate"><span class="pre">axes</span></code> still present, and its default
+period as set (None, a string, an integer or a <code class="docutils literal notranslate"><span class="pre">Period</span></code>). Through
+<code class="docutils literal notranslate"><span class="pre">build_from_dict</span></code> and <code class="docutils literal notranslate"><span class="pre">Simulation(situation=...)</span></code>, singular entity
+aliases are already expanded; a direct <code class="docutils literal notranslate"><span class="pre">build_from_entities</span></code> call
+passes the caller’s keys as given. The hook runs before the builder
+validates entities, so it may receive a situation with no persons.
+Return a dict holding an entity-form situation for the builder’s usual
+validation. A <code class="docutils literal notranslate"><span class="pre">Reform</span></code> runs its country system’s hook with the
+reform as the system, so the hook sees reformed parameters and
+variables. Only the country system’s hook runs: a <code class="docutils literal notranslate"><span class="pre">Reform</span></code> subclass
+that overrides this method is skipped when another reform wraps it,
+and a hook set on the country system instance itself stays bound to
+that instance, so it reads the baseline’s values. Dataset and
+variable-only inputs do not use this hook.</p>
+</dd></dl>
+
 </dd></dl>
 
 </section>

@@ -1570,6 +1570,22 @@ a known period, matching the historical unsafe behavior.</p>
 </section>
 <section id="simulationbuilder">
 <h2>SimulationBuilder<a class="headerlink" href="#simulationbuilder" title="Permalink to this heading">#</a></h2>
+<p>Country models can override <code class="docutils literal notranslate"><span class="pre">TaxBenefitSystem.preprocess_situation(situation,</span> <span class="pre">default_period)</span></code> to fill missing groups before an entity-form situation is
+built. <code class="docutils literal notranslate"><span class="pre">SimulationBuilder.build_from_entities</span></code> passes it a deep copy of the
+situation, with any <code class="docutils literal notranslate"><span class="pre">axes</span></code> still present, and it must return a dict for the
+builder’s normal validation. <code class="docutils literal notranslate"><span class="pre">default_period</span></code> is the builder’s default period
+as set, so it may be <code class="docutils literal notranslate"><span class="pre">None</span></code>, a string, an integer or a <code class="docutils literal notranslate"><span class="pre">Period</span></code>.
+<code class="docutils literal notranslate"><span class="pre">Simulation(situation=...)</span></code> and the YAML runner reach it through
+<code class="docutils literal notranslate"><span class="pre">build_from_dict</span></code>, which expands singular entity aliases first; a direct
+<code class="docutils literal notranslate"><span class="pre">build_from_entities</span></code> call passes the caller’s keys as given. The hook runs
+before the builder validates entities, so it may receive a situation with no
+persons. A <code class="docutils literal notranslate"><span class="pre">Reform</span></code> runs its country system’s hook with the reform as the
+system, so the hook sees reformed parameters and variables. Only the country
+system’s hook runs: a <code class="docutils literal notranslate"><span class="pre">Reform</span></code> subclass that overrides it is skipped when
+another reform wraps it, and a hook set on the country system instance itself
+stays bound to that instance and reads the baseline’s values. Dataset and
+variable-only construction do not call the hook. The default hook returns its
+input unchanged.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="policyengine_core.simulations.simulation_builder.SimulationBuilder">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.simulations.simulation_builder.</span></span><span class="sig-name descname"><span class="pre">SimulationBuilder</span></span><a class="headerlink" href="#policyengine_core.simulations.simulation_builder.SimulationBuilder" title="Permalink to this definition">#</a></dt>

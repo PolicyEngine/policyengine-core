@@ -24,6 +24,24 @@ The `policyengine_core.simulations` module contains the definition of `Simulatio
 
 ## SimulationBuilder
 
+Country models can override `TaxBenefitSystem.preprocess_situation(situation,
+default_period)` to fill missing groups before an entity-form situation is
+built. `SimulationBuilder.build_from_entities` passes it a deep copy of the
+situation, with any `axes` still present, and it must return a dict for the
+builder's normal validation. `default_period` is the builder's default period
+as set, so it may be `None`, a string, an integer or a `Period`.
+`Simulation(situation=...)` and the YAML runner reach it through
+`build_from_dict`, which expands singular entity aliases first; a direct
+`build_from_entities` call passes the caller's keys as given. The hook runs
+before the builder validates entities, so it may receive a situation with no
+persons. A `Reform` runs its country system's hook with the reform as the
+system, so the hook sees reformed parameters and variables. Only the country
+system's hook runs: a `Reform` subclass that overrides it is skipped when
+another reform wraps it, and a hook set on the country system instance itself
+stays bound to that instance and reads the baseline's values. Dataset and
+variable-only construction do not call the hook. The default hook returns its
+input unchanged.
+
 ```{eval-rst}
 .. autoclass:: policyengine_core.simulations.simulation_builder.SimulationBuilder
     :members:
@@ -31,4 +49,3 @@ The `policyengine_core.simulations` module contains the definition of `Simulatio
     :inherited-members:
     :show-inheritance:
 ```
-

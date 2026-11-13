@@ -35,7 +35,10 @@ as set, so it may be `None`, a string, an integer or a `Period`.
 `build_from_entities` call passes the caller's keys as given. The hook runs
 before the builder validates entities, so it may receive a situation with no
 persons. A `Reform` runs its country system's hook with the reform as the
-system, so the hook sees reformed parameters and variables. Dataset and
+system, so the hook sees reformed parameters and variables. Only the country
+system's hook runs: a `Reform` subclass that overrides it is skipped when
+another reform wraps it, and a hook set on the country system instance itself
+stays bound to that instance and reads the baseline's values. Dataset and
 variable-only construction do not call the hook. The default hook returns its
 input unchanged.
 

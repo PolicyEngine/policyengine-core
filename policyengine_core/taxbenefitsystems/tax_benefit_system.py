@@ -164,7 +164,11 @@ class TaxBenefitSystem:
         Return a dict holding an entity-form situation for the builder's usual
         validation. A ``Reform`` runs its country system's hook with the
         reform as the system, so the hook sees reformed parameters and
-        variables. Dataset and variable-only inputs do not use this hook.
+        variables. Only the country system's hook runs: a ``Reform`` subclass
+        that overrides this method is skipped when another reform wraps it,
+        and a hook set on the country system instance itself stays bound to
+        that instance, so it reads the baseline's values. Dataset and
+        variable-only inputs do not use this hook.
         """
         return situation
 

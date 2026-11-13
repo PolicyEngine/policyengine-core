@@ -240,9 +240,10 @@ class _NoOpReform(Reform):
         pass
 
 
-def test_reform_delegates_preprocessing_to_its_baseline():
+def test_reforms_run_the_country_systems_hook():
     # Reform inherits TaxBenefitSystem's no-op hook, so a reform, including
-    # the one the YAML runner builds for inline parameters, must delegate.
+    # the one the YAML runner builds for inline parameters, must run the
+    # country system's hook.
     baseline = _PreprocessingTaxBenefitSystem()
     for system in (
         _NoOpReform(baseline),

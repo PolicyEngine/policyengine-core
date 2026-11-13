@@ -295,6 +295,75 @@
 </div>
 <p>The same holds within one tree: a dated value written in dictionary form (<code class="docutils literal notranslate"><span class="pre">value:</span></code>, with or without <code class="docutils literal notranslate"><span class="pre">metadata:</span></code>) holds its parameter’s metadata values, and <code class="docutils literal notranslate"><span class="pre">propagate_parameter_metadata</span></code> gives a node’s descendants the node’s values.</p>
 </section>
+</section>
+<section id="uprating">
+<h2>Uprating<a class="headerlink" href="#uprating" title="Permalink to this heading">#</a></h2>
+<p>A parameter’s <code class="docutils literal notranslate"><span class="pre">uprating</span></code> metadata extends its value history with another parameter, the index, such as a price index. When a tax-benefit system loads its parameters, <code class="docutils literal notranslate"><span class="pre">uprate_parameters</span></code> adds a value at each instant where the index has a value after the parameter’s last explicit value (or, in chained mode, after <code class="docutils literal notranslate"><span class="pre">start_instant</span></code> when the metadata sets one). Uprating never changes an explicit value, so a new explicit value always replaces a projection.</p>
+<section id="chained-mode">
+<h3>Chained mode<a class="headerlink" href="#chained-mode" title="Permalink to this heading">#</a></h3>
+<p>By default, uprating scales the last explicit value, at instant <code class="docutils literal notranslate"><span class="pre">L</span></code>, by the index’s change since then:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>value(t) = value(L) × index(t) / index(L)
+</pre></div>
+</div>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">uprating</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">parameter</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gov.example.price_index</span>
+<span class="w">    </span><span class="nt">rounding</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">downwards</span><span class="w"> </span><span class="c1"># or nearest, or upwards</span>
+<span class="w">      </span><span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">rounding</span></code> rounds the uprated amount, as a floating-point number, to a multiple of <code class="docutils literal notranslate"><span class="pre">interval</span></code>; <code class="docutils literal notranslate"><span class="pre">nearest</span></code> takes an exact half to the even multiple. A bare float, such as <code class="docutils literal notranslate"><span class="pre">rounding:</span> <span class="pre">0.01</span></code>, rounds to the nearest multiple. Chained mode also takes <code class="docutils literal notranslate"><span class="pre">start_instant</span></code>, to project from an instant other than the last explicit value; <code class="docutils literal notranslate"><span class="pre">at_defined_interval</span></code>, to uprate on a fixed cadence; and <code class="docutils literal notranslate"><span class="pre">parameter:</span> <span class="pre">self</span></code>, to extend the parameter’s own growth.</p>
+</section>
+<section id="base-mode">
+<h3>Base mode<a class="headerlink" href="#base-mode" title="Permalink to this heading">#</a></h3>
+<p>Some statutes index a fixed base amount and round the increase rather than the increased amount. 26 U.S.C. 63(c)(7)(B)(ii), for example, increases the <span class="math notranslate nohighlight">\(23,625 head-of-household standard deduction by the cost-of-living adjustment since 2024 and rounds that increase down to a multiple of \)</span>50. A <code class="docutils literal notranslate"><span class="pre">base</span></code> block opts a parameter into this rule:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">uprating</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">parameter</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gov.example.price_index</span>
+<span class="w">    </span><span class="nt">base</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">period</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2025</span>
+<span class="w">      </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">23_625</span>
+<span class="w">      </span><span class="nt">floor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">rounding</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">downwards</span>
+<span class="w">      </span><span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span>
+</pre></div>
+</div>
+<p>For each instant <code class="docutils literal notranslate"><span class="pre">t</span></code> where the index has a value after the last explicit value, and no earlier than <code class="docutils literal notranslate"><span class="pre">base.period</span></code>, base mode computes</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>value(t) = base + round(base × (index(t) / index(base.period) − 1))
+</pre></div>
+</div>
+<p>applying <code class="docutils literal notranslate"><span class="pre">rounding</span></code>’s type and interval to the increase. A bare number, such as <code class="docutils literal notranslate"><span class="pre">rounding:</span> <span class="pre">10</span></code>, rounds to the nearest multiple. Without <code class="docutils literal notranslate"><span class="pre">rounding</span></code>, <code class="docutils literal notranslate"><span class="pre">value(t)</span> <span class="pre">=</span> <span class="pre">base</span> <span class="pre">×</span> <span class="pre">index(t)</span> <span class="pre">/</span> <span class="pre">index(base.period)</span></code>.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">base.period</span></code> is a year, such as <code class="docutils literal notranslate"><span class="pre">2025</span></code>, or a date, such as <code class="docutils literal notranslate"><span class="pre">1997-01-01</span></code>. It names the base in the index’s own periods, since base mode reads the index there. Where the index’s value at period <code class="docutils literal notranslate"><span class="pre">Y</span></code> measures calendar year <code class="docutils literal notranslate"><span class="pre">Y</span> <span class="pre">−</span> <span class="pre">1</span></code>, as in the example above, a statute’s base year <code class="docutils literal notranslate"><span class="pre">Y</span> <span class="pre">−</span> <span class="pre">1</span></code> is <code class="docutils literal notranslate"><span class="pre">period:</span> <span class="pre">Y</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">base.value</span></code> defaults to the parameter’s own value at <code class="docutils literal notranslate"><span class="pre">base.period</span></code>. When the parameter has a value there, a stated <code class="docutils literal notranslate"><span class="pre">base.value</span></code> must match it to one part in a billion, which catches a period one year off. State it when the parameter has no value at the base period, such as a 1997 base for a parameter whose history starts later; elsewhere, leaving it out lets the base follow a reform (see below).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">base.floor:</span> <span class="pre">true</span></code> counts the index as no lower than its base-period level: base mode uses <code class="docutils literal notranslate"><span class="pre">max(index(t)</span> <span class="pre">/</span> <span class="pre">index(base.period),</span> <span class="pre">1)</span></code> as the ratio, so a positive base never projects below itself. Statutes that add “the percentage (if any) by which” an index exceeds its base-year level floor the adjustment this way; 26 U.S.C. 1(f)(3), which sets the cost-of-living adjustment in the example above, is one. Without <code class="docutils literal notranslate"><span class="pre">floor</span></code>, an index below its base-period level gives a value below the base.</p></li>
+<li><p>Base mode takes only <code class="docutils literal notranslate"><span class="pre">parameter</span></code>, <code class="docutils literal notranslate"><span class="pre">base</span></code> and <code class="docutils literal notranslate"><span class="pre">rounding</span></code>. It raises an error for <code class="docutils literal notranslate"><span class="pre">start_instant</span></code>, <code class="docutils literal notranslate"><span class="pre">at_defined_interval</span></code>, <code class="docutils literal notranslate"><span class="pre">parameter:</span> <span class="pre">self</span></code> and any other key, rather than ignore them.</p></li>
+<li><p>Base mode computes the increase exactly, in rational arithmetic on the decimals the base, the index values and the interval print as, so an index written as <code class="docutils literal notranslate"><span class="pre">102.6</span></code> counts as 102.6. A 40% rise on <span class="math notranslate nohighlight">\(1,400 is exactly \)</span>560, though floats compute it as 559.9999999999998, so rounding down to <span class="math notranslate nohighlight">\(10 keeps all of it. `nearest` takes an exact half up: a \)</span>25 increase on a <span class="math notranslate nohighlight">\(10 interval becomes \)</span>30.</p></li>
+<li><p>Every recorded decimal is exact, including the printed value of a computed float. Base mode does not guess an index’s precision from its digit count or move an increase onto a nearby rounding boundary. Supply the intended precision in the index itself; for example, a recorded value of <code class="docutils literal notranslate"><span class="pre">100.69999999999999</span></code> is below <code class="docutils literal notranslate"><span class="pre">100.7</span></code> and can round to a lower amount.</p></li>
+<li><p>An infinite base, such as a scale’s <code class="docutils literal notranslate"><span class="pre">-.inf</span></code> lowest threshold, stays infinite.</p></li>
+</ul>
+</section>
+<section id="base-mode-and-reforms">
+<h3>Base mode and reforms<a class="headerlink" href="#base-mode-and-reforms" title="Permalink to this heading">#</a></h3>
+<p>Base mode’s projections depend on the explicit values only through the base amount, not on the values just before them. That matters where reforms apply before uprating, as in a <code class="docutils literal notranslate"><span class="pre">TaxBenefitSystem</span></code> that loads its parameters and receives a <code class="docutils literal notranslate"><span class="pre">reform</span></code>: it applies the reform, then uprates. Take the head-of-household example and a reform that sets $30,000 from some date on:</p>
+<ul class="simple">
+<li><p>From 2026 on, the reform sets 2026 to <span class="math notranslate nohighlight">\(30,000, and the base is still \)</span>23,625, so 2027 follows the statute again. Chained mode would instead project 2027 from $30,000.</p></li>
+<li><p>From 2020 on, the reform also sets the base period’s value. With <code class="docutils literal notranslate"><span class="pre">base.value</span></code> left out, <span class="math notranslate nohighlight">\(30,000 becomes the base and the projections index it. A stated `base.value` of \)</span>23,625 no longer matches, and uprating raises an error that says to leave it out.</p></li>
+</ul>
+<p>A reform that should hold its value in later years can give it a range covering them, such as <code class="docutils literal notranslate"><span class="pre">2026-01-01.2100-12-31</span></code>. Country packages that apply reforms after uprating, as PolicyEngine US does, see projected values as before: a reform replaces them from its start.</p>
+</section>
+<section id="how-the-modes-differ">
+<h3>How the modes differ<a class="headerlink" href="#how-the-modes-differ" title="Permalink to this heading">#</a></h3>
+<p>Without rounding, the modes agree up to floating-point error whenever the explicit values follow the index from the base: if <code class="docutils literal notranslate"><span class="pre">value(L)</span> <span class="pre">=</span> <span class="pre">base</span> <span class="pre">×</span> <span class="pre">index(L)</span> <span class="pre">/</span> <span class="pre">index(base)</span></code>, chained mode’s <code class="docutils literal notranslate"><span class="pre">value(L)</span> <span class="pre">×</span> <span class="pre">index(t)</span> <span class="pre">/</span> <span class="pre">index(L)</span></code> equals base mode’s <code class="docutils literal notranslate"><span class="pre">base</span> <span class="pre">×</span> <span class="pre">index(t)</span> <span class="pre">/</span> <span class="pre">index(base)</span></code>.</p>
+<p>With rounding, they round different quantities. Chained mode rounds the whole amount, so every value it projects is a multiple of the interval. Base mode rounds the increase, so its values are the base plus a multiple of the interval, and a base off the interval’s grid stays off it. Rev. Proc. 2026-35 prints two 2027 amounts of this kind, which chained mode cannot produce:</p>
+<ul class="simple">
+<li><p>Section 3.15 sets the head-of-household standard deduction at <span class="math notranslate nohighlight">\(24,925: the \)</span>23,625 base plus <span class="math notranslate nohighlight">\(1,300, a multiple of \)</span>50. $24,925 is not.</p></li>
+<li><p>Section 3.29 sets the long-term care premium limit for ages 41 to 50 at <span class="math notranslate nohighlight">\(945: the \)</span>375 base in 26 U.S.C. 213(d)(10)(A) plus <span class="math notranslate nohighlight">\(570, an increase that section 213(d)(10)(B)(i) rounds to the nearest \)</span>10. <span class="math notranslate nohighlight">\(945 is not a multiple of \)</span>10.</p></li>
+</ul>
+<p>Chained mode also carries rounding forward when it starts from a published, rounded value. Take a <span class="math notranslate nohighlight">\(2,000 base, an increase rounded down to \)</span>100, and an index 4.9% above its base level in year 1 and 10% above it in year 2. The year-1 amount is <span class="math notranslate nohighlight">\(2,000, since \)</span>98 rounds down to <span class="math notranslate nohighlight">\(0. Base mode gives \)</span>2,200 for year 2. Chained mode from the year-1 amount gives <span class="math notranslate nohighlight">\(2,000 × 1.10 / 1.049 = \)</span>2,097.24, which rounds down to $2,000.</p>
+</section>
 <section id="metadata-for-parameters">
 <h3>Metadata for parameters<a class="headerlink" href="#metadata-for-parameters" title="Permalink to this heading">#</a></h3>
 <dl class="py class">
@@ -339,6 +408,13 @@
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.data_structures.parameter_metadata.</span></span><span class="sig-name descname"><span class="pre">SelfUprating</span></span><a class="headerlink" href="#policyengine_core.data_structures.parameter_metadata.SelfUprating" title="Permalink to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#policyengine_core.data_structures.parameter_metadata.UpratingIndex" title="policyengine_core.data_structures.parameter_metadata.UpratingIndex"><code class="xref py py-class docutils literal notranslate"><span class="pre">UpratingIndex</span></code></a></p>
 <p>A special value (“self”) that indicates that the parameter node should be uprated based on the fixed rate increase between two points in its history.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="policyengine_core.data_structures.parameter_metadata.UpratingBase">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.data_structures.parameter_metadata.</span></span><span class="sig-name descname"><span class="pre">UpratingBase</span></span><a class="headerlink" href="#policyengine_core.data_structures.parameter_metadata.UpratingBase" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></p>
+<p>The statutory base amount that base-mode uprating projects from.</p>
 </dd></dl>
 
 <dl class="py class">
@@ -456,6 +532,13 @@
 <li><a class="reference internal" href="#parameter-values">Parameter values</a></li>
 <li><a class="reference internal" href="#metadata">Metadata</a><ul>
 <li><a class="reference internal" href="#metadata-in-copies">Metadata in copies</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#uprating">Uprating</a><ul>
+<li><a class="reference internal" href="#chained-mode">Chained mode</a></li>
+<li><a class="reference internal" href="#base-mode">Base mode</a></li>
+<li><a class="reference internal" href="#base-mode-and-reforms">Base mode and reforms</a></li>
+<li><a class="reference internal" href="#how-the-modes-differ">How the modes differ</a></li>
 <li><a class="reference internal" href="#metadata-for-parameters">Metadata for parameters</a></li>
 <li><a class="reference internal" href="#metadata-for-parameter-nodes">Metadata for parameter nodes</a></li>
 </ul>
@@ -496,5 +579,7 @@ const thebe_selector_input = "pre"
 const thebe_selector_output = ".output, .cell_output"
 </script>
     <script async="async" src="../_static/sphinx-thebe.js"></script>
+    <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     </body>
 </html>

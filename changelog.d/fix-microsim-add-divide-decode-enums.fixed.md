@@ -1,0 +1,1 @@
+`Microsimulation.calculate_add` and `calculate_divide` now take `decode_enums`, so formulas that read a variable with `options=[ADD]` or `options=[DIVIDE]` compute in a `Microsimulation` instead of raising a `TypeError`. Those reads return a NumPy array that the formula can write to, as in a `Simulation`.

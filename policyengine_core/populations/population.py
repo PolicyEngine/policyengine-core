@@ -170,9 +170,11 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
         # projected read with another Series pairs the wrong values or raises.
         # Return a NumPy array, as a Simulation does, and copy it: pandas 3
         # returns a read-only view of a Series' values, and a formula may write
-        # to what it reads.
+        # to what it reads. ``numpy.array`` copies the values without calling
+        # ``MicroSeries.to_numpy`` or ``MicroSeries.values``, and microdf warns
+        # on each of those calls that the result carries no weights.
         if isinstance(result, pd.Series):
-            return result.to_numpy(copy=True)
+            return numpy.array(result)
         return result
 
     # Helpers

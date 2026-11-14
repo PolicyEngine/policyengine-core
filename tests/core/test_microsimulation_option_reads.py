@@ -17,6 +17,7 @@ returns a NumPy array, as in a Simulation, and one the formula can write to.
 """
 
 import dataclasses
+import warnings
 
 import numpy as np
 import pytest
@@ -142,6 +143,34 @@ def test_population_read_with_an_option_matches_a_simulation(call):
     # Formulas may write to what they read.
     assert result.flags.writeable
     assert result.tolist() == run(simulation, call)
+
+
+@pytest.mark.parametrize(
+    "entity_key,variable,period,option",
+    [
+        ("person", "monthly_pay", DATASET_YEAR, ADD),
+        ("person", "yearly_grant", "2022-06", DIVIDE),
+        ("household", "household_monthly_fee", DATASET_YEAR, ADD),
+        ("household", "household_yearly_allowance", "2022-06", DIVIDE),
+    ],
+)
+def test_population_read_with_an_option_gives_no_microseries_warning(
+    entity_key, variable, period, option
+):
+    # microdf warns when a caller takes a MicroSeries' values through
+    # ``to_numpy`` or ``values``, because the result carries no weights. The
+    # formula never asked for weights, so its read gives no such warning.
+    _, microsimulation = simulations(EXAMPLE)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        microsimulation.populations[entity_key](variable, period, options=[option])
+
+    assert [
+        str(warning.message)
+        for warning in caught
+        if "MicroSeries" in str(warning.message)
+    ] == []
 
 
 @pytest.mark.parametrize("decode_enums", [False, True])

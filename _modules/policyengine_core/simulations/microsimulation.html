@@ -325,8 +325,11 @@
         <span class="n">period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">map_to</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">use_weights</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">decode_enums</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MicroSeries</span><span class="p">:</span>
-        <span class="n">values</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">calculate_add</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+        <span class="c1"># ``Population.__call__`` passes ``decode_enums`` with every ADD or</span>
+        <span class="c1"># DIVIDE read in a formula.</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">calculate_add</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">decode_enums</span><span class="o">=</span><span class="n">decode_enums</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">map_to</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">source_entity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
                 <span class="n">variable_name</span><span class="p">,</span> <span class="n">check_existence</span><span class="o">=</span><span class="kc">True</span>
@@ -343,8 +346,11 @@
         <span class="n">period</span><span class="p">:</span> <span class="n">Period</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">map_to</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">use_weights</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">decode_enums</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MicroSeries</span><span class="p">:</span>
-        <span class="n">values</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">calculate_divide</span><span class="p">(</span><span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">calculate_divide</span><span class="p">(</span>
+            <span class="n">variable_name</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">decode_enums</span><span class="o">=</span><span class="n">decode_enums</span>
+        <span class="p">)</span>
         <span class="k">if</span> <span class="n">map_to</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">source_entity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tax_benefit_system</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span>
                 <span class="n">variable_name</span><span class="p">,</span> <span class="n">check_existence</span><span class="o">=</span><span class="kc">True</span>

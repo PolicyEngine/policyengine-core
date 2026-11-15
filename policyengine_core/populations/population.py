@@ -2,6 +2,7 @@ import traceback
 from typing import TYPE_CHECKING, Any, List, Optional, Container
 
 import numpy
+import pandas as pd
 from numpy.typing import ArrayLike
 
 from policyengine_core import projectors
@@ -154,15 +155,27 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
         calculate_kwargs["decode_enums"] = False
 
         if config.ADD in options:
-            return self.simulation.calculate_add(
+            result = self.simulation.calculate_add(
                 variable_name, period, **calculate_kwargs
             )
         elif config.DIVIDE in options:
-            return self.simulation.calculate_divide(
+            result = self.simulation.calculate_divide(
                 variable_name, period, **calculate_kwargs
             )
         else:
             return self.simulation.calculate(variable_name, period, **calculate_kwargs)
+        # In a Microsimulation these reads return a MicroSeries. pandas pairs
+        # two Series' values by index label, and ``GroupPopulation.project``
+        # labels each member's value with its group's position, so combining a
+        # projected read with another Series pairs the wrong values or raises.
+        # Return a NumPy array, as a Simulation does, and copy it: pandas 3
+        # returns a read-only view of a Series' values, and a formula may write
+        # to what it reads. ``numpy.array`` copies the values without calling
+        # ``MicroSeries.to_numpy`` or ``MicroSeries.values``, and microdf warns
+        # on each of those calls that the result carries no weights.
+        if isinstance(result, pd.Series):
+            return numpy.array(result)
+        return result
 
     # Helpers
 

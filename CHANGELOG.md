@@ -1,3 +1,10 @@
+## [3.36.1] - 2026-11-15
+
+### Fixed
+
+- `Microsimulation.calculate_add` and `calculate_divide` now take `decode_enums`, so a formula that reads a variable with `options=[ADD]` or `options=[DIVIDE]` gets a writable NumPy array in a `Microsimulation`, as in a `Simulation`, instead of a `TypeError`.
+
+
 ## [3.36.0] - 2026-11-13
 
 ### Added

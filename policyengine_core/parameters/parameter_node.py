@@ -231,30 +231,34 @@ class ParameterNode(AtInstantLike):
         """
         Replace an existing child and link the replacement to this node.
 
-        The previous child is detached unless it has been moved under another
-        node, and cached values of this node and its ancestors are cleared.
-        Nodes are not marked as modified.
+        Cached values of this node and its ancestors are cleared. The previous
+        child is left as it is, and nodes are not marked as modified. The tree
+        is left unchanged when an argument is rejected.
 
         :param name: Name of the existing child.
-        :param child: The replacement, an instance of :class:`.ParameterScale`, :class:`.Parameter` or :class:`.ParameterNode`.
+        :param child: The replacement, an instance of :class:`.ParameterScale`, :class:`.Parameter` or :class:`.ParameterNode`. It must not be this node or one of its ancestors.
         """
+        # Check every argument before changing anything, so a rejected call
+        # leaves the tree as it was.
         if name not in self.children:
             raise KeyError(
                 "{} has no child named {} to replace".format(self.name, name)
             )
+        if not isinstance(name, str):
+            raise TypeError(
+                "Child names must be strings. {} got {!r}".format(self.name, name)
+            )
         _check_child_type(child)
-        previous_child = self.children[name]
+        node_or_ancestor = self
+        while node_or_ancestor is not None:
+            if node_or_ancestor is child:
+                raise ValueError(
+                    "{} cannot hold itself or one of its ancestors ({}) as a "
+                    "child".format(self.name, child.name)
+                )
+            node_or_ancestor = getattr(node_or_ancestor, "parent", None)
+
         self._link_child(name, child)
-        # Detach the previous child only if it still belongs to this node; it
-        # may already have been moved under another node (for example under
-        # the replacement itself).
-        # A Parameter or ParameterScale stored in ``children`` directly has no
-        # ``parent`` attribute at all.
-        if (
-            previous_child is not child
-            and getattr(previous_child, "parent", None) is self
-        ):
-            previous_child.parent = None
         # Cached at-instant nodes of this node and its ancestors still hold
         # the previous child's values.
         self.clear_parent_cache()

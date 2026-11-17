@@ -1,1 +1,1 @@
-`ParameterNode.replace_child` replaces an existing child, links the replacement to the node, detaches the previous child unless it has been moved under another node, and clears cached values of the node and its ancestors.
+`ParameterNode.replace_child` replaces an existing child, links the replacement to the node and clears cached values of the node and its ancestors; it rejects the node itself, an ancestor or a non-string name without changing the tree.

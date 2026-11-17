@@ -132,8 +132,10 @@ def test_child_named_parent_does_not_replace_the_parent_link():
 
 @pytest.mark.parametrize("reserved_name", ["children", "name", "modified", "parent"])
 def test_child_name_cannot_overwrite_node_attributes(reserved_name):
-    # A root node and a clone: nothing re-assigns their own attributes after
-    # their children are added, so an overwrite would stay visible.
+    # A root node and its clone. No holder re-assigns a root's ``parent``
+    # afterwards, so an overwrite of ``parent``, ``name`` or ``children`` stays
+    # visible on the root. ``__init__`` resets ``modified`` at its end, so
+    # only the clone shows an overwrite of that one.
     root = ParameterNode("root", data={reserved_name: {"values": {"2020-01-01": 1}}})
 
     for node in (root, root.clone()):
@@ -191,7 +193,7 @@ def test_bracket_appended_by_template_reform_links_to_its_scale():
         assert bracket.parent is scale, bracket.name
 
 
-def test_replace_child_clears_cached_values_detaches_old_child_and_marks_nothing_modified():
+def test_replace_child_clears_cached_values_and_marks_nothing_modified():
     root = ParameterNode(data={"node": {"value": {"values": {"2020-01-01": 1}}}})
     node = root.children["node"]
     assert root("2021-01-01").node.value == 1
@@ -200,7 +202,8 @@ def test_replace_child_clears_cached_values_detaches_old_child_and_marks_nothing
     node.replace_child("value", Parameter("node.value", {"2020-01-01": 9}))
 
     assert root("2021-01-01").node.value == 9
-    assert old_child.parent is None
+    # The previous child is left as it is.
+    assert old_child.parent is node
     assert not node.modified
     assert not root.modified
 
@@ -264,3 +267,50 @@ def test_replace_child_accepts_previous_child_without_parent_attribute(
 
     assert node.children["x"].parent is node
     assert root("2021-01-01").node.x == 2
+
+
+def test_replace_child_keeps_link_of_previous_child_still_held_under_another_name():
+    root = ParameterNode(data={"node": {"a": {"values": {"2020-01-01": 1}}}})
+    node = root.children["node"]
+    shared_child = node.children["a"]
+    node.children["b"] = shared_child
+
+    node.replace_child("a", Parameter("node.a", {"2020-01-01": 2}))
+
+    assert shared_child.parent is node
+    shared_child.update(period="year:2021:1", value=3)
+    assert root("2021-01-01").node["b"] == 3
+
+
+@pytest.mark.parametrize("replacement_kind", ["holder", "ancestor"])
+def test_replace_child_rejects_holder_or_ancestor_and_leaves_tree_unchanged(
+    replacement_kind,
+):
+    root = ParameterNode(data={"node": {"a": {"values": {"2020-01-01": 1}}}})
+    node = root.children["node"]
+    previous_child = node.children["a"]
+    replacement = node if replacement_kind == "holder" else root
+
+    with pytest.raises(ValueError):
+        node.replace_child("a", replacement)
+
+    assert node.children["a"] is previous_child
+    assert previous_child.parent is node
+    assert node.parent is root
+    assert root.parent is None
+
+
+def test_replace_child_rejects_non_string_name_and_leaves_tree_unchanged():
+    root = ParameterNode(data={"node": {"a": {"values": {"2020-01-01": 1}}}})
+    node = root.children["node"]
+    previous_child = Parameter("node.1", {"2020-01-01": 1})
+    node.children[1] = previous_child
+    previous_child.parent = node
+    replacement = Parameter("node.1", {"2020-01-01": 2})
+
+    with pytest.raises(TypeError):
+        node.replace_child(1, replacement)
+
+    assert node.children[1] is previous_child
+    assert previous_child.parent is node
+    assert not hasattr(replacement, "parent")

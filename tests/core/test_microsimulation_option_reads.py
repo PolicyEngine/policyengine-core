@@ -201,21 +201,19 @@ def test_microsimulation_add_and_divide_take_decode_enums(
     )
 
 
-def test_enum_read_with_divide_over_a_year_gives_member_names_in_a_microsimulation():
-    # This records a difference that remains. Over a year,
-    # Simulation.calculate_divide reads the variable with self.calculate,
-    # which in a Microsimulation decodes enums by default. So a
-    # Microsimulation returns member names where a Simulation returns an
-    # EnumArray, and comparing the names with a member gives False for
-    # everyone. No policyengine-us formula reads an Enum with ADD or DIVIDE.
+def test_enum_read_with_divide_over_a_year_gives_codes_in_a_microsimulation():
+    # Over a year, Simulation.calculate_divide reads the variable with
+    # self.calculate. In a Microsimulation that read once decoded enums, so
+    # the formula got member names, and comparing them with a member gave
+    # False for everyone (core issue #658). The read is made inside the
+    # calculate_divide call, so it now keeps the codes, as a Simulation does.
     inputs = dataclasses.replace(EXAMPLE, yearly_tenure=("OWNER", "RENTER", "OWNER"))
     simulation_read, microsimulation_read = (
         each.populations["person"]("yearly_tenure", DATASET_YEAR, options=[DIVIDE])
         for each in simulations(inputs)
     )
 
-    assert isinstance(simulation_read, EnumArray)
-    assert simulation_read.decode_to_str().tolist() == ["OWNER", "RENTER", "OWNER"]
-    assert (simulation_read == Tenure.OWNER).tolist() == [True, False, True]
-    assert microsimulation_read.tolist() == ["OWNER", "RENTER", "OWNER"]
-    assert (microsimulation_read == Tenure.OWNER).tolist() == [False, False, False]
+    for read in (simulation_read, microsimulation_read):
+        assert isinstance(read, EnumArray)
+        assert read.decode_to_str().tolist() == ["OWNER", "RENTER", "OWNER"]
+        assert (read == Tenure.OWNER).tolist() == [True, False, True]

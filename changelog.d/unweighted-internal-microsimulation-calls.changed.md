@@ -1,0 +1,1 @@
+`Microsimulation.calculate`, `calculate_add` and `calculate_divide` now return plain arrays with enum codes to calls made inside a calculation (core's own reads and formula calls), so they no longer build weights that are then discarded, and enum reads with ADD or DIVIDE match a `Simulation` (#658).

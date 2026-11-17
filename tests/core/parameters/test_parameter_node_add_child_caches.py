@@ -133,3 +133,39 @@ def test_a_child_named_like_the_cache_can_be_added():
 
     assert tree.clone()(INSTANT).gov.tax.rate == 0.1
     assert tree.clone()(INSTANT).gov["_at_instant_cache"] == 1
+
+
+SCALE_TREE = {
+    "scale": {
+        "brackets": [
+            {
+                "threshold": {"2010-01-01": {"value": 0}},
+                "rate": {"2010-01-01": {"value": 0.1}},
+            },
+            {
+                "threshold": {"2010-01-01": {"value": 100}},
+                "rate": {"2010-01-01": {"value": 0.2}},
+            },
+        ]
+    }
+}
+
+
+def scale_description(scale):
+    return (type(scale).__name__, list(scale.thresholds), list(scale.rates))
+
+
+@pytest.mark.parametrize("cloned", [False, True], ids=["loaded", "cloned"])
+def test_nodes_requested_after_add_child_on_a_bracket_have_the_new_child(cloned):
+    # A bracket's ``parent`` links it to its scale, as a clone's does, so
+    # clearing reaches the nodes above the scale.
+    tree = ParameterNode("", data=SCALE_TREE)
+    if cloned:
+        tree = tree.clone()
+    tree(INSTANT).scale
+
+    tree.scale.brackets[0].add_child("base", leaf("scale.brackets[0].base", 2))
+
+    assert scale_description(tree(INSTANT).scale) == scale_description(
+        tree.scale._get_at_instant(INSTANT)
+    )

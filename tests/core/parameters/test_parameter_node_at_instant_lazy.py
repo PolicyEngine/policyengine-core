@@ -190,8 +190,12 @@ def test_deep_copied_tree_keeps_its_own_nodes_at_instant():
     cached = clone._at_instant_cache["2017-03-01"]
     clone.group.y.update(value=0.9, period="year:2010:30")
     clone.flat_rate.update(value=0.7, period="year:2010:30")
-    # The copy's cached node reads the copy, not the original tree.
-    assert cached.flat_rate == 0.7
+    # A copy is a snapshot, as when every child was built up front: its cached
+    # node keeps what the tree held when copied. Nodes requested from the copy
+    # afterwards read the copy, and the original keeps its values.
+    assert cached.flat_rate == 0.1
+    assert clone.get_at_instant("2017-03-01").flat_rate == 0.7
+    assert clone.get_at_instant("2017-03-01").group.y == 0.9
     assert tree.get_at_instant("2017-03-01").flat_rate == 0.1
     assert not hasattr(tree.get_at_instant("2017-03-01").group, "y")
 

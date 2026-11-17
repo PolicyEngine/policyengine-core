@@ -1,1 +1,1 @@
-Clear the nodes at instant cached by a parameter node and the nodes above it when `ParameterNode.add_child` adds a child, so nodes requested afterwards include it.
+Clear the nodes at instant cached above a parameter node when `ParameterNode.add_child` adds a child, and link loaded scale brackets to their scale, so nodes requested after a change below a bracket read it.

@@ -99,22 +99,18 @@ class _LazyChildren:
         self.children = None
 
     def __getstate__(self) -> dict:
-        # Copies of the containers, taken while no child is being resolved:
-        # copying or pickling the containers themselves would fail if another
-        # thread resolved a child meanwhile. Pickle protocols 0 and 1 also
-        # refuse a class with ``__slots__`` that does not define this.
+        # Only a deep copy or a pickle copies this state; a shallow copy of
+        # the node shares it. Either is a snapshot, as when every child was
+        # built up front: resolving every child first lets go of ``source``,
+        # whose parameter nodes would bring the whole tree, through their
+        # parents, into the copy. Once every child is resolved, reads no
+        # longer change these containers (only ``add_child`` does), so they
+        # are given as they are and keep their identities. Pickle protocols 0
+        # and 1 also refuse a class with ``__slots__`` that does not define
+        # this.
         with _RESOLUTION_LOCK:
-            children = None if self.children is None else dict(self.children)
-            return {
-                "instant": self.instant,
-                "source": None if self.source is None else dict(self.source),
-                "resolved": (
-                    children if self.resolved is self.children else dict(self.resolved)
-                ),
-                "absent": set(self.absent),
-                "added": dict(self.added),
-                "children": children,
-            }
+            _resolve_remaining(self)
+            return {name: getattr(self, name) for name in self.__slots__}
 
     def __setstate__(self, state) -> None:
         if isinstance(state, tuple):
@@ -140,11 +136,10 @@ class ParameterNodeAtInstant:
     value), a child keeps what that read found.
 
     Several threads can read a node, and copy or pickle it while others read.
-    A deep copy or pickle of a partly read node holds copies of the parameter
-    nodes it has not read yet and resolves them from those copies, so it reads
-    what the original would have, and changes to the original's parameters
-    don't reach it. At an instant that is not a date, every child is built up
-    front, as before, so the build fails, or succeeds, as it did.
+    A deep copy or pickle of a node resolves every child first, so it holds
+    the same values as when every child was built up front, and no parameter
+    nodes. At an instant that is not a date, every child is built up front, as
+    before, so the build fails, or succeeds, as it did.
     """
 
     def __init__(self, name: str, node: "ParameterNode", instant_str: str):
@@ -185,7 +180,7 @@ class ParameterNodeAtInstant:
             # ``parameters(None)``, which reads "None") failed on the first
             # scale below it, and nothing was cached. Building it up front
             # still does that, and otherwise holds what that build held.
-            _materialise(self, state)
+            _resolve_remaining(state)
 
     def add_child(self, child_name: str, child_at_instant: "ParameterNodeAtInstant"):
         if child_name == _STATE:
@@ -194,6 +189,10 @@ class ParameterNodeAtInstant:
         with _RESOLUTION_LOCK:
             state.added[child_name] = child_at_instant
             if state.children is not None:
+                if state.resolved is state.children:
+                    # ``resolved`` keeps what the parameters give: attribute
+                    # reads on the other copies of this node return it.
+                    state.resolved = dict(state.resolved)
                 state.children[child_name] = child_at_instant
         setattr(self, child_name, child_at_instant)
 
@@ -263,6 +262,10 @@ class ParameterNodeAtInstant:
                 self._vectorial_node = vectorial
             return vectorial[key]
         state = self.__dict__[_STATE]
+        children = state.children
+        if children is not None:
+            # Every child is resolved: the items are ``_children``'s.
+            return children[key]
         child_at_instant = state.added.get(key, _MISSING)
         if child_at_instant is _MISSING:
             child_at_instant = state.resolved.get(key, _MISSING)
@@ -336,8 +339,8 @@ def _complete(state: _LazyChildren):
     state.absent = set()
 
 
-def _materialise(node_at_instant: ParameterNodeAtInstant, state: _LazyChildren):
-    """Resolve every child and set ``_children``."""
+def _resolve_remaining(state: _LazyChildren):
+    """Resolve every child not read yet, and order every child."""
     with _RESOLUTION_LOCK:
         if state.children is None:
             for child_name in list(state.source):
@@ -346,6 +349,12 @@ def _materialise(node_at_instant: ParameterNodeAtInstant, state: _LazyChildren):
                 _resolve(state, child_name)
             if state.children is None:
                 _complete(state)
+
+
+def _materialise(node_at_instant: ParameterNodeAtInstant, state: _LazyChildren):
+    """Resolve every child and set ``_children``."""
+    with _RESOLUTION_LOCK:
+        _resolve_remaining(state)
         children = state.children
     if "_children" not in node_at_instant.__dict__:
         # Unless a child named ``_children`` took the name.

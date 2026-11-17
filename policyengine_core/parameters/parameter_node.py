@@ -10,7 +10,7 @@ from policyengine_core.tracers import TracingParameterNodeAtInstant
 
 from .at_instant_like import AtInstantLike
 from .parameter import Parameter
-from .parameter_node_at_instant import ParameterNodeAtInstant, _copied_state
+from .parameter_node_at_instant import ParameterNodeAtInstant
 from .config import COMMON_KEYS, FILE_EXTENSIONS
 from .helpers import (
     load_parameter_file,
@@ -37,9 +37,32 @@ def _clear_at_instant_caches_upward(node) -> None:
         seen.add(id(node))
         cache = node.__dict__.get("_at_instant_cache")
         # A child can be named ``_at_instant_cache`` too.
-        if type(cache) is dict:
+        if isinstance(cache, dict):
             cache.clear()
         node = getattr(node, "parent", None)
+
+
+class _AtInstantCache(dict):
+    """A parameter node's nodes at instant, by instant.
+
+    Reads add to it: a node at instant that resolves a child fills that
+    child's cache. So a copy or a pickle takes its items in one step first,
+    instead of going through the dictionary while another thread adds to it.
+    It stays one object, so parameter nodes that share it, such as shallow
+    copies, share its copy too.
+    """
+
+    __slots__ = ()
+
+    def __reduce_ex__(self, protocol):
+        return (type(self), (), None, None, iter(dict.copy(self).items()))
+
+    def __deepcopy__(self, memo: dict) -> "_AtInstantCache":
+        copied = type(self)()
+        memo[id(self)] = copied
+        for instant, node_at_instant in dict.copy(self).items():
+            copied[copy.deepcopy(instant, memo)] = copy.deepcopy(node_at_instant, memo)
+        return copied
 
 
 class ParameterNode(AtInstantLike):
@@ -103,7 +126,9 @@ class ParameterNode(AtInstantLike):
         self.trace: bool = False
         self.tracer = None
         self.branch_name = None
-        self._at_instant_cache: typing.Dict[Instant, ParameterNodeAtInstant] = {}
+        self._at_instant_cache: typing.Dict[Instant, ParameterNodeAtInstant] = (
+            _AtInstantCache()
+        )
         self.parent = None
 
         if directory_path:
@@ -217,28 +242,6 @@ class ParameterNode(AtInstantLike):
         )
         return result
 
-    def __getstate__(self):
-        # Reads at instant add to ``_at_instant_cache`` (a node at instant
-        # resolving a child fills that child's cache): see ``_copied_state``.
-        state = _copied_state(self)
-        attributes = state[0] if isinstance(state, tuple) else state
-        cache = None if attributes is None else attributes.get("_at_instant_cache")
-        if type(cache) is dict:
-            attributes["_at_instant_cache"] = cache.copy()
-        return state
-
-    def __copy__(self) -> "ParameterNode":
-        # A shallow copy shares the cache, as it did before ``__getstate__``.
-        copied = type(self).__new__(type(self))
-        state = object.__getstate__(self)
-        if isinstance(state, tuple):
-            state, slots = state
-            for slot_name, value in slots.items():
-                setattr(copied, slot_name, value)
-        if state:
-            copied.__dict__.update(state)
-        return copied
-
     def get_descendants(self) -> Iterable[Union["ParameterNode", Parameter]]:
         """
         Return a generator containing all the parameters and nodes recursively contained in this `ParameterNode`
@@ -257,7 +260,7 @@ class ParameterNode(AtInstantLike):
         for child_key, child in clone.children.items():
             setattr(clone, child_key, child)
             child.parent = clone
-        clone._at_instant_cache = {}
+        clone._at_instant_cache = _AtInstantCache()
 
         return clone
 

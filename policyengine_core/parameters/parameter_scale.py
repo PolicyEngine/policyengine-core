@@ -53,6 +53,7 @@ class ParameterScale(AtInstantLike):
             bracket = parameters.ParameterScaleBracket(
                 name=bracket_name, data=bracket_data, file_path=file_path
             )
+            bracket.parent = self
             brackets.append(bracket)
         self.brackets: typing.List[parameters.ParameterScaleBracket] = brackets
         self.propagate_uprating()

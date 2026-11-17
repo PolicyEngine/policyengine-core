@@ -277,3 +277,47 @@ def test_a_tree_without_a_scale_reads_at_none_as_before():
 
     assert isinstance(node, ParameterNodeAtInstant)
     assert ordered(materialise(node)) == ordered(snapshot(tree, "None"))
+
+
+# Updates below a scale bracket.
+
+SCALE_REFORM = {
+    "taxes.social_security_contribution[1].rate": {"2017-01-01.2017-12-31": 0.5}
+}
+SALARY_SITUATION = {
+    "persons": {"bill": {"salary": {"2017-01": 20000}}},
+    "households": {"h": {"parents": ["bill"]}},
+}
+
+
+def contribution_after_reform(read_the_scale_first):
+    from policyengine_core.country_template import CountryTaxBenefitSystem
+    from policyengine_core.simulations import SimulationBuilder
+
+    simulation = SimulationBuilder().build_from_entities(
+        CountryTaxBenefitSystem(), SALARY_SITUATION
+    )
+    simulation.calculate("income_tax", "2017-01")
+    if read_the_scale_first:
+        simulation.calculate("social_security_contribution", "2017-01")
+    simulation.apply_reform(SCALE_REFORM)
+    return simulation.calculate("social_security_contribution", "2017-01")[0]
+
+
+def test_a_reform_of_a_bracket_reads_the_same_whatever_was_calculated_first():
+    # ``Parameter.update`` on a bracket's rate clears the caches above the
+    # scale, because the bracket's ``parent`` is its scale.
+    assert contribution_after_reform(False) == contribution_after_reform(True)
+
+
+@pytest.mark.parametrize("read_the_scale_first", [False, True])
+def test_nodes_requested_after_a_bracket_update_read_it(read_the_scale_first):
+    tree = build_tree()
+    tree(INSTANT).flat_rate
+    if read_the_scale_first:
+        tree(INSTANT).scale
+
+    tree.scale.brackets[1].rate.update(period="2017", value=0.9)
+
+    assert list(tree(INSTANT).scale.rates) == [0.1, 0.9]
+    assert list(tree.scale(INSTANT).rates) == [0.1, 0.9]

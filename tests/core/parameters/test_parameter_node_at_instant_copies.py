@@ -17,6 +17,7 @@ import threading
 
 import pytest
 
+from policyengine_core.errors import ParameterNotFoundError
 from policyengine_core.parameters import ParameterNode, ParameterNodeAtInstant
 from tests.fixtures.parameter_nodes_at_instant import (
     TREE,
@@ -239,21 +240,163 @@ class SlottedParameterNode(ParameterNode):
     [copy.copy, *DUPLICATES.values()],
     ids=["copy", *DUPLICATES.keys()],
 )
-def test_slotted_subclasses_keep_their_slots(duplicate):
+def test_a_slotted_node_at_instant_keeps_its_slots(duplicate):
     tree, held = partly_read_tree()
     node = SlottedNodeAtInstant.__new__(SlottedNodeAtInstant)
     node.__dict__.update(held.__dict__)
     node.marker = "node at instant"
+
+    copied = duplicate(node)
+
+    assert copied.marker == "node at instant"
+    assert ordered(materialise(copied)) == ordered(snapshot(tree, INSTANT))
+
+
+SLOTTED_PARAMETER_NODE_DUPLICATES = {
+    "copy": copy.copy,
+    **{
+        name: duplicate
+        for name, duplicate in DUPLICATES.items()
+        # Protocols 0 and 1 refuse a class with ``__slots__`` and no
+        # ``__getstate__``, as before.
+        if name not in ("pickle-0", "pickle-1")
+    },
+}
+
+
+@pytest.mark.parametrize(
+    "duplicate",
+    SLOTTED_PARAMETER_NODE_DUPLICATES.values(),
+    ids=SLOTTED_PARAMETER_NODE_DUPLICATES.keys(),
+)
+def test_a_slotted_parameter_node_keeps_its_slots(duplicate):
     parameter_node = SlottedParameterNode("", data=TREE)
     parameter_node.marker = "parameter node"
     parameter_node(INSTANT).group.x
 
-    copied_node = duplicate(node)
-    copied_parameter_node = duplicate(parameter_node)
+    copied = duplicate(parameter_node)
 
-    assert copied_node.marker == "node at instant"
-    assert ordered(materialise(copied_node)) == ordered(snapshot(tree, INSTANT))
-    assert copied_parameter_node.marker == "parameter node"
-    assert ordered(materialise(copied_parameter_node(INSTANT))) == ordered(
-        snapshot(tree, INSTANT)
+    assert copied.marker == "parameter node"
+    assert ordered(materialise(copied(INSTANT))) == ordered(
+        snapshot(parameter_node, INSTANT)
     )
+
+
+# A deep copy or pickle of a node at instant is a snapshot, as when every
+# child was built up front: it holds no parameter nodes.
+
+
+class RecordsDeepCopies:
+    copies = 0
+
+    def __deepcopy__(self, memo):
+        RecordsDeepCopies.copies += 1
+        return self
+
+
+def tree_with_an_unrelated_branch():
+    tree = build_tree()
+    tree.add_child(
+        "unrelated_branch_marker",
+        ParameterNode(
+            "unrelated_branch_marker",
+            data={"amount": {"values": {"2010-01-01": 1}}},
+        ),
+    )
+    tree.unrelated_branch_marker.amount.values_list[0].value = RecordsDeepCopies()
+    return tree
+
+
+@pytest.mark.parametrize("protocol", PROTOCOLS)
+def test_a_pickled_node_leaves_the_parameter_tree_behind(protocol):
+    tree = tree_with_an_unrelated_branch()
+    group = tree(INSTANT).group
+    group.x
+
+    data = pickle.dumps(group, protocol=protocol)
+
+    assert b"unrelated_branch_marker" not in data
+    assert ordered(materialise(pickle.loads(data))) == ordered(
+        snapshot(tree.group, INSTANT)
+    )
+
+
+def test_a_deep_copied_node_leaves_the_parameter_tree_behind():
+    tree = tree_with_an_unrelated_branch()
+    group = tree(INSTANT).group
+    group.x
+    RecordsDeepCopies.copies = 0
+
+    copied = copy.deepcopy(group)
+
+    assert RecordsDeepCopies.copies == 0
+    assert ordered(materialise(copied)) == ordered(snapshot(tree.group, INSTANT))
+
+
+@pytest.mark.parametrize("duplicate", DUPLICATES.values(), ids=DUPLICATES.keys())
+def test_add_child_on_a_copy_of_a_listed_node_is_listed(duplicate):
+    tree = ParameterNode(
+        "",
+        data={"x": {"values": {"2010-01-01": 10}}, "y": {"values": {"2010-01-01": 20}}},
+    )
+    held = tree(INSTANT)
+    list(held)
+
+    copied = duplicate(held)
+    copied.add_child("z", 30)
+
+    assert list(copied) == ["x", "y", "z"]
+    assert "z" in copied
+    assert copied["z"] == 30 and copied.z == 30
+    assert list(copied._children) == ["x", "y", "z"]
+
+
+@pytest.mark.parametrize("read_in_full", [list, lambda node: "x" in node])
+def test_add_child_on_a_copy_of_a_fully_read_node_changes_only_shared_items(
+    read_in_full,
+):
+    tree = ParameterNode(
+        "",
+        data={"x": {"values": {"2010-01-01": 10}}, "y": {"values": {"2010-01-01": 20}}},
+    )
+    held = tree(INSTANT)
+    read_in_full(held)
+    duplicate = copy.copy(held)
+
+    duplicate.add_child("x", 99)
+    duplicate.add_child("extra", 77)
+
+    # Items are one mapping shared by copies; attributes belong to each copy.
+    assert held["x"] == 99 and held.x == 10
+    assert held["extra"] == 77
+    with pytest.raises(ParameterNotFoundError):
+        held.extra
+    assert duplicate.x == 99 and duplicate.extra == 77
+    assert list(held._children) == ["x", "y", "extra"]
+
+
+def test_children_written_directly_are_items():
+    tree = ParameterNode(
+        "",
+        data={"x": {"values": {"2010-01-01": 10}}, "y": {"values": {"2010-01-01": 20}}},
+    )
+    held = tree(INSTANT)
+    held.add_child("added", 1)
+    list(held)
+
+    held._children["written"] = 2
+
+    assert held["written"] == 2
+    assert held["x"] == 10
+
+
+@pytest.mark.parametrize("duplicate", DUPLICATES.values(), ids=DUPLICATES.keys())
+def test_shallow_copies_sharing_a_cache_still_share_it_once_copied(duplicate):
+    tree, _ = partly_read_tree()
+    alias = copy.copy(tree)
+
+    copied_tree, copied_alias = duplicate((tree, alias))
+    copied_tree.flat_rate.update(period="2017", value=0.5)
+
+    assert copied_alias._at_instant_cache is copied_tree._at_instant_cache
+    assert copied_alias(INSTANT).flat_rate == 0.5

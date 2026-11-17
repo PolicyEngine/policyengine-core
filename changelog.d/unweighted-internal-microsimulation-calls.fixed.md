@@ -1,0 +1,1 @@
+In a `Microsimulation`, enum reads with ADD or DIVIDE now match a `Simulation` (#658), and `use_weights=False` now returns a plain array from `calculate_add`, `calculate_divide` and a `calculate` over a period of another length, which returned a weighted `MicroSeries` before.

@@ -17,6 +17,7 @@ call from outside a calculation gets weighted values, as before. An explicit
 argument wins in both cases.
 """
 
+import sys
 from contextlib import contextmanager
 from unittest import mock
 
@@ -170,13 +171,19 @@ def test_microsimulation_built_inside_a_simulation_formula_gets_weights():
     assert_weighted(RECEIVED["new microsimulation calculate"], GRANT)
 
 
-def test_worker_thread_gets_weights_and_a_copied_context_gets_an_array():
-    # A new thread starts with an empty context, so its call is a call from
-    # outside a calculation. A context copied while the formula runs carries
-    # the formula's calculation with it.
+def test_worker_thread_follows_its_context():
+    # A thread started inside a formula runs in an empty context, unless
+    # Python is set to give new threads a copy of the starting thread's
+    # context (``-X thread_inherit_context=1``, the default on free-threaded
+    # builds). In an empty context the thread's call is a call from outside a
+    # calculation. A context copied while the formula runs carries the
+    # formula's calculation with it.
     microsimulation().calculate("probe_reads_from_worker_threads", DATASET_YEAR)
 
-    assert_weighted(RECEIVED["thread calculate"], GRANT)
+    if getattr(sys.flags, "thread_inherit_context", 0):
+        assert_array(RECEIVED["thread calculate"], GRANT)
+    else:
+        assert_weighted(RECEIVED["thread calculate"], GRANT)
     assert_array(RECEIVED["thread calculate, copied context"], GRANT)
 
 
@@ -189,6 +196,19 @@ def test_context_copied_in_a_formula_gets_weights_after_the_calculation_ends():
     )
 
     assert_weighted(result, GRANT)
+
+
+def test_call_in_a_copied_context_stays_inside_after_the_first_call_ends():
+    # The worker's own calculate call is still running when it reads, so its
+    # reads are inside a calculation, though the call whose context it copied
+    # has ended.
+    microsimulation().calculate("probe_starts_a_worker", DATASET_YEAR)
+    RECEIVED["release worker"].set()
+    RECEIVED["worker"].join(timeout=30)
+
+    assert not RECEIVED["worker"].is_alive()
+    assert_array(RECEIVED["worker calculate"], GRANT)
+    assert_codes(RECEIVED["worker calculate enum"])
 
 
 # Calls from outside a calculation: weighted, as before.

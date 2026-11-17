@@ -10,6 +10,7 @@ ADD and DIVIDE fixture (``microsimulation_option_reads``):
 """
 
 import contextvars
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from typing import Dict
@@ -183,6 +184,31 @@ def _keeps_its_context(person, period, parameters):
     return _zeros(person)
 
 
+def _starts_a_worker(person, period, parameters):
+    # The worker runs a calculation in a context copied here, and keeps
+    # running after this formula and its calculation return. A test releases
+    # it then.
+    release = threading.Event()
+    context = contextvars.copy_context()
+    inner = ProbeMicrosimulation(dataset=example_dataset())
+    worker = threading.Thread(
+        target=context.run,
+        args=(inner.calculate, "probe_waits_then_reads", period),
+    )
+    RECEIVED["release worker"] = release
+    RECEIVED["worker"] = worker
+    worker.start()
+    return _zeros(person)
+
+
+def _waits_then_reads(person, period, parameters):
+    RECEIVED["release worker"].wait(timeout=30)
+    simulation = person.simulation
+    RECEIVED["worker calculate"] = simulation.calculate("yearly_grant", period)
+    RECEIVED["worker calculate enum"] = simulation.calculate("yearly_tenure", period)
+    return _zeros(person)
+
+
 def _raises(person, period, parameters):
     person.simulation.calculate("yearly_grant", period.this_year)
     raise RuntimeError("probe error")
@@ -242,6 +268,8 @@ PROBES = [
     _probe("probe_builds_a_microsimulation", _builds_a_microsimulation),
     _probe("probe_reads_from_worker_threads", _reads_from_worker_threads),
     _probe("probe_keeps_its_context", _keeps_its_context),
+    _probe("probe_starts_a_worker", _starts_a_worker),
+    _probe("probe_waits_then_reads", _waits_then_reads),
     _probe("probe_raises", _raises),
     _probe("probe_monthly_raises", _raises, definition_period=MONTH),
     _probe("probe_raises_base_exception", _raises_base_exception),

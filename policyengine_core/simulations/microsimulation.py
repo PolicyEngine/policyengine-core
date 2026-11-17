@@ -13,7 +13,7 @@ from policyengine_core.types import ArrayLike
 
 
 class _RunningCall:
-    """The outermost ``Microsimulation`` calculate call running in a context."""
+    """A ``Microsimulation`` calculate call, running until ``running`` is false."""
 
     __slots__ = ("running",)
 
@@ -21,15 +21,21 @@ class _RunningCall:
         self.running = True
 
 
-# Set while a ``Microsimulation``'s ``calculate``, ``calculate_add`` or
-# ``calculate_divide`` call runs, by the outermost such call in the context.
-# Core reads variables for its own use through those same methods (the terms
-# of ``adds``, a ``defined_for`` mask, each month of a monthly variable read
-# over a year, the terms of ADD and DIVIDE), as do formulas. A call that
-# arrives while this is set comes from inside a calculation, and its defaults
-# give a plain array with enum codes. A thread started meanwhile has its own
-# empty context, so its calls count as calls from outside; a context copied
-# meanwhile sees the call until it ends, when ``running`` turns false.
+# The innermost ``Microsimulation`` ``calculate``, ``calculate_add`` or
+# ``calculate_divide`` call running in this context. Core reads variables for
+# its own use through those same methods (the terms of ``adds``, a
+# ``defined_for`` mask, each month of a monthly variable read over a year, the
+# terms of ADD and DIVIDE), as do formulas. A call that arrives while one is
+# running comes from inside a calculation, and its defaults give a plain array
+# with enum codes.
+#
+# A context copied while a call runs (for a worker thread, say) holds that
+# call's record, and sees the call end when ``running`` turns false. A call
+# made in the copy records itself there, so what it reads stays inside while
+# it runs. A thread starts with an empty context, so its calls come from
+# outside, unless Python gives new threads a copy of the starting thread's
+# context (``-X thread_inherit_context=1``, the default on free-threaded
+# builds).
 _running_call: ContextVar[Optional[_RunningCall]] = ContextVar(
     "_microsimulation_running_call", default=None
 )
@@ -40,17 +46,13 @@ def _inside_a_calculation() -> bool:
     return call is not None and call.running
 
 
-def _start_call() -> Optional[Tuple[_RunningCall, Token]]:
-    """Record an outermost call; return what ``_end_call`` needs, or ``None``."""
-    if _inside_a_calculation():
-        return None
+def _start_call() -> Tuple[_RunningCall, Token]:
+    """Record a call as running; return what ``_end_call`` needs."""
     call = _RunningCall()
     return call, _running_call.set(call)
 
 
-def _end_call(started: Optional[Tuple[_RunningCall, Token]]) -> None:
-    if started is None:
-        return
+def _end_call(started: Tuple[_RunningCall, Token]) -> None:
     call, token = started
     call.running = False
     _running_call.reset(token)

@@ -10,7 +10,7 @@ from policyengine_core.tracers import TracingParameterNodeAtInstant
 
 from .at_instant_like import AtInstantLike
 from .parameter import Parameter
-from .parameter_node_at_instant import ParameterNodeAtInstant
+from .parameter_node_at_instant import ParameterNodeAtInstant, _copied_state
 from .config import COMMON_KEYS, FILE_EXTENSIONS
 from .helpers import (
     load_parameter_file,
@@ -21,6 +21,25 @@ from .helpers import (
 )
 
 EXCLUDED_PARAMETER_CHILD_NAMES = ["reference", "__pycache__"]
+
+
+def _clear_at_instant_caches_upward(node) -> None:
+    """Clear the nodes at instant cached by ``node`` and every node above it.
+
+    Unlike ``clear_parent_cache``, this walks up without recursing and stops at
+    a node it has seen. ``add_child`` calls it while a node loads, and until a
+    loading node is attached to its own parent, a child named ``parent`` (as
+    policyengine-us's ``gov.hhs.medicaid.eligibility.categories.parent``)
+    replaces the node's ``parent`` attribute and points back at the node.
+    """
+    seen = set()
+    while node is not None and id(node) not in seen:
+        seen.add(id(node))
+        cache = node.__dict__.get("_at_instant_cache")
+        # A child can be named ``_at_instant_cache`` too.
+        if type(cache) is dict:
+            cache.clear()
+        node = getattr(node, "parent", None)
 
 
 class ParameterNode(AtInstantLike):
@@ -166,6 +185,9 @@ class ParameterNode(AtInstantLike):
 
         :param name: Name of the child that must be used to access that child. Should not contain anything that could interfere with the operator `.` (dot).
         :param child: The new child, an instance of :class:`.ParameterScale` or :class:`.Parameter` or :class:`.ParameterNode`.
+
+        Nodes at instant cached by this node and by every node above it were
+        built without the new child, so they are cleared.
         """
         if name in self.children:
             raise ValueError("{} has already a child named {}".format(self.name, name))
@@ -179,6 +201,9 @@ class ParameterNode(AtInstantLike):
                     type(child)
                 )
             )
+        # Before the child is set as an attribute, which a child named
+        # ``_at_instant_cache`` or ``parent`` would replace.
+        _clear_at_instant_caches_upward(self)
         self.children[name] = child
         setattr(self, name, child)
         child.parent = self
@@ -191,6 +216,28 @@ class ParameterNode(AtInstantLike):
             ]
         )
         return result
+
+    def __getstate__(self):
+        # Reads at instant add to ``_at_instant_cache`` (a node at instant
+        # resolving a child fills that child's cache): see ``_copied_state``.
+        state = _copied_state(self)
+        attributes = state[0] if isinstance(state, tuple) else state
+        cache = None if attributes is None else attributes.get("_at_instant_cache")
+        if type(cache) is dict:
+            attributes["_at_instant_cache"] = cache.copy()
+        return state
+
+    def __copy__(self) -> "ParameterNode":
+        # A shallow copy shares the cache, as it did before ``__getstate__``.
+        copied = type(self).__new__(type(self))
+        state = object.__getstate__(self)
+        if isinstance(state, tuple):
+            state, slots = state
+            for slot_name, value in slots.items():
+                setattr(copied, slot_name, value)
+        if state:
+            copied.__dict__.update(state)
+        return copied
 
     def get_descendants(self) -> Iterable[Union["ParameterNode", Parameter]]:
         """

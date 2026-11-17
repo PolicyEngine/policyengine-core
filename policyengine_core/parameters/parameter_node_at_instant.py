@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Iterable, Union
 
 import numpy
 
-from policyengine_core import parameters, tools
+from policyengine_core import parameters, periods, tools
 from policyengine_core.errors import ParameterNotFoundError
 from policyengine_core.parameters import helpers
 
@@ -31,6 +31,52 @@ _MISSING = object()
 _RESOLUTION_LOCK = threading.RLock()
 
 
+def _replace_resolution_lock() -> None:
+    """Give a forked process a lock that no thread holds. A thread that held
+    the lock when another thread forked does not exist in the forked process,
+    so nothing there would release it, and the first resolution would wait for
+    ever."""
+    global _RESOLUTION_LOCK
+    _RESOLUTION_LOCK = threading.RLock()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_replace_resolution_lock)
+
+
+def _copied_state(instance):
+    """What ``object.__getstate__`` gives, with the instance dictionary
+    copied: a ``dict``, ``None`` when it is empty, or a ``(dict, slots)`` pair
+    for an instance with ``__slots__``.
+
+    Reads change the dictionaries of parameter nodes and nodes at instant, so
+    copying or pickling a dictionary itself would fail if another thread read
+    meanwhile. Copying a ``dict`` is a single step for other threads.
+    """
+    state = object.__getstate__(instance)
+    if isinstance(state, tuple):
+        attributes, slots = state
+        return (None if attributes is None else dict(attributes), slots)
+    return None if state is None else dict(state)
+
+
+# Instant strings that ``periods.instant`` has accepted.
+_DATES = set()
+
+
+def _is_date(instant_str) -> bool:
+    if not isinstance(instant_str, str):
+        return False
+    if instant_str in _DATES:
+        return True
+    try:
+        periods.instant(instant_str)
+    except ValueError:
+        return False
+    _DATES.add(instant_str)
+    return True
+
+
 class _LazyChildren:
     """What a node at instant knows about its children. A shallow copy of the
     node shares it, as copies of a node that built every child up front shared
@@ -52,6 +98,32 @@ class _LazyChildren:
         # Every child in order, once all of ``source`` is resolved.
         self.children = None
 
+    def __getstate__(self) -> dict:
+        # Copies of the containers, taken while no child is being resolved:
+        # copying or pickling the containers themselves would fail if another
+        # thread resolved a child meanwhile. Pickle protocols 0 and 1 also
+        # refuse a class with ``__slots__`` that does not define this.
+        with _RESOLUTION_LOCK:
+            children = None if self.children is None else dict(self.children)
+            return {
+                "instant": self.instant,
+                "source": None if self.source is None else dict(self.source),
+                "resolved": (
+                    children if self.resolved is self.children else dict(self.resolved)
+                ),
+                "absent": set(self.absent),
+                "added": dict(self.added),
+                "children": children,
+            }
+
+    def __setstate__(self, state) -> None:
+        if isinstance(state, tuple):
+            # ``(None, slots)``, as ``object.__getstate__`` gives for a class
+            # with ``__slots__``.
+            state = state[1]
+        for name in self.__slots__:
+            setattr(self, name, state[name])
+
 
 class ParameterNodeAtInstant:
     """
@@ -66,6 +138,13 @@ class ParameterNodeAtInstant:
     held across an in-place change to its parameters reads the changed value
     for a child it has not read yet; once read (including found to have no
     value), a child keeps what that read found.
+
+    Several threads can read a node, and copy or pickle it while others read.
+    A deep copy or pickle of a partly read node holds copies of the parameter
+    nodes it has not read yet and resolves them from those copies, so it reads
+    what the original would have, and changes to the original's parameters
+    don't reach it. At an instant that is not a date, every child is built up
+    front, as before, so the build fails, or succeeds, as it did.
     """
 
     def __init__(self, name: str, node: "ParameterNode", instant_str: str):
@@ -101,6 +180,12 @@ class ParameterNodeAtInstant:
                 child_at_instant = _resolve(state, child_name)
                 if child_at_instant is not _MISSING:
                     setattr(self, child_name, child_at_instant)
+        if not _is_date(instant_str):
+            # Built up front, a node at an instant that is not a date (such as
+            # ``parameters(None)``, which reads "None") failed on the first
+            # scale below it, and nothing was cached. Building it up front
+            # still does that, and otherwise holds what that build held.
+            _materialise(self, state)
 
     def add_child(self, child_name: str, child_at_instant: "ParameterNodeAtInstant"):
         if child_name == _STATE:
@@ -137,7 +222,16 @@ class ParameterNodeAtInstant:
         names.discard(_STATE)
         return list(names)
 
-    def __setstate__(self, state: dict):
+    def __getstate__(self):
+        # Reads resolve children into ``__dict__``: see ``_copied_state``.
+        return _copied_state(self)
+
+    def __setstate__(self, state):
+        if isinstance(state, tuple):
+            state, slots = state
+            for slot_name, value in slots.items():
+                setattr(self, slot_name, value)
+        state = state or {}
         self.__dict__.update(state)
         if _STATE not in state:
             # Pickled when every child was built up front, all in ``_children``.

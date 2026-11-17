@@ -128,7 +128,7 @@ def homogenize_parameter_node(
             if homogenized_child is not node.children[child]:
                 # A placeholder Parameter became a ParameterNode: link the
                 # replacement as add_child would.
-                node.replace_child(child, homogenized_child)
+                node._replace_child(child, homogenized_child)
     return node
 
 

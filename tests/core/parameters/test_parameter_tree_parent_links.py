@@ -165,7 +165,7 @@ def test_replace_child_links_the_replacement():
     node = root.children["node"]
     replacement = ParameterNode("node.value", data={"a": {"values": {"2020-01-01": 5}}})
 
-    node.replace_child("value", replacement)
+    node._replace_child("value", replacement)
 
     assert node.children["value"] is replacement
     assert node.value is replacement
@@ -177,7 +177,7 @@ def test_replace_child_requires_an_existing_child():
     node = ParameterNode(data={"value": {"values": {"2020-01-01": 1}}})
 
     with pytest.raises(KeyError):
-        node.replace_child("missing", Parameter("missing", {"2020-01-01": 1}))
+        node._replace_child("missing", Parameter("missing", {"2020-01-01": 1}))
 
 
 def test_bracket_appended_by_template_reform_links_to_its_scale():
@@ -199,7 +199,7 @@ def test_replace_child_clears_cached_values_and_marks_nothing_modified():
     assert root("2021-01-01").node.value == 1
     old_child = node.children["value"]
 
-    node.replace_child("value", Parameter("node.value", {"2020-01-01": 9}))
+    node._replace_child("value", Parameter("node.value", {"2020-01-01": 9}))
 
     assert root("2021-01-01").node.value == 9
     # The previous child is left as it is.
@@ -224,7 +224,7 @@ def test_replace_child_keeps_link_of_previous_child_moved_elsewhere():
     wrapper = ParameterNode("node.value", data={})
     wrapper.add_child("default", previous_child)
 
-    node.replace_child("value", wrapper)
+    node._replace_child("value", wrapper)
 
     assert previous_child.parent is wrapper
     assert wrapper.parent is node
@@ -263,7 +263,7 @@ def test_replace_child_accepts_previous_child_without_parent_attribute(
     assert not hasattr(previous_child, "parent")
     root("2021-01-01")
 
-    node.replace_child("x", Parameter("node.x", {"2020-01-01": 2}))
+    node._replace_child("x", Parameter("node.x", {"2020-01-01": 2}))
 
     assert node.children["x"].parent is node
     assert root("2021-01-01").node.x == 2
@@ -275,7 +275,7 @@ def test_replace_child_keeps_link_of_previous_child_still_held_under_another_nam
     shared_child = node.children["a"]
     node.children["b"] = shared_child
 
-    node.replace_child("a", Parameter("node.a", {"2020-01-01": 2}))
+    node._replace_child("a", Parameter("node.a", {"2020-01-01": 2}))
 
     assert shared_child.parent is node
     shared_child.update(period="year:2021:1", value=3)
@@ -292,7 +292,7 @@ def test_replace_child_rejects_holder_or_ancestor_and_leaves_tree_unchanged(
     replacement = node if replacement_kind == "holder" else root
 
     with pytest.raises(ValueError):
-        node.replace_child("a", replacement)
+        node._replace_child("a", replacement)
 
     assert node.children["a"] is previous_child
     assert previous_child.parent is node
@@ -309,7 +309,7 @@ def test_replace_child_rejects_non_string_name_and_leaves_tree_unchanged():
     replacement = Parameter("node.1", {"2020-01-01": 2})
 
     with pytest.raises(TypeError):
-        node.replace_child(1, replacement)
+        node._replace_child(1, replacement)
 
     assert node.children[1] is previous_child
     assert previous_child.parent is node

@@ -223,13 +223,16 @@ class ParameterNode(AtInstantLike):
         _check_child_type(child)
         self._link_child(name, child)
 
-    def replace_child(
+    def _replace_child(
         self,
         name: str,
         child: Union["ParameterNode", Parameter, "parameters.ParameterScale"],
     ) -> None:
         """
         Replace an existing child and link the replacement to this node.
+
+        Internal: homogenization uses it to replace a placeholder Parameter
+        with the ParameterNode it builds for a further breakdown level.
 
         Cached values of this node and its ancestors are cleared. The previous
         child is left as it is, and nodes are not marked as modified. The tree

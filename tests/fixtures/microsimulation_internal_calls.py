@@ -122,9 +122,14 @@ def _reads_own_simulation(person, period, parameters):
     RECEIVED["population enum read"] = person("yearly_tenure", period)
     RECEIVED["calculate"] = simulation.calculate("yearly_grant", period)
     RECEIVED["calculate enum"] = simulation.calculate("yearly_tenure", period)
-    # Already stored by the read above: Simulation.calculate returns it from
-    # its fast cache.
-    RECEIVED["calculate again"] = simulation.calculate("yearly_grant", period)
+    # ``pay_added`` has a formula, so Simulation.calculate stores it in its
+    # fast cache, and with tracing off the second read returns it from there.
+    simulation.calculate("pay_added", period)
+    RECEIVED["fast cache holds the first read"] = (
+        "pay_added",
+        period,
+    ) in simulation._fast_cache
+    RECEIVED["calculate again"] = simulation.calculate("pay_added", period)
     RECEIVED["calculate_add"] = simulation.calculate_add("monthly_pay", period)
     RECEIVED["calculate_divide"] = simulation.calculate_divide("yearly_grant", period)
     RECEIVED["calculate_divide month"] = simulation.calculate_divide(
@@ -184,24 +189,39 @@ def _keeps_its_context(person, period, parameters):
     return _zeros(person)
 
 
+def _reads_in_a_nested_context(person, period, parameters):
+    # ``probe_keeps_its_context`` copies the context during its own, nested
+    # calculation. That calculation has ended when this formula runs a call in
+    # the copy, but this formula's calculation has not.
+    person("probe_keeps_its_context", period)
+    RECEIVED["nested context calculate"] = RECEIVED["context"].run(
+        person.simulation.calculate, "yearly_grant", period
+    )
+    return _zeros(person)
+
+
 def _starts_a_worker(person, period, parameters):
-    # The worker runs a calculation in a context copied here, and keeps
-    # running after this formula and its calculation return. A test releases
-    # it then.
-    release = threading.Event()
+    # The worker runs a calculation in a context copied here. This formula
+    # returns once the worker's calculation has started, and the worker keeps
+    # running after this formula's calculation ends, until a test releases it.
+    started, release = threading.Event(), threading.Event()
     context = contextvars.copy_context()
     inner = ProbeMicrosimulation(dataset=example_dataset())
     worker = threading.Thread(
         target=context.run,
         args=(inner.calculate, "probe_waits_then_reads", period),
+        daemon=True,
     )
+    RECEIVED["worker started"] = started
     RECEIVED["release worker"] = release
     RECEIVED["worker"] = worker
     worker.start()
+    started.wait(timeout=30)
     return _zeros(person)
 
 
 def _waits_then_reads(person, period, parameters):
+    RECEIVED["worker started"].set()
     RECEIVED["release worker"].wait(timeout=30)
     simulation = person.simulation
     RECEIVED["worker calculate"] = simulation.calculate("yearly_grant", period)
@@ -236,15 +256,19 @@ def _catches_a_branch_error(person, period, parameters):
 
 
 def _sets_an_input(person, period, parameters):
-    # Setting an input drops values computed from it, so the outermost
-    # calculation runs again.
-    simulation = person.simulation
-    simulation.calculate("pay_and_grant", period)
-    simulation.set_input("yearly_grant", period, np.full(person.count, 1234.0))
-    RECEIVED["calculate after setting an input"] = simulation.calculate(
+    # An input set on a branch drops the branch's values calculated from the
+    # value it replaces. This formula read one of them, so core does not keep
+    # its result and runs the calculation again.
+    RECEIVED["runs"] = RECEIVED.get("runs", 0) + 1
+    branch = person.simulation.get_branch("probe_input_branch")
+    RECEIVED["branch calculate before the input"] = branch.calculate(
         "pay_and_grant", period
     )
-    return simulation.calculate("pay_and_grant", period)
+    branch.set_input("yearly_grant", period, np.full(person.count, 1234.0))
+    RECEIVED["branch calculate after the input"] = branch.calculate(
+        "pay_and_grant", period
+    )
+    return RECEIVED["branch calculate after the input"]
 
 
 def _probe(name, formula, definition_period=YEAR):
@@ -268,6 +292,7 @@ PROBES = [
     _probe("probe_builds_a_microsimulation", _builds_a_microsimulation),
     _probe("probe_reads_from_worker_threads", _reads_from_worker_threads),
     _probe("probe_keeps_its_context", _keeps_its_context),
+    _probe("probe_reads_in_a_nested_context", _reads_in_a_nested_context),
     _probe("probe_starts_a_worker", _starts_a_worker),
     _probe("probe_waits_then_reads", _waits_then_reads),
     _probe("probe_raises", _raises),

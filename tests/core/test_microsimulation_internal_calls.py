@@ -27,6 +27,7 @@ from microdf import MicroDataFrame, MicroSeries
 
 from policyengine_core.enums import EnumArray
 from policyengine_core.model_api import ADD, DIVIDE, MONTH
+from policyengine_core.periods import period as make_period
 from policyengine_core.simulations import Microsimulation, Simulation
 from tests.fixtures.microsimulation_internal_calls import (
     RECEIVED,
@@ -105,7 +106,7 @@ READS_OF_ITS_OWN_SIMULATION = {
     "population enum read": (assert_codes, TENURE_CODES),
     "calculate": (assert_array, GRANT),
     "calculate enum": (assert_codes, TENURE_CODES),
-    "calculate again": (assert_array, GRANT),
+    "calculate again": (assert_array, PAY),
     "calculate_add": (assert_array, PAY),
     "calculate_divide": (assert_array, GRANT),
     "calculate_divide month": (assert_array, GRANT_A_MONTH),
@@ -119,6 +120,10 @@ def test_formula_call_on_its_own_simulation_gets_a_plain_array(label, trace):
 
     check, expected = READS_OF_ITS_OWN_SIMULATION[label]
     check(RECEIVED[label], expected)
+    # The fast cache holds the first read of ``pay_added``, so with tracing
+    # off the second read comes from it; with tracing on, Simulation.calculate
+    # skips the fast cache.
+    assert RECEIVED["fast cache holds the first read"]
 
 
 @pytest.mark.parametrize(
@@ -198,13 +203,22 @@ def test_context_copied_in_a_formula_gets_weights_after_the_calculation_ends():
     assert_weighted(result, GRANT)
 
 
+def test_context_copied_in_a_nested_call_stays_inside_while_an_outer_call_runs():
+    microsimulation().calculate("probe_reads_in_a_nested_context", DATASET_YEAR)
+
+    assert_array(RECEIVED["nested context calculate"], GRANT)
+
+
 def test_call_in_a_copied_context_stays_inside_after_the_first_call_ends():
     # The worker's own calculate call is still running when it reads, so its
     # reads are inside a calculation, though the call whose context it copied
     # has ended.
-    microsimulation().calculate("probe_starts_a_worker", DATASET_YEAR)
-    RECEIVED["release worker"].set()
-    RECEIVED["worker"].join(timeout=30)
+    try:
+        microsimulation().calculate("probe_starts_a_worker", DATASET_YEAR)
+    finally:
+        if "release worker" in RECEIVED:
+            RECEIVED["release worker"].set()
+            RECEIVED["worker"].join(timeout=30)
 
     assert not RECEIVED["worker"].is_alive()
     assert_array(RECEIVED["worker calculate"], GRANT)
@@ -218,9 +232,11 @@ def test_top_level_calculate_is_weighted_and_decoded():
     simulation_under_test = microsimulation()
 
     assert_weighted(simulation_under_test.calculate("yearly_grant"), GRANT)
-    # The second read comes from Simulation.calculate's fast cache.
-    assert_weighted(simulation_under_test.calculate("yearly_grant"), GRANT)
     assert_weighted(simulation_under_test.calculate("yearly_tenure"), TENURE_NAMES)
+    assert_weighted(simulation_under_test.calculate("pay_added"), PAY)
+    # The second read comes from Simulation.calculate's fast cache.
+    assert ("pay_added", make_period(DATASET_YEAR)) in simulation_under_test._fast_cache
+    assert_weighted(simulation_under_test.calculate("pay_added"), PAY)
 
 
 @pytest.mark.parametrize(
@@ -339,22 +355,21 @@ def test_formula_that_catches_a_branch_error_still_gets_an_array():
 
 
 def test_calculation_that_runs_again_after_an_input_change_gets_arrays():
-    # The probe sets an input while it runs, which can make core run the
-    # outermost calculation again. Whatever core does then, a Microsimulation
-    # does as a Simulation does, and its formula's reads are plain arrays.
+    # The probe reads a branch, then sets an input there that drops what it
+    # read, so core runs its calculation again, in both classes.
     plain = simulation()
-    plain.calculate("probe_sets_an_input")
-    plain_read = RECEIVED.pop("calculate after setting an input")
     expected = plain.calculate("probe_sets_an_input")
+    assert RECEIVED["runs"] == 2
+    RECEIVED.clear()
     simulation_under_test = microsimulation()
 
     result = simulation_under_test.calculate("probe_sets_an_input")
 
-    assert_array(RECEIVED["calculate after setting an input"], plain_read)
+    assert RECEIVED["runs"] == 2
+    assert_array(RECEIVED["branch calculate before the input"], expected)
+    assert_array(RECEIVED["branch calculate after the input"], expected)
     assert_weighted(result, expected)
-    assert_weighted(
-        simulation_under_test.calculate("yearly_grant"), plain.calculate("yearly_grant")
-    )
+    assert_weighted(simulation_under_test.calculate("yearly_grant"), GRANT)
 
 
 # Values: the same as a Simulation's.

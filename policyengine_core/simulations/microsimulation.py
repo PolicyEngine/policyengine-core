@@ -13,12 +13,17 @@ from policyengine_core.types import ArrayLike
 
 
 class _RunningCall:
-    """A ``Microsimulation`` calculate call, running until ``running`` is false."""
+    """A ``Microsimulation`` calculate call, running until ``running`` is false.
 
-    __slots__ = ("running",)
+    ``enclosing`` is the record of the call that was running in the context
+    when this one started, if any.
+    """
 
-    def __init__(self):
+    __slots__ = ("running", "enclosing")
+
+    def __init__(self, enclosing: Optional["_RunningCall"]):
         self.running = True
+        self.enclosing = enclosing
 
 
 # The innermost ``Microsimulation`` ``calculate``, ``calculate_add`` or
@@ -30,12 +35,12 @@ class _RunningCall:
 # with enum codes.
 #
 # A context copied while a call runs (for a worker thread, say) holds that
-# call's record, and sees the call end when ``running`` turns false. A call
-# made in the copy records itself there, so what it reads stays inside while
-# it runs. A thread starts with an empty context, so its calls come from
-# outside, unless Python gives new threads a copy of the starting thread's
-# context (``-X thread_inherit_context=1``, the default on free-threaded
-# builds).
+# call's record, and sees each call end when its ``running`` turns false; it
+# is inside while that call or one enclosing it runs. A call made in the copy
+# records itself there, so what it reads stays inside while it runs. A thread
+# starts with an empty context, so its calls come from outside, unless Python
+# gives new threads a copy of the starting thread's context
+# (``-X thread_inherit_context=1``, the default on free-threaded builds).
 _running_call: ContextVar[Optional[_RunningCall]] = ContextVar(
     "_microsimulation_running_call", default=None
 )
@@ -43,12 +48,16 @@ _running_call: ContextVar[Optional[_RunningCall]] = ContextVar(
 
 def _inside_a_calculation() -> bool:
     call = _running_call.get()
-    return call is not None and call.running
+    # In the context where the calls run, the innermost is running. Only a
+    # copied context can hold a call that has ended.
+    while call is not None and not call.running:
+        call = call.enclosing
+    return call is not None
 
 
 def _start_call() -> Tuple[_RunningCall, Token]:
     """Record a call as running; return what ``_end_call`` needs."""
-    call = _RunningCall()
+    call = _RunningCall(_running_call.get())
     return call, _running_call.set(call)
 
 

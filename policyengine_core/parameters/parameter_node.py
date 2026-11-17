@@ -1,4 +1,5 @@
 import copy
+import functools
 import os
 import typing
 from typing import Iterable, List, Type, Union
@@ -44,12 +45,20 @@ NODE_OWN_ATTRIBUTE_NAMES = frozenset(
 )
 
 
+@functools.lru_cache(maxsize=None)
+def _names_blocked_as_child_attributes(node_class: type) -> frozenset:
+    # The node's own attributes, plus the methods and class attributes of its
+    # classes (including subclasses such as ParameterScaleBracket). Metaclass
+    # attributes such as ABCMeta.register or type.mro are not included: they
+    # are not reachable from an instance. Computed once per class.
+    names = set(NODE_OWN_ATTRIBUTE_NAMES)
+    for klass in node_class.__mro__:
+        names.update(klass.__dict__)
+    return frozenset(names)
+
+
 def _can_expose_child_as_attribute(node: "ParameterNode", child_name: str) -> bool:
-    if child_name in NODE_OWN_ATTRIBUTE_NAMES:
-        return False
-    # Methods and class attributes (including those of subclasses such as
-    # ParameterScaleBracket) must not be shadowed either.
-    return not hasattr(type(node), child_name)
+    return child_name not in _names_blocked_as_child_attributes(type(node))
 
 
 def _check_child_type(child) -> None:
@@ -222,8 +231,9 @@ class ParameterNode(AtInstantLike):
         """
         Replace an existing child and link the replacement to this node.
 
-        The previous child is detached, and cached values of this node and its
-        ancestors are cleared. Nodes are not marked as modified.
+        The previous child is detached unless it has been moved under another
+        node, and cached values of this node and its ancestors are cleared.
+        Nodes are not marked as modified.
 
         :param name: Name of the existing child.
         :param child: The replacement, an instance of :class:`.ParameterScale`, :class:`.Parameter` or :class:`.ParameterNode`.
@@ -235,7 +245,10 @@ class ParameterNode(AtInstantLike):
         _check_child_type(child)
         previous_child = self.children[name]
         self._link_child(name, child)
-        if previous_child is not child:
+        # Detach the previous child only if it still belongs to this node; it
+        # may already have been moved under another node (for example under
+        # the replacement itself).
+        if previous_child is not child and previous_child.parent is self:
             previous_child.parent = None
         # Cached at-instant nodes of this node and its ancestors still hold
         # the previous child's values.

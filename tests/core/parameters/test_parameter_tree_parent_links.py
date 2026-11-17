@@ -212,3 +212,29 @@ def test_clone_keeps_modified_flag_when_a_child_is_named_modified():
 
     assert cloned_node.modified is False
     assert cloned_node.children["modified"].parent is cloned_node
+
+
+def test_replace_child_keeps_link_of_previous_child_moved_elsewhere():
+    root = ParameterNode(data={"node": {"value": {"values": {"2020-01-01": 1}}}})
+    node = root.children["node"]
+    previous_child = node.children["value"]
+    wrapper = ParameterNode("node.value", data={})
+    wrapper.add_child("default", previous_child)
+
+    node.replace_child("value", wrapper)
+
+    assert previous_child.parent is wrapper
+    assert wrapper.parent is node
+    previous_child.update(period="year:2021:1", value=5)
+    assert root("2021-01-01").node.value.default == 5
+
+
+@pytest.mark.parametrize("metaclass_attribute_name", ["register", "mro"])
+def test_child_named_after_metaclass_attribute_is_an_attribute(
+    metaclass_attribute_name,
+):
+    root = ParameterNode(data={metaclass_attribute_name: {"values": {"2020-01-01": 1}}})
+    child = root.children[metaclass_attribute_name]
+
+    assert getattr(root, metaclass_attribute_name) is child
+    assert getattr(root.clone(), metaclass_attribute_name).name == child.name

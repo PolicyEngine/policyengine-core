@@ -49,13 +49,15 @@ class _AtInstantCache(dict):
     child's cache. So a copy or a pickle takes its items in one step first,
     instead of going through the dictionary while another thread adds to it.
     It stays one object, so parameter nodes that share it, such as shallow
-    copies, share its copy too.
+    copies, share its copy too. A pickle holds a plain ``dict``, which earlier
+    versions of core can load, and which ``_get_at_instant`` replaces by one
+    of these before it adds to it.
     """
 
     __slots__ = ()
 
     def __reduce_ex__(self, protocol):
-        return (type(self), (), None, None, iter(dict.copy(self).items()))
+        return (dict, (dict.copy(self),))
 
     def __deepcopy__(self, memo: dict) -> "_AtInstantCache":
         copied = type(self)()
@@ -275,6 +277,9 @@ class ParameterNode(AtInstantLike):
             )
         else:
             at_instant = node_at_instant
+        # Building the node can read code that replaces this node's cache, so
+        # store into the cache the node holds now, as before.
+        cache = self._at_instant_cache
         if type(cache) is dict:
             # A plain ``dict`` set from outside core (policyengine-us's path
             # copies set one) changes as this node is read, so copying it

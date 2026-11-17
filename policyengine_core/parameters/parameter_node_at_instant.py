@@ -136,11 +136,17 @@ class ParameterNodeAtInstant:
     for a child it has not read yet; once read (including found to have no
     value), a child keeps what that read found.
 
+    A child that fails to build at the instant (a scale that refuses its
+    brackets, say) fails when it is read, not when the node is built, so the
+    node's other children can be read. A deep copy or pickle of the node
+    builds every child, so it fails then too.
+
     Several threads can read a node, and copy or pickle it while others read.
     A deep copy or pickle of a node resolves every child first, so it holds
     the same values as when every child was built up front, and no parameter
-    nodes. At an instant that is not a date, and in a subclass, every child is
-    built up front, as before.
+    nodes. Its pickle holds this version's lazy state, which earlier versions
+    of core can't load. At an instant that is not a date, and in a subclass,
+    every child is built up front, as before.
     """
 
     def __init__(self, name: str, node: "ParameterNode", instant_str: str):
@@ -195,10 +201,6 @@ class ParameterNodeAtInstant:
         with _RESOLUTION_LOCK:
             state.added[child_name] = child_at_instant
             if state.children is not None:
-                if state.resolved is state.children:
-                    # ``resolved`` keeps what the parameters give: attribute
-                    # reads on the other copies of this node return it.
-                    state.resolved = dict(state.resolved)
                 state.children[child_name] = child_at_instant
         setattr(self, child_name, child_at_instant)
 
@@ -244,7 +246,8 @@ class ParameterNodeAtInstant:
             if children is None:
                 children = self.__dict__["_children"] = {}
             lazy = _LazyChildren(state.get("_instant_str"), None)
-            lazy.resolved = lazy.children = children
+            lazy.children = children
+            lazy.resolved = dict(children)
             self.__dict__[_STATE] = lazy
 
     def __getitem__(
@@ -338,8 +341,9 @@ def _complete(state: _LazyChildren):
         # Added children the parameters do not have (or have no value for)
         # follow, in the order they were added.
         children.setdefault(name, child_at_instant)
-    if not added:
-        state.resolved = children
+    # ``resolved`` stays apart from ``children``: attribute reads return what
+    # the parameters give, whatever ``add_child`` or a direct write does to
+    # the items.
     state.children = children
     state.source = None
     state.absent = set()

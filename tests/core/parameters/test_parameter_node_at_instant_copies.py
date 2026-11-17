@@ -18,7 +18,11 @@ import threading
 import pytest
 
 from policyengine_core.errors import ParameterNotFoundError
-from policyengine_core.parameters import ParameterNode, ParameterNodeAtInstant
+from policyengine_core.parameters import (
+    Parameter,
+    ParameterNode,
+    ParameterNodeAtInstant,
+)
 from tests.fixtures.parameter_nodes_at_instant import (
     TREE,
     build_tree,
@@ -427,3 +431,74 @@ def test_a_plain_cache_is_replaced_by_a_copyable_one_when_first_filled():
     assert tree._at_instant_cache[INSTANT] is held
     assert list(plain) == [INSTANT]  # Not written to.
     assert tree(INSTANT) is held
+
+
+@pytest.mark.parametrize(
+    "replacement",
+    [dict, lambda: type(ParameterNode("", data={})._at_instant_cache)()],
+    ids=["plain", "core"],
+)
+@pytest.mark.parametrize("starting_cache", ["plain", "core"])
+def test_a_cache_replaced_while_a_node_is_built_is_the_one_filled(
+    replacement, starting_cache
+):
+    # policyengine-us's isolate_parameter_tracing replaces a root's cache to
+    # drop an earlier request's nodes. If that happens while the root is read,
+    # the node built goes into the cache the root holds afterwards.
+    tree = ParameterNode("", data={"a": {"values": {"2010-01-01": 1}}})
+
+    class ReplacesTheRootCache(Parameter):
+        replaced = False
+
+        def _get_at_instant(self, instant):
+            if not ReplacesTheRootCache.replaced:
+                ReplacesTheRootCache.replaced = True
+                tree._at_instant_cache = replacement()
+            return super()._get_at_instant(instant)
+
+    # Named like a node's own attribute, so it resolves while the node is
+    # built.
+    tree.add_child(
+        "_vectorial_node",
+        ReplacesTheRootCache("_vectorial_node", {"values": {"2010-01-01": 5}}),
+    )
+    if starting_cache == "plain":
+        tree._at_instant_cache = {}
+    tree._at_instant_cache[OTHER_INSTANT] = "a node from an earlier request"
+
+    node = tree(INSTANT)
+
+    assert list(tree._at_instant_cache) == [INSTANT]
+    assert tree(INSTANT) is node
+
+
+def test_children_written_directly_are_items_and_not_attributes():
+    tree = ParameterNode(
+        "",
+        data={"x": {"values": {"2010-01-01": 10}}, "y": {"values": {"2010-01-01": 20}}},
+    )
+    held = tree(INSTANT)
+    children = held._children
+
+    children["written"] = 2
+    children["x"] = 99
+    del children["y"]
+
+    assert held["written"] == 2 and held["x"] == 99
+    with pytest.raises(KeyError):
+        held["y"]
+    with pytest.raises(ParameterNotFoundError):
+        held.written
+    assert held.x == 10 and held.y == 20
+
+
+@pytest.mark.parametrize("protocol", PROTOCOLS)
+def test_a_pickled_cache_is_a_plain_dict_that_earlier_cores_load(protocol):
+    tree = build_tree()
+
+    data = pickle.dumps(tree, protocol=protocol)
+    restored = pickle.loads(data)
+
+    assert b"_AtInstantCache" not in data
+    assert type(restored._at_instant_cache) is dict
+    assert ordered(materialise(restored(INSTANT))) == ordered(snapshot(tree, INSTANT))

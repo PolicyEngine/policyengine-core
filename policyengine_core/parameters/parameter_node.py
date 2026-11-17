@@ -22,6 +22,48 @@ from .helpers import (
 
 EXCLUDED_PARAMETER_CHILD_NAMES = ["reference", "__pycache__"]
 
+# Attributes every ParameterNode sets on itself. A child with one of these
+# names stays reachable through ``children`` and at-instant lookups, but is not
+# set as an attribute, so it cannot replace the node's own state (for example a
+# child named ``parent`` replacing the link to the holding node).
+NODE_OWN_ATTRIBUTE_NAMES = frozenset(
+    {
+        "name",
+        "children",
+        "description",
+        "documentation",
+        "file_path",
+        "metadata",
+        "trace",
+        "tracer",
+        "branch_name",
+        "_at_instant_cache",
+        "parent",
+        "modified",
+    }
+)
+
+
+def _can_expose_child_as_attribute(node: "ParameterNode", child_name: str) -> bool:
+    if child_name in NODE_OWN_ATTRIBUTE_NAMES:
+        return False
+    # Methods and class attributes (including those of subclasses such as
+    # ParameterScaleBracket) must not be shadowed either.
+    return not hasattr(type(node), child_name)
+
+
+def _check_child_type(child) -> None:
+    if not (
+        isinstance(child, ParameterNode)
+        or isinstance(child, Parameter)
+        or isinstance(child, parameters.ParameterScale)
+    ):
+        raise TypeError(
+            "child must be of type ParameterNode, Parameter, or Scale. Instead got {}".format(
+                type(child)
+            )
+        )
+
 
 class ParameterNode(AtInstantLike):
     """
@@ -169,18 +211,43 @@ class ParameterNode(AtInstantLike):
         """
         if name in self.children:
             raise ValueError("{} has already a child named {}".format(self.name, name))
-        if not (
-            isinstance(child, ParameterNode)
-            or isinstance(child, Parameter)
-            or isinstance(child, parameters.ParameterScale)
-        ):
-            raise TypeError(
-                "child must be of type ParameterNode, Parameter, or Scale. Instead got {}".format(
-                    type(child)
-                )
+        _check_child_type(child)
+        self._link_child(name, child)
+
+    def replace_child(
+        self,
+        name: str,
+        child: Union["ParameterNode", Parameter, "parameters.ParameterScale"],
+    ) -> None:
+        """
+        Replace an existing child and link the replacement to this node.
+
+        The previous child is detached, and cached values of this node and its
+        ancestors are cleared. Nodes are not marked as modified.
+
+        :param name: Name of the existing child.
+        :param child: The replacement, an instance of :class:`.ParameterScale`, :class:`.Parameter` or :class:`.ParameterNode`.
+        """
+        if name not in self.children:
+            raise KeyError(
+                "{} has no child named {} to replace".format(self.name, name)
             )
+        _check_child_type(child)
+        previous_child = self.children[name]
+        self._link_child(name, child)
+        if previous_child is not child:
+            previous_child.parent = None
+        # Cached at-instant nodes of this node and its ancestors still hold
+        # the previous child's values.
+        self.clear_parent_cache()
+
+    def _link_child(self, name: str, child) -> None:
+        # Store the child, expose it as an attribute when its name does not
+        # collide with one of the node's own attributes or methods, and link it
+        # upward so Parameter.update can clear caches and mark ancestors.
         self.children[name] = child
-        setattr(self, name, child)
+        if _can_expose_child_as_attribute(self, name):
+            setattr(self, name, child)
         child.parent = self
 
     def __repr__(self) -> str:
@@ -208,7 +275,8 @@ class ParameterNode(AtInstantLike):
         clone.metadata = copy.copy(self.metadata)
         clone.children = {key: child.clone() for key, child in self.children.items()}
         for child_key, child in clone.children.items():
-            setattr(clone, child_key, child)
+            if _can_expose_child_as_attribute(clone, child_key):
+                setattr(clone, child_key, child)
             child.parent = clone
         clone._at_instant_cache = {}
 

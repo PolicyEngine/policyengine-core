@@ -265,8 +265,9 @@ class ParameterNode(AtInstantLike):
         return clone
 
     def _get_at_instant(self, instant: Instant) -> ParameterNodeAtInstant:
-        if instant in self._at_instant_cache:
-            return self._at_instant_cache[instant]
+        cache = self._at_instant_cache
+        if instant in cache:
+            return cache[instant]
         node_at_instant = ParameterNodeAtInstant(self.name, self, instant)
         if self.trace:
             at_instant = TracingParameterNodeAtInstant(
@@ -274,7 +275,13 @@ class ParameterNode(AtInstantLike):
             )
         else:
             at_instant = node_at_instant
-        self._at_instant_cache[instant] = at_instant
+        if type(cache) is dict:
+            # A plain ``dict`` set from outside core (policyengine-us's path
+            # copies set one) changes as this node is read, so copying it
+            # while another thread reads could fail. It is replaced, with its
+            # entries, rather than written to.
+            cache = self._at_instant_cache = _AtInstantCache(cache)
+        cache[instant] = at_instant
         return at_instant
 
     def attach_to_parent(self, parent: "ParameterNode"):

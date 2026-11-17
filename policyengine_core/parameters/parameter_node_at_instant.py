@@ -139,8 +139,8 @@ class ParameterNodeAtInstant:
     Several threads can read a node, and copy or pickle it while others read.
     A deep copy or pickle of a node resolves every child first, so it holds
     the same values as when every child was built up front, and no parameter
-    nodes. At an instant that is not a date, every child is built up front, as
-    before, so the build fails, or succeeds, as it did.
+    nodes. At an instant that is not a date, and in a subclass, every child is
+    built up front, as before.
     """
 
     def __init__(self, name: str, node: "ParameterNode", instant_str: str):
@@ -159,10 +159,11 @@ class ParameterNodeAtInstant:
         state = _LazyChildren(instant_str, source)
         self.__dict__[_STATE] = state
         cls = type(self)
-        if cls.add_child is not ParameterNodeAtInstant.add_child:
-            # A subclass's add_child sees every child, built up front into
-            # ``_children`` as before, which is also the mapping items are
-            # read from.
+        if cls is not ParameterNodeAtInstant:
+            # A subclass gets the up-front build, as before: its add_child
+            # sees every child, every child is an attribute before its own
+            # ``__getattr__`` or ``__getitem__`` runs, and ``_children`` is
+            # also the mapping items are read from.
             children = {}
             with _RESOLUTION_LOCK:
                 state.source = None

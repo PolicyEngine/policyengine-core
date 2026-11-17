@@ -583,3 +583,31 @@ def test_children_are_the_ones_children_items_gives_as_before():
     assert list(node) == ["shown"]
     with pytest.raises(ParameterNotFoundError):
         node.hidden
+
+
+class _FallbackAttributes(ParameterNodeAtInstant):
+    """Answers names that are not children, as the up-front build let a
+    subclass do: ``__getattr__`` ran only for names that were not children."""
+
+    def __getattr__(self, key):
+        if key.startswith("_"):
+            return super().__getattr__(key)
+        return 0
+
+
+class _FallbackItems(ParameterNodeAtInstant):
+    def __getitem__(self, key):
+        try:
+            return self._children[key]
+        except KeyError:
+            return 0
+
+
+def test_subclass_attribute_and_item_fallbacks_see_every_child_as_before():
+    tree = plain_tree(x=10, y=20)
+
+    attributes = _FallbackAttributes("", tree, "2017-01-01")
+    items = _FallbackItems("", tree, "2017-01-01")
+
+    assert attributes.x == 10 and attributes.absent == 0
+    assert items["x"] == 10 and items["absent"] == 0

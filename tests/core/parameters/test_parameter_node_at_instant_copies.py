@@ -109,7 +109,16 @@ class ReadsWhenCopied:
         return (str, ("copied",))
 
 
-def tree_with_a_value_that_reads(read_for):
+def give_plain_caches(tree):
+    """Give every parameter node a plain ``dict`` cache, as policyengine-us's
+    ``copy_parameter_nodes`` does, and as a tree pickled by an earlier core
+    has."""
+    for node in (tree, *tree.get_descendants()):
+        if isinstance(node, ParameterNode):
+            node._at_instant_cache = {}
+
+
+def tree_with_a_value_that_reads(read_for, caches="core"):
     """A tree whose nodes at instant hold a value that reads parameters when
     it is copied.
 
@@ -125,6 +134,8 @@ def tree_with_a_value_that_reads(read_for):
             "group": {"x": {"values": {"2010-01-01": 3}}},
         },
     )
+    if caches == "plain":
+        give_plain_caches(tree)
     held = tree(INSTANT)
     reader = ReadsWhenCopied(lambda: read_for(tree, held))
     first = tree.children["first"]
@@ -161,12 +172,13 @@ def test_a_read_during_a_copy_of_a_node_does_not_break_it(read, duplicate):
     assert copied.group.x == 3
 
 
+@pytest.mark.parametrize("caches", ["core", "plain"])
 @pytest.mark.parametrize("duplicate", DUPLICATES.values(), ids=DUPLICATES.keys())
 @pytest.mark.parametrize(
     "read", READS_DURING_A_COPY.values(), ids=READS_DURING_A_COPY.keys()
 )
-def test_a_read_during_a_copy_of_a_tree_does_not_break_it(read, duplicate):
-    tree, _ = tree_with_a_value_that_reads(read)
+def test_a_read_during_a_copy_of_a_tree_does_not_break_it(read, duplicate, caches):
+    tree, _ = tree_with_a_value_that_reads(read, caches)
 
     copied = duplicate(tree)
 
@@ -400,3 +412,18 @@ def test_shallow_copies_sharing_a_cache_still_share_it_once_copied(duplicate):
 
     assert copied_alias._at_instant_cache is copied_tree._at_instant_cache
     assert copied_alias(INSTANT).flat_rate == 0.5
+
+
+def test_a_plain_cache_is_replaced_by_a_copyable_one_when_first_filled():
+    tree, held = partly_read_tree()
+    give_plain_caches(tree)
+    plain = tree._at_instant_cache
+    plain[INSTANT] = held
+
+    tree(OTHER_INSTANT)
+
+    assert type(tree._at_instant_cache) is not dict
+    assert isinstance(tree._at_instant_cache, dict)
+    assert tree._at_instant_cache[INSTANT] is held
+    assert list(plain) == [INSTANT]  # Not written to.
+    assert tree(INSTANT) is held

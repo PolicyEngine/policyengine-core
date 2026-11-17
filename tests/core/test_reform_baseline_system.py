@@ -213,6 +213,15 @@ def test_the_baselines_record_of_inputs_is_its_own():
     assert "doubled_salary" in reform.tax_benefit_system.variables
 
 
+def test_subsample_gives_the_rebuilt_baseline_its_own_record_of_inputs():
+    simulation = Microsimulation(reform=neutralize_income_tax)
+
+    simulation.subsample(n=1, seed="baseline-system", time_period="2022")
+
+    assert simulation.baseline.input_variables is not simulation.input_variables
+    assert simulation.baseline._user_input_keys is not simulation._user_input_keys
+
+
 def test_subsample_leaves_the_baseline_without_a_baseline():
     simulation = Microsimulation(reform=neutralize_income_tax)
     assert simulation.baseline.baseline is None

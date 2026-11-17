@@ -214,12 +214,160 @@ def test_to_average():
 
     # Note: assert_near doesn't work for inf.
     assert result.thresholds == [0, 1, 2, numpy.inf]
-    assert result.rates, [0, 0, 0.05, 0.2]
+    assert result.rates == [0, 0, 0.05, 0.2]
     tools.assert_near(
         result.calc(tax_base),
         [0, 0.0375, 0.1, 0.125],
         absolute_error_margin=1e-10,
     )
+
+
+@pytest.mark.parametrize("rate", [0, 0.37])
+def test_to_average_of_a_single_bracket(rate):
+    # One bracket used to raise UnboundLocalError: the top rate was read from
+    # a loop variable that only the second and later brackets set.
+    tax_scale = taxscales.MarginalRateTaxScale()
+    tax_scale.add_bracket(0, rate)
+
+    result = tax_scale.to_average()
+
+    # For rate 0.37: 1 * 0.37 = 0.37, 1.5 * 0.37 = 0.555,
+    # and 1_000 * 0.37 = 370. Negative bases owe no marginal tax.
+    tax_base = numpy.array([-1, 0, 1, 1.5, 1_000])
+    tools.assert_near(
+        result.calc(tax_base),
+        [0, 0, rate, 1.5 * rate, 1_000 * rate],
+        absolute_error_margin=1e-10,
+    )
+    assert result.thresholds == [0, numpy.inf]
+    assert result.rates == [rate, rate]
+    assert result.to_marginal().rates == [rate]
+
+
+@pytest.mark.parametrize("rates_type", [list, numpy.array])
+def test_to_average_uses_last_paired_rate(rates_type):
+    tax_scale = taxscales.MarginalRateTaxScale()
+    tax_scale.thresholds = [0, 100]
+    tax_scale.rates = rates_type([0.1, 0.2, 0.8])
+
+    result = tax_scale.to_average()
+
+    assert result.thresholds == [0, 100, numpy.inf]
+    # Tax at 100 is 100 * 0.1 = 10, so its average rate is 10 / 100 = 0.1.
+    # The terminal marginal rate paired with threshold 100 is 0.2, not 0.8.
+    assert result.rates == [0, 0.1, 0.2]
+
+
+@pytest.mark.parametrize("rates_type", [list, numpy.array])
+def test_to_average_of_a_single_bracket_uses_its_paired_rate(rates_type):
+    # The surplus rate 0.8 used to send one bracket down the path for longer
+    # scales, which gave an average scale that levied no tax.
+    tax_scale = taxscales.MarginalRateTaxScale()
+    tax_scale.thresholds = [0]
+    tax_scale.rates = rates_type([0.3, 0.8])
+
+    result = tax_scale.to_average()
+
+    assert result.thresholds == [0, numpy.inf]
+    assert result.rates == [0.3, 0.3]
+    tools.assert_near(
+        result.calc(numpy.array([-1, 0, 1, 1_000])),
+        [0, 0, 0.3, 300],
+        absolute_error_margin=1e-10,
+    )
+
+
+@pytest.mark.parametrize("threshold", [50, -50])
+def test_to_average_rejects_a_single_bracket_away_from_0(threshold):
+    # One bracket from 50 taxes 0.37 * (base - 50), so its average rate is
+    # 0.37 * (1 - 50 / base). No linear average rate scale levies that tax.
+    # This used to give an average scale that taxed every base at 0, and a
+    # round trip to a bracket from 0. Before that it raised UnboundLocalError.
+    # From -50 the tax at base 0 is 0.37 * 50 = 18.5, but an average rate
+    # scale taxes a base of 0 at 0.
+    tax_scale = taxscales.MarginalRateTaxScale()
+    tax_scale.add_bracket(threshold, 0.37)
+
+    with pytest.raises(ValueError, match="cannot convert one bracket"):
+        tax_scale.to_average()
+
+
+@pytest.mark.parametrize("threshold", [50, -50])
+def test_to_average_of_a_single_zero_rate_bracket_away_from_0(threshold):
+    tax_scale = taxscales.MarginalRateTaxScale()
+    tax_scale.add_bracket(threshold, 0)
+
+    result = tax_scale.to_average()
+
+    assert result.thresholds == [threshold, numpy.inf]
+    assert result.rates == [0, 0]
+    tools.assert_near(
+        result.calc(numpy.array([-1_000, threshold, 0, 1_000])),
+        [0, 0, 0, 0],
+        absolute_error_margin=1e-10,
+    )
+    round_trip = result.to_marginal()
+    assert round_trip.thresholds == [threshold]
+    assert round_trip.rates == [0]
+
+
+@pytest.mark.parametrize(
+    "thresholds, average_rates",
+    [
+        # Tax at 100 is 0.1 * (100 - 50) = 5, so its average rate is 0.05.
+        ([50, 100], [0, 0.05, 0.2]),
+        # Tax at 100 is 0.1 * (100 + 50) = 15, so its average rate is 0.15.
+        ([-50, 100], [0, 0.15, 0.2]),
+    ],
+)
+def test_to_average_keeps_a_first_threshold_away_from_0(thresholds, average_rates):
+    # The first threshold used to become 0. From 50, that taxed a base of 50
+    # at 50 * (50 * 0.05 / 100) = 1.25 instead of 0, and the round trip gave
+    # brackets from 0 and 100 with rates 0.05 and 0.2.
+    tax_scale = taxscales.MarginalRateTaxScale()
+    tax_scale.add_bracket(thresholds[0], 0.1)
+    tax_scale.add_bracket(thresholds[1], 0.2)
+
+    result = tax_scale.to_average()
+
+    assert result.thresholds == [*thresholds, numpy.inf]
+    tools.assert_near(result.rates, average_rates, absolute_error_margin=1e-12)
+    tools.assert_near(
+        result.calc(numpy.array(thresholds)),
+        tax_scale.calc(numpy.array(thresholds)),
+        absolute_error_margin=1e-10,
+    )
+    round_trip = result.to_marginal()
+    assert round_trip.thresholds == thresholds
+    tools.assert_near(round_trip.rates, [0.1, 0.2], absolute_error_margin=1e-12)
+
+
+def test_to_average_with_no_tax_at_a_threshold_of_0():
+    tax_scale = taxscales.MarginalRateTaxScale()
+    tax_scale.add_bracket(-50, 0)
+    tax_scale.add_bracket(0, 0.2)
+    tax_scale.add_bracket(100, 0.3)
+
+    result = tax_scale.to_average()
+
+    # Tax at 100 is 0.2 * 100 = 20, so its average rate is 0.2.
+    assert result.thresholds == [-50, 0, 100, numpy.inf]
+    tools.assert_near(result.rates, [0, 0, 0.2, 0.3], absolute_error_margin=1e-12)
+    round_trip = result.to_marginal()
+    assert round_trip.thresholds == [-50, 0, 100]
+    tools.assert_near(round_trip.rates, [0, 0.2, 0.3], absolute_error_margin=1e-12)
+
+
+def test_to_average_rejects_tax_at_a_threshold_of_0():
+    # Tax at 0 is 0.1 * 50 = 5, but an average rate scale taxes 0 at 0. This
+    # used to raise ZeroDivisionError.
+    tax_scale = taxscales.MarginalRateTaxScale()
+    tax_scale.add_bracket(-50, 0.1)
+    tax_scale.add_bracket(0, 0.2)
+    tax_scale.add_bracket(100, 0.3)
+
+    with pytest.raises(ValueError, match="threshold of 0 at which the tax is 5"):
+        tax_scale.to_average()
 
 
 def test_rate_from_bracket_indice():

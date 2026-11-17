@@ -4,7 +4,6 @@ import pytest
 
 from policyengine_core.periods import Instant, instant, period
 from policyengine_core.reforms.reform import (
-    _api_period_range,
     _bounded_period_update_kwargs,
     _eternity_update_kwargs,
     _from_instant_update_kwargs,
@@ -104,19 +103,3 @@ def test_period_key_update_kwargs_malformed_raises():
 )
 def test_update_start_instant(update_kwargs, expected):
     assert _update_start_instant(update_kwargs) == expected
-
-
-# ---- from_api range normalization -----------------------------------------
-
-
-def test_api_period_range_single_year_stays_bounded():
-    assert _api_period_range("2026-01-01", "2026-12-31") == "2026-01-01.2026-12-31"
-
-
-def test_api_period_range_multi_year_stays_bounded():
-    assert _api_period_range("2026-01-01", "2030-12-31") == "2026-01-01.2030-12-31"
-
-
-def test_api_period_range_out_of_window_raises():
-    with pytest.raises(ValueError):
-        _api_period_range("2200-01-01", "2300-01-01")

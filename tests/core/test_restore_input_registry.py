@@ -96,6 +96,7 @@ def test_dump_lists_the_calculated_periods_and_marks_its_format(system, tmp_path
         [
             ("uprated_count", "2012", [1001, 77]),
             ("uprated_count", "2014", [2001, 177]),
+            ("uprated_amount", "2012", [100.0, 50.0]),
         ],
     )
     simulation.calculate("uprated_count", "2013")
@@ -107,7 +108,7 @@ def test_dump_lists_the_calculated_periods_and_marks_its_format(system, tmp_path
         return sorted(path.read_text().split()) if path.exists() else []
 
     assert calculated("uprated_count") == ["2013"]
-    # Calculated from the defaulted input, which is calculated too.
+    # Both the uprated value and the formula reading it are derived.
     assert calculated("doubled_amount") == ["2013"]
     assert calculated("uprated_amount") == ["2013"]
     assert (tmp_path / DUMP_FORMAT_FILE).exists()

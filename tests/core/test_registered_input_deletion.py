@@ -1,4 +1,4 @@
-"""Restored input records follow deletion even for early-year storage keys."""
+"""Restored input records respect storage period validation and deletion."""
 
 import numpy as np
 import pytest
@@ -34,6 +34,15 @@ def test_deleted_registered_early_year_input_is_forgotten(year, variable_type, o
         (variable_type.definition_period, periods.instant((year, 1, 1)), 1)
     )
     storage = holder._disk_storage if on_disk else holder._memory_storage
+    if year < 1000:
+        input_keys = simulation._user_input_keys.copy()
+        with pytest.raises(ValueError, match="string form cannot be parsed"):
+            storage.put(np.array([42.0]), period)
+        assert not storage.has(period)
+        assert not storage._sequence_numbers
+        assert simulation._user_input_keys == input_keys
+        assert not hasattr(holder, "_user_input_storage")
+        return
     storage.put(np.array([42.0]), period)
     key = (variable_type.__name__, "default", period)
     simulation._user_input_keys.add(key)
@@ -65,9 +74,10 @@ def test_registered_deletion_matches_set_input_for_period_aliases(
 ):
     """Register-only and set_input paths forget the same normalized slot.
 
-    Deletion removes the input from the record regardless of the stored
-    period's unit, size, early year, alias, tier, or underscored branch.
-    A write afterward remains a cache value and is cleared by a reform.
+    Unsupported early years are rejected before registration. For supported
+    years, deletion removes the input regardless of the stored period's unit,
+    size, alias, tier, or underscored branch. A write afterward remains a
+    cache value and is cleared by a reform.
     """
     restored = _raw_simulation(variable_type, on_disk)
     tracked = _raw_simulation(variable_type, on_disk)
@@ -75,6 +85,22 @@ def test_registered_deletion_matches_set_input_for_period_aliases(
     branch = "restore_branch"
     holder = restored.get_holder(variable_type.__name__)
     storage = holder._disk_storage if on_disk else holder._memory_storage
+    if year < 1000:
+        simulations = (restored, tracked)
+        input_keys = [simulation._user_input_keys.copy() for simulation in simulations]
+        with pytest.raises(ValueError, match="string form cannot be parsed"):
+            storage.put(np.array([42.0]), period, branch)
+        with pytest.raises(ValueError, match="string form cannot be parsed"):
+            tracked.get_holder(variable_type.__name__).set_input(period, [42.0], branch)
+        for simulation, before in zip(simulations, input_keys):
+            current = simulation.get_holder(variable_type.__name__)
+            tier = current._disk_storage if on_disk else current._memory_storage
+            assert not tier.has(period, branch)
+            assert not tier._sequence_numbers
+            assert simulation._user_input_keys == before
+            assert simulation._user_input_contexts == []
+            assert not hasattr(current, "_user_input_storage")
+        return
     storage.put(np.array([42.0]), period, branch)
     stored_period = holder._storage_period(period)
     key = (variable_type.__name__, branch, stored_period)

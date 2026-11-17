@@ -31,6 +31,20 @@ writing when its existing values must remain isolated.
     :show-inheritance:
 ```
 
+## Storage keys
+
+Both storage backends reject branch names containing `:` and month or year
+periods anchored after the first day of a month. They also reject periods whose
+string form cannot be parsed back, such as the year `0999`, before storing a
+value. Existing aliases, including twelve-month periods serialized as one year,
+remain supported. Disk restoration warns and skips filenames without a branch
+separator and a canonical period string.
+
+```{eval-rst}
+.. automodule:: policyengine_core.data_storage.storage_keys
+    :members:
+```
+
 ## TemporaryStorageDirectory
 
 A caller-supplied `simulation._data_storage_dir` is created on first use if it

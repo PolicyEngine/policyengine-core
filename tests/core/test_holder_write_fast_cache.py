@@ -20,6 +20,7 @@ import pytest
 
 from policyengine_core import periods
 from policyengine_core.experimental import MemoryConfig
+from policyengine_core.variables import Variable
 from tests.fixtures.uprated_inputs import build_simulation, build_system
 
 
@@ -208,14 +209,25 @@ def test_a_write_to_disk_storage_replaces_a_calculated_value(system):
 
 
 def test_a_write_replaces_an_eternity_value_requested_without_a_period(system):
-    # ``calculate`` with no period caches the result under ``None``.
-    simulation = build_simulation(system)
-    assert simulation.calculate("eternal_code").tolist() == [0, 0]
-    assert ("eternal_code", None) in simulation._fast_cache
+    class eternal_code_plus_one(Variable):
+        def formula(person, period):
+            # The top-level request intentionally has no period. Population
+            # lookups inside formulas still require an explicit one.
+            return person("eternal_code", periods.ETERNITY) + 1
 
-    simulation.get_holder("eternal_code").set_input(periods.period("2015"), [8, 9])
+    local_system = system.clone()
+    local_system.update_variable(eternal_code_plus_one)
+    # Calculate a formula over a real input: supplied inputs bypass the fast
+    # cache, while a missing root's default must stay uncached.
+    simulation = build_simulation(local_system, [("eternal_code", "2012", [0, 0])])
+    assert simulation.calculate("eternal_code_plus_one").tolist() == [1, 1]
+    assert ("eternal_code_plus_one", None) in simulation._fast_cache
 
-    assert simulation.calculate("eternal_code").tolist() == [8, 9]
+    simulation.get_holder("eternal_code_plus_one").set_input(
+        periods.period("2015"), [8, 9]
+    )
+
+    assert simulation.calculate("eternal_code_plus_one").tolist() == [8, 9]
 
 
 def _disk_simulation(system):

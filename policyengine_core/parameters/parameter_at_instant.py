@@ -76,5 +76,7 @@ class ParameterAtInstant:
     def clone(self) -> "ParameterAtInstant":
         clone = commons.empty_clone(self)
         clone.__dict__ = self.__dict__.copy()
-        clone.metadata = copy.deepcopy(self.metadata)
+        # The clone gets its own metadata dict, but shares the values in it
+        # with this one. To change a nested value, replace its key.
+        clone.metadata = copy.copy(self.metadata)
         return clone

@@ -261,29 +261,89 @@ class MarginalRateTaxScale(RateTaxScaleLike):
         return scaled_tax_scale.multiply_thresholds(factor)
 
     def to_average(self) -> taxscales.LinearAverageRateTaxScale:
+        """
+        Convert the scale to a LinearAverageRateTaxScale.
+
+        The average scale has the same thresholds, then a last threshold of
+        infinity that carries the top rate, so ``to_marginal`` gives this
+        scale back. Its rate at each threshold is the tax there divided by
+        the threshold, or 0 where both are 0. So the two scales levy the same
+        tax at every threshold.
+
+        One bracket from 0 instead gets its rate at both thresholds. Its
+        average rate is the same at every base, so the two scales levy the
+        same tax at every base. With two or more brackets,
+        ``LinearAverageRateTaxScale.calc`` keeps the average rate of the last
+        finite threshold above it. That matches this scale's tax only when
+        the top rate is that average rate.
+
+        :raises ValueError: if no average rate scale levies the tax at every
+            threshold or, for one bracket, at every base. This is so for one
+            bracket with a nonzero rate whose threshold is not 0, and for a
+            threshold of 0 at which the tax is not 0.
+        """
         average_tax_scale = taxscales.LinearAverageRateTaxScale(
             name=self.name,
             option=self.option,
             unit=self.unit,
         )
 
-        average_tax_scale.add_bracket(0, 0)
+        if not self.thresholds:
+            average_tax_scale.add_bracket(0, 0)
+            return average_tax_scale
 
-        if self.thresholds:
-            i = 0
-            previous_threshold = self.thresholds[0]
-            previous_rate = self.rates[0]
+        # A first threshold of 0 stays the integer 0, as it has always been.
+        first_threshold = self.thresholds[0] if self.thresholds[0] != 0 else 0
 
-            for threshold, rate in itertools.islice(
-                zip(self.thresholds, self.rates),
-                1,
-                None,
-            ):
-                i += previous_rate * (threshold - previous_threshold)
-                average_tax_scale.add_bracket(threshold, i / threshold)
-                previous_threshold = threshold
-                previous_rate = rate
-
+        if len(self.thresholds) == 1:
+            # As for longer scales, rates past the paired ones are ignored.
+            rate = self.rates[0]
+            if first_threshold != 0 and rate != 0:
+                # The tax is rate * (base - threshold) from the threshold up,
+                # so the average rate is rate * (1 - threshold / base). A
+                # linear average rate scale cannot follow it.
+                raise ValueError(
+                    f"{self.__class__.__name__}.to_average cannot convert one "
+                    f"bracket with threshold {first_threshold} and rate "
+                    f"{rate}: no linear average rate scale levies its tax. "
+                    "Only one bracket with threshold 0 or rate 0 converts."
+                )
+            # From 0, the average rate is the rate at every base. At rate 0 it
+            # is 0 at every base. Starting at a rate of 0 and interpolating
+            # toward infinity would levy no tax.
+            average_tax_scale.add_bracket(first_threshold, rate)
             average_tax_scale.add_bracket(float("Inf"), rate)
+            return average_tax_scale
+
+        # The tax at the first threshold is 0, so its average rate is 0.
+        average_tax_scale.add_bracket(first_threshold, 0)
+
+        i = 0
+        previous_threshold = first_threshold
+        previous_rate = self.rates[0]
+
+        for threshold, rate in itertools.islice(
+            zip(self.thresholds, self.rates),
+            1,
+            None,
+        ):
+            i += previous_rate * (threshold - previous_threshold)
+            if threshold != 0:
+                average_tax_scale.add_bracket(threshold, i / threshold)
+            elif i == 0:
+                # Every average rate taxes a base of 0 at 0.
+                average_tax_scale.add_bracket(threshold, 0)
+            else:
+                raise ValueError(
+                    f"{self.__class__.__name__}.to_average cannot convert a "
+                    f"threshold of 0 at which the tax is {i}: an average rate "
+                    "scale taxes a base of 0 at 0."
+                )
+            previous_threshold = threshold
+            previous_rate = rate
+
+        # ``to_marginal`` reads the top rate from the infinite threshold.
+        # ``LinearAverageRateTaxScale.calc`` does not use it.
+        average_tax_scale.add_bracket(float("Inf"), previous_rate)
 
         return average_tax_scale

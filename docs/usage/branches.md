@@ -149,18 +149,19 @@ therefore settle without exhausting the retry budget.
 
 An input set again with the value the branch already reads for that very
 period, as an input (not through a `set_input` helper that spreads it over
-other periods, and not `-0.0` for `0.0`), changes nothing, so it drops nothing
-and is no input change. An input stored for the very period being calculated
-after the calculation began (by its own formula, say; under the branch's name
-or any it reads, such as `default` through `Holder.set_input`) is the result,
+other periods, and not `-0.0` for `0.0`), does not trigger branch dependency
+invalidation or count as an input change. An input stored for the very period
+being calculated after the calculation began (by its own formula, say; under the
+branch's name or any it reads, such as `default` through `Holder.set_input`) is the result,
 as it would be had it been set first.
 
 Input helpers that divide or dispatch a larger-period input replace calculated
 sub-periods while retaining supplied inputs in their storage tiers. Their shared
-overlap cleanup also removes calculated sums or twelfths for the variable,
-including inherited values in the branch's storage, without changing the parent.
+overlap cleanup also runs for an input at a non-eternal variable's own period and
+removes calculated sums or twelfths for the variable, including inherited values
+in the branch's storage, without changing the parent.
 Branch dependency invalidation additionally drops later calculated values that
-may depend on the replaced input. On a simulation without a parent, helper
+may depend on the replaced input. On a simulation without a parent,
 overlap cleanup still runs while branch dependency invalidation does not.
 
 A custom `set_input` handler that calculates values between its own stores
@@ -169,9 +170,9 @@ anything (through `calculate`, `calculate_add` or `_calculate`), the branch
 drops again, by the same rule, once the handler returns or raises (the inputs
 it stored before raising stay).
 
-If there is no such record, the branch drops nothing. That is the case when a
-formula creates the branch while it is still calculating the variable the
-branch overrides, unless another branch the formula created for the same
+If there is no such record, branch dependency invalidation drops nothing. That is
+the case when a formula creates the branch while it is still calculating the
+variable the branch overrides, unless another branch the formula created for the same
 comparison already handed back a value calculated from that variable: then the
 branch drops what came back and what was calculated after it.
 
@@ -200,8 +201,8 @@ or carried-over value also counts. A result whose calculation was
 running when an input changed is not kept unless it was calculated again from
 the new inputs. An input set again with the value the branch
 already reads for that period, as an input, changes no value read anywhere, so
-dropping nothing then is sound; one set where the value was calculated still
-drops, since it changes which periods hold inputs.
+skipping dependency invalidation then is sound; one set where the value was
+calculated still drops, since it changes which periods hold inputs.
 
 The rule can drop more than it needs to (a value stored later that does not
 depend on the input is calculated again) but not less, within these limits:
@@ -236,7 +237,15 @@ depend on the input is calculated again) but not less, within these limits:
   input. Input helpers still remove overlapping calculated values of the
   variable they write. A formula's input for its own period is still returned
   as described above, and results calculated while an input is being set do not
-  enter the fast cache.
+  enter the fast cache. When uprating or automatic carry-over finds no source
+  input, the root returns the fallback default without caching it, including
+  when repeated branch mutations converge to a fixed point. Period conversion
+  preserves this rule: a divided, summed or stock-selected value containing
+  such a fallback also stays uncached. If a formula supplies an input for the
+  requested period during conversion, that input is returned on the first
+  call, before deciding whether to cache the converted result. Setting an
+  earlier input can therefore change the next calculation of the requested period.
+  Branches can cache these defaults because later inputs invalidate them.
 - **Existing child branches keep their values.** An input set on a branch does
   not reach branches already created from it.
 - **Values kept elsewhere stay.** A value one simulation calculated from
@@ -275,9 +284,9 @@ say what each value was calculated from, nor what was read without being kept,
 so the restored simulation records that values from that number on may depend
 on anything: an input set for any variable on a branch of it drops all of them.
 A dump written before calculated values were recorded is restored with every
-value as an input, as before, so such values never drop. With disk storage, a branch whose
-name contains `_` cannot be dumped yet: `OnDiskStorage.get_known_periods`
-splits its keys on every `_` (as on master).
+value as an input, as before, so such values never drop. Disk storage splits
+keys at the last underscore, so branch names containing `_` also round-trip
+through dumps and restoration.
 
 Two related behaviours: a branch stops reading macro-cache files once an input
 is set on it, even one it already reads, since they are keyed by branch name and

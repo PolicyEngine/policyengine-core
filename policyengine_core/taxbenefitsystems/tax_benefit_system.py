@@ -2,14 +2,18 @@ from __future__ import annotations
 
 import copy
 import glob
+import hashlib
 import importlib
+from importlib.machinery import SourceFileLoader
 import inspect
 import logging
 import os
 import yaml
 from pathlib import Path
 import sys
+import threading
 import traceback
+import types
 import typing
 from typing import (
     TYPE_CHECKING,
@@ -54,6 +58,48 @@ from policyengine_core.variables import Variable
 from policyengine_core.variables.variable import NUMERIC_VALUE_TYPES
 
 log = logging.getLogger(__name__)
+
+# Code compiled from each variable file, by its absolute loader path, with the
+# SHA-256 of the source it was compiled from. A file's code object does not
+# depend on the system that runs it, so every system loaded from the same
+# source runs the same code object, in a module of its own. Compiling again for
+# each system would make new code objects every time, and tools that keep code
+# objects alive, such as coverage's sys.monitoring core, would then hold a copy
+# of every variable file's code for each system built. Only the latest version
+# of each file is kept, for the life of the process (entries for files deleted
+# since are not removed). For source loaders, .pyc files are not used: the code
+# is compiled from the bytes that were hashed, once per process.
+_variable_file_code: dict[str, tuple[bytes, types.CodeType]] = {}
+_variable_file_code_lock = threading.Lock()
+
+
+def _reset_variable_file_code_lock() -> None:
+    # A child forked while another thread held the lock would otherwise
+    # deadlock on its first variable file.
+    global _variable_file_code_lock
+    _variable_file_code_lock = threading.Lock()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_reset_variable_file_code_lock)
+
+
+def _compiled_variable_file(loader) -> types.CodeType:
+    """The code object for the loader's file's current source, compiled once."""
+    # Read the loader's exact filename so the OS resolves it as for an import.
+    # POSIX follows symlinks before '..'; Windows normally collapses '..' first.
+    # Preserve the loader's spelling in the absolute cache key and co_filename
+    # too, so files that the OS opens differently cannot collide.
+    filename = loader.get_filename()
+    path = filename if os.path.isabs(filename) else os.path.join(os.getcwd(), filename)
+    source = loader.get_data(filename)
+    digest = hashlib.sha256(source).digest()
+    with _variable_file_code_lock:
+        cached = _variable_file_code.get(path)
+        if cached is None or cached[0] != digest:
+            cached = (digest, loader.source_to_code(source, path))
+            _variable_file_code[path] = cached
+    return cached[1]
 
 
 class TaxBenefitSystem:
@@ -103,6 +149,28 @@ class TaxBenefitSystem:
     """A YAML filepath containing metadata describing the modelled policies."""
     _defined_for_checks_deferred: bool = False
     """Whether ``load_variable`` leaves ``defined_for`` checks to a later pass over every variable."""
+
+    def preprocess_situation(self, situation: dict, default_period=None) -> dict:
+        """Normalize entity-form input before the builder creates populations.
+
+        Country models can override this to fill missing entity definitions.
+        ``SimulationBuilder.build_from_entities`` passes a deep copy of the
+        caller's situation, with any ``axes`` still present, and its default
+        period as set (None, a string, an integer or a ``Period``). Through
+        ``build_from_dict`` and ``Simulation(situation=...)``, singular entity
+        aliases are already expanded; a direct ``build_from_entities`` call
+        passes the caller's keys as given. The hook runs before the builder
+        validates entities, so it may receive a situation with no persons.
+        Return a dict holding an entity-form situation for the builder's usual
+        validation. A ``Reform`` runs its country system's hook with the
+        reform as the system, so the hook sees reformed parameters and
+        variables. Only the country system's hook runs: a ``Reform`` subclass
+        that overrides this method is skipped when another reform wraps it,
+        and a hook set on the country system instance itself stays bound to
+        that instance, so it reads the baseline's values. Dataset and
+        variable-only inputs do not use this hook.
+        """
+        return situation
 
     def __init__(self, entities: Sequence[Entity] = None, reform=None) -> None:
         if entities is None:
@@ -349,7 +417,11 @@ class TaxBenefitSystem:
                 spec = importlib.util.spec_from_file_location(module_name, file_path)
                 module = importlib.util.module_from_spec(spec)
                 sys.modules[module_name] = module
-                spec.loader.exec_module(module)
+                if isinstance(spec.loader, SourceFileLoader):
+                    code = _compiled_variable_file(spec.loader)
+                    exec(code, module.__dict__)
+                else:
+                    spec.loader.exec_module(module)
             except NameError as e:
                 logging.error(
                     str(e)

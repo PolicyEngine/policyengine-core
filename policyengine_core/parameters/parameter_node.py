@@ -204,7 +204,8 @@ class ParameterNode(AtInstantLike):
         clone = commons.empty_clone(self)
         clone.__dict__ = self.__dict__.copy()
 
-        clone.metadata = copy.deepcopy(self.metadata)
+        # Own dict, shared values: see ParameterAtInstant.clone.
+        clone.metadata = copy.copy(self.metadata)
         clone.children = {key: child.clone() for key, child in self.children.items()}
         for child_key, child in clone.children.items():
             setattr(clone, child_key, child)

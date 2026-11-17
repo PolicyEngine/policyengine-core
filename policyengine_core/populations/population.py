@@ -2,6 +2,7 @@ import traceback
 from typing import TYPE_CHECKING, Any, List, Optional, Container
 
 import numpy
+import pandas as pd
 from numpy.typing import ArrayLike
 
 from policyengine_core import projectors
@@ -154,24 +155,41 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
         calculate_kwargs["decode_enums"] = False
 
         if config.ADD in options:
-            return self.simulation.calculate_add(
+            result = self.simulation.calculate_add(
                 variable_name, period, **calculate_kwargs
             )
         elif config.DIVIDE in options:
-            return self.simulation.calculate_divide(
+            result = self.simulation.calculate_divide(
                 variable_name, period, **calculate_kwargs
             )
         else:
             return self.simulation.calculate(variable_name, period, **calculate_kwargs)
+        # In a Microsimulation these reads return a MicroSeries. pandas pairs
+        # two Series' values by index label, and ``GroupPopulation.project``
+        # labels each member's value with its group's position, so combining a
+        # projected read with another Series pairs the wrong values or raises.
+        # Return a NumPy array, as a Simulation does, and copy it: pandas 3
+        # returns a read-only view of a Series' values, and a formula may write
+        # to what it reads. ``numpy.array`` copies the values without calling
+        # ``MicroSeries.to_numpy`` or ``MicroSeries.values``, and microdf warns
+        # on each of those calls that the result carries no weights.
+        if isinstance(result, pd.Series):
+            return numpy.array(result)
+        return result
 
     # Helpers
 
     def get_holder(self, variable_name: str) -> Holder:
         self.entity.check_variable_defined_for_entity(variable_name)
+        variable = self.entity.get_variable(variable_name)
         holder = self._holders.get(variable_name)
         if holder:
+            # The system may have replaced the definition since the holder
+            # was made or last bound: a reform's ``apply`` that restores a
+            # neutralized variable and then sets its input, or code that
+            # changes a branch's system directly.
+            holder._follow_definition(variable)
             return holder
-        variable = self.entity.get_variable(variable_name)
         self._holders[variable_name] = holder = Holder(variable, self)
         return holder
 
@@ -255,17 +273,22 @@ See more information at <https://openfisca.org/doc/coding-the-legislation/35_per
         )
 
         positions = entity.members_position
-        biggest_entity_size = numpy.max(positions) + 1
+        biggest_entity_size = numpy.max(positions) + 1 if len(positions) else 0
         filtered_criteria = numpy.where(condition, criteria, numpy.inf)
         ids = entity.members_entity_id
 
         # Matrix: the value in line i and column j is the value of criteria for the jth person of the ith entity
-        matrix = numpy.asarray(
-            [
-                entity.value_nth_person(k, filtered_criteria, default=numpy.inf)
-                for k in range(biggest_entity_size)
-            ]
-        ).transpose()
+        # (``reshape`` keeps it two-dimensional when there are no persons)
+        matrix = (
+            numpy.asarray(
+                [
+                    entity.value_nth_person(k, filtered_criteria, default=numpy.inf)
+                    for k in range(biggest_entity_size)
+                ]
+            )
+            .reshape(biggest_entity_size, entity.count)
+            .transpose()
+        )
 
         # We double-argsort all lines of the matrix.
         # Double-argsorting gets the rank of each value once sorted

@@ -70,16 +70,22 @@ def delete_override(simulation, variable, through_holder):
 @pytest.mark.parametrize("variable", ["doubled", "deleted_leaf", "deleted_eternal"])
 @pytest.mark.parametrize("on_disk", [False, True], ids=["memory", "disk"])
 @pytest.mark.parametrize("through_holder", [False, True], ids=["simulation", "holder"])
-def test_deleted_input_recalculated_as_derived_is_not_exportable(
+def test_deleted_input_recalculation_is_not_exportable(
     variable, on_disk, through_holder
 ):
     simulation = prepare(variable, on_disk)
     delete_override(simulation, variable, through_holder)
-    simulation.calculate(variable, DATASET_YEAR)
+    result = simulation.calculate(variable, DATASET_YEAR)
 
-    assert simulation.get_holder(variable).is_derived(
-        period(DATASET_YEAR), simulation.branch_name
-    )
+    holder = simulation.get_holder(variable)
+    if variable == "deleted_leaf":
+        # A missing input-only root returns its default without storing it.
+        np.testing.assert_array_equal(result, np.full(simulation.persons.count, 17))
+        assert holder.get_array(period(DATASET_YEAR), simulation.branch_name) is None
+        assert (variable, period(DATASET_YEAR)) not in simulation._fast_cache
+    else:
+        # Formula results remain stored as derived values, never new inputs.
+        assert holder.is_derived(period(DATASET_YEAR), simulation.branch_name)
     assert simulation._get_set_input_periods(variable) == []
 
 

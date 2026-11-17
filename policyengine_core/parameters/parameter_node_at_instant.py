@@ -70,7 +70,8 @@ def _is_date(instant_str) -> bool:
     if instant_str in _DATES:
         return True
     try:
-        periods.instant(instant_str)
+        # As a scale's build reads it: ``str`` checks that the day exists.
+        str(periods.instant(instant_str))
     except ValueError:
         return False
     _DATES.add(instant_str)
@@ -152,21 +153,25 @@ class ParameterNodeAtInstant:
         # The "technical" attributes are hidden, so that the node children can be easily browsed with auto-completion without pollution
         self._name = name
         self._instant_str = instant_str
-        source = dict(node.children)
+        source = dict(node.children.items())
         if _STATE in source:
             raise ValueError(f"{_STATE!r} cannot name a parameter.")
         state = _LazyChildren(instant_str, source)
         self.__dict__[_STATE] = state
         cls = type(self)
         if cls.add_child is not ParameterNodeAtInstant.add_child:
-            # A subclass's add_child sees every child, as before.
+            # A subclass's add_child sees every child, built up front into
+            # ``_children`` as before, which is also the mapping items are
+            # read from.
+            children = {}
+            with _RESOLUTION_LOCK:
+                state.source = None
+                state.children = children
+            self.__dict__["_children"] = children
             for child_name, child in source.items():
                 child_at_instant = child._get_at_instant(instant_str)
                 if child_at_instant is not None:
                     self.add_child(child_name, child_at_instant)
-            with _RESOLUTION_LOCK:
-                state.source = None
-                state.children = dict(state.added)
             return
         for child_name in source:
             # A child whose name the node itself answers to shadows it, as

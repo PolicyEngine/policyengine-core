@@ -514,3 +514,72 @@ def test_a_node_pickled_when_every_child_was_built_up_front_loads():
     assert restored["y"] == 2 and list(restored) == ["x", "y"]
     with pytest.raises(KeyError):
         restored["nope"]
+
+
+class _AddChildLikeTheUpFrontBuild(ParameterNodeAtInstant):
+    """Writes ``_children`` and sets the attribute, as the up-front build's
+    ``add_child`` did, without calling it."""
+
+    def add_child(self, child_name, child_at_instant):
+        self._children[child_name] = child_at_instant
+        setattr(self, child_name, child_at_instant)
+
+
+class _AddChildThatChecksChildren(ParameterNodeAtInstant):
+    def add_child(self, child_name, child_at_instant):
+        assert child_name not in self._children
+        super().add_child(child_name, child_at_instant)
+
+
+@pytest.mark.parametrize(
+    "node_class", [_AddChildLikeTheUpFrontBuild, _AddChildThatChecksChildren]
+)
+def test_subclass_add_child_builds_items_and_iteration_as_before(node_class):
+    tree = ParameterNode(
+        "",
+        data={"x": {"values": {"2010-01-01": 10}}, "y": {"values": {"2010-01-01": 20}}},
+    )
+
+    node = node_class("", tree, "2017-01-01")
+    node.add_child("later", 3)
+
+    assert node["x"] == 10 and node.x == 10
+    assert node["later"] == 3
+    assert list(node) == ["x", "y", "later"]
+    with pytest.raises(ParameterNotFoundError):
+        node.absent
+
+
+@pytest.mark.parametrize("instant", ["2015-02-29", "2015-02-30", "0000-01-01"])
+def test_a_node_at_a_date_that_does_not_exist_fails_as_before(instant):
+    # ``periods.instant`` reads these, but a scale's build cannot.
+    tree = build_tree()
+
+    with pytest.raises(ValueError):
+        tree._get_at_instant(instant)
+
+    assert instant not in tree._at_instant_cache
+
+
+class _ChildrenHidingOne(dict):
+    """A ``children`` mapping whose ``items`` leaves an entry out."""
+
+    def items(self):
+        return [(name, child) for name, child in super().items() if name != "hidden"]
+
+
+def test_children_are_the_ones_children_items_gives_as_before():
+    tree = ParameterNode(
+        "",
+        data={
+            "shown": {"values": {"2010-01-01": 1}},
+            "hidden": {"values": {"2010-01-01": 2}},
+        },
+    )
+    tree.children = _ChildrenHidingOne(tree.children)
+
+    node = tree("2017-01-01")
+
+    assert list(node) == ["shown"]
+    with pytest.raises(ParameterNotFoundError):
+        node.hidden

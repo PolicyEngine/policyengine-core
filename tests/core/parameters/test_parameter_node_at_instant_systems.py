@@ -321,3 +321,63 @@ def test_nodes_requested_after_a_bracket_update_read_it(read_the_scale_first):
 
     assert list(tree(INSTANT).scale.rates) == [0.1, 0.9]
     assert list(tree.scale(INSTANT).rates) == [0.1, 0.9]
+
+
+# Updates below a node that homogenization put in place of a missing
+# breakdown value.
+
+
+def homogenized_tree():
+    from policyengine_core.parameters.operations.homogenize_parameters import (
+        homogenize_parameter_structures,
+    )
+
+    tree = ParameterNode(
+        "",
+        data={
+            "rates": {
+                "metadata": {"breakdown": [["A", "B"], ["X", "Y"]]},
+                "A": {
+                    "X": {"values": {"2010-01-01": 1}},
+                    "Y": {"values": {"2010-01-01": 2}},
+                },
+            },
+        },
+    )
+    homogenize_parameter_structures(tree, {})
+    return tree
+
+
+def test_homogenization_links_the_nodes_it_creates_to_their_parents():
+    tree = homogenized_tree()
+
+    created = tree.rates.children["B"]
+
+    assert created.parent is tree.rates
+    assert created.children["X"].parent is created
+
+
+@pytest.mark.parametrize("read_the_leaf_first", [False, True])
+def test_nodes_requested_after_an_update_below_a_homogenized_node_read_it(
+    read_the_leaf_first,
+):
+    tree = homogenized_tree()
+    node = tree(INSTANT)
+    node.rates.A.X
+    if read_the_leaf_first:
+        node.rates["B"]["X"]
+
+    tree.rates.children["B"].children["X"].update(period="2017", value=50)
+
+    assert tree(INSTANT).rates["B"]["X"] == 50
+
+
+def test_a_bracket_update_marks_the_scale_and_the_nodes_above_it_modified():
+    # As in a cloned tree, where brackets were already linked to their scale.
+    tree = build_tree()
+
+    tree.scale.brackets[1].rate.update(period="2017", value=0.9)
+
+    assert tree.scale.brackets[1].modified
+    assert tree.scale.modified
+    assert tree.modified

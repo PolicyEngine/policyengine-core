@@ -215,7 +215,7 @@ class ParameterNode(AtInstantLike):
         """
         Add a new child to the node.
 
-        :param name: Name of the child that must be used to access that child. Should not contain anything that could interfere with the operator `.` (dot).
+        :param name: Name of the child that must be used to access that child. Should not contain anything that could interfere with the operator `.` (dot). The child is also set as an attribute of the node, unless the name matches one of the node's own attributes (such as ``parent`` or ``children``) or a method or class attribute of its class; it then stays reachable through ``children`` and at-instant lookups.
         :param child: The new child, an instance of :class:`.ParameterScale` or :class:`.Parameter` or :class:`.ParameterNode`.
         """
         if name in self.children:
@@ -248,7 +248,12 @@ class ParameterNode(AtInstantLike):
         # Detach the previous child only if it still belongs to this node; it
         # may already have been moved under another node (for example under
         # the replacement itself).
-        if previous_child is not child and previous_child.parent is self:
+        # A Parameter or ParameterScale stored in ``children`` directly has no
+        # ``parent`` attribute at all.
+        if (
+            previous_child is not child
+            and getattr(previous_child, "parent", None) is self
+        ):
             previous_child.parent = None
         # Cached at-instant nodes of this node and its ancestors still hold
         # the previous child's values.

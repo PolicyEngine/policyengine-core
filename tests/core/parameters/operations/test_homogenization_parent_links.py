@@ -3,7 +3,8 @@
 ``homogenize_parameter_node`` replaces a placeholder ``Parameter`` with a
 ``ParameterNode`` when a breakdown has more than one level. The replacement
 must link to the node holding it, and that node's attribute must point at the
-replacement rather than the placeholder.
+replacement rather than the placeholder. Placeholders that homogenization adds
+for missing breakdown values must stay linked too.
 """
 
 from policyengine_core.parameters import Parameter, ParameterNode
@@ -43,7 +44,7 @@ def test_homogenized_replacements_link_to_their_holder():
             assert leaf.parent is replacement
 
 
-def test_update_under_homogenized_node_marks_every_ancestor():
+def test_update_under_homogenized_node_marks_every_ancestor_and_refreshes_cached_value():
     root = build_two_level_tree(["A", "B"])
     homogenize_parameter_structures(root, variables={})
 

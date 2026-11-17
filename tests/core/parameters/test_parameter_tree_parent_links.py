@@ -13,7 +13,6 @@ from policyengine_core.parameters import (
     Parameter,
     ParameterNode,
     ParameterScale,
-    ParameterScaleBracket,
 )
 
 
@@ -133,22 +132,28 @@ def test_child_named_parent_does_not_replace_the_parent_link():
 
 @pytest.mark.parametrize("reserved_name", ["children", "name", "modified", "parent"])
 def test_child_name_cannot_overwrite_node_attributes(reserved_name):
-    root = ParameterNode(data={"node": {reserved_name: {"values": {"2020-01-01": 1}}}})
-    node = root.children["node"]
+    # A root node and a clone: nothing re-assigns their own attributes after
+    # their children are added, so an overwrite would stay visible.
+    root = ParameterNode("root", data={reserved_name: {"values": {"2020-01-01": 1}}})
 
-    assert isinstance(node.children, dict)
-    assert node.name == "node"
-    assert node.parent is root
-    assert node.modified is False
-    assert node.children[reserved_name].parent is node
-    assert root("2021-01-01").node[reserved_name] == 1
+    for node in (root, root.clone()):
+        assert isinstance(node.children, dict)
+        assert node.name == "root"
+        assert node.parent is None
+        assert node.modified is False
+        assert node.children[reserved_name].parent is node
+        assert reserved_name not in vars(node) or not isinstance(
+            vars(node)[reserved_name], (Parameter, ParameterNode)
+        )
+        assert node("2021-01-01")[reserved_name] == 1
 
 
 def test_child_name_cannot_shadow_node_methods():
     root = ParameterNode(data={"clone": {"values": {"2020-01-01": 1}}})
 
-    assert callable(root.clone)
+    assert "clone" not in vars(root)
     cloned = root.clone()
+    assert "clone" not in vars(cloned)
     assert cloned.children["clone"].parent is cloned
     assert cloned("2021-01-01").clone == 1
 
@@ -173,11 +178,6 @@ def test_replace_child_requires_an_existing_child():
         node.replace_child("missing", Parameter("missing", {"2020-01-01": 1}))
 
 
-def test_bracket_is_a_parameter_node():
-    # The linking code treats brackets as ParameterNode instances.
-    assert issubclass(ParameterScaleBracket, ParameterNode)
-
-
 def test_bracket_appended_by_template_reform_links_to_its_scale():
     from policyengine_core.country_template import CountryTaxBenefitSystem
     from policyengine_core.country_template.reforms.modify_social_security_taxation import (
@@ -191,7 +191,7 @@ def test_bracket_appended_by_template_reform_links_to_its_scale():
         assert bracket.parent is scale, bracket.name
 
 
-def test_replace_child_clears_cached_values_and_detaches_old_child():
+def test_replace_child_clears_cached_values_detaches_old_child_and_marks_nothing_modified():
     root = ParameterNode(data={"node": {"value": {"values": {"2020-01-01": 1}}}})
     node = root.children["node"]
     assert root("2021-01-01").node.value == 1
@@ -238,3 +238,29 @@ def test_child_named_after_metaclass_attribute_is_an_attribute(
 
     assert getattr(root, metaclass_attribute_name) is child
     assert getattr(root.clone(), metaclass_attribute_name).name == child.name
+
+
+@pytest.mark.parametrize("previous_child_kind", ["parameter", "scale"])
+def test_replace_child_accepts_previous_child_without_parent_attribute(
+    previous_child_kind,
+):
+    # A Parameter or ParameterScale stored in ``children`` directly, without
+    # add_child, has no ``parent`` attribute at all.
+    root = ParameterNode(data={"node": {"other": {"values": {"2020-01-01": 0}}}})
+    node = root.children["node"]
+    if previous_child_kind == "parameter":
+        previous_child = Parameter("node.x", {"2020-01-01": 1})
+    else:
+        previous_child = ParameterScale(
+            "node.x",
+            {"brackets": [{"threshold": {"values": {"2020-01-01": 0}}}]},
+            None,
+        )
+    node.children["x"] = previous_child
+    assert not hasattr(previous_child, "parent")
+    root("2021-01-01")
+
+    node.replace_child("x", Parameter("node.x", {"2020-01-01": 2}))
+
+    assert node.children["x"].parent is node
+    assert root("2021-01-01").node.x == 2

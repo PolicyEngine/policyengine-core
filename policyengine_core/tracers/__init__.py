@@ -6,6 +6,8 @@ from .variable_graph import VariableGraph
 from .simple_tracer import SimpleTracer
 from .trace_node import TraceNode
 from .tracing_parameter_node_at_instant import (
+    TracingChildren,
     TracingParameterNode,
     TracingParameterNodeAtInstant,
+    describe_tax_scale,
 )

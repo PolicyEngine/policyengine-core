@@ -1,0 +1,1 @@
+`FullTracer` now records tax-scale reads with their schedule, reads of a parameter node's children, parameters read before an instant is chosen (`parameters.gov.rate(period)`), and the parameters core reads for `adds`, `subtracts` and uprating; each trace node also records whether its formula ran.

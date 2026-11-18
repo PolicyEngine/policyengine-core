@@ -121,7 +121,7 @@ def get_parser():
         parser.add_argument(
             "--every-test",
             action="store_true",
-            help="trace every test instead of one per newly covered output variable per file",
+            help="trace every test, including tests whose output formulas have already run earlier in their file",
         )
         parser.add_argument(
             "--households", type=int, default=2000, help="microdata subsample size"

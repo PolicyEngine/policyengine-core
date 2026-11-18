@@ -242,3 +242,61 @@ def test__given_branch_inherits_dataset_inputs__then_safe_exports_include_them(
     assert "salary" in exported_data
     assert "pseudo_input_for_safe_export" not in exported_data
     assert "salary" in branch.true_input_variables
+
+
+def test__given_situation_simulation__then_untouched_variables_have_no_holders(
+    isolated_tax_benefit_system,
+):
+    situation = {
+        "persons": {"Alicia": {"salary": {"2022-01": 1000}}},
+        "households": {"_": {"parents": ["Alicia"]}},
+    }
+
+    built = SimulationBuilder().build_from_dict(isolated_tax_benefit_system, situation)
+    simulation = CountryTemplateSimulation(
+        tax_benefit_system=isolated_tax_benefit_system,
+        situation=situation,
+    )
+    cloned = simulation.clone()
+
+    for sim in (built, simulation, cloned):
+        assert sim.input_variables == ["salary"]
+        assert set(sim.persons._holders) == {"salary"}
+        assert sim.household._holders == {}
+        assert "income_tax" not in sim.persons._holders
+        assert "rent" not in sim.household._holders
+
+
+def test__given_dataset_simulation__then_untouched_variables_have_no_holders(
+    isolated_tax_benefit_system,
+):
+    simulation = _safe_export_simulation(isolated_tax_benefit_system)
+
+    assert "salary" in simulation.input_variables
+    assert "income_tax" not in simulation.persons._holders
+    assert "rent" not in simulation.household._holders
+
+
+def test__given_reform_removing_input_variable__then_init_excludes_it_without_allocating_holders(
+    isolated_tax_benefit_system,
+):
+    from policyengine_core.reforms import Reform
+
+    class DropSalaryReform(Reform):
+        def apply(self):
+            del self.variables["salary"]
+
+    situation = {
+        "persons": {"Alicia": {"salary": {"2022-01": 1000}, "age": {"2022-01": 30}}},
+        "households": {"_": {"parents": ["Alicia"]}},
+    }
+
+    simulation = CountryTemplateSimulation(
+        tax_benefit_system=isolated_tax_benefit_system,
+        situation=situation,
+        reform=DropSalaryReform,
+    )
+
+    assert set(simulation.input_variables) == {"age"}
+    assert "income_tax" not in simulation.persons._holders
+    assert "rent" not in simulation.household._holders

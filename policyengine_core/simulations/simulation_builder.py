@@ -186,11 +186,7 @@ class SimulationBuilder:
                 tax_benefit_system, input_dict, simulation
             )
 
-        simulation.input_variables = [
-            variable.name
-            for variable in simulation.tax_benefit_system.variables.values()
-            if len(simulation.get_holder(variable.name).get_known_periods()) > 0
-        ]
+        simulation.input_variables = simulation._collect_input_variables()
 
         return simulation
 

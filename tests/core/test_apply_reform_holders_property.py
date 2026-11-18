@@ -72,7 +72,7 @@ def test_every_existing_holder_uses_its_system_variable(
     simulation = build(mask)
     for name in REPLACED:
         population = simulation.get_variable_population(name)
-        del population._holders[name]
+        population._holders.pop(name, None)
     for name in order:
         simulation.get_holder(name)
         if warm:
@@ -132,7 +132,7 @@ def test_reform_before_or_after_holder_creation_returns_same_values(
     mask, default, warm
 ):
     before_holder = build(mask)
-    del before_holder.person._holders["award"]
+    before_holder.person._holders.pop("award", None)
     after_holder = build(mask)
     if warm:
         after_holder.calculate("award", YEAR)

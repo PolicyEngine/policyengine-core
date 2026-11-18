@@ -892,11 +892,16 @@ class Simulation:
         self.calc = self.calculate
         self.df = self.calculate_dataframe
 
-        self.input_variables = [
-            variable.name
-            for variable in self.tax_benefit_system.variables.values()
-            if len(self.get_holder(variable.name).get_known_periods()) > 0
-        ]
+        # ``build_from_dict`` already populated ``input_variables`` when building
+        # from ``situation``; only recompute if later initialization steps
+        # (``populations``, ``dataset``, or ``reform``) may have changed holders.
+        if (
+            situation is None
+            or populations is not None
+            or dataset is not None
+            or self.reform is not None
+        ):
+            self.input_variables = self._collect_input_variables()
 
         self.situation_input = situation
         if self.situation_input is not None:
@@ -3289,6 +3294,26 @@ class Simulation:
                 return False
 
         return True
+
+    def _collect_input_variables(self) -> List[str]:
+        """Return active system variables that already have stored periods.
+
+        Iterate only over holders that already exist on each population so
+        untouched variables do not eagerly allocate empty ``Holder`` objects.
+        """
+        variables = self.tax_benefit_system.variables
+        input_variables = []
+        for population in self.populations.values():
+            entity_key = population.entity.key
+            for name, holder in population._holders.items():
+                variable = variables.get(name)
+                if (
+                    variable is not None
+                    and variable.entity.key == entity_key
+                    and len(holder.get_known_periods()) > 0
+                ):
+                    input_variables.append(name)
+        return input_variables
 
     def get_input_variables(self, include_computed_variables: bool = True) -> List[str]:
         """Return variable names stored as inputs on this simulation.

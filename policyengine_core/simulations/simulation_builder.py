@@ -186,7 +186,14 @@ class SimulationBuilder:
                 tax_benefit_system, input_dict, simulation
             )
 
-        simulation.input_variables = simulation._collect_input_variables()
+        recorded_input_names = {
+            name for name, _branch_name, _period in simulation._user_input_keys
+        }
+        simulation.input_variables = [
+            name
+            for name in simulation.tax_benefit_system.variables
+            if name in recorded_input_names
+        ]
 
         return simulation
 

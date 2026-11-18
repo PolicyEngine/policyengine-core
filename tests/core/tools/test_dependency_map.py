@@ -124,6 +124,7 @@ def test_trace_yaml_tests_records_parameter_and_variable_edges():
     assert stats == {
         "tests": 1,
         "skipped": 0,
+        "excluded": 0,
         "failed": 0,
         "outputs": 1,
         "outputErrors": 0,
@@ -201,6 +202,7 @@ def test_trace_yaml_tests_follows_entity_scoped_and_period_keyed_outputs(
     assert stats == {
         "tests": 2,
         "skipped": 1,
+        "excluded": 0,
         "failed": 0,
         "outputs": 2,
         "outputErrors": 0,
@@ -418,6 +420,93 @@ def test_coverage_does_not_carry_between_files(tmp_path: Path):
     assert (stats["tests"], stats["skipped"]) == (2, 0)
 
 
+def test_tests_outside_the_baseline_system_are_counted(tmp_path: Path):
+    write_tests(
+        tmp_path,
+        """
+- name: with reform
+  period: 2017-01
+  reforms: policyengine_core.country_template.reforms.some_reform
+  output: {income_tax: 150}
+- name: with extension
+  period: 2017-01
+  extensions: some_extension
+  output: {income_tax: 150}
+- name: inline parameter change
+  period: 2017-01
+  input: {salary: 1000, taxes.income_tax_rate: 0.5}
+  output: {income_tax: 500}
+- name: plain
+  period: 2017-01
+  input: {salary: 1000}
+  output: {income_tax: 150}
+""",
+    )
+
+    _, stats = trace_yaml_tests(CountryTaxBenefitSystem(), [tmp_path])
+
+    assert (stats["excluded"], stats["tests"]) == (3, 1)
+
+
+def test_unreadable_file_is_counted_and_later_files_are_traced(tmp_path: Path):
+    write_tests(tmp_path, "- {unclosed", "first.yaml")
+    write_tests(
+        tmp_path,
+        """
+- period: 2017-01
+  input: {salary: 1000}
+  output: {income_tax: 150}
+""",
+        "second.yaml",
+    )
+
+    (readers, _), stats = trace_yaml_tests(CountryTaxBenefitSystem(), [tmp_path])
+
+    assert (stats["failed"], stats["tests"]) == (1, 1)
+    assert readers["taxes.income_tax_rate"] == {"income_tax"}
+
+
+def test_test_with_invalid_input_is_counted_and_later_tests_are_traced(tmp_path: Path):
+    write_tests(
+        tmp_path,
+        """
+- period: 2017-01
+  input: 3
+  output: {income_tax: 0}
+- period: 2017-01
+  input: {1: 2}
+  output: {income_tax: 0}
+- period: 2017-01
+  input: {salary: 1000}
+  output: {income_tax: 150}
+""",
+    )
+
+    (readers, _), stats = trace_yaml_tests(CountryTaxBenefitSystem(), [tmp_path])
+
+    assert (stats["failed"], stats["tests"]) == (2, 1)
+    assert readers["taxes.income_tax_rate"] == {"income_tax"}
+
+
+def test_nested_period_mappings_are_followed_to_each_period(tmp_path: Path):
+    write_tests(
+        tmp_path,
+        """
+- period: 2017-01
+  input: {salary: 1000}
+  output:
+    income_tax:
+      2017:
+        2017-01: 150
+        2017-02: 150
+""",
+    )
+
+    _, stats = trace_yaml_tests(CountryTaxBenefitSystem(), [tmp_path])
+
+    assert (stats["outputs"], stats["outputErrors"]) == (2, 0)
+
+
 # ----- Microdata ----- #
 
 
@@ -501,6 +590,14 @@ def test_fingerprint_ignores_compiled_files(package_root: Path):
     assert model_fingerprint(package_root) == before
 
 
+def test_fingerprint_ignores_hidden_files(package_root: Path):
+    before = model_fingerprint(package_root)
+
+    (package_root / "variables" / ".DS_Store").write_bytes(b"folder settings")
+
+    assert model_fingerprint(package_root) == before
+
+
 # ----- The map and the command ----- #
 
 
@@ -557,3 +654,57 @@ def test_command_writes_the_map(tmp_path: Path, monkeypatch, capsys):
     assert written["populations"]["tests"]["tests"] == 2
     assert written["readers"]["taxes.income_tax_rate"] == ["income_tax"]
     assert "tests: 2" in capsys.readouterr().err
+
+
+def run_command(monkeypatch, *arguments: str) -> int:
+    monkeypatch.setattr(sys, "argv", ["policyengine-core", *arguments])
+    with pytest.raises(SystemExit) as command_exit:
+        policyengine_command.main()
+    return command_exit.value.code
+
+
+def test_command_says_when_tests_were_skipped(tmp_path: Path, monkeypatch, capsys):
+    tests_directory = tmp_path / "tests"
+    tests_directory.mkdir()
+    write_tests(
+        tests_directory,
+        """
+- period: 2017-01
+  input: {salary: 1000}
+  output: {income_tax: 150}
+- period: 2017-01
+  input: {salary: 2000}
+  output: {income_tax: 300}
+""",
+    )
+
+    exit_code = run_command(
+        monkeypatch,
+        "dependency-map",
+        "--country-package",
+        TEMPLATE_PACKAGE,
+        "--tests-root",
+        str(tests_directory),
+        "--output",
+        str(tmp_path / "map.json"),
+    )
+
+    assert exit_code == 0
+    assert "--every-test" in capsys.readouterr().err
+
+
+def test_command_rejects_a_missing_tests_root(tmp_path: Path, monkeypatch, capsys):
+    exit_code = run_command(
+        monkeypatch,
+        "dependency-map",
+        "--country-package",
+        TEMPLATE_PACKAGE,
+        "--tests-root",
+        str(tmp_path / "missing"),
+        "--output",
+        str(tmp_path / "map.json"),
+    )
+
+    assert exit_code == 2
+    assert "missing" in capsys.readouterr().err
+    assert not (tmp_path / "map.json").exists()

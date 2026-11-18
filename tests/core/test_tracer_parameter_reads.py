@@ -11,7 +11,9 @@ import pytest
 
 from policyengine_core.country_template.entities import Person
 from policyengine_core.parameters import Parameter
-from policyengine_core.periods import MONTH, YEAR
+from policyengine_core.parameters.operations.get_parameter import get_parameter
+from policyengine_core.periods import ETERNITY, MONTH, YEAR
+from policyengine_core.tracers import SimpleTracer
 from policyengine_core.variables import Variable
 from tests.fixtures.tracing import assert_untraced
 
@@ -371,6 +373,156 @@ def test_traced_and_untraced_undated_reads_agree(
     np.testing.assert_array_equal(traced, untraced)
 
 
+def read_clone(rate):
+    return rate.clone()("2017-01-01")
+
+
+def read_values_list(rate):
+    return rate.values_list[0].value
+
+
+@pytest.mark.parametrize(
+    "read_rate", [read_clone, read_values_list], ids=["clone", "values-list"]
+)
+def test_parameter_used_outside_a_dated_call_is_recorded_for_all_instants(
+    system, traced_simulation, read_rate
+):
+    def formula(person, period, parameters):
+        return person.filled_array(read_rate(parameters.taxes.income_tax_rate))
+
+    define_variable(system, "rate_history", formula)
+    simulation = traced_simulation()
+
+    simulation.calculate("rate_history", JANUARY)
+
+    assert recorded_reads(simulation, "rate_history") == [
+        ("taxes.income_tax_rate", ETERNITY, "default", None)
+    ]
+
+
+def test_node_children_read_before_an_instant_are_recorded_at_the_node(
+    system, traced_simulation
+):
+    def formula(person, period, parameters):
+        rate = parameters.taxes.children["income_tax_rate"]
+        return person.filled_array(rate(period))
+
+    define_variable(system, "rate_from_children", formula)
+    simulation = traced_simulation()
+
+    simulation.calculate("rate_from_children", JANUARY)
+
+    assert recorded_names(simulation, "rate_from_children") == ["taxes"]
+
+
+def test_scale_brackets_read_before_an_instant_are_recorded_at_the_scale(
+    system, traced_simulation
+):
+    def formula(person, period, parameters):
+        bracket = parameters.taxes.social_security_contribution.brackets[1]
+        return person.filled_array(bracket.rate(period))
+
+    define_variable(system, "rate_from_brackets", formula)
+    simulation = traced_simulation()
+
+    simulation.calculate("rate_from_brackets", JANUARY)
+
+    assert recorded_names(simulation, "rate_from_brackets") == [SOCIAL_SECURITY_SCALE]
+
+
+def test_child_found_by_path_on_the_undated_tree_is_recorded(system, traced_simulation):
+    def formula(person, period, parameters):
+        rate = parameters.get_child("taxes.income_tax_rate")
+        return person.filled_array(rate(period))
+
+    define_variable(system, "rate_by_path", formula)
+    simulation = traced_simulation()
+
+    simulation.calculate("rate_by_path", JANUARY)
+
+    assert recorded_names(simulation, "rate_by_path") == ["taxes.income_tax_rate"]
+
+
+def test_get_parameter_on_the_undated_tree_is_recorded(system, traced_simulation):
+    def formula(person, period, parameters):
+        rate = get_parameter(parameters.taxes, "income_tax_rate")
+        return person.filled_array(rate(period))
+
+    define_variable(system, "rate_from_helper", formula)
+    simulation = traced_simulation()
+
+    simulation.calculate("rate_from_helper", JANUARY)
+
+    assert recorded_names(simulation, "rate_from_helper") == ["taxes"]
+
+
+def test_labels_of_undated_parameters_are_not_reads(system, traced_simulation):
+    def formula(person, period, parameters):
+        rate = parameters.taxes.income_tax_rate
+        return person.filled_array(len(rate.name) + len(rate.description))
+
+    define_variable(system, "rate_label_size", formula)
+    simulation = traced_simulation()
+
+    simulation.calculate("rate_label_size", JANUARY)
+
+    assert recorded_reads(simulation, "rate_label_size") == []
+
+
+# ----- Reads of a child that is absent ----- #
+
+
+def read_absent_with_default(taxes):
+    return getattr(taxes, "no_such_rate", 0.0)
+
+
+def read_absent_with_hasattr(taxes):
+    return float(hasattr(taxes, "no_such_rate"))
+
+
+def read_absent_by_key(taxes):
+    try:
+        return taxes["no_such_rate"]
+    except KeyError:
+        return 0.0
+
+
+@pytest.mark.parametrize(
+    "read_absent",
+    [read_absent_with_default, read_absent_with_hasattr, read_absent_by_key],
+    ids=["getattr-default", "hasattr", "key"],
+)
+def test_looking_for_an_absent_child_records_the_node(
+    system, traced_simulation, read_absent
+):
+    def formula(person, period, parameters):
+        return person.filled_array(read_absent(parameters(period).taxes))
+
+    define_variable(system, "absent_rate", formula)
+    child_names = list(system.parameters(INSTANT).taxes)
+    simulation = traced_simulation()
+
+    assert simulation.calculate("absent_rate", JANUARY)[0] == 0
+
+    assert recorded_reads(simulation, "absent_rate") == [
+        ("taxes", INSTANT, "default", child_names)
+    ]
+
+
+def test_absent_child_on_the_undated_tree_records_the_node(system, traced_simulation):
+    def formula(person, period, parameters):
+        return person.filled_array(float(hasattr(parameters.taxes, "no_such_rate")))
+
+    define_variable(system, "undated_absent", formula)
+    simulation = traced_simulation()
+
+    assert simulation.calculate("undated_absent", JANUARY)[0] == 0
+
+    assert recorded_reads(simulation, "undated_absent") == [
+        ("taxes", ETERNITY, "default", None)
+    ]
+
+
 # ----- Reads core makes for a variable ----- #
 
 
@@ -556,3 +708,11 @@ def test_trace_marks_a_formula_skipped_by_defined_for(system, traced_simulation)
 
     assert trace_node(simulation, "masked_rate").formula_ran is False
     assert recorded_reads(simulation, "masked_rate") == []
+
+
+def test_simple_tracer_accepts_a_formula_run(system, make_simulation):
+    simulation = make_simulation(system, {"salary": 2000}, JANUARY)
+    simulation.trace = True
+    simulation.tracer = SimpleTracer()
+
+    assert simulation.calculate("income_tax", JANUARY)[0] > 0

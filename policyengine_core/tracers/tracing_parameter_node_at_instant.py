@@ -66,6 +66,10 @@ def _wrapped(wrapper: object, attribute: str, key: str) -> object:
         raise AttributeError(key) from None
 
 
+# Attributes of an undated parameter that describe it and hold no values.
+_UNDATED_LABELS = frozenset({"name", "description", "documentation", "file_path"})
+
+
 def describe_tax_scale(scale: TaxScaleLike) -> dict[str, object]:
     """Describe a tax scale in plain values a trace can serialize as JSON.
 
@@ -113,7 +117,10 @@ class TracingParameterNode:
 
     Children read before an instant is chosen, as in
     ``parameters.gov.rate(period)``, are returned as tracing views too. Any
-    other attribute is read from the wrapped node.
+    other attribute, such as ``values_list``, ``children`` or ``clone``, is
+    read from the wrapped node. What the formula does with it cannot be
+    followed, so the read is recorded at this node's path for all instants
+    (period ``eternity``, no value); it stands for everything below the node.
 
     The wrapped node is never modified, so tracing one simulation does not
     trace the tax-benefit system it shares with other simulations, branches
@@ -158,12 +165,31 @@ class TracingParameterNode:
             return TracingParameterNode(child, self.tracer, self.branch_name)
         return child
 
+    def _record_read_for_all_instants(self, key: str) -> None:
+        if key.startswith("__") or key in _UNDATED_LABELS:
+            return
+        self.tracer.record_parameter_access(
+            self.parameter_node.name, periods.ETERNITY, self.branch_name, None
+        )
+
     def __getattr__(self, key: str):
-        return self._traced_child(getattr(_wrapped(self, "parameter_node", key), key))
+        parameter_node = _wrapped(self, "parameter_node", key)
+        try:
+            attribute = getattr(parameter_node, key)
+        except AttributeError:
+            self._record_read_for_all_instants(key)
+            raise
+        if isinstance(attribute, parameters.AtInstantLike):
+            return self._traced_child(attribute)
+        self._record_read_for_all_instants(key)
+        return attribute
 
     def __getitem__(self, key: object) -> object:
         # A tax scale gives its brackets by position.
         return self._traced_child(self.parameter_node[key])
+
+    def get_child(self, path: str) -> object:
+        return self._traced_child(self.parameter_node.get_child(path))
 
     def __repr__(self) -> str:
         return repr(self.parameter_node)
@@ -197,13 +223,22 @@ class TracingParameterNodeAtInstant:
             node_at_instant, parameters.ParameterNodeAtInstant
         ):
             return TracingChildren(self)
-        return self.get_traced_child(getattr(node_at_instant, key), key)
+        try:
+            child = getattr(node_at_instant, key)
+        except AttributeError:
+            self._record_absent_child_read(key)
+            raise
+        return self.get_traced_child(child, key)
 
     def __getitem__(
         self,
         key: str,
     ) -> Union[TracingParameterNodeAtInstant, Child]:
-        child = self.parameter_node_at_instant[key]
+        try:
+            child = self.parameter_node_at_instant[key]
+        except KeyError:
+            self._record_absent_child_read(key)
+            raise
         return self.get_traced_child(child, key)
 
     def __iter__(self) -> Iterator:
@@ -216,6 +251,14 @@ class TracingParameterNodeAtInstant:
 
     def __repr__(self) -> str:
         return repr(self.parameter_node_at_instant)
+
+    def _record_absent_child_read(self, key: object) -> None:
+        """Record a look-up that found no child: a value added there matters."""
+        is_special_name = isinstance(key, str) and key.startswith("__")
+        if not is_special_name and isinstance(
+            self.parameter_node_at_instant, parameters.ParameterNodeAtInstant
+        ):
+            self._record_children_read()
 
     def _record_children_read(self) -> list[str]:
         """Record that the formula read which children this node has.

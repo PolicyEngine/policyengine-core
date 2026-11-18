@@ -12,7 +12,9 @@ under ``FullTracer`` and folds the trace trees into two edge sets:
 
 Parameter paths are recorded at the node the formula indexed, so a bracket
 read ``p.base.calc(age)`` is recorded as ``gov.irs.credits.ctc.amount.base``.
-A read of which children a node has is recorded at the node's own path.
+A read of which children a node has, or of a parameter or node outside a dated
+call (its value history, for example), is recorded at that node's own path and
+stands for everything below it; the empty path is the whole tree.
 
 Populations
 -----------
@@ -52,7 +54,10 @@ The map is one JSON object::
     populations     per population traced, its selection and counts:
                     tests: root, everyTest, tests (situations built), skipped
                     (tests not traced because their outputs were covered),
-                    failed (situations that could not be built), outputs
+                    excluded (tests with reforms, extensions or inline
+                    parameter changes), failed (situations that could not be
+                    built, and test files or entries that could not be read),
+                    outputs
                     (variables calculated), outputErrors (output
                     calculations that raised; their edges are whatever
                     ran before the error); microdata: households, year,
@@ -164,12 +169,12 @@ def iter_output_variables(
     singular_keys = set() if system is None else {e.key for e in system.entities}
     plural_keys = set() if system is None else {e.plural for e in system.entities}
 
-    def variable_periods(name: str, expected: object):
+    def variable_periods(name: str, expected: object, period: object = None):
         if isinstance(expected, dict):
-            for period in expected:
-                yield name, period
+            for nested_period, nested_expected in expected.items():
+                yield from variable_periods(name, nested_expected, nested_period)
         else:
-            yield name, None
+            yield name, period
 
     for key, value in output.items():
         if system is None or system.get_variable(key) is not None:
@@ -203,21 +208,42 @@ def _load_yaml_tests(file: Path) -> list[object]:
     return tests if isinstance(tests, list) else [tests]
 
 
+def _runs_on_baseline(test: YamlTest) -> bool:
+    if test.get("reforms") or test.get("extensions"):
+        return False
+    inputs = test.get("input")
+    if not isinstance(inputs, dict):
+        return True  # building the situation will report an invalid input
+    # A dotted key is an inline parameter change.
+    return not any(isinstance(key, str) and "." in key for key in inputs)
+
+
 def iter_yaml_tests(
-    paths: Iterable[Path], system: Optional[TaxBenefitSystem] = None
+    paths: Iterable[Path],
+    system: Optional[TaxBenefitSystem] = None,
+    stats: Optional[dict[str, int]] = None,
 ) -> Iterator[tuple[Path, YamlTest]]:
-    """Yield (file, test) for the tests that run on the baseline system."""
+    """Yield (file, test) for the tests that run on the baseline system.
+
+    With ``stats``, adds to its ``excluded`` count the tests that change the
+    system, and to ``failed`` the files and entries that cannot be read.
+    """
+    counts = {"excluded": 0, "failed": 0} if stats is None else stats
     for path in paths:
         for file in _yaml_files(path):
-            for test in _load_yaml_tests(file):
+            try:
+                tests = _load_yaml_tests(file)
+            except yaml.YAMLError:
+                counts["failed"] += 1
+                continue
+            for test in tests:
                 if not isinstance(test, dict):
-                    continue
-                inputs = test.get("input") or {}
-                if test.get("reforms") or test.get("extensions"):
-                    continue
-                if any("." in key for key in inputs):
-                    continue  # inline parameter change: not the baseline system
-                if any(True for _ in iter_output_variables(test.get("output"), system)):
+                    counts["failed"] += 1
+                elif test.get("output") and not _runs_on_baseline(test):
+                    counts["excluded"] += 1
+                elif any(
+                    True for _ in iter_output_variables(test.get("output"), system)
+                ):
                     yield file, test
 
 
@@ -261,10 +287,17 @@ def trace_yaml_tests(
     """
     readers: dict[str, set[str]] = {}
     consumers: dict[str, set[str]] = {}
-    stats = {"tests": 0, "skipped": 0, "failed": 0, "outputs": 0, "outputErrors": 0}
+    stats = {
+        "tests": 0,
+        "skipped": 0,
+        "excluded": 0,
+        "failed": 0,
+        "outputs": 0,
+        "outputErrors": 0,
+    }
     current_file: Optional[Path] = None
     covered_formulas: set[FormulaKey] = set()
-    for index, (file, test) in enumerate(iter_yaml_tests(paths, system)):
+    for index, (file, test) in enumerate(iter_yaml_tests(paths, system, stats)):
         if file != current_file:
             current_file = file
             covered_formulas = set()
@@ -351,6 +384,7 @@ def _hashable_files(root: Path) -> list[Path]:
         if file.is_file()
         and "__pycache__" not in file.parts
         and file.suffix not in COMPILED_SUFFIXES
+        and not any(part.startswith(".") for part in file.relative_to(root).parts)
     )
 
 
@@ -459,6 +493,8 @@ def write_dependency_map(payload: dict, output: Path = DEFAULT_OUTPUT) -> Path:
 
 def main(parser: argparse.ArgumentParser) -> int:
     args = parser.parse_args()
+    if args.tests_root and not Path(args.tests_root).exists():
+        parser.error(f"--tests-root does not exist: {args.tests_root}")
 
     def progress(message: str) -> None:
         print(message, file=sys.stderr, flush=True)
@@ -483,6 +519,12 @@ def main(parser: argparse.ArgumentParser) -> int:
             if key not in ("root", "everyTest")
         )
         progress(f"{name}: {summary}")
+        if counts.get("skipped"):
+            progress(
+                f"{counts['skipped']} tests were skipped because their outputs' "
+                "formulas had already run in the same file. They can reach other "
+                "formulas, so use --every-test for the complete map."
+            )
     progress(
         f"wrote {output}: {len(payload['readers'])} parameter paths, "
         f"{len(payload['consumers'])} consumed variables, "

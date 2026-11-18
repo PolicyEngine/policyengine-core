@@ -150,6 +150,16 @@ def _reads_own_simulation(person, period, parameters):
     return _zeros(person)
 
 
+def _reads_a_dataframe(person, period, parameters):
+    columns = ["yearly_grant", "yearly_tenure"]
+    simulation = person.simulation
+    RECEIVED["calculate_dataframe"] = simulation.calculate_dataframe(columns, period)
+    RECEIVED["calculate_dataframe use_weights=False"] = simulation.calculate_dataframe(
+        columns, period, use_weights=False
+    )
+    return _zeros(person)
+
+
 def _reads_a_branch(person, period, parameters):
     branch = person.simulation.get_branch("probe_branch")
     RECEIVED["branch calculate"] = branch.calculate("yearly_grant", period)
@@ -287,6 +297,7 @@ def _probe(name, formula, definition_period=YEAR):
 
 PROBES = [
     _probe("probe_reads_own_simulation", _reads_own_simulation),
+    _probe("probe_reads_a_dataframe", _reads_a_dataframe),
     _probe("probe_reads_a_branch", _reads_a_branch),
     _probe("probe_reads_its_baseline", _reads_its_baseline),
     _probe("probe_builds_a_microsimulation", _builds_a_microsimulation),

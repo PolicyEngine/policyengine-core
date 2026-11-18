@@ -3,6 +3,7 @@ from typing import Dict, Optional, Tuple, Type
 
 from microdf import MicroDataFrame, MicroSeries
 import numpy as np
+import pandas as pd
 from policyengine_core.data.dataset import Dataset
 from policyengine_core.enums import EnumArray
 from policyengine_core.periods import Period
@@ -87,7 +88,8 @@ class Microsimulation(Simulation):
     another of these calls runs (by core, or by a formula) returns a plain
     array, with enums left as codes, as a ``Simulation`` does: core and
     formulas use the values, not the weights. Passing ``use_weights`` or
-    ``decode_enums`` overrides either default.
+    ``decode_enums`` overrides either default. ``calculate_dataframe`` returns
+    the same frame wherever it is called from.
     """
 
     def get_weights(
@@ -262,11 +264,41 @@ class Microsimulation(Simulation):
         map_to: str = None,
         use_weights: bool = True,
     ) -> MicroDataFrame:
+        """Calculate ``variable_names`` for ``period`` as a data frame.
+
+        Inside a calculation or not, columns hold enum member names, and a
+        frame with ``use_weights`` carries the weights of the first variable's
+        entity (or of ``map_to``). Columns of other entities are mapped to it.
+        """
         if period is not None and not isinstance(period, Period):
             period = get_period(period)
         elif period is None and self.default_calculation_period is not None:
             period = get_period(self.default_calculation_period)
-        values = super().calculate_dataframe(variable_names, period, map_to)
+
+        for variable_name in variable_names:
+            if variable_name not in self.tax_benefit_system.variables:
+                raise ValueError(f"Variable {variable_name} does not exist.")
+        entities = [
+            self.tax_benefit_system.get_variable(variable_name).entity.key
+            for variable_name in variable_names
+        ]
+        frame_entity = map_to or entities[0]
+        column_map_to = map_to
+        if any(entity != frame_entity for entity in entities):
+            column_map_to = frame_entity
+
+        # ``Simulation.calculate_dataframe`` reads each column with the default
+        # arguments, which would build weights for every column here and give
+        # enum codes inside a calculation.
+        values = pd.DataFrame()
+        for variable_name in variable_names:
+            values[variable_name] = self.calculate(
+                variable_name,
+                period,
+                column_map_to,
+                use_weights=False,
+                decode_enums=True,
+            )
         if not use_weights:
             return values
         weights = self.get_weights(variable_names[0], period, map_to)

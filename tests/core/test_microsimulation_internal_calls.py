@@ -22,6 +22,7 @@ from contextlib import contextmanager
 from unittest import mock
 
 import numpy as np
+import pandas as pd
 import pytest
 from microdf import MicroDataFrame, MicroSeries
 
@@ -277,6 +278,56 @@ def test_top_level_calculate_dataframe_is_weighted():
     assert result["pay_and_grant"].tolist() == [139.5, 279.0, 97.5]
     assert result["yearly_tenure"].tolist() == TENURE_NAMES
     np.testing.assert_array_equal(result.weights, PERSON_WEIGHTS)
+
+
+def test_calculate_dataframe_in_a_formula_has_names_and_weights():
+    # A frame is for reading by column, inside a formula or not: a filter such
+    # as ``frame[frame.yearly_tenure == "OWNER"]`` needs member names.
+    microsimulation().calculate("probe_reads_a_dataframe", DATASET_YEAR)
+
+    weighted = RECEIVED["calculate_dataframe"]
+    assert isinstance(weighted, MicroDataFrame)
+    assert weighted["yearly_grant"].tolist() == GRANT
+    assert weighted["yearly_tenure"].tolist() == TENURE_NAMES
+    np.testing.assert_array_equal(weighted.weights, PERSON_WEIGHTS)
+
+    unweighted = RECEIVED["calculate_dataframe use_weights=False"]
+    assert type(unweighted) is pd.DataFrame
+    assert unweighted["yearly_grant"].tolist() == GRANT
+    assert unweighted["yearly_tenure"].tolist() == TENURE_NAMES
+
+
+@pytest.mark.parametrize(
+    "use_weights,expected_weight_reads",
+    [(True, ["yearly_grant"]), (False, [])],
+)
+def test_calculate_dataframe_builds_weights_only_for_the_frame(
+    use_weights, expected_weight_reads
+):
+    simulation_under_test = microsimulation()
+
+    with weight_reads() as variables:
+        simulation_under_test.calculate_dataframe(
+            ["yearly_grant", "pay_and_grant", "yearly_tenure"],
+            use_weights=use_weights,
+        )
+
+    assert variables == expected_weight_reads
+
+
+def test_calculate_dataframe_maps_columns_to_the_first_variables_entity():
+    result = microsimulation().calculate_dataframe(
+        ["yearly_grant", "household_yearly_grant"]
+    )
+
+    assert result["yearly_grant"].tolist() == GRANT
+    assert result["household_yearly_grant"].tolist() == [12.0, 12.0, 36.0]
+    np.testing.assert_array_equal(result.weights, PERSON_WEIGHTS)
+
+
+def test_calculate_dataframe_rejects_an_unknown_variable():
+    with pytest.raises(ValueError, match="no_such_variable does not exist"):
+        microsimulation().calculate_dataframe(["yearly_grant", "no_such_variable"])
 
 
 def test_top_level_explicit_arguments_win():

@@ -23,6 +23,18 @@ from .helpers import (
 EXCLUDED_PARAMETER_CHILD_NAMES = ["reference", "__pycache__"]
 
 
+def _is_parameter_directory(directory_name: str) -> bool:
+    """
+    Whether a subdirectory of a parameter directory can hold parameters.
+
+    Python writes ``__pycache__`` into any parameter directory that is also an
+    imported package, so loading it would make the tree depend on whether
+    bytecode has been written. Hidden directories, such as
+    ``.ipynb_checkpoints``, hold tool state rather than parameters.
+    """
+    return directory_name != "__pycache__" and not directory_name.startswith(".")
+
+
 class ParameterNode(AtInstantLike):
     """
     A node in the legislation `parameter tree <https://openfisca.org/doc/coding-the-legislation/legislation_parameters.html>`_.
@@ -123,6 +135,8 @@ class ParameterNode(AtInstantLike):
 
                 elif os.path.isdir(child_path):
                     child_name = os.path.basename(child_path)
+                    if not _is_parameter_directory(child_name):
+                        continue
                     child_name_expanded = _compose_name(name, child_name)
                     child = ParameterNode(
                         child_name_expanded, directory_path=child_path

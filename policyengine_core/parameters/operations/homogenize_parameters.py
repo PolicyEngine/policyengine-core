@@ -28,14 +28,6 @@ def homogenize_parameter_structures(
         if isinstance(node, ParameterNode):
             breakdown = get_breakdown_variables(node)
             node = homogenize_parameter_node(node, breakdown, variables, default_value)
-    # The nodes put in place of missing breakdown values are set straight into
-    # ``children``, without a ``parent``. Link them, so that changes below
-    # them clear the nodes at instant cached above them.
-    for node in (root, *root.get_descendants()):
-        if isinstance(node, ParameterNode):
-            for child in node.children.values():
-                if getattr(child, "parent", None) is None:
-                    child.parent = node
     return root
 
 

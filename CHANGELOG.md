@@ -1,3 +1,32 @@
+## [3.37.1] - 2026-11-19
+
+### Fixed
+
+- Loaded parameter trees now link every scale bracket and every node built by breakdown homogenization to the node that holds it, as a cloned tree already did, so updating one clears cached ancestor values and marks ancestors as modified. The bracket that the country template reform appends is linked to its scale too. A child whose name matches a node's own attribute or method (such as `parent`, `children` or `modified`) is no longer set as an attribute, so it can no longer replace the node's own state. Reading a homogenized breakdown position as an attribute, such as `amount.B`, now returns the `ParameterNode` that homogenization built there instead of the placeholder `Parameter` it replaced, so calling it returns a node at that instant and calling `update` on it raises, while lookups at an instant, such as `amount("2021-01-01").B`, are unchanged.
+
+
+## [3.37.0] - 2026-11-19
+
+### Added
+
+- `use_weights=None` and `decode_enums=None`, now the defaults of `Microsimulation.calculate`, `calculate_add` and `calculate_divide`, choose by caller instead of meaning `False`: weights (and, in `calculate`, enum names) outside a calculation, neither inside one.
+
+### Changed
+
+- `Microsimulation.calculate`, `calculate_add` and `calculate_divide` no longer build weights for core's internal reads. Formula code that calls these methods directly now gets a NumPy array with enum codes instead of a weighted `MicroSeries`; calls from outside a calculation stay weighted, and `calculate_dataframe` returns the same frame everywhere, building weights once.
+
+### Fixed
+
+- In a `Microsimulation`, enum reads with ADD or DIVIDE now match a `Simulation`, so a top-level `calculate_divide` of an Enum over a year returns codes unless `decode_enums=True` (#658), and `use_weights=False` without `map_to` now returns a plain array from `calculate_add`, `calculate_divide` and a `calculate` of a FLOW variable over a period of another length, which returned a weighted `MicroSeries` before.
+
+
+## [3.36.2] - 2026-11-19
+
+### Fixed
+
+- `Simulation.__init__` and `SimulationBuilder.build_from_dict` now build `input_variables` from recorded inputs without eagerly allocating empty `Holder` objects for every variable in the system, so `memory_config` set after setup applies to holders created afterwards (values can go to disk, and `variables_to_drop` variables are no longer stored).
+
+
 ## [3.36.1] - 2026-11-15
 
 ### Fixed

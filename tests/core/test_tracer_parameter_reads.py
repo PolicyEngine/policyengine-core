@@ -502,12 +502,74 @@ def test_looking_for_an_absent_child_records_the_node(
     ]
 
 
-def test_abolition_check_on_a_tracing_root_records_no_child_list(
+def read_rate_by_key_with_default(node, key):
+    try:
+        return node[key]
+    except KeyError:
+        return 0.0
+
+
+def taxes_node(parameters_at_instant):
+    return parameters_at_instant.taxes
+
+
+def root_node(parameters_at_instant):
+    return parameters_at_instant
+
+
+@pytest.mark.parametrize(
+    "select_node, missing_path",
+    [(taxes_node, "taxes.no_such_rate"), (root_node, "no_such_rate")],
+    ids=["below-a-node", "below-the-root"],
+)
+def test_key_look_up_that_finds_no_child_records_the_missing_path(
+    system, traced_simulation, select_node, missing_path
+):
+    def formula(person, period, parameters):
+        node = select_node(parameters(period))
+        return person.filled_array(read_rate_by_key_with_default(node, "no_such_rate"))
+
+    define_variable(system, "rate_by_key", formula)
+    simulation = traced_simulation()
+
+    assert simulation.calculate("rate_by_key", JANUARY)[0] == 0
+
+    assert recorded_reads(simulation, "rate_by_key") == [
+        (missing_path, INSTANT, "default", None)
+    ]
+
+
+def test_key_look_up_before_a_parameter_starts_records_that_parameter(
+    system, traced_simulation
+):
+    """A value given to the parameter at the instant read would change the
+    result, so a reform of it must find this formula among its readers."""
+    future_rate = Parameter(
+        "taxes.future_rate", {"values": {"2030-01-01": {"value": 0.3}}}
+    )
+    system.parameters.taxes.add_child("future_rate", future_rate)
+
+    def formula(person, period, parameters):
+        taxes = parameters(period).taxes
+        return person.filled_array(read_rate_by_key_with_default(taxes, "future_rate"))
+
+    define_variable(system, "rate_from_2030", formula)
+    simulation = traced_simulation()
+
+    assert simulation.calculate("rate_from_2030", JANUARY)[0] == 0
+
+    assert recorded_reads(simulation, "rate_from_2030") == [
+        (future_rate.name, INSTANT, "default", None)
+    ]
+
+
+def test_abolition_check_on_a_tracing_root_records_only_the_variables_switch(
     system, traced_simulation
 ):
     """A country package can switch tracing on in its own parameter root, so
     core's abolition check, a key look-up per variable, reaches a traced node.
-    Most variables have no abolition parameter there."""
+    Most variables have no abolition parameter there, and the miss is recorded
+    at the switch's path, without the names of the other switches."""
     system.parameters.add_child(
         "gov",
         ParameterNode(
@@ -522,7 +584,12 @@ def test_abolition_check_on_a_tracing_root_records_no_child_list(
 
     simulation.calculate("income_tax", JANUARY)
 
-    assert "gov.abolitions" not in recorded_names(simulation, "income_tax")
+    abolition_reads = [
+        read
+        for read in recorded_reads(simulation, "income_tax")
+        if read[0].startswith("gov")
+    ]
+    assert abolition_reads == [("gov.abolitions.income_tax", INSTANT, "default", None)]
 
 
 def test_absent_child_on_the_undated_tree_records_the_node(system, traced_simulation):

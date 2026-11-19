@@ -11,6 +11,7 @@ from policyengine_core.country_template import (
     Microsimulation,
 )
 from policyengine_core.country_template.entities import Person
+from policyengine_core.parameters import ParameterNode
 from policyengine_core.periods import MONTH
 from policyengine_core.scripts import policyengine_command
 from policyengine_core.tools.dependency_map import (
@@ -177,6 +178,46 @@ def test_abolition_switches_are_not_edges():
     readers, _ = collect_edges(SimpleNamespace(tracer=tracer))
 
     assert readers == {"gov.tax.rate": {"income_tax"}}
+
+
+class replacement_payment(Variable):
+    value_type = float
+    entity = Person
+    definition_period = MONTH
+    label = "Paid only while the basic income is abolished"
+
+    def formula(person, period, parameters):
+        basic_income_abolished = parameters(period).gov.abolitions.basic_income
+        return person.filled_array(100.0 * basic_income_abolished)
+
+
+def test_formula_reading_another_variables_abolition_switch_keeps_its_edge(
+    system, make_simulation
+):
+    """Only core's check of a variable's own switch is left out of the map.
+    A formula that reads another variable's switch changes with it."""
+    system.parameters.add_child(
+        "gov",
+        ParameterNode(
+            "gov",
+            data={"abolitions": {"basic_income": {"2015-01-01": {"value": False}}}},
+        ),
+    )
+    system.add_variable(replacement_payment)
+    simulation = make_simulation(system, {"salary": 1000}, "2017-01")
+    simulation.trace = True
+    # A country package can trace its own parameter root, which sends core's
+    # abolition check for every variable through this simulation's tracer.
+    system.parameters.trace = True
+    system.parameters.tracer = simulation.tracer
+    system.parameters.branch_name = "default"
+
+    simulation.calculate("replacement_payment", "2017-01")
+    simulation.calculate("basic_income", "2017-01")
+    readers, _ = collect_edges(simulation)
+
+    assert readers["gov.abolitions.basic_income"] == {"replacement_payment"}
+    assert "gov.abolitions.replacement_payment" not in readers
 
 
 def test_trace_yaml_tests_follows_entity_scoped_and_period_keyed_outputs(

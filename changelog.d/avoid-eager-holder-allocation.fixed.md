@@ -1,0 +1,1 @@
+`Simulation.__init__` and `SimulationBuilder.build_from_dict` now build `input_variables` from recorded inputs without eagerly allocating empty `Holder` objects for every variable in the system, so `memory_config` set after setup applies to holders created afterwards (values can go to disk, and `variables_to_drop` variables are no longer stored).

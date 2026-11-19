@@ -234,10 +234,10 @@ def test_storage_from_a_pickle_with_an_empty_set_still_works():
 def test_simulation_storages_have_no_sets_of_their_own(tax_benefit_system):
     simulation = build_simulation(tax_benefit_system)
     simulation.calculate("disposable_income", JANUARY)
+    simulation.get_holder("postal_code")
 
     storages = _storages(simulation)
-    # One storage per variable, as in every simulation.
-    assert len(storages) == len(tax_benefit_system.variables)
+    assert storages and set(storages) < set(tax_benefit_system.variables)
     assert all(storage._shared is _NOTHING_SHARED for storage in storages.values())
 
     copy = simulation.clone()
@@ -251,6 +251,8 @@ def test_branch_storages_have_a_set_only_for_the_arrays_they_share(
 ):
     simulation = build_simulation(tax_benefit_system)
     simulation.calculate("disposable_income", JANUARY)
+    # Include an empty storage so the branch checks unpopulated storages too.
+    simulation.get_holder("postal_code")
     with_arrays = {
         name for name, storage in _storages(simulation).items() if storage._arrays
     }

@@ -242,3 +242,179 @@ def test__given_branch_inherits_dataset_inputs__then_safe_exports_include_them(
     assert "salary" in exported_data
     assert "pseudo_input_for_safe_export" not in exported_data
     assert "salary" in branch.true_input_variables
+
+
+def test__given_situation_simulation__then_untouched_variables_have_no_holders(
+    isolated_tax_benefit_system,
+):
+    situation = {
+        "persons": {"Alicia": {"salary": {"2022-01": 1000}}},
+        "households": {"_": {"parents": ["Alicia"]}},
+    }
+
+    built = SimulationBuilder().build_from_dict(isolated_tax_benefit_system, situation)
+    simulation = CountryTemplateSimulation(
+        tax_benefit_system=isolated_tax_benefit_system,
+        situation=situation,
+    )
+    cloned = simulation.clone()
+
+    for sim in (built, simulation, cloned):
+        assert sim.input_variables == ["salary"]
+        assert set(sim.persons._holders) == {"salary"}
+        assert sim.household._holders == {}
+        assert "income_tax" not in sim.persons._holders
+        assert "rent" not in sim.household._holders
+
+
+def test__given_dataset_simulation__then_untouched_variables_have_no_holders(
+    isolated_tax_benefit_system,
+):
+    simulation = _safe_export_simulation(isolated_tax_benefit_system)
+
+    assert "salary" in simulation.input_variables
+    assert "income_tax" not in simulation.persons._holders
+    assert "rent" not in simulation.household._holders
+
+
+def test__given_reform_removing_input_variable__then_init_excludes_it_without_allocating_holders(
+    isolated_tax_benefit_system,
+):
+    from policyengine_core.reforms import Reform
+
+    class DropSalaryReform(Reform):
+        def apply(self):
+            del self.variables["salary"]
+
+    situation = {
+        "persons": {"Alicia": {"salary": {"2022-01": 1000}, "age": {"2022-01": 30}}},
+        "households": {"_": {"parents": ["Alicia"]}},
+    }
+
+    simulation = CountryTemplateSimulation(
+        tax_benefit_system=isolated_tax_benefit_system,
+        situation=situation,
+        reform=DropSalaryReform,
+    )
+
+    assert simulation.input_variables == ["age"]
+    assert "income_tax" not in simulation.persons._holders
+    assert "rent" not in simulation.household._holders
+
+
+def test__given_dataset_simulation__then_input_variables_preserve_system_order(
+    isolated_tax_benefit_system,
+):
+    system_variables = list(isolated_tax_benefit_system.variables)
+    dataframe = pd.DataFrame(
+        {
+            "household_weight__2022": [1.0],
+            "rent__2022-01": [1200.0],
+            "salary__2022-01": [500.0],
+            "age__2022-01": [30],
+            "person_household_role__2022": ["parent"],
+            "person_household_id__2022": [0],
+            "household_id__2022": [0],
+            "person_id__2022": [0],
+        }
+    )
+    simulation = CountryTemplateSimulation(
+        tax_benefit_system=isolated_tax_benefit_system,
+        dataset=_safe_export_dataset(dataframe),
+    )
+
+    expected_names = {
+        "person_id",
+        "household_id",
+        "person_household_id",
+        "person_household_role",
+        "household_weight",
+        "salary",
+        "age",
+        "rent",
+    }
+    expected_order = [name for name in system_variables if name in expected_names]
+    assert simulation.input_variables == expected_order
+    assert "income_tax" not in simulation.persons._holders
+    assert "accommodation_size" not in simulation.household._holders
+
+
+def test__given_prepopulated_populations__then_input_variables_include_their_inputs(
+    isolated_tax_benefit_system,
+):
+    situation = {
+        "persons": {"Alicia": {"salary": {"2022-01": 1000}, "age": {"2022-01": 30}}},
+        "households": {"_": {"parents": ["Alicia"]}},
+    }
+    built = SimulationBuilder().build_from_dict(isolated_tax_benefit_system, situation)
+
+    # Fresh Simulation given pre-filled populations has an empty _user_input_keys
+    # of its own, so __init__ must still discover existing holder inputs.
+    simulation = CountryTemplateSimulation(
+        tax_benefit_system=isolated_tax_benefit_system,
+        populations=built.populations,
+    )
+
+    expected_order = [
+        name
+        for name in isolated_tax_benefit_system.variables
+        if name in {"salary", "age"}
+    ]
+    assert simulation.input_variables == expected_order
+    assert "income_tax" not in simulation.persons._holders
+    assert "rent" not in simulation.household._holders
+
+
+def test__given_reform_moving_input_variable_entity__then_init_excludes_it_without_allocating_holders(
+    isolated_tax_benefit_system,
+):
+    from policyengine_core.country_template.entities import Household
+    from policyengine_core.reforms import Reform
+
+    class MoveSalaryToHousehold(Reform):
+        def apply(self):
+            class salary(Variable):
+                entity = Household
+
+            self.update_variable(salary)
+
+    situation = {
+        "persons": {"Alicia": {"salary": {"2022-01": 1000}, "age": {"2022-01": 30}}},
+        "households": {"_": {"parents": ["Alicia"]}},
+    }
+
+    simulation = CountryTemplateSimulation(
+        tax_benefit_system=isolated_tax_benefit_system,
+        situation=situation,
+        reform=MoveSalaryToHousehold,
+    )
+
+    assert simulation.input_variables == ["age"]
+    assert "salary" not in simulation.household._holders
+    assert "income_tax" not in simulation.persons._holders
+    assert "rent" not in simulation.household._holders
+
+
+def test__given_simulation_without_user_input_keys__then_build_from_dict_leaves_input_variables_empty(
+    isolated_tax_benefit_system,
+):
+    from policyengine_core.simulations import Simulation
+
+    class CustomInitSimulation(Simulation):
+        def __init__(self, tax_benefit_system):
+            self.tax_benefit_system = tax_benefit_system
+            self.build_from_populations(tax_benefit_system.instantiate_entities())
+
+    simulation = CustomInitSimulation(isolated_tax_benefit_system)
+    situation = {
+        "persons": {"Alicia": {"income_tax": {"2022-01": None}}},
+        "households": {"_": {"parents": ["Alicia"]}},
+    }
+
+    built = SimulationBuilder().build_from_dict(
+        isolated_tax_benefit_system, situation, simulation=simulation
+    )
+
+    assert built is simulation
+    assert not hasattr(built, "_user_input_keys")
+    assert built.input_variables == []

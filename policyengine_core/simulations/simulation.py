@@ -892,10 +892,25 @@ class Simulation:
         self.calc = self.calculate
         self.df = self.calculate_dataframe
 
+        recorded_input_names = {
+            name for name, _branch_name, _period in self._user_input_keys
+        }
+        if populations is not None:
+            # Populations passed in may already hold values this simulation
+            # did not record.
+            recorded_input_names.update(
+                name
+                for population in self.populations.values()
+                for name, holder in population._holders.items()
+                if len(holder.get_known_periods()) > 0
+            )
+        # A reform may have moved a recorded variable to another entity, leaving
+        # its value in a holder this simulation no longer reads.
         self.input_variables = [
-            variable.name
-            for variable in self.tax_benefit_system.variables.values()
-            if len(self.get_holder(variable.name).get_known_periods()) > 0
+            name
+            for name, variable in self.tax_benefit_system.variables.items()
+            if name in recorded_input_names
+            and name in self.populations[variable.entity.key]._holders
         ]
 
         self.situation_input = situation

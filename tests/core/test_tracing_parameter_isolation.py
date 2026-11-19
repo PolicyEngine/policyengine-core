@@ -250,7 +250,10 @@ def test_tracing_parameter_node_reads_through_to_the_node(isolated_tax_benefit_s
     tracer = FullTracer()
     view = TracingParameterNode(parameters, tracer, "policy")
 
-    assert view.taxes is parameters.taxes
+    assert type(view.taxes) is TracingParameterNode
+    assert view.taxes.parameter_node is parameters.taxes
+    assert view.taxes.tracer is tracer
+    assert view.taxes.branch_name == "policy"
     assert view.children is parameters.children
 
     at_instant = view(INSTANT)

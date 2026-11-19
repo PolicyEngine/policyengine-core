@@ -1,3 +1,18 @@
+## [3.37.0] - 2026-11-19
+
+### Added
+
+- `use_weights=None` and `decode_enums=None`, now the defaults of `Microsimulation.calculate`, `calculate_add` and `calculate_divide`, choose by caller instead of meaning `False`: weights (and, in `calculate`, enum names) outside a calculation, neither inside one.
+
+### Changed
+
+- `Microsimulation.calculate`, `calculate_add` and `calculate_divide` no longer build weights for core's internal reads. Formula code that calls these methods directly now gets a NumPy array with enum codes instead of a weighted `MicroSeries`; calls from outside a calculation stay weighted, and `calculate_dataframe` returns the same frame everywhere, building weights once.
+
+### Fixed
+
+- In a `Microsimulation`, enum reads with ADD or DIVIDE now match a `Simulation`, so a top-level `calculate_divide` of an Enum over a year returns codes unless `decode_enums=True` (#658), and `use_weights=False` without `map_to` now returns a plain array from `calculate_add`, `calculate_divide` and a `calculate` of a FLOW variable over a period of another length, which returned a weighted `MicroSeries` before.
+
+
 ## [3.36.2] - 2026-11-19
 
 ### Fixed

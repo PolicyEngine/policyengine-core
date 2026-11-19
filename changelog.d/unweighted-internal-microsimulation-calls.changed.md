@@ -1,1 +1,0 @@
-`Microsimulation.calculate`, `calculate_add` and `calculate_divide` no longer build weights for core's internal reads. Formula code that calls these methods directly now gets a NumPy array with enum codes instead of a weighted `MicroSeries`; calls from outside a calculation stay weighted, and `calculate_dataframe` returns the same frame everywhere, building weights once.

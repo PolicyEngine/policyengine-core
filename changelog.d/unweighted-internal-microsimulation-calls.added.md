@@ -1,1 +1,0 @@
-`use_weights=None` and `decode_enums=None`, now the defaults of `Microsimulation.calculate`, `calculate_add` and `calculate_divide`, choose by caller instead of meaning `False`: weights (and, in `calculate`, enum names) outside a calculation, neither inside one.

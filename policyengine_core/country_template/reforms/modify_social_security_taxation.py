@@ -35,7 +35,8 @@ class modify_social_security_taxation(Reform):
         of the YAML parameters. It can be modified and must be returned.
         """
         # Access the right parameter node:
-        brackets = parameters.taxes.social_security_contribution.brackets
+        scale = parameters.taxes.social_security_contribution
+        brackets = scale.brackets
 
         # Add 0.1 to the rates of the second bracket, keeping the same thresholds:
         for rate in brackets[1].rate.values_list:
@@ -52,6 +53,9 @@ class modify_social_security_taxation(Reform):
                 "threshold": {"2017-01-01": {"value": 40000}},
             },
         )
+        # Link the bracket to its scale, so that updates to it clear cached
+        # values and mark the scale and its ancestors as modified.
+        new_bracket.parent = scale
         brackets.append(new_bracket)
 
         return parameters

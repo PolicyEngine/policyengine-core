@@ -80,7 +80,7 @@ def homogenize_parameter_node(
             possible_values = [True, False]
     else:
         possible_values = evaluate_dynamic_breakdown(first_breakdown)
-    if not hasattr(node, "children"):
+    if not isinstance(node, ParameterNode):
         node = ParameterNode(
             node.name,
             data={
@@ -120,11 +120,15 @@ def homogenize_parameter_node(
             f"metadata references the correct variable and that all "
             f"parameter keys are valid enum values."
         )
-    for child in node.children:
-        if further_breakdown:
-            node.children[child] = homogenize_parameter_node(
+    if further_breakdown:
+        for child in list(node.children):
+            homogenized_child = homogenize_parameter_node(
                 node.children[child], breakdown[1:], variables, default_value
             )
+            if homogenized_child is not node.children[child]:
+                # A placeholder Parameter became a ParameterNode: link the
+                # replacement as add_child would.
+                node._replace_child(child, homogenized_child)
     return node
 
 

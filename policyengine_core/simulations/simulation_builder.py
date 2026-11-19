@@ -186,8 +186,13 @@ class SimulationBuilder:
                 tax_benefit_system, input_dict, simulation
             )
 
+        # A subclass that replaces ``__init__`` has no record until an input is
+        # stored.
         recorded_input_names = {
-            name for name, _branch_name, _period in simulation._user_input_keys
+            name
+            for name, _branch_name, _period in getattr(
+                simulation, "_user_input_keys", ()
+            )
         }
         simulation.input_variables = [
             name

@@ -393,3 +393,28 @@ def test__given_reform_moving_input_variable_entity__then_init_excludes_it_witho
     assert "salary" not in simulation.household._holders
     assert "income_tax" not in simulation.persons._holders
     assert "rent" not in simulation.household._holders
+
+
+def test__given_simulation_without_user_input_keys__then_build_from_dict_leaves_input_variables_empty(
+    isolated_tax_benefit_system,
+):
+    from policyengine_core.simulations import Simulation
+
+    class CustomInitSimulation(Simulation):
+        def __init__(self, tax_benefit_system):
+            self.tax_benefit_system = tax_benefit_system
+            self.build_from_populations(tax_benefit_system.instantiate_entities())
+
+    simulation = CustomInitSimulation(isolated_tax_benefit_system)
+    situation = {
+        "persons": {"Alicia": {"income_tax": {"2022-01": None}}},
+        "households": {"_": {"parents": ["Alicia"]}},
+    }
+
+    built = SimulationBuilder().build_from_dict(
+        isolated_tax_benefit_system, situation, simulation=simulation
+    )
+
+    assert built is simulation
+    assert not hasattr(built, "_user_input_keys")
+    assert built.input_variables == []

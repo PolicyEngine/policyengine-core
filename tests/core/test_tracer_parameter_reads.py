@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 from policyengine_core.country_template.entities import Person
-from policyengine_core.parameters import Parameter
+from policyengine_core.parameters import Parameter, ParameterNode
 from policyengine_core.parameters.operations.get_parameter import get_parameter
 from policyengine_core.periods import ETERNITY, MONTH, YEAR
 from policyengine_core.tracers import SimpleTracer
@@ -480,17 +480,10 @@ def read_absent_with_hasattr(taxes):
     return float(hasattr(taxes, "no_such_rate"))
 
 
-def read_absent_by_key(taxes):
-    try:
-        return taxes["no_such_rate"]
-    except KeyError:
-        return 0.0
-
-
 @pytest.mark.parametrize(
     "read_absent",
-    [read_absent_with_default, read_absent_with_hasattr, read_absent_by_key],
-    ids=["getattr-default", "hasattr", "key"],
+    [read_absent_with_default, read_absent_with_hasattr],
+    ids=["getattr-default", "hasattr"],
 )
 def test_looking_for_an_absent_child_records_the_node(
     system, traced_simulation, read_absent
@@ -507,6 +500,29 @@ def test_looking_for_an_absent_child_records_the_node(
     assert recorded_reads(simulation, "absent_rate") == [
         ("taxes", INSTANT, "default", child_names)
     ]
+
+
+def test_abolition_check_on_a_tracing_root_records_no_child_list(
+    system, traced_simulation
+):
+    """A country package can switch tracing on in its own parameter root, so
+    core's abolition check, a key look-up per variable, reaches a traced node.
+    Most variables have no abolition parameter there."""
+    system.parameters.add_child(
+        "gov",
+        ParameterNode(
+            "gov",
+            data={"abolitions": {"other_variable": {"2015-01-01": {"value": False}}}},
+        ),
+    )
+    simulation = traced_simulation()
+    system.parameters.trace = True
+    system.parameters.tracer = simulation.tracer
+    system.parameters.branch_name = "default"
+
+    simulation.calculate("income_tax", JANUARY)
+
+    assert "gov.abolitions" not in recorded_names(simulation, "income_tax")
 
 
 def test_absent_child_on_the_undated_tree_records_the_node(system, traced_simulation):

@@ -14,7 +14,8 @@ Parameter paths are recorded at the node the formula indexed, so a bracket
 read ``p.base.calc(age)`` is recorded as ``gov.irs.credits.ctc.amount.base``.
 A read of which children a node has, or of a parameter or node outside a dated
 call (its value history, for example), is recorded at that node's own path and
-stands for everything below it; the empty path is the whole tree.
+stands for everything below it; the empty path is the whole tree. Abolition
+switches under ``gov.abolitions`` are left out.
 
 Populations
 -----------
@@ -109,6 +110,9 @@ FormulaKey = tuple[str, Optional[Callable]]
 DEFAULT_OUTPUT = Path("dependency-map.json")
 YAML_SUFFIXES = (".yaml", ".yml")
 COMPILED_SUFFIXES = (".pyc", ".pyo")
+# Core's abolition check reads these for every variable it calculates. They
+# reach the trace when a country's simulation traces its own parameter root.
+IGNORED_PARAMETER_PREFIXES = ("gov.abolitions.",)
 
 
 class _QuietFullTracer(FullTracer):
@@ -146,7 +150,8 @@ def collect_edges(
     consumers = {} if consumers is None else consumers
     for node in _trace_nodes(simulation):
         for parameter in node.parameters:
-            readers.setdefault(parameter.name, set()).add(node.name)
+            if not parameter.name.startswith(IGNORED_PARAMETER_PREFIXES):
+                readers.setdefault(parameter.name, set()).add(node.name)
         for child in node.children:
             if child.name != node.name:
                 consumers.setdefault(child.name, set()).add(node.name)

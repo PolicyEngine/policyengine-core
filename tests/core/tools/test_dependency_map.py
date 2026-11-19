@@ -1,6 +1,7 @@
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -14,6 +15,7 @@ from policyengine_core.periods import MONTH
 from policyengine_core.scripts import policyengine_command
 from policyengine_core.tools.dependency_map import (
     build_dependency_map,
+    collect_edges,
     iter_yaml_tests,
     merge_edges,
     model_fingerprint,
@@ -21,6 +23,7 @@ from policyengine_core.tools.dependency_map import (
     trace_yaml_tests,
     write_dependency_map,
 )
+from policyengine_core.tracers import FullTracer
 from policyengine_core.variables import Variable
 
 TESTS_ROOT = Path(country_template.__file__).resolve().parent / "tests"
@@ -158,6 +161,22 @@ def test_map_holds_only_paths_that_exist(system, tmp_path: Path):
     assert readers["taxes"] == {"counts_taxes"}
     assert readers["taxes.income_tax_rate"] == {"undated_rate"}
     assert not [path for path in readers if path.endswith("_children")]
+
+
+def test_abolition_switches_are_not_edges():
+    """A country simulation that traces its own parameter root records core's
+    abolition check as a read of the variable being calculated."""
+    tracer = FullTracer()
+    tracer.record_calculation_start("income_tax", "2017-01")
+    tracer.record_parameter_access(
+        "gov.abolitions.income_tax", "2017-01-01", "default", False
+    )
+    tracer.record_parameter_access("gov.tax.rate", "2017-01-01", "default", 0.1)
+    tracer.record_calculation_end()
+
+    readers, _ = collect_edges(SimpleNamespace(tracer=tracer))
+
+    assert readers == {"gov.tax.rate": {"income_tax"}}
 
 
 def test_trace_yaml_tests_follows_entity_scoped_and_period_keyed_outputs(

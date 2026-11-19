@@ -234,11 +234,7 @@ class TracingParameterNodeAtInstant:
         self,
         key: str,
     ) -> Union[TracingParameterNodeAtInstant, Child]:
-        try:
-            child = self.parameter_node_at_instant[key]
-        except KeyError:
-            self._record_absent_child_read(key)
-            raise
+        child = self.parameter_node_at_instant[key]
         return self.get_traced_child(child, key)
 
     def __iter__(self) -> Iterator:
@@ -252,10 +248,14 @@ class TracingParameterNodeAtInstant:
     def __repr__(self) -> str:
         return repr(self.parameter_node_at_instant)
 
-    def _record_absent_child_read(self, key: object) -> None:
-        """Record a look-up that found no child: a value added there matters."""
-        is_special_name = isinstance(key, str) and key.startswith("__")
-        if not is_special_name and isinstance(
+    def _record_absent_child_read(self, key: str) -> None:
+        """Record an attribute look-up that found no child.
+
+        A formula can fall back on a default this way, so a value added there
+        would change its result. Look-ups by key are not recorded: core's
+        abolition check makes one for every variable, and most find nothing.
+        """
+        if not key.startswith("__") and isinstance(
             self.parameter_node_at_instant, parameters.ParameterNodeAtInstant
         ):
             self._record_children_read()

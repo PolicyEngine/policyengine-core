@@ -6,6 +6,8 @@ built. Without clearing, a node at instant cached before ``add_child`` was
 served again afterwards, without the new child.
 """
 
+import types
+
 import pytest
 
 from policyengine_core.errors import ParameterNotFoundError
@@ -169,3 +171,56 @@ def test_nodes_requested_after_add_child_on_a_bracket_have_the_new_child(cloned)
     assert scale_description(tree(INSTANT).scale) == scale_description(
         tree.scale._get_at_instant(INSTANT)
     )
+
+
+# ``add_child`` accepts every tree it accepted before it cleared caches. These
+# trees aren't ones core builds, but a node or holder can come from code that
+# skips ``ParameterNode.__init__`` or links nodes by hand.
+
+
+def holder_without_a_cache() -> ParameterNode:
+    # Built without ``ParameterNode.__init__``, so it has no cache or parent.
+    holder = object.__new__(ParameterNode)
+    holder.name = "holder"
+    holder.children = {}
+    return holder
+
+
+def test_add_child_accepts_a_node_with_no_cache_of_its_own():
+    holder = holder_without_a_cache()
+
+    holder.add_child("amount", leaf("holder.amount", 5))
+
+    assert holder.amount is holder.children["amount"]
+
+
+def test_add_child_clears_past_a_node_above_with_no_cache_of_its_own():
+    tree = three_level_tree()
+    tree.attach_to_parent(holder_without_a_cache())
+    read_down_to_the_leaf(tree)
+
+    tree.gov.tax.add_child("allowance", leaf("gov.tax.allowance", 500))
+
+    assert tree(INSTANT).gov.tax.allowance == 500
+
+
+def test_add_child_accepts_a_parent_that_is_not_a_parameter_node():
+    tree = three_level_tree()
+    tree.attach_to_parent(types.SimpleNamespace(name="holder"))
+    read_down_to_the_leaf(tree)
+
+    tree.gov.tax.add_child("allowance", leaf("gov.tax.allowance", 500))
+
+    assert tree(INSTANT).gov.tax.allowance == 500
+
+
+def test_add_child_stops_when_parent_links_form_a_loop():
+    tree = three_level_tree()
+    read_down_to_the_leaf(tree)
+    # The root's parent is a node below it.
+    tree.attach_to_parent(tree.gov.tax)
+
+    tree.gov.tax.add_child("allowance", leaf("gov.tax.allowance", 500))
+
+    assert tree.gov.tax(INSTANT).allowance == 500
+    assert tree(INSTANT).gov.tax.allowance == 500

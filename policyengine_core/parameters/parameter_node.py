@@ -77,17 +77,17 @@ def _check_child_type(child) -> None:
 def _clear_at_instant_caches_upward(node) -> None:
     """Clear the nodes at instant cached by ``node`` and every node above it.
 
-    Unlike ``clear_parent_cache``, this walks up without recursing and stops at
-    a node it has seen. ``add_child`` calls it while a node loads, and until a
-    loading node is attached to its own parent, a child named ``parent`` (as
-    policyengine-us's ``gov.hhs.medicaid.eligibility.categories.parent``)
-    replaces the node's ``parent`` attribute and points back at the node.
+    ``add_child`` uses this instead of ``clear_parent_cache`` so that it keeps
+    accepting every tree it accepted before it cleared caches. It walks up
+    without recursing and stops at a node it has already seen, so a loop in
+    the ``parent`` links ends. It skips a node with no cache of its own, such
+    as one built without ``ParameterNode.__init__``, and a parent that is not
+    a parameter node.
     """
     seen = set()
     while node is not None and id(node) not in seen:
         seen.add(id(node))
         cache = node.__dict__.get("_at_instant_cache")
-        # A child can be named ``_at_instant_cache`` too.
         if isinstance(cache, dict):
             cache.clear()
         node = getattr(node, "parent", None)

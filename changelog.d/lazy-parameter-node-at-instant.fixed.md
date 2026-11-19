@@ -1,1 +1,1 @@
-Clear the nodes at instant cached above a parameter node when `ParameterNode.add_child` adds a child, and link loaded scale brackets to their scale and homogenized nodes to their parent, so that changes below them clear the caches above them and mark those nodes modified, as in a cloned tree.
+Clear the nodes at instant cached by a parameter node and every node above it when `ParameterNode.add_child` adds a child, so that a node at instant requested afterwards includes the new child.

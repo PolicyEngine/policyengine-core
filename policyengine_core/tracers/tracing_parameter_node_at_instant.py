@@ -203,7 +203,33 @@ def _node_at_instant_types() -> tuple[type, ...]:
     )
 
 
+def _child_path(parent_path: str, key: str) -> str:
+    """The path of the child ``key`` of the node at ``parent_path``.
+
+    The root of the tree has the empty path, so its children's paths are their
+    keys.
+    """
+    return f"{parent_path}.{key}" if parent_path else key
+
+
 class TracingParameterNodeAtInstant:
+    """A parameter node at one instant, as the formulas of a traced simulation
+    see it.
+
+    Each parameter value or tax scale read through it is recorded in
+    ``tracer``, under ``branch_name``, at its own path. A child node is
+    returned as another tracing view.
+
+    A look-up that finds no child is recorded too, because a formula can fall
+    back on a default and a value added there would change its result:
+
+    - an attribute look-up (``node.rate``, ``getattr``, ``hasattr``) records the
+      node's own path, with the names of its children as the value;
+    - a key look-up (``node["rate"]``) records the missing child's path, with
+      no value. Core's abolition check makes one such look-up for every
+      variable it calculates, so the read holds no list of other children.
+    """
+
     def __init__(
         self,
         parameter_node_at_instant: ParameterNode,
@@ -234,7 +260,11 @@ class TracingParameterNodeAtInstant:
         self,
         key: str,
     ) -> Union[TracingParameterNodeAtInstant, Child]:
-        child = self.parameter_node_at_instant[key]
+        try:
+            child = self.parameter_node_at_instant[key]
+        except KeyError:
+            self._record_missing_key_read(key)
+            raise
         return self.get_traced_child(child, key)
 
     def __iter__(self) -> Iterator:
@@ -251,14 +281,31 @@ class TracingParameterNodeAtInstant:
     def _record_absent_child_read(self, key: str) -> None:
         """Record an attribute look-up that found no child.
 
-        A formula can fall back on a default this way, so a value added there
-        would change its result. Look-ups by key are not recorded: core's
-        abolition check makes one for every variable, and most find nothing.
+        The read is recorded at the node's own path, with the names of its
+        children. Special names such as ``__array__`` are not children and are
+        not recorded.
         """
         if not key.startswith("__") and isinstance(
             self.parameter_node_at_instant, parameters.ParameterNodeAtInstant
         ):
             self._record_children_read()
+
+    def _record_missing_key_read(self, key: object) -> None:
+        """Record a key look-up that found no child, at that child's path.
+
+        The read holds no value. A key that is not a string, such as an array
+        for a vectorial read, names no single child and is not recorded.
+        """
+        node_at_instant = self.parameter_node_at_instant
+        if isinstance(key, str) and isinstance(
+            node_at_instant, parameters.ParameterNodeAtInstant
+        ):
+            self.tracer.record_parameter_access(
+                _child_path(node_at_instant._name, key),
+                node_at_instant._instant_str,
+                self.branch_name,
+                None,
+            )
 
     def _record_children_read(self) -> list[str]:
         """Record that the formula read which children this node has.

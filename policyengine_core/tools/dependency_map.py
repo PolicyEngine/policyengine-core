@@ -14,8 +14,13 @@ Parameter paths are recorded at the node the formula indexed, so a bracket
 read ``p.base.calc(age)`` is recorded as ``gov.irs.credits.ctc.amount.base``.
 A read of which children a node has, or of a parameter or node outside a dated
 call (its value history, for example), is recorded at that node's own path and
-stands for everything below it; the empty path is the whole tree. Abolition
-switches under ``gov.abolitions`` are left out.
+stands for everything below it; the empty path is the whole tree. A look-up
+by key that finds no child is recorded at the missing child's path.
+
+Core checks each variable's own abolition switch, ``gov.abolitions.<variable>``,
+before calculating it. That read reaches the trace when a country's simulation
+traces its own parameter root, and it is left out of the map, because every
+variable has it. A formula's read of another variable's switch is kept.
 
 Populations
 -----------
@@ -110,9 +115,9 @@ FormulaKey = tuple[str, Optional[Callable]]
 DEFAULT_OUTPUT = Path("dependency-map.json")
 YAML_SUFFIXES = (".yaml", ".yml")
 COMPILED_SUFFIXES = (".pyc", ".pyo")
-# Core's abolition check reads these for every variable it calculates. They
-# reach the trace when a country's simulation traces its own parameter root.
-IGNORED_PARAMETER_PREFIXES = ("gov.abolitions.",)
+# Core's abolition check reads ``gov.abolitions.<variable>`` before it
+# calculates each variable, whether the switch exists or not.
+ABOLITION_SWITCH_PREFIX = "gov.abolitions."
 
 
 class _QuietFullTracer(FullTracer):
@@ -140,6 +145,10 @@ def _trace_nodes(simulation: Simulation) -> Iterator[TraceNode]:
         pending_nodes.extend(node.children)
 
 
+def _is_own_abolition_switch(parameter_name: str, variable_name: str) -> bool:
+    return parameter_name == ABOLITION_SWITCH_PREFIX + variable_name
+
+
 def collect_edges(
     simulation: Simulation,
     readers: Optional[dict[str, set[str]]] = None,
@@ -150,7 +159,7 @@ def collect_edges(
     consumers = {} if consumers is None else consumers
     for node in _trace_nodes(simulation):
         for parameter in node.parameters:
-            if not parameter.name.startswith(IGNORED_PARAMETER_PREFIXES):
+            if not _is_own_abolition_switch(parameter.name, node.name):
                 readers.setdefault(parameter.name, set()).add(node.name)
         for child in node.children:
             if child.name != node.name:

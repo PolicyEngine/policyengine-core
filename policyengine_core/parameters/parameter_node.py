@@ -74,6 +74,50 @@ def _check_child_type(child) -> None:
         )
 
 
+def _clear_at_instant_caches_upward(node) -> None:
+    """Clear the nodes at instant cached by ``node`` and every node above it.
+
+    ``add_child`` uses this instead of ``clear_parent_cache`` so that it keeps
+    accepting every tree it accepted before it cleared caches. It walks up
+    without recursing and stops at a node it has already seen, so a loop in
+    the ``parent`` links ends. It skips a node with no cache of its own, such
+    as one built without ``ParameterNode.__init__``, and a parent that is not
+    a parameter node.
+    """
+    seen = set()
+    while node is not None and id(node) not in seen:
+        seen.add(id(node))
+        cache = node.__dict__.get("_at_instant_cache")
+        if isinstance(cache, dict):
+            cache.clear()
+        node = getattr(node, "parent", None)
+
+
+class _AtInstantCache(dict):
+    """A parameter node's nodes at instant, by instant.
+
+    Reads add to it: a node at instant that resolves a child fills that
+    child's cache. So a copy or a pickle takes its items in one step first,
+    instead of going through the dictionary while another thread adds to it.
+    It stays one object, so parameter nodes that share it, such as shallow
+    copies, share its copy too. A pickle holds a plain ``dict``, which earlier
+    versions of core can load, and which ``_get_at_instant`` replaces by one
+    of these before it adds to it.
+    """
+
+    __slots__ = ()
+
+    def __reduce_ex__(self, protocol):
+        return (dict, (dict.copy(self),))
+
+    def __deepcopy__(self, memo: dict) -> "_AtInstantCache":
+        copied = type(self)()
+        memo[id(self)] = copied
+        for instant, node_at_instant in dict.copy(self).items():
+            copied[copy.deepcopy(instant, memo)] = copy.deepcopy(node_at_instant, memo)
+        return copied
+
+
 class ParameterNode(AtInstantLike):
     """
     A node in the legislation `parameter tree <https://openfisca.org/doc/coding-the-legislation/legislation_parameters.html>`_.
@@ -135,7 +179,9 @@ class ParameterNode(AtInstantLike):
         self.trace: bool = False
         self.tracer = None
         self.branch_name = None
-        self._at_instant_cache: typing.Dict[Instant, ParameterNodeAtInstant] = {}
+        self._at_instant_cache: typing.Dict[Instant, ParameterNodeAtInstant] = (
+            _AtInstantCache()
+        )
         self.parent = None
 
         if directory_path:
@@ -217,10 +263,15 @@ class ParameterNode(AtInstantLike):
 
         :param name: Name of the child that must be used to access that child. Should not contain anything that could interfere with the operator `.` (dot). The child is also set as an attribute of the node, unless the name matches one of the node's own attributes (such as ``parent`` or ``children``) or a method or class attribute of its class; it then stays reachable through ``children`` and at-instant lookups.
         :param child: The new child, an instance of :class:`.ParameterScale` or :class:`.Parameter` or :class:`.ParameterNode`.
+
+        Nodes at instant cached by this node and by every node above it were
+        built without the new child, so they are cleared.
         """
         if name in self.children:
             raise ValueError("{} has already a child named {}".format(self.name, name))
         _check_child_type(child)
+        # Nodes at instant cached here and above were built without the child.
+        _clear_at_instant_caches_upward(self)
         self._link_child(name, child)
 
     def _replace_child(
@@ -303,13 +354,14 @@ class ParameterNode(AtInstantLike):
             if _can_expose_child_as_attribute(clone, child_key):
                 setattr(clone, child_key, child)
             child.parent = clone
-        clone._at_instant_cache = {}
+        clone._at_instant_cache = _AtInstantCache()
 
         return clone
 
     def _get_at_instant(self, instant: Instant) -> ParameterNodeAtInstant:
-        if instant in self._at_instant_cache:
-            return self._at_instant_cache[instant]
+        cache = self._at_instant_cache
+        if instant in cache:
+            return cache[instant]
         node_at_instant = ParameterNodeAtInstant(self.name, self, instant)
         if self.trace:
             at_instant = TracingParameterNodeAtInstant(
@@ -317,7 +369,16 @@ class ParameterNode(AtInstantLike):
             )
         else:
             at_instant = node_at_instant
-        self._at_instant_cache[instant] = at_instant
+        # Building the node can read code that replaces this node's cache, so
+        # store into the cache the node holds now, as before.
+        cache = self._at_instant_cache
+        if type(cache) is dict:
+            # A plain ``dict`` set from outside core (policyengine-us's path
+            # copies set one) changes as this node is read, so copying it
+            # while another thread reads could fail. It is replaced, with its
+            # entries, rather than written to.
+            cache = self._at_instant_cache = _AtInstantCache(cache)
+        cache[instant] = at_instant
         return at_instant
 
     def attach_to_parent(self, parent: "ParameterNode"):

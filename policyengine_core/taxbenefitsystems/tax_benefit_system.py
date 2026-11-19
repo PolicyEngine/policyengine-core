@@ -134,6 +134,9 @@ class TaxBenefitSystem:
     parameters_dir: str = None
     """Directory containing the YAML parameter tree."""
     auto_carry_over_input_variables: bool = False
+    # Formula variables whose stored values are observed data rather than saved
+    # results, so ``Simulation.to_input_dataframe`` exports them like inputs.
+    source_input_variables: frozenset = frozenset()
     """Whether a variable with no formula result for a period (and no
     ``uprating`` path from an earlier period) takes an input from another
     period. If so, the period takes the input stored for the latest-starting

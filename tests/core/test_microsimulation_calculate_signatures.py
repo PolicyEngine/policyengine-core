@@ -84,3 +84,13 @@ def test_keyword_call_to_a_simulation_method_binds_to_the_override(name, argumen
             f"takes: {error}",
             pytrace=False,
         )
+
+
+@pytest.mark.parametrize("name", ["calculate", "calculate_add", "calculate_divide"])
+def test_weights_and_enum_decoding_default_to_none(name):
+    # ``None`` lets the method choose by caller: a plain array with enum codes
+    # for a call made inside a calculation, weighted values otherwise.
+    parameters = inspect.signature(getattr(Microsimulation, name)).parameters
+
+    assert parameters["use_weights"].default is None
+    assert parameters["decode_enums"].default is None

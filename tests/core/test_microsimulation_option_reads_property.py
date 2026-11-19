@@ -20,9 +20,8 @@ The population calls return writable NumPy arrays in both classes. Formula
 results also equal the same arithmetic done in NumPy, so the two simulations
 cannot agree on a wrong value.
 
-Enum variables are left out:
-``test_enum_read_with_divide_over_a_year_gives_member_names_in_a_microsimulation``
-records how their reads differ.
+Enum variables are left out: ``test_microsimulation_internal_calls.py`` checks
+their ADD and DIVIDE reads against a Simulation (core issue #658).
 """
 
 import numpy as np

@@ -34,6 +34,7 @@ from policyengine_core.tracers import (
     FullTracer,
     SimpleTracer,
     TracingParameterNode,
+    TracingParameterNodeAtInstant,
 )
 import random
 from policyengine_core.tools.hugging_face import *
@@ -684,6 +685,18 @@ class PreservedUserInput:
     disk_key: Optional[str] = None
     disk_file: Optional[str] = None
     disk_enum: object = None
+
+
+def _untraced(parameters_at_instant: object) -> object:
+    """The parameter tree at an instant, without a tracing view around it.
+
+    A country package can trace its own parameter root, so reading it gives a
+    tracing view. Core's own checks read the tree through this, so that they
+    are not recorded as reads of the variable's formula.
+    """
+    if isinstance(parameters_at_instant, TracingParameterNodeAtInstant):
+        return parameters_at_instant.parameter_node_at_instant
+    return parameters_at_instant
 
 
 class Simulation:
@@ -1705,7 +1718,7 @@ class Simulation:
         try:
             if (
                 variable.is_neutralized
-                or self.tax_benefit_system.parameters(period).gov.abolitions[
+                or _untraced(self.tax_benefit_system.parameters(period)).gov.abolitions[
                     variable.name
                 ]
             ):

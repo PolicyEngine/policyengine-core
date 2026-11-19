@@ -15,12 +15,12 @@ read ``p.base.calc(age)`` is recorded as ``gov.irs.credits.ctc.amount.base``.
 A read of which children a node has, or of a parameter or node outside a dated
 call (its value history, for example), is recorded at that node's own path and
 stands for everything below it; the empty path is the whole tree. A look-up
-by key that finds no child is recorded at the missing child's path.
+by name that finds no child on a node at an instant is recorded at the missing
+child's path.
 
-Core checks each variable's own abolition switch, ``gov.abolitions.<variable>``,
-before calculating it. That read reaches the trace when a country's simulation
-traces its own parameter root, and it is left out of the map, because every
-variable has it. A formula's read of another variable's switch is kept.
+Core's check of each variable's own abolition switch,
+``gov.abolitions.<variable>``, is not recorded, so it is not in the map. A
+formula's read of a switch is, like any other read.
 
 Populations
 -----------
@@ -115,9 +115,6 @@ FormulaKey = tuple[str, Optional[Callable]]
 DEFAULT_OUTPUT = Path("dependency-map.json")
 YAML_SUFFIXES = (".yaml", ".yml")
 COMPILED_SUFFIXES = (".pyc", ".pyo")
-# Core's abolition check reads ``gov.abolitions.<variable>`` before it
-# calculates each variable, whether the switch exists or not.
-ABOLITION_SWITCH_PREFIX = "gov.abolitions."
 
 
 class _QuietFullTracer(FullTracer):
@@ -134,7 +131,11 @@ class _QuietFullTracer(FullTracer):
 
 def _enable_tracing(simulation: Simulation) -> None:
     simulation.trace = True
-    simulation.tracer = _QuietFullTracer()
+    # A country package can hand the new tracer to its own parameter root when
+    # tracing is switched on. Replacing the tracer would leave the root
+    # recording into the old one, so the same tracer drops values instead.
+    if type(simulation.tracer) is FullTracer:
+        simulation.tracer.__class__ = _QuietFullTracer
 
 
 def _trace_nodes(simulation: Simulation) -> Iterator[TraceNode]:
@@ -143,10 +144,6 @@ def _trace_nodes(simulation: Simulation) -> Iterator[TraceNode]:
         node = pending_nodes.pop()
         yield node
         pending_nodes.extend(node.children)
-
-
-def _is_own_abolition_switch(parameter_name: str, variable_name: str) -> bool:
-    return parameter_name == ABOLITION_SWITCH_PREFIX + variable_name
 
 
 def collect_edges(
@@ -159,8 +156,7 @@ def collect_edges(
     consumers = {} if consumers is None else consumers
     for node in _trace_nodes(simulation):
         for parameter in node.parameters:
-            if not _is_own_abolition_switch(parameter.name, node.name):
-                readers.setdefault(parameter.name, set()).add(node.name)
+            readers.setdefault(parameter.name, set()).add(node.name)
         for child in node.children:
             if child.name != node.name:
                 consumers.setdefault(child.name, set()).add(node.name)

@@ -207,9 +207,10 @@ def _child_path(parent_path: str, key: str) -> str:
     """The path of the child ``key`` of the node at ``parent_path``.
 
     The root of the tree has the empty path, so its children's paths are their
-    keys.
+    keys. Joining uses the key's string value, which ``str()`` of a ``str``
+    based enum member is not.
     """
-    return f"{parent_path}.{key}" if parent_path else key
+    return ".".join([parent_path, key]) if parent_path else str.__str__(key)
 
 
 class TracingParameterNodeAtInstant:
@@ -220,14 +221,19 @@ class TracingParameterNodeAtInstant:
     ``tracer``, under ``branch_name``, at its own path. A child node is
     returned as another tracing view.
 
-    A look-up that finds no child is recorded too, because a formula can fall
-    back on a default and a value added there would change its result:
+    A look-up by name that finds no child is recorded too, because a formula
+    can fall back on a default and a value added there would change its
+    result:
 
     - an attribute look-up (``node.rate``, ``getattr``, ``hasattr``) records the
       node's own path, with the names of its children as the value;
     - a key look-up (``node["rate"]``) records the missing child's path, with
-      no value. Core's abolition check makes one such look-up for every
-      variable it calculates, so the read holds no list of other children.
+      no value.
+
+    These are not recorded when they find nothing: a key look-up on a
+    vectorial node, a look-up by an array that names a missing child, and,
+    on the undated tree, ``get_child`` and a bracket position past the end of
+    a scale.
     """
 
     def __init__(

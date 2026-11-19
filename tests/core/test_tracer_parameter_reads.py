@@ -4,6 +4,7 @@ Every test here runs a calculation and looks at the reads recorded on the
 variable's node of the trace, so none depends on how reads reach the tracer.
 """
 
+import enum
 import json
 
 import numpy as np
@@ -563,20 +564,46 @@ def test_key_look_up_before_a_parameter_starts_records_that_parameter(
     ]
 
 
-def test_abolition_check_on_a_tracing_root_records_only_the_variables_switch(
+class Zone(str, enum.Enum):
+    NORTH = "north"
+
+
+def test_key_look_up_by_a_string_enum_member_records_the_member_as_a_path(
     system, traced_simulation
 ):
+    """``str()`` of such a member is ``Zone.NORTH`` from Python 3.12, but the
+    look-up uses its string value, so that is the path a value would go to."""
+
+    def formula(person, period, parameters):
+        taxes = parameters(period).taxes
+        return person.filled_array(read_rate_by_key_with_default(taxes, Zone.NORTH))
+
+    define_variable(system, "rate_by_zone", formula)
+    simulation = traced_simulation()
+
+    assert simulation.calculate("rate_by_zone", JANUARY)[0] == 0
+
+    assert recorded_reads(simulation, "rate_by_zone") == [
+        ("taxes.north", INSTANT, "default", None)
+    ]
+
+
+ABOLITION_TREES = {
+    "switch-off": {"abolitions": {"income_tax": {"2015-01-01": {"value": False}}}},
+    "no-switch": {"abolitions": {"other_variable": {"2015-01-01": {"value": False}}}},
+    "no-gov-node": None,
+}
+
+
+@pytest.mark.parametrize("gov_data", ABOLITION_TREES.values(), ids=ABOLITION_TREES)
+def test_abolition_check_on_a_tracing_root_records_nothing(
+    system, traced_simulation, gov_data
+):
     """A country package can switch tracing on in its own parameter root, so
-    core's abolition check, a key look-up per variable, reaches a traced node.
-    Most variables have no abolition parameter there, and the miss is recorded
-    at the switch's path, without the names of the other switches."""
-    system.parameters.add_child(
-        "gov",
-        ParameterNode(
-            "gov",
-            data={"abolitions": {"other_variable": {"2015-01-01": {"value": False}}}},
-        ),
-    )
+    core's abolition check, a look-up per variable, would reach the trace.
+    Core reads the untraced tree instead: the check is not the formula's."""
+    if gov_data is not None:
+        system.parameters.add_child("gov", ParameterNode("gov", data=gov_data))
     simulation = traced_simulation()
     system.parameters.trace = True
     system.parameters.tracer = simulation.tracer
@@ -584,12 +611,7 @@ def test_abolition_check_on_a_tracing_root_records_only_the_variables_switch(
 
     simulation.calculate("income_tax", JANUARY)
 
-    abolition_reads = [
-        read
-        for read in recorded_reads(simulation, "income_tax")
-        if read[0].startswith("gov")
-    ]
-    assert abolition_reads == [("gov.abolitions.income_tax", INSTANT, "default", None)]
+    assert recorded_names(simulation, "income_tax") == ["taxes.income_tax_rate"]
 
 
 def test_absent_child_on_the_undated_tree_records_the_node(system, traced_simulation):

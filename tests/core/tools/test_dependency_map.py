@@ -164,22 +164,6 @@ def test_map_holds_only_paths_that_exist(system, tmp_path: Path):
     assert not [path for path in readers if path.endswith("_children")]
 
 
-def test_abolition_switches_are_not_edges():
-    """A country simulation that traces its own parameter root records core's
-    abolition check as a read of the variable being calculated."""
-    tracer = FullTracer()
-    tracer.record_calculation_start("income_tax", "2017-01")
-    tracer.record_parameter_access(
-        "gov.abolitions.income_tax", "2017-01-01", "default", False
-    )
-    tracer.record_parameter_access("gov.tax.rate", "2017-01-01", "default", 0.1)
-    tracer.record_calculation_end()
-
-    readers, _ = collect_edges(SimpleNamespace(tracer=tracer))
-
-    assert readers == {"gov.tax.rate": {"income_tax"}}
-
-
 class replacement_payment(Variable):
     value_type = float
     entity = Person
@@ -194,8 +178,9 @@ class replacement_payment(Variable):
 def test_formula_reading_another_variables_abolition_switch_keeps_its_edge(
     system, make_simulation
 ):
-    """Only core's check of a variable's own switch is left out of the map.
-    A formula that reads another variable's switch changes with it."""
+    """A formula that reads another variable's switch changes with it. Core's
+    check of each variable's own switch is not the formula's read, and is not
+    recorded."""
     system.parameters.add_child(
         "gov",
         ParameterNode(
@@ -568,6 +553,49 @@ def test_nested_period_mappings_are_followed_to_each_period(tmp_path: Path):
 
 
 # ----- Microdata ----- #
+
+
+class rate_read_through_the_root(Variable):
+    value_type = float
+    entity = Person
+    definition_period = MONTH
+    label = "Reads a parameter through the system's root, not its argument"
+
+    def formula(person, period, parameters):
+        root = person.simulation.tax_benefit_system.parameters
+        return person.filled_array(root(period).taxes.income_tax_rate)
+
+
+class RootTracingMicrosimulation(Microsimulation):
+    """Hands its tracer to its own parameter root when tracing is switched on,
+    as policyengine-us's simulations do."""
+
+    @property
+    def trace(self) -> bool:
+        return Microsimulation.trace.fget(self)
+
+    @trace.setter
+    def trace(self, trace: bool) -> None:
+        Microsimulation.trace.fset(self, trace)
+        root = self.tax_benefit_system.parameters
+        root.trace = bool(trace)
+        root.tracer = self.tracer
+        root.branch_name = self.branch_name
+        root.clear_parent_cache()
+
+
+def build_root_tracing_microsimulation() -> RootTracingMicrosimulation:
+    system = CountryTaxBenefitSystem()
+    system.add_variable(rate_read_through_the_root)
+    return RootTracingMicrosimulation(tax_benefit_system=system)
+
+
+def test_trace_microdata_records_reads_through_a_root_the_package_traces():
+    (readers, _), _ = trace_microdata(
+        build_root_tracing_microsimulation, households=2, year=2022
+    )
+
+    assert "rate_read_through_the_root" in readers["taxes.income_tax_rate"]
 
 
 def test_trace_microdata_records_edges_of_every_calculated_variable():

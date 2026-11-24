@@ -282,7 +282,6 @@ def test_modify_parameters(tax_benefit_system):
             },
         )
         reference_parameters.children["new_node"] = reform_parameters_subtree
-        reference_parameters._at_instant_cache.clear()
         return reference_parameters
 
     class test_modify_parameters(Reform):

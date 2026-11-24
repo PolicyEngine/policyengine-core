@@ -356,6 +356,8 @@ parameter’s values.</p>
 </ul>
 </dd>
 </dl>
+<p>Nodes at instant cached by this node and by every node above it were
+built without the new child, so they are cleared.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -431,6 +433,25 @@ parameter’s values.</p>
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">policyengine_core.parameters.parameter_node_at_instant.</span></span><span class="sig-name descname"><span class="pre">ParameterNodeAtInstant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.parameters.parameter_node.ParameterNode" title="policyengine_core.parameters.parameter_node.ParameterNode"><span class="pre">ParameterNode</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">instant_str</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.parameters.parameter_node_at_instant.ParameterNodeAtInstant" title="Permalink to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Parameter node of the legislation, at a given instant.</p>
+<p>Children resolve on first read and are kept from then on. Building every
+descendant up front made each instant a model is asked about cost a copy of
+the whole parameter tree (16 to 33 MB and several seconds per instant for
+policyengine-us), which every tax-benefit system then kept for its
+lifetime. Which children a node has, and in what order, is fixed when it is
+built. A child’s value is taken when the child is first read, so a node
+held across an in-place change to its parameters reads the changed value
+for a child it has not read yet; once read (including found to have no
+value), a child keeps what that read found.</p>
+<p>A child that fails to build at the instant (a scale that refuses its
+brackets, say) fails when it is read, not when the node is built, so the
+node’s other children can be read. A deep copy or pickle of the node
+builds every child, so it fails then too.</p>
+<p>Several threads can read a node, and copy or pickle it while others read.
+A deep copy or pickle of a node resolves every child first, so it holds
+the same values as when every child was built up front, and no parameter
+nodes. Its pickle holds this version’s lazy state, which earlier versions
+of core can’t load. At an instant that is not a date, and in a subclass,
+every child is built up front, as before.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="policyengine_core.parameters.parameter_node_at_instant.ParameterNodeAtInstant.add_child">
 <span class="sig-name descname"><span class="pre">add_child</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">child_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child_at_instant</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#policyengine_core.parameters.parameter_node_at_instant.ParameterNodeAtInstant" title="policyengine_core.parameters.parameter_node_at_instant.ParameterNodeAtInstant"><span class="pre">ParameterNodeAtInstant</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#policyengine_core.parameters.parameter_node_at_instant.ParameterNodeAtInstant.add_child" title="Permalink to this definition">#</a></dt>

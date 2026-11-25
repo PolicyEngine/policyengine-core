@@ -481,28 +481,6 @@ def read_absent_with_hasattr(taxes):
     return float(hasattr(taxes, "no_such_rate"))
 
 
-@pytest.mark.parametrize(
-    "read_absent",
-    [read_absent_with_default, read_absent_with_hasattr],
-    ids=["getattr-default", "hasattr"],
-)
-def test_looking_for_an_absent_child_records_the_node(
-    system, traced_simulation, read_absent
-):
-    def formula(person, period, parameters):
-        return person.filled_array(read_absent(parameters(period).taxes))
-
-    define_variable(system, "absent_rate", formula)
-    child_names = list(system.parameters(INSTANT).taxes)
-    simulation = traced_simulation()
-
-    assert simulation.calculate("absent_rate", JANUARY)[0] == 0
-
-    assert recorded_reads(simulation, "absent_rate") == [
-        ("taxes", INSTANT, "default", child_names)
-    ]
-
-
 def read_rate_by_key_with_default(node, key):
     try:
         return node[key]
@@ -516,6 +494,78 @@ def taxes_node(parameters_at_instant):
 
 def root_node(parameters_at_instant):
     return parameters_at_instant
+
+
+@pytest.mark.parametrize(
+    "select_node, missing_path",
+    [(taxes_node, "taxes.no_such_rate"), (root_node, "no_such_rate")],
+    ids=["below-a-node", "below-the-root"],
+)
+@pytest.mark.parametrize(
+    "read_absent",
+    [read_absent_with_default, read_absent_with_hasattr],
+    ids=["getattr-default", "hasattr"],
+)
+def test_attribute_look_up_that_finds_no_child_records_the_missing_path(
+    system, traced_simulation, read_absent, select_node, missing_path
+):
+    def formula(person, period, parameters):
+        return person.filled_array(read_absent(select_node(parameters(period))))
+
+    define_variable(system, "absent_rate", formula)
+    simulation = traced_simulation()
+
+    assert simulation.calculate("absent_rate", JANUARY)[0] == 0
+
+    assert recorded_reads(simulation, "absent_rate") == [
+        (missing_path, INSTANT, "default", None)
+    ]
+
+
+class ChildThatFailsToBuild:
+    """A parameter child that raises whenever a value is asked of it."""
+
+    def __init__(self):
+        self.build_attempts = 0
+
+    def _get_at_instant(self, instant):
+        self.build_attempts += 1
+        raise RuntimeError("this child has no valid value")
+
+
+@pytest.mark.parametrize(
+    "read_absent",
+    [read_absent_with_default, read_absent_with_hasattr],
+    ids=["getattr-default", "hasattr"],
+)
+def test_attribute_look_up_that_finds_no_child_builds_no_other_child(
+    system, make_simulation, read_absent
+):
+    """A node at an instant builds each child when it is first read, so a
+    child that fails to build stops only the formulas that read it. Looking
+    for an absent child must not build the others when traced either."""
+    fragile = ParameterNode("fragile", data={"rate": {"values": {"2015-01-01": 1}}})
+    failing_child = ChildThatFailsToBuild()
+    fragile.children = {**fragile.children, "broken": failing_child}
+    system.parameters.add_child("fragile", fragile)
+
+    def formula(person, period, parameters):
+        node = parameters(period).fragile
+        return person.filled_array(node.rate + read_absent(node))
+
+    define_variable(system, "rate_with_fallback", formula)
+    untraced = make_simulation(system, {"salary": 2000}, JANUARY)
+    traced = make_simulation(system, {"salary": 2000}, JANUARY)
+    traced.trace = True
+
+    assert untraced.calculate("rate_with_fallback", JANUARY)[0] == 1
+    assert traced.calculate("rate_with_fallback", JANUARY)[0] == 1
+
+    assert failing_child.build_attempts == 0
+    assert recorded_reads(traced, "rate_with_fallback") == [
+        ("fragile.rate", INSTANT, "default", 1),
+        ("fragile.no_such_rate", INSTANT, "default", None),
+    ]
 
 
 @pytest.mark.parametrize(

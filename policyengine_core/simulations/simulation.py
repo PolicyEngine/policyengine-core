@@ -1953,14 +1953,17 @@ class Simulation:
                     value_in_this_period = _uprating_index_value(
                         uprating_parameter, period.start
                     )
-                    self._record_parameter_read(
-                        uprating_parameter.name,
-                        latest_known_period.start,
-                        value_in_last_period,
-                    )
-                    self._record_parameter_read(
-                        uprating_parameter.name, period.start, value_in_this_period
-                    )
+                    if self.trace:
+                        self._record_parameter_read(
+                            uprating_parameter.name,
+                            latest_known_period.start,
+                            value_in_last_period,
+                        )
+                        self._record_parameter_read(
+                            uprating_parameter.name,
+                            period.start,
+                            value_in_this_period,
+                        )
                     if (
                         value_in_last_period is None
                         or value_in_this_period is None
@@ -2407,7 +2410,10 @@ class Simulation:
         """Record a parameter core read for the variable being calculated.
 
         ``adds``, ``subtracts`` and uprating read the parameter tree directly,
-        not through the view a formula receives.
+        not through the view a formula receives. They call this only when the
+        simulation is traced, so an untraced calculation neither calls it nor
+        reads the parameter's name: a country package's tests can build a
+        stand-in simulation that copies only some of core's methods.
         """
         if self.trace:
             self.tracer.record_parameter_access(
@@ -2438,9 +2444,10 @@ class Simulation:
                             f"In the variable '{variable.name}', the 'adds' attribute is a string '{variable.adds}' that does not match any parameter."
                         )
                     adds_list = adds_parameter(period.start)
-                    self._record_parameter_read(
-                        adds_parameter.name, period.start, adds_list
-                    )
+                    if self.trace:
+                        self._record_parameter_read(
+                            adds_parameter.name, period.start, adds_list
+                        )
                 else:
                     adds_list = variable.adds
                 values = 0
@@ -2456,9 +2463,10 @@ class Simulation:
                                 added_variable,
                             )
                             added_value = parameter(period.start)
-                            self._record_parameter_read(
-                                parameter.name, period.start, added_value
-                            )
+                            if self.trace:
+                                self._record_parameter_read(
+                                    parameter.name, period.start, added_value
+                                )
                             values = values + added_value
                         except:
                             raise ValueError(
@@ -2476,9 +2484,12 @@ class Simulation:
                             f"In the variable '{variable.name}', the 'subtracts' attribute is a string '{variable.subtracts}' that does not match any parameter."
                         )
                     subtracts_list = subtracts_parameter(period.start)
-                    self._record_parameter_read(
-                        subtracts_parameter.name, period.start, subtracts_list
-                    )
+                    if self.trace:
+                        self._record_parameter_read(
+                            subtracts_parameter.name,
+                            period.start,
+                            subtracts_list,
+                        )
                 else:
                     subtracts_list = variable.subtracts
                 if values is None:
@@ -2497,9 +2508,12 @@ class Simulation:
                                 subtracted_variable,
                             )
                             subtracted_value = parameter(period.start)
-                            self._record_parameter_read(
-                                parameter.name, period.start, subtracted_value
-                            )
+                            if self.trace:
+                                self._record_parameter_read(
+                                    parameter.name,
+                                    period.start,
+                                    subtracted_value,
+                                )
                             values = values - subtracted_value
                         except:
                             raise ValueError(

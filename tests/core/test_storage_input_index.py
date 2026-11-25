@@ -237,9 +237,11 @@ def test_a_pickle_records_that_the_inputs_were_recorded():
 def test_only_storages_holding_an_input_have_a_set(tax_benefit_system):
     simulation = build_simulation(tax_benefit_system)
     simulation.calculate("disposable_income", JANUARY)
+    # Ensure at least one empty storage exists alongside populated storages.
+    simulation.get_holder("postal_code")
 
     storages = _storages(simulation)
-    assert len(storages) == len(tax_benefit_system.variables)
+    assert set(storages) < set(tax_benefit_system.variables)
     with_inputs = {name for name, storage in storages.items() if storage._inputs}
     with_derived = {
         name

@@ -1,4 +1,5 @@
 import copy
+import functools
 import os
 import typing
 from typing import Iterable, List, Type, Union
@@ -21,6 +22,100 @@ from .helpers import (
 )
 
 EXCLUDED_PARAMETER_CHILD_NAMES = ["reference", "__pycache__"]
+
+# Attributes every ParameterNode sets on itself. A child with one of these
+# names stays reachable through ``children`` and at-instant lookups, but is not
+# set as an attribute, so it cannot replace the node's own state (for example a
+# child named ``parent`` replacing the link to the holding node).
+NODE_OWN_ATTRIBUTE_NAMES = frozenset(
+    {
+        "name",
+        "children",
+        "description",
+        "documentation",
+        "file_path",
+        "metadata",
+        "trace",
+        "tracer",
+        "branch_name",
+        "_at_instant_cache",
+        "parent",
+        "modified",
+    }
+)
+
+
+@functools.lru_cache(maxsize=None)
+def _names_blocked_as_child_attributes(node_class: type) -> frozenset:
+    # The node's own attributes, plus the methods and class attributes of its
+    # classes (including subclasses such as ParameterScaleBracket). Metaclass
+    # attributes such as ABCMeta.register or type.mro are not included: they
+    # are not reachable from an instance. Computed once per class.
+    names = set(NODE_OWN_ATTRIBUTE_NAMES)
+    for klass in node_class.__mro__:
+        names.update(klass.__dict__)
+    return frozenset(names)
+
+
+def _can_expose_child_as_attribute(node: "ParameterNode", child_name: str) -> bool:
+    return child_name not in _names_blocked_as_child_attributes(type(node))
+
+
+def _check_child_type(child) -> None:
+    if not (
+        isinstance(child, ParameterNode)
+        or isinstance(child, Parameter)
+        or isinstance(child, parameters.ParameterScale)
+    ):
+        raise TypeError(
+            "child must be of type ParameterNode, Parameter, or Scale. Instead got {}".format(
+                type(child)
+            )
+        )
+
+
+def _clear_at_instant_caches_upward(node) -> None:
+    """Clear the nodes at instant cached by ``node`` and every node above it.
+
+    ``add_child`` uses this instead of ``clear_parent_cache`` so that it keeps
+    accepting every tree it accepted before it cleared caches. It walks up
+    without recursing and stops at a node it has already seen, so a loop in
+    the ``parent`` links ends. It skips a node with no cache of its own, such
+    as one built without ``ParameterNode.__init__``, and a parent that is not
+    a parameter node.
+    """
+    seen = set()
+    while node is not None and id(node) not in seen:
+        seen.add(id(node))
+        cache = node.__dict__.get("_at_instant_cache")
+        if isinstance(cache, dict):
+            cache.clear()
+        node = getattr(node, "parent", None)
+
+
+class _AtInstantCache(dict):
+    """A parameter node's nodes at instant, by instant.
+
+    Reads add to it: a node at instant that resolves a child fills that
+    child's cache. So a copy or a pickle takes its items in one step first,
+    instead of going through the dictionary while another thread adds to it.
+    It stays one object, so parameter nodes that share it, such as shallow
+    copies, share its copy too. A pickle holds a plain ``dict``, which earlier
+    versions of core can load, and which ``_get_at_instant`` replaces by one
+    of these before it adds to it.
+    """
+
+    __slots__ = ()
+
+    def __reduce_ex__(self, protocol):
+        return (dict, (dict.copy(self),))
+
+    def __deepcopy__(self, memo: dict) -> "_AtInstantCache":
+        copied = type(self)()
+        memo[id(self)] = copied
+        for instant, node_at_instant in dict.copy(self).items():
+            copied[copy.deepcopy(instant, memo)] = copy.deepcopy(node_at_instant, memo)
+        return copied
 
 
 class ParameterNode(AtInstantLike):
@@ -84,7 +179,9 @@ class ParameterNode(AtInstantLike):
         self.trace: bool = False
         self.tracer = None
         self.branch_name = None
-        self._at_instant_cache: typing.Dict[Instant, ParameterNodeAtInstant] = {}
+        self._at_instant_cache: typing.Dict[Instant, ParameterNodeAtInstant] = (
+            _AtInstantCache()
+        )
         self.parent = None
 
         if directory_path:
@@ -164,23 +261,69 @@ class ParameterNode(AtInstantLike):
         """
         Add a new child to the node.
 
-        :param name: Name of the child that must be used to access that child. Should not contain anything that could interfere with the operator `.` (dot).
+        :param name: Name of the child that must be used to access that child. Should not contain anything that could interfere with the operator `.` (dot). The child is also set as an attribute of the node, unless the name matches one of the node's own attributes (such as ``parent`` or ``children``) or a method or class attribute of its class; it then stays reachable through ``children`` and at-instant lookups.
         :param child: The new child, an instance of :class:`.ParameterScale` or :class:`.Parameter` or :class:`.ParameterNode`.
+
+        Nodes at instant cached by this node and by every node above it were
+        built without the new child, so they are cleared.
         """
         if name in self.children:
             raise ValueError("{} has already a child named {}".format(self.name, name))
-        if not (
-            isinstance(child, ParameterNode)
-            or isinstance(child, Parameter)
-            or isinstance(child, parameters.ParameterScale)
-        ):
-            raise TypeError(
-                "child must be of type ParameterNode, Parameter, or Scale. Instead got {}".format(
-                    type(child)
-                )
+        _check_child_type(child)
+        # Nodes at instant cached here and above were built without the child.
+        _clear_at_instant_caches_upward(self)
+        self._link_child(name, child)
+
+    def _replace_child(
+        self,
+        name: str,
+        child: Union["ParameterNode", Parameter, "parameters.ParameterScale"],
+    ) -> None:
+        """
+        Replace an existing child and link the replacement to this node.
+
+        Internal: homogenization uses it to replace a placeholder Parameter
+        with the ParameterNode it builds for a further breakdown level.
+
+        Cached values of this node and its ancestors are cleared. The previous
+        child is left as it is, and nodes are not marked as modified. The tree
+        is left unchanged when an argument is rejected.
+
+        :param name: Name of the existing child.
+        :param child: The replacement, an instance of :class:`.ParameterScale`, :class:`.Parameter` or :class:`.ParameterNode`. It must not be this node or one of its ancestors.
+        """
+        # Check every argument before changing anything, so a rejected call
+        # leaves the tree as it was.
+        if name not in self.children:
+            raise KeyError(
+                "{} has no child named {} to replace".format(self.name, name)
             )
+        if not isinstance(name, str):
+            raise TypeError(
+                "Child names must be strings. {} got {!r}".format(self.name, name)
+            )
+        _check_child_type(child)
+        node_or_ancestor = self
+        while node_or_ancestor is not None:
+            if node_or_ancestor is child:
+                raise ValueError(
+                    "{} cannot hold itself or one of its ancestors ({}) as a "
+                    "child".format(self.name, child.name)
+                )
+            node_or_ancestor = getattr(node_or_ancestor, "parent", None)
+
+        self._link_child(name, child)
+        # Cached at-instant nodes of this node and its ancestors still hold
+        # the previous child's values.
+        self.clear_parent_cache()
+
+    def _link_child(self, name: str, child) -> None:
+        # Store the child, expose it as an attribute when its name does not
+        # collide with one of the node's own attributes or methods, and link it
+        # upward so Parameter.update can clear caches and mark ancestors.
         self.children[name] = child
-        setattr(self, name, child)
+        if _can_expose_child_as_attribute(self, name):
+            setattr(self, name, child)
         child.parent = self
 
     def __repr__(self) -> str:
@@ -208,15 +351,17 @@ class ParameterNode(AtInstantLike):
         clone.metadata = copy.copy(self.metadata)
         clone.children = {key: child.clone() for key, child in self.children.items()}
         for child_key, child in clone.children.items():
-            setattr(clone, child_key, child)
+            if _can_expose_child_as_attribute(clone, child_key):
+                setattr(clone, child_key, child)
             child.parent = clone
-        clone._at_instant_cache = {}
+        clone._at_instant_cache = _AtInstantCache()
 
         return clone
 
     def _get_at_instant(self, instant: Instant) -> ParameterNodeAtInstant:
-        if instant in self._at_instant_cache:
-            return self._at_instant_cache[instant]
+        cache = self._at_instant_cache
+        if instant in cache:
+            return cache[instant]
         node_at_instant = ParameterNodeAtInstant(self.name, self, instant)
         if self.trace:
             at_instant = TracingParameterNodeAtInstant(
@@ -224,7 +369,16 @@ class ParameterNode(AtInstantLike):
             )
         else:
             at_instant = node_at_instant
-        self._at_instant_cache[instant] = at_instant
+        # Building the node can read code that replaces this node's cache, so
+        # store into the cache the node holds now, as before.
+        cache = self._at_instant_cache
+        if type(cache) is dict:
+            # A plain ``dict`` set from outside core (policyengine-us's path
+            # copies set one) changes as this node is read, so copying it
+            # while another thread reads could fail. It is replaced, with its
+            # entries, rather than written to.
+            cache = self._at_instant_cache = _AtInstantCache(cache)
+        cache[instant] = at_instant
         return at_instant
 
     def attach_to_parent(self, parent: "ParameterNode"):

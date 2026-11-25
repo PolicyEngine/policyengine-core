@@ -193,7 +193,14 @@ def test_the_baseline_drops_a_holder_built_for_another_entity():
         "households": {"h": {"parents": ["a", "b"]}},
     }
     reform = Simulation(situation=situation, reform=move_salary_to_households)
-    baseline = reform.baseline
+    # Create the reform's household holder before cloning the baseline branch so
+    # ``_bind_to_tax_benefit_system`` must drop the cross-entity holder.
+    reform.calculate("salary", PERIOD)
+    del reform.branches["baseline"]
+    baseline = reform.get_branch("baseline")
+    baseline.tax_benefit_system = reform.default_tax_benefit_system_instance
+    baseline._bind_to_tax_benefit_system()
+    baseline.input_variables = list(baseline.input_variables)
 
     assert "salary" in reform.household._holders
     assert "salary" not in baseline.household._holders

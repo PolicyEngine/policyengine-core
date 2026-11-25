@@ -205,10 +205,10 @@ def build_simulation(system=None, on_disk: bool = False):
             warnings.simplefilter("ignore")
             simulation.memory_config = MemoryConfig(max_memory_occupation=0)
         # A holder takes its storage from the configuration it is created
-        # under, and building the simulation creates them all: drop the
-        # (still empty) ones of the fixture's variables.
+        # under, so drop any already-created empty holders for the fixture's
+        # variables before continuing with on-disk storage.
         for name in NAMES:
-            del simulation.get_variable_population(name)._holders[name]
+            simulation.get_variable_population(name)._holders.pop(name, None)
     return simulation
 
 

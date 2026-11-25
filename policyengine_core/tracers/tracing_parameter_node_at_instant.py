@@ -226,8 +226,9 @@ class TracingParameterNodeAtInstant:
     at the missing child's path with no value, because a formula can fall
     back on a default and a value added there would change its result.
 
-    These are not recorded when they find nothing: a look-up by name on a
-    vectorial node, a look-up by an array that names a missing child, and,
+    These are not recorded when they find nothing: a look-up by a dotted
+    name, which never names a child, a look-up by name on a vectorial node, a
+    look-up by an array that names a missing child, and,
     on the undated tree, ``get_child`` and a bracket position past the end of
     a scale.
     """
@@ -298,10 +299,16 @@ class TracingParameterNodeAtInstant:
 
         The read holds no value. A key that is not a string, such as an array
         for a vectorial read, names no single child and is not recorded.
+        Nor is a dotted name: the look-up does not descend into it, and
+        ``ParameterNode.add_child`` asks that a child's name hold no dot, so
+        it finds nothing whatever the parameters hold. Its path can also be
+        a real parameter's, whose recorded value it would replace.
         """
         node_at_instant = self.parameter_node_at_instant
-        if isinstance(key, str) and isinstance(
-            node_at_instant, parameters.ParameterNodeAtInstant
+        if (
+            isinstance(key, str)
+            and "." not in key
+            and isinstance(node_at_instant, parameters.ParameterNodeAtInstant)
         ):
             self.tracer.record_parameter_access(
                 _child_path(node_at_instant._name, key),

@@ -14,6 +14,7 @@ from policyengine_core.country_template.entities import Person
 from policyengine_core.parameters import Parameter, ParameterNode
 from policyengine_core.parameters.operations.get_parameter import get_parameter
 from policyengine_core.periods import ETERNITY, MONTH, YEAR
+from policyengine_core.simulations import Simulation
 from policyengine_core.tracers import SimpleTracer
 from policyengine_core.variables import Variable
 from tests.fixtures.tracing import assert_untraced
@@ -832,6 +833,69 @@ def test_untraced_simulation_records_no_core_reads(system, make_simulation):
     simulation.calculate("added_income", JANUARY)
 
     assert not hasattr(simulation.tracer, "trees")
+
+
+def adds_naming_a_parameter(system):
+    define_variable(
+        system, "core_read_case", None, adds=["salary", "benefits.basic_income"]
+    )
+    return 2000 + system.parameters(INSTANT).benefits.basic_income, {}
+
+
+def adds_held_in_a_parameter(system):
+    add_list_parameter(system, "income_components", ["salary"])
+    define_variable(system, "core_read_case", None, adds="taxes.income_components")
+    return 2000, {}
+
+
+def subtracts_naming_a_parameter(system):
+    define_variable(system, "core_read_case", None, subtracts=["benefits.basic_income"])
+    return -system.parameters(INSTANT).benefits.basic_income, {}
+
+
+def subtracts_held_in_a_parameter(system):
+    add_list_parameter(system, "income_deductions", ["salary"])
+    define_variable(system, "core_read_case", None, subtracts="taxes.income_deductions")
+    return -2000, {}
+
+
+def uprating_an_earlier_input(system):
+    define_variable(system, "core_read_case", None, uprating="taxes.income_tax_rate")
+    rate = system.parameters.taxes.income_tax_rate
+    return 100 * rate(INSTANT) / rate("2015-01-01"), {"2015-01": [100]}
+
+
+@pytest.mark.parametrize(
+    "define_case",
+    [
+        adds_naming_a_parameter,
+        adds_held_in_a_parameter,
+        subtracts_naming_a_parameter,
+        subtracts_held_in_a_parameter,
+        uprating_an_earlier_input,
+    ],
+    ids=[
+        "adds-naming-a-parameter",
+        "adds-held-in-a-parameter",
+        "subtracts-naming-a-parameter",
+        "subtracts-held-in-a-parameter",
+        "uprating",
+    ],
+)
+def test_untraced_simulation_does_not_call_the_read_recorder(
+    system, make_simulation, monkeypatch, define_case
+):
+    """A country package's tests can build a stand-in simulation that copies
+    only some of core's methods, as policyengine-us's Social Security state
+    tests do, so an untraced calculation must not call the method that
+    records reads."""
+    expected, earlier_inputs = define_case(system)
+    simulation = make_simulation(system, {"salary": 2000}, JANUARY)
+    for input_period, input_values in earlier_inputs.items():
+        simulation.set_input("core_read_case", input_period, input_values)
+    monkeypatch.delattr(Simulation, "_record_parameter_read")
+
+    assert simulation.calculate("core_read_case", JANUARY)[0] == pytest.approx(expected)
 
 
 # ----- Branches ----- #

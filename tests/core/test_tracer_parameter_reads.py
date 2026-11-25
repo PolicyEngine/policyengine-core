@@ -638,6 +638,49 @@ def test_key_look_up_by_a_string_enum_member_records_the_member_as_a_path(
     ]
 
 
+def look_up_by_attribute_with_default(node, name):
+    return getattr(node, name, 0.0)
+
+
+def look_up_with_hasattr(node, name):
+    return float(hasattr(node, name))
+
+
+@pytest.mark.parametrize(
+    "look_up",
+    [
+        look_up_by_attribute_with_default,
+        look_up_with_hasattr,
+        read_rate_by_key_with_default,
+    ],
+    ids=["getattr-default", "hasattr", "key"],
+)
+def test_look_up_by_a_dotted_name_records_nothing(system, traced_simulation, look_up):
+    """A look-up does not descend into a dotted name, and no child's name has
+    a dot, so the look-up finds nothing whatever the parameters hold. Recorded
+    at the dotted path, it would also replace the value read there in the flat
+    trace."""
+
+    def formula(person, period, parameters):
+        taxes = parameters(period).taxes
+        dotted_result = look_up(taxes, "housing_tax.rate")
+        return person.filled_array(taxes.housing_tax.rate + dotted_result)
+
+    define_variable(system, "rate_and_dotted_look_up", formula)
+    rate = system.parameters(INSTANT).taxes.housing_tax.rate
+    simulation = traced_simulation()
+
+    assert simulation.calculate("rate_and_dotted_look_up", JANUARY)[0] == rate
+
+    assert recorded_reads(simulation, "rate_and_dotted_look_up") == [
+        ("taxes.housing_tax.rate", INSTANT, "default", rate)
+    ]
+    flat_trace = simulation.tracer.get_serialized_flat_trace()
+    assert flat_trace[f"rate_and_dotted_look_up<{JANUARY}, (default)>"][
+        "parameters"
+    ] == {f"taxes.housing_tax.rate<{INSTANT}, (default)>": rate}
+
+
 ABOLITION_TREES = {
     "switch-off": {"abolitions": {"income_tax": {"2015-01-01": {"value": False}}}},
     "no-switch": {"abolitions": {"other_variable": {"2015-01-01": {"value": False}}}},

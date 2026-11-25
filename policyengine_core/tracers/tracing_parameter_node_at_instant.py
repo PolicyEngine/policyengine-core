@@ -221,16 +221,12 @@ class TracingParameterNodeAtInstant:
     ``tracer``, under ``branch_name``, at its own path. A child node is
     returned as another tracing view.
 
-    A look-up by name that finds no child is recorded too, because a formula
-    can fall back on a default and a value added there would change its
-    result:
+    A look-up by name that finds no child, by attribute (``node.rate``,
+    ``getattr``, ``hasattr``) or by key (``node["rate"]``), is recorded too,
+    at the missing child's path with no value, because a formula can fall
+    back on a default and a value added there would change its result.
 
-    - an attribute look-up (``node.rate``, ``getattr``, ``hasattr``) records the
-      node's own path, with the names of its children as the value;
-    - a key look-up (``node["rate"]``) records the missing child's path, with
-      no value.
-
-    These are not recorded when they find nothing: a key look-up on a
+    These are not recorded when they find nothing: a look-up by name on a
     vectorial node, a look-up by an array that names a missing child, and,
     on the undated tree, ``get_child`` and a bracket position past the end of
     a scale.
@@ -285,19 +281,20 @@ class TracingParameterNodeAtInstant:
         return repr(self.parameter_node_at_instant)
 
     def _record_absent_child_read(self, key: str) -> None:
-        """Record an attribute look-up that found no child.
+        """Record an attribute look-up that found no child, at that child's
+        path, as a key look-up is recorded.
 
-        The read is recorded at the node's own path, with the names of its
-        children. Special names such as ``__array__`` are not children and are
-        not recorded.
+        Special names such as ``__array__`` are not children and are not
+        recorded. The node's other children are not listed: a node at an
+        instant builds each child when it is first read, and listing them
+        would build every one, so a child that fails to build would stop a
+        traced formula that never reads it.
         """
-        if not key.startswith("__") and isinstance(
-            self.parameter_node_at_instant, parameters.ParameterNodeAtInstant
-        ):
-            self._record_children_read()
+        if not key.startswith("__"):
+            self._record_missing_key_read(key)
 
     def _record_missing_key_read(self, key: object) -> None:
-        """Record a key look-up that found no child, at that child's path.
+        """Record a look-up by name that found no child, at that child's path.
 
         The read holds no value. A key that is not a string, such as an array
         for a vectorial read, names no single child and is not recorded.

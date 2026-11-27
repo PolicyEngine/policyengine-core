@@ -1,0 +1,26 @@
+# policyengine-us test files the PolicyEngineUSMain job runs from a checkout of
+# policyengine-us main, first with the Core release on PyPI and then with the
+# Core under test (.github/country_main_tests.py). Paths are relative to the
+# policyengine-us repository root.
+#
+# Each file drives Core internals (simulations, holders, data storage, tools,
+# populations, parameters or reforms) and is fast: together they took about
+# 95 seconds in policyengine-us release run 40544965026. The state machine test
+# runs Core's installed source bodies in namespaces it builds; Core 3.33.13
+# broke it on 2026-10-27, which this job would have shown on the PR.
+#
+# A file policyengine-us renames or removes is skipped with a warning, so keep
+# the list in step when that happens.
+policyengine_us/tests/core/test_social_security_input_state_machine.py
+policyengine_us/tests/core/test_social_security_real_core.py
+policyengine_us/tests/core/test_loss_ald_extraction_parity.py
+policyengine_us/tests/core/test_capital_gains_rate_worksheet_properties.py
+policyengine_us/tests/core/test_ald_determinism.py
+policyengine_us/tests/core/test_pandas3_compatibility.py
+policyengine_us/tests/core/test_social_security_lever_properties.py
+policyengine_us/tests/test_locality_sales_tax_rates.py
+policyengine_us/tests/test_parameter_scale_thresholds.py
+policyengine_us/tests/code_health/test_no_group_variables_in_person_adds.py
+policyengine_us/tests/microsimulation/data/test_extend_single_year_dataset.py
+policyengine_us/tests/policy/baseline/parameters/test_uprating_extensions.py
+policyengine_us/tests/policy/baseline/gov/states/or/tax/income/credits/test_or_ctc_sunset.py

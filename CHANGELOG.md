@@ -1,3 +1,14 @@
+## [3.38.0] - 2026-11-27
+
+### Added
+
+- `policyengine-core dependency-map -c <country package>` traces which variables read each parameter and which variables feed which, over the package's YAML tests and optionally its microdata, and writes the map with the package's version and a fingerprint of the model and traced tests.
+
+### Fixed
+
+- `FullTracer` now records tax-scale reads with their schedule, reads of a parameter node's children and look-ups by name that find no child on a node at an instant, parameters read before an instant is chosen (`parameters.gov.rate(period)`), and the parameters core reads for `adds`, `subtracts` and uprating; each trace node also records whether its formula ran. Core's abolition check no longer appears in a trace when a country package traces its own parameter root.
+
+
 ## [3.37.2] - 2026-11-24
 
 ### Changed

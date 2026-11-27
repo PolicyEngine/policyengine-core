@@ -262,6 +262,10 @@
     <span class="n">value</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">Array</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">start</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">end</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="c1"># Whether this calculation ran the variable's formula, or its ``adds`` and</span>
+    <span class="c1"># ``subtracts``. It stays False for a value that was stored, cached or</span>
+    <span class="c1"># defaulted, including one masked by ``defined_for``.</span>
+    <span class="n">formula_ran</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">calculation_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">round_</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Time</span><span class="p">:</span>
         <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">end</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span>

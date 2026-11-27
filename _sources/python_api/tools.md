@@ -19,3 +19,10 @@ The `policyengine_core.tools` module contains miscellaneous utility functions, i
 ```{eval-rst}
 .. autofunction:: policyengine_core.tools.simulation_dumper.restore_simulation
 ```
+
+## dependency_map
+
+```{eval-rst}
+.. automodule:: policyengine_core.tools.dependency_map
+    :members: build_dependency_map, trace_yaml_tests, trace_microdata, model_fingerprint
+```

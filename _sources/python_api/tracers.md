@@ -73,3 +73,11 @@ The `policyengine_core.tracers` module contains classes used to represent tracer
     :inherited-members:
     :show-inheritance:
 ```
+
+## TracingChildren
+
+```{eval-rst}
+.. autoclass:: policyengine_core.tracers.tracing_parameter_node_at_instant.TracingChildren
+    :members:
+    :show-inheritance:
+```

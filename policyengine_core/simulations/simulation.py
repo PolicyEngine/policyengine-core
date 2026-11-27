@@ -27,13 +27,14 @@ from policyengine_core.entities.entity import Entity
 from policyengine_core.enums import Enum, EnumArray
 from policyengine_core.errors import CycleError, SpiralError
 from policyengine_core.holders.holder import Holder
-from policyengine_core.periods import Period
+from policyengine_core.periods import Instant, Period
 from policyengine_core.periods.config import ETERNITY, MONTH, YEAR
 from policyengine_core.periods.helpers import period
 from policyengine_core.tracers import (
     FullTracer,
     SimpleTracer,
     TracingParameterNode,
+    TracingParameterNodeAtInstant,
 )
 import random
 from policyengine_core.tools.hugging_face import *
@@ -684,6 +685,18 @@ class PreservedUserInput:
     disk_key: Optional[str] = None
     disk_file: Optional[str] = None
     disk_enum: object = None
+
+
+def _untraced(parameters_at_instant: object) -> object:
+    """The parameter tree at an instant, without a tracing view around it.
+
+    A country package can trace its own parameter root, so reading it gives a
+    tracing view. Core's own checks read the tree through this, so that they
+    are not recorded as reads of the variable's formula.
+    """
+    if isinstance(parameters_at_instant, TracingParameterNodeAtInstant):
+        return parameters_at_instant.parameter_node_at_instant
+    return parameters_at_instant
 
 
 class Simulation:
@@ -1720,7 +1733,7 @@ class Simulation:
         try:
             if (
                 variable.is_neutralized
-                or self.tax_benefit_system.parameters(period).gov.abolitions[
+                or _untraced(self.tax_benefit_system.parameters(period)).gov.abolitions[
                     variable.name
                 ]
             ):
@@ -1940,6 +1953,17 @@ class Simulation:
                     value_in_this_period = _uprating_index_value(
                         uprating_parameter, period.start
                     )
+                    if self.trace:
+                        self._record_parameter_read(
+                            uprating_parameter.name,
+                            latest_known_period.start,
+                            value_in_last_period,
+                        )
+                        self._record_parameter_read(
+                            uprating_parameter.name,
+                            period.start,
+                            value_in_this_period,
+                        )
                     if (
                         value_in_last_period is None
                         or value_in_this_period is None
@@ -2380,6 +2404,22 @@ class Simulation:
 
         return variable.calculate_output(self, variable_name, period)
 
+    def _record_parameter_read(
+        self, name: str, instant: Instant, value: object
+    ) -> None:
+        """Record a parameter core read for the variable being calculated.
+
+        ``adds``, ``subtracts`` and uprating read the parameter tree directly,
+        not through the view a formula receives. They call this only when the
+        simulation is traced, so an untraced calculation neither calls it nor
+        reads the parameter's name: a country package's tests can build a
+        stand-in simulation that copies only some of core's methods.
+        """
+        if self.trace:
+            self.tracer.record_parameter_access(
+                name, str(instant), self.branch_name, value
+            )
+
     def _run_formula(
         self, variable: str, population: Population, period: Period
     ) -> ArrayLike:
@@ -2388,6 +2428,8 @@ class Simulation:
         """
 
         formula = variable.get_formula(period)
+        if self.trace and (formula is not None or variable.adds or variable.subtracts):
+            self.tracer.record_formula_run()
         if formula is None:
             values = None
             if variable.adds is not None and len(variable.adds) > 0:
@@ -2402,6 +2444,10 @@ class Simulation:
                             f"In the variable '{variable.name}', the 'adds' attribute is a string '{variable.adds}' that does not match any parameter."
                         )
                     adds_list = adds_parameter(period.start)
+                    if self.trace:
+                        self._record_parameter_read(
+                            adds_parameter.name, period.start, adds_list
+                        )
                 else:
                     adds_list = variable.adds
                 values = 0
@@ -2416,7 +2462,12 @@ class Simulation:
                                 self.tax_benefit_system.parameters,
                                 added_variable,
                             )
-                            values = values + parameter(period.start)
+                            added_value = parameter(period.start)
+                            if self.trace:
+                                self._record_parameter_read(
+                                    parameter.name, period.start, added_value
+                                )
+                            values = values + added_value
                         except:
                             raise ValueError(
                                 f"In the variable '{variable.name}', the 'adds' attribute is a list that contains a string '{added_variable}' that does not match any variable or parameter."
@@ -2433,6 +2484,12 @@ class Simulation:
                             f"In the variable '{variable.name}', the 'subtracts' attribute is a string '{variable.subtracts}' that does not match any parameter."
                         )
                     subtracts_list = subtracts_parameter(period.start)
+                    if self.trace:
+                        self._record_parameter_read(
+                            subtracts_parameter.name,
+                            period.start,
+                            subtracts_list,
+                        )
                 else:
                     subtracts_list = variable.subtracts
                 if values is None:
@@ -2450,7 +2507,14 @@ class Simulation:
                                 self.tax_benefit_system.parameters,
                                 subtracted_variable,
                             )
-                            values = values - parameter(period.start)
+                            subtracted_value = parameter(period.start)
+                            if self.trace:
+                                self._record_parameter_read(
+                                    parameter.name,
+                                    period.start,
+                                    subtracted_value,
+                                )
+                            values = values - subtracted_value
                         except:
                             raise ValueError(
                                 f"In the variable '{variable.name}', the 'subtracts' attribute is a list that contains a string '{subtracted_variable}' that does not match any variable or parameter."

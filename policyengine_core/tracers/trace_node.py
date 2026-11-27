@@ -24,6 +24,10 @@ class TraceNode:
     value: typing.Optional[Array] = None
     start: float = 0
     end: float = 0
+    # Whether this calculation ran the variable's formula, or its ``adds`` and
+    # ``subtracts``. It stays False for a value that was stored, cached or
+    # defaulted, including one masked by ``defined_for``.
+    formula_ran: bool = False
 
     def calculation_time(self, round_: bool = True) -> Time:
         result = self.end - self.start

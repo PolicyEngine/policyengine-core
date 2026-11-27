@@ -72,6 +72,10 @@ class FullTracer:
                 ),
             )
 
+    def record_formula_run(self) -> None:
+        if self._current_node is not None:
+            self._current_node.formula_ran = True
+
     def _record_start_time(
         self,
         time_in_s: Optional[float] = None,

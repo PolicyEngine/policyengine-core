@@ -30,6 +30,9 @@ class SimpleTracer:
     def record_parameter_access(self, parameter: str, period, branch_name: str, value):
         pass
 
+    def record_formula_run(self) -> None:
+        pass
+
     def record_calculation_end(self) -> None:
         self.stack.pop()
 
